@@ -2,6 +2,14 @@
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _offline_ai(monkeypatch):
+    """Strip AI backend env so unit/api tests are deterministic regardless of the
+    developer's/deploy box's ambient env (which may point at a live Ollama)."""
+    for var in ("MNEMO_OLLAMA_URL", "MNEMO_LLM", "MNEMO_LLM_MODEL", "MNEMO_WHISPER_URL"):
+        monkeypatch.delenv(var, raising=False)
+
+
 @pytest.fixture()
 def vaultdir(tmp_path, monkeypatch):
     """A fresh temp vault dir with the index initialized. Returns its Path."""
