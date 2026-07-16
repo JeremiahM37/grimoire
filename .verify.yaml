@@ -4,12 +4,14 @@
 backend: web
 
 launch:
+  # port 9119, NOT 9111 — the production service runs on 9111; using it here
+  # would fail to bind, silently test against production, and pollute the live vault.
   command: .venv/bin/python -m server
-  url: http://127.0.0.1:9111
+  url: http://127.0.0.1:9119
   env:
     MNEMO_VAULT: /tmp/mnemo-verify-vault
-    MNEMO_PORT: "9111"
-  ready_when: { url: http://127.0.0.1:9111/api/health }
+    MNEMO_PORT: "9119"
+  ready_when: { url: http://127.0.0.1:9119/api/health }
   wait_after: 1
 
 options:
@@ -20,20 +22,20 @@ options:
 steps:
   - name: api healthy
     actions:
-      - shell: curl -sf http://127.0.0.1:9111/api/health | grep -q '"ok":true'
+      - shell: curl -sf http://127.0.0.1:9119/api/health | grep -q '"ok":true'
 
   - name: create + read a note round-trips
     actions:
       - shell: >
-          curl -sf -X POST http://127.0.0.1:9111/api/notes
+          curl -sf -X POST http://127.0.0.1:9119/api/notes
           -H 'Content-Type: application/json'
           -d '{"title":"Verify Note","body":"# Verify Note\n\nlinks to [[Other]] #verify"}'
-      - shell: curl -sf http://127.0.0.1:9111/api/notes/verify-note.md | grep -q '"title":"Verify Note"'
-      - shell: curl -sf 'http://127.0.0.1:9111/api/search?q=links' | grep -q verify-note
+      - shell: curl -sf http://127.0.0.1:9119/api/notes/verify-note.md | grep -q '"title":"Verify Note"'
+      - shell: curl -sf 'http://127.0.0.1:9119/api/search?q=links' | grep -q verify-note
 
   - name: notes app renders in a browser
     actions:
-      - navigate: http://127.0.0.1:9111/
+      - navigate: http://127.0.0.1:9119/
       - wait: 2
     expect:
       vision: >
