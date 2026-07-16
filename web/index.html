@@ -31,6 +31,10 @@
       <button id="audio-memo" class="btn">🎙 Memo</button>
       <button id="vault-open" class="btn">🔐 Vault</button>
     </div>
+    <div class="side-actions row">
+      <button id="graph-open" class="btn">◉ Graph</button>
+      <button id="palette-open" class="btn">⌘ Palette</button>
+    </div>
     <nav id="note-list"></nav>
     <footer id="side-foot"><span id="stat"></span></footer>
   </aside>
@@ -45,6 +49,16 @@
       <button id="preview-toggle" class="icon" title="preview">◐</button>
       <button id="delete-note" class="icon danger" title="delete">🗑</button>
     </header>
+    <div id="ed-toolbar">
+      <button data-md="bold" class="tb" title="Bold (Ctrl+B)"><b>B</b></button>
+      <button data-md="italic" class="tb" title="Italic (Ctrl+I)"><i>I</i></button>
+      <button data-md="h" class="tb" title="Heading">H</button>
+      <button data-md="ul" class="tb" title="List">•</button>
+      <button data-md="task" class="tb" title="Task">☑</button>
+      <button data-md="link" class="tb" title="Wiki-link (Ctrl+L)">🔗</button>
+      <button data-md="code" class="tb" title="Code">&lt;/&gt;</button>
+      <button data-md="quote" class="tb" title="Quote">❝</button>
+    </div>
     <div id="ed-body">
       <textarea id="content" placeholder="Write in markdown.  [[link]] to other notes.  #tag your thoughts." spellcheck="false"></textarea>
       <div id="preview" class="hidden"></div>
@@ -84,6 +98,23 @@
     <div class="mi" data-a="summarize">Summarize</div>
     <div class="mi" data-a="expand">Expand draft</div>
     <div class="mi" data-a="tags">Suggest tags</div>
+  </div>
+
+  <div id="graph-modal" class="modal hidden">
+    <div class="graph-box">
+      <header class="modal-head">
+        <span>◉ Graph <span id="graph-stat" class="graph-stat"></span></span>
+        <button id="graph-close" class="icon">✕</button>
+      </header>
+      <canvas id="graph-canvas"></canvas>
+    </div>
+  </div>
+
+  <div id="palette" class="palette hidden">
+    <div class="palette-box">
+      <input id="palette-input" placeholder="Jump to a note or run a command…" autocomplete="off" spellcheck="false">
+      <div id="palette-list"></div>
+    </div>
   </div>
 
   <div id="toast"></div>

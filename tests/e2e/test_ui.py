@@ -168,6 +168,135 @@ def test_external_note_appears_without_reload(page, server):
     expect(page.locator(".note-row .t", has_text="Synced From Afar")).to_be_visible(timeout=12000)
 
 
+def test_graph_view_opens_and_renders(page, server):
+    page.goto(server)
+    # two linked notes so the graph has at least one edge
+    page.once("dialog", lambda d: d.accept("Graph Hub"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Graph Hub", timeout=8000)
+    page.once("dialog", lambda d: d.accept("Graph Spoke"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Graph Spoke", timeout=8000)
+    page.fill("#content", "points at [[Graph Hub]]")
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
+    page.click("#graph-open")
+    expect(page.locator("#graph-modal")).to_be_visible()
+    expect(page.locator("#graph-canvas")).to_be_visible()
+    expect(page.locator("#graph-stat")).to_contain_text("notes", timeout=5000)
+    expect(page.locator("#graph-stat")).to_contain_text("links")
+    # canvas actually paints something (nodes/edges drawn)
+    page.wait_for_timeout(400)
+    painted = page.evaluate(
+        "() => { const c=document.getElementById('graph-canvas');"
+        "const x=c.getContext('2d').getImageData(0,0,c.width,c.height).data;"
+        "let n=0; for(let i=3;i<x.length;i+=4){if(x[i]!==0)n++;} return n; }")
+    assert painted > 0, "graph canvas rendered nothing"
+    page.click("#graph-close")
+    expect(page.locator("#graph-modal")).to_be_hidden()
+
+
+def test_task_checkbox_toggles_and_persists(page, server):
+    page.goto(server)
+    page.once("dialog", lambda d: d.accept("Task List"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Task List", timeout=8000)
+    page.fill("#content", "# Task List\n\n- [ ] buy milk\n- [x] done thing")
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
+    # render preview: the open task is an unchecked box, the done one is checked
+    page.click("#preview-toggle")
+    boxes = page.locator("#preview .task-box")
+    expect(boxes).to_have_count(2)
+    expect(boxes.nth(0)).not_to_be_checked()
+    expect(boxes.nth(1)).to_be_checked()
+    # tick the first task
+    boxes.nth(0).check()
+    # source updates to [x] and autosaves
+    expect(page.locator("#content")).to_have_value(re.compile(r"- \[x\] buy milk"), timeout=5000)
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
+    # persists across reload
+    page.reload()
+    page.click(".note-row .t >> text=Task List")
+    expect(page.locator("#content")).to_have_value(re.compile(r"- \[x\] buy milk"), timeout=8000)
+
+
+def test_command_palette_jumps_to_note(page, server):
+    page.goto(server)
+    page.once("dialog", lambda d: d.accept("Palette Target Note"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Palette Target Note", timeout=8000)
+    # open a different note so we can prove the palette navigates
+    page.once("dialog", lambda d: d.accept("Some Other Note"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Some Other Note", timeout=8000)
+    # Ctrl+K opens the palette
+    page.keyboard.press("Control+k")
+    expect(page.locator("#palette")).to_be_visible()
+    page.fill("#palette-input", "palette target")
+    expect(page.locator("#palette-list .pal-item.sel")).to_contain_text("Palette Target Note")
+    page.keyboard.press("Enter")
+    expect(page.locator("#palette")).to_be_hidden()
+    expect(page.locator("#title")).to_have_value("Palette Target Note", timeout=5000)
+
+
+def test_command_palette_runs_command(page, server):
+    page.goto(server)
+    expect(page.locator(".note-row").first).to_be_visible(timeout=8000)
+    page.click("#palette-open")
+    expect(page.locator("#palette")).to_be_visible()
+    page.fill("#palette-input", "graph")
+    expect(page.locator("#palette-list .pal-item.sel")).to_contain_text("graph")
+    page.keyboard.press("Enter")
+    # running the "Open graph view" command opens the graph modal
+    expect(page.locator("#graph-modal")).to_be_visible(timeout=5000)
+
+
+def test_editor_smart_list_continuation(page, server):
+    page.goto(server)
+    page.once("dialog", lambda d: d.accept("List Editor Note"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("List Editor Note", timeout=8000)
+    ta = page.locator("#content")
+    ta.click()
+    ta.fill("")
+    page.keyboard.type("- first")
+    page.keyboard.press("Enter")            # auto-continues with "- "
+    page.keyboard.type("second")
+    expect(ta).to_have_value("- first\n- second")
+    page.keyboard.press("Enter")            # "- " empty
+    page.keyboard.press("Enter")            # empty item ends the list
+    expect(ta).to_have_value("- first\n- second\n")
+    # a task line continues as an unchecked task
+    ta.fill("")
+    page.keyboard.type("- [x] done")
+    page.keyboard.press("Enter")
+    page.keyboard.type("next")
+    expect(ta).to_have_value("- [x] done\n- [ ] next")
+
+
+def test_editor_toolbar_and_tab(page, server):
+    page.goto(server)
+    page.once("dialog", lambda d: d.accept("Toolbar Note"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Toolbar Note", timeout=8000)
+    ta = page.locator("#content")
+    ta.click()
+    ta.fill("")
+    # toolbar task button inserts a task marker at the line start
+    page.click('.tb[data-md="task"]')
+    expect(ta).to_have_value("- [ ] ")
+    page.keyboard.type("write tests")
+    # bold toolbar wraps a placeholder when nothing selected
+    page.click('.tb[data-md="bold"]')
+    expect(ta).to_have_value(re.compile(r"\*\*bold\*\*"))
+    # Tab indents the current line by two spaces
+    ta.fill("plain")
+    page.keyboard.press("Home")
+    page.keyboard.press("Tab")
+    expect(ta).to_have_value("  plain")
+    page.keyboard.press("Shift+Tab")
+    expect(ta).to_have_value("plain")
+
+
 def test_daily_note(page, server):
     page.goto(server)
     page.click("#daily")
