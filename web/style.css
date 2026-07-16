@@ -91,6 +91,8 @@ body { background: var(--paper); color: var(--ink); font-family: var(--sans);
 .md li.task { list-style: none; margin-left: -1.2em; display: flex; align-items: baseline; gap: .5em; }
 .md li.task .task-box { flex: none; cursor: pointer; accent-color: var(--accent); }
 .md li.task.done { color: var(--ink-soft); text-decoration: line-through; }
+.md img.embed { max-width: 100%; height: auto; border-radius: 8px; margin: 8px 0;
+  box-shadow: var(--shadow); display: block; }
 
 #tag-filter-bar { display: flex; align-items: center; justify-content: space-between;
   margin: 4px 8px 0; padding: 5px 10px; border-radius: 8px; background: var(--paper);

@@ -6,6 +6,7 @@ notes are excluded.
 """
 import html
 import re
+from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
@@ -20,6 +21,7 @@ font-size:1.25rem;line-height:1.7;color:#111;background:#fff}
 a{color:#000}h1,h2,h3{line-height:1.25}code{font-family:monospace}
 .unresolved{color:#888}nav a{display:block;padding:.3rem 0}
 hr{border:none;border-top:1px solid #ccc;margin:1.5rem 0}
+img{max-width:100%;height:auto}
 .back{font-size:1rem}
 </style>"""
 
@@ -64,6 +66,9 @@ def _render(body: str) -> str:
         if in_code:
             out.append(html.escape(raw)); continue
         line = html.escape(raw)
+        line = re.sub(r"!\[\[([^\[\]|]+?)\]\]", lambda m:
+                      f'<img src="/api/file/{quote(m.group(1).strip())}" '
+                      f'alt="{html.escape(m.group(1).strip())}">', line)
         line = re.sub(r"\[\[([^\]|]+?)(?:\|([^\]]+))?\]\]", lambda m: _wl(m, resolved), line)
         h = re.match(r"^(#{1,3})\s+(.+)$", raw)
         if h:
