@@ -1,0 +1,200 @@
+"""AI layer: embeddings, retrieval, and answer synthesis — pluggable and offline-safe.
+
+Design principle: mnemo works **fully offline with zero external deps** by default,
+and gets *smarter* (not merely functional) when you point it at a local Ollama or
+Claude. So:
+
+- Embeddings default to a deterministic **hashing embedder** (bag-of-tokens hashed
+  into a fixed-dim L2-normalized vector). Cosine over these reflects real token
+  overlap — good enough for retrieval, instant, private, and deterministic for
+  tests. Set MNEMO_OLLAMA_URL + MNEMO_EMBED_MODEL for semantic embeddings.
+- Answers default to an **extractive** synthesizer (stitches the most relevant
+  note chunks with citations). Set MNEMO_LLM=ollama|claude for generative answers.
+
+Every note chunk is embedded on index; private notes are excluded from the vector
+store unless a query explicitly opts in.
+"""
+import hashlib
+import json
+import math
+import os
+import re
+import struct
+import urllib.request
+
+EMBED_DIM = 256
+
+# ---- config (read live so tests/env can flip it) ----------------------------
+
+def _ollama_url() -> str:
+    return os.environ.get("MNEMO_OLLAMA_URL", "").rstrip("/")
+
+def _embed_model() -> str:
+    return os.environ.get("MNEMO_EMBED_MODEL", "nomic-embed-text")
+
+def _llm() -> str:
+    return os.environ.get("MNEMO_LLM", "").lower()   # '', 'ollama', 'claude'
+
+def _llm_model() -> str:
+    return os.environ.get("MNEMO_LLM_MODEL", "qwen3.5:4b")
+
+
+# ---- chunking ---------------------------------------------------------------
+
+def chunk_text(text: str, target: int = 800) -> list[str]:
+    """Split on blank lines, then greedily pack paragraphs to ~target chars."""
+    paras = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
+    chunks, cur = [], ""
+    for p in paras:
+        if len(cur) + len(p) + 2 > target and cur:
+            chunks.append(cur.strip())
+            cur = p
+        else:
+            cur = (cur + "\n\n" + p) if cur else p
+    if cur.strip():
+        chunks.append(cur.strip())
+    return chunks or ([text.strip()] if text.strip() else [])
+
+
+# ---- embeddings -------------------------------------------------------------
+
+_TOKEN_RE = re.compile(r"[a-z0-9]+")
+
+
+def _hash_embed(text: str) -> list[float]:
+    vec = [0.0] * EMBED_DIM
+    for tok in _TOKEN_RE.findall(text.lower()):
+        h = int(hashlib.md5(tok.encode()).hexdigest(), 16)
+        idx = h % EMBED_DIM
+        sign = 1.0 if (h >> 8) & 1 else -1.0
+        vec[idx] += sign
+    norm = math.sqrt(sum(v * v for v in vec)) or 1.0
+    return [v / norm for v in vec]
+
+
+def embed(texts: list[str]) -> list[list[float]]:
+    """Embed a batch. Ollama when configured, else the deterministic hasher."""
+    url = _ollama_url()
+    if url:
+        try:
+            return [_ollama_embed(url, t) for t in texts]
+        except Exception:
+            pass   # graceful offline fallback — never break indexing on AI outage
+    return [_hash_embed(t) for t in texts]
+
+
+def _ollama_embed(url: str, text: str) -> list[float]:
+    req = urllib.request.Request(
+        f"{url}/api/embeddings", method="POST",
+        headers={"Content-Type": "application/json"},
+        data=json.dumps({"model": _embed_model(), "prompt": text}).encode())
+    with urllib.request.urlopen(req, timeout=30) as r:
+        return json.load(r)["embedding"]
+
+
+def pack(vec: list[float]) -> bytes:
+    return struct.pack(f"<{len(vec)}f", *vec)
+
+
+def unpack(blob: bytes) -> list[float]:
+    return list(struct.unpack(f"<{len(blob) // 4}f", blob))
+
+
+def cosine(a: list[float], b: list[float]) -> float:
+    if len(a) != len(b):
+        return 0.0
+    dot = sum(x * y for x, y in zip(a, b))
+    na = math.sqrt(sum(x * x for x in a)) or 1.0
+    nb = math.sqrt(sum(y * y for y in b)) or 1.0
+    return dot / (na * nb)
+
+
+# ---- answer synthesis -------------------------------------------------------
+
+def answer(question: str, contexts: list[dict]) -> str:
+    """contexts: [{path, title, chunk}]. Generative if MNEMO_LLM set, else extractive."""
+    if not contexts:
+        return "I couldn't find anything in your notes about that."
+    backend = _llm()
+    if backend in ("ollama", "claude"):
+        try:
+            return _llm_answer(question, contexts, backend)
+        except Exception:
+            pass   # fall through to extractive
+    return _extractive_answer(question, contexts)
+
+
+def _extractive_answer(question: str, contexts: list[dict]) -> str:
+    lead = f"From your notes on “{question.strip()}”:\n\n"
+    parts = []
+    for c in contexts[:4]:
+        snippet = c["chunk"].strip()
+        if len(snippet) > 400:
+            snippet = snippet[:400].rsplit(" ", 1)[0] + " …"
+        parts.append(f"- {snippet}  ([[{_stem(c['path'])}|{c['title']}]])")
+    return lead + "\n".join(parts)
+
+
+def _llm_answer(question: str, contexts: list[dict], backend: str) -> str:
+    ctx = "\n\n".join(f"[{i+1}] ({c['title']})\n{c['chunk']}"
+                      for i, c in enumerate(contexts[:6]))
+    prompt = (
+        "Answer the question using ONLY the notes below. Cite sources as [n]. If the "
+        "notes don't contain the answer, say so.\n\n"
+        f"NOTES:\n{ctx}\n\nQUESTION: {question}\n\nANSWER:")
+    if backend == "ollama":
+        url = _ollama_url()
+        req = urllib.request.Request(
+            f"{url}/api/generate", method="POST",
+            headers={"Content-Type": "application/json"},
+            data=json.dumps({"model": _llm_model(), "prompt": prompt,
+                             "stream": False, "think": False}).encode())
+        with urllib.request.urlopen(req, timeout=120) as r:
+            return json.load(r).get("response", "").strip() or _extractive_answer(question, contexts)
+    # claude via ANTHROPIC_API_KEY (or vault secret in v0.3+)
+    key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not key:
+        return _extractive_answer(question, contexts)
+    req = urllib.request.Request(
+        "https://api.anthropic.com/v1/messages", method="POST",
+        headers={"content-type": "application/json", "x-api-key": key,
+                 "anthropic-version": "2023-06-01"},
+        data=json.dumps({"model": os.environ.get("MNEMO_LLM_MODEL", "claude-sonnet-5"),
+                         "max_tokens": 1024,
+                         "messages": [{"role": "user", "content": prompt}]}).encode())
+    with urllib.request.urlopen(req, timeout=120) as r:
+        data = json.load(r)
+    return "".join(b.get("text", "") for b in data.get("content", [])).strip()
+
+
+def _stem(path: str) -> str:
+    return path.rsplit("/", 1)[-1][:-3]
+
+
+# ---- transcription (audio memos) --------------------------------------------
+
+def transcribe(audio: bytes, filename: str = "memo.webm") -> str:
+    """Transcribe an audio memo. Uses a local whisper HTTP service when configured
+    (MNEMO_WHISPER_URL, OpenAI-compatible /v1/audio/transcriptions), else returns a
+    placeholder so the memo is still saved with its audio attachment. Tests
+    monkeypatch this."""
+    url = os.environ.get("MNEMO_WHISPER_URL", "").rstrip("/")
+    if not url:
+        return "[audio memo — transcription unavailable; set MNEMO_WHISPER_URL]"
+    try:
+        import io
+        boundary = "----mnemo" + os.urandom(8).hex()
+        parts = [
+            f'--{boundary}\r\nContent-Disposition: form-data; name="model"\r\n\r\n'
+            f'{os.environ.get("MNEMO_WHISPER_MODEL", "whisper-1")}\r\n',
+            f'--{boundary}\r\nContent-Disposition: form-data; name="file"; '
+            f'filename="{filename}"\r\nContent-Type: application/octet-stream\r\n\r\n',
+        ]
+        body = parts[0].encode() + parts[1].encode() + audio + f"\r\n--{boundary}--\r\n".encode()
+        req = urllib.request.Request(
+            f"{url}/v1/audio/transcriptions", method="POST", data=body,
+            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
+        with urllib.request.urlopen(req, timeout=180) as r:
+            return json.load(r).get("text", "").strip() or "[empty transcription]"
+    except Exception as e:  # noqa: BLE001
+        return f"[transcription failed: {e}]"

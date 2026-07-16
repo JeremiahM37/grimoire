@@ -1,0 +1,22 @@
+# systemd unit for a bare-metal install.
+#   sudo cp deploy/mnemo.service /etc/systemd/system/
+#   sudo systemctl enable --now mnemo
+[Unit]
+Description=mnemo — local-first AI-native notes
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=admin
+WorkingDirectory=/home/admin/projects/mnemo
+Environment=MNEMO_VAULT=/home/admin/notes
+Environment=MNEMO_PORT=9111
+Environment=MNEMO_OLLAMA_URL=http://100.127.85.58:11434
+Environment=MNEMO_EMBED_MODEL=nomic-embed-text
+ExecStart=/home/admin/projects/mnemo/.venv/bin/python -m server
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
