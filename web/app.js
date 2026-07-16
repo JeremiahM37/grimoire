@@ -194,6 +194,8 @@ function mdToHtml(src) {
   let html = "", inCode = false, listOpen = false;
   const inline = (t) => esc(t)
     .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/!\[\[([^\[\]|]+?)\]\]/g, (_, src) =>
+      `<img class="embed" src="/api/file/${encodeURI(src.trim())}" alt="${esc(src.trim())}" loading="lazy">`)
     .replace(/\[\[([^\]|]+?)(?:\|([^\]]+))?\]\]/g, (_, tgt, al) => {
       const base = tgt.split("#")[0].trim();
       const cls = resolved.has(base.toLowerCase()) ? "wikilink" : "wikilink unresolved";
@@ -269,6 +271,40 @@ const TB = {
 };
 $("#ed-toolbar").querySelectorAll(".tb").forEach((b) =>
   (b.onmousedown = (e) => { e.preventDefault(); TB[b.dataset.md]?.(); }));
+
+function insertAtCursor(text) {
+  const s = ta.selectionStart, e = ta.selectionEnd, v = ta.value;
+  ta.value = v.slice(0, s) + text + v.slice(e);
+  ta.selectionStart = ta.selectionEnd = s + text.length;
+  ta.focus(); scheduleSave();
+}
+async function uploadAttachment(file) {
+  const fd = new FormData();
+  fd.append("file", file, file.name || "pasted.png");
+  toast("Uploading…");
+  try {
+    const r = await fetch("/api/attach", { method: "POST", body: fd });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.statusText);
+    const j = await r.json();
+    insertAtCursor((j.is_image ? "!" : "") + `[[${j.path}]]`);
+    toast(j.is_image ? "Image embedded" : "File attached");
+  } catch (err) { toast("Upload failed: " + err.message, true); }
+}
+// paste an image straight into a note
+ta.addEventListener("paste", (e) => {
+  const item = [...(e.clipboardData?.items || [])].find((i) => i.kind === "file" && i.type.startsWith("image/"));
+  if (!item) return;
+  e.preventDefault();
+  const f = item.getAsFile(); if (f) uploadAttachment(f);
+});
+// drag-and-drop files onto the editor
+["dragover", "drop"].forEach((ev) => ta.addEventListener(ev, (e) => {
+  if (e.dataTransfer && [...e.dataTransfer.types].includes("Files")) e.preventDefault();
+}));
+ta.addEventListener("drop", (e) => {
+  const files = [...(e.dataTransfer?.files || [])];
+  if (files.length) { e.preventDefault(); files.forEach(uploadAttachment); }
+});
 
 // Enter continues lists/tasks; Tab indents — only when autocomplete isn't showing
 ta.addEventListener("keydown", (e) => {

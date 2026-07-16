@@ -300,6 +300,31 @@ def test_editor_toolbar_and_tab(page, server):
     expect(ta).to_have_value("plain")
 
 
+def test_image_embed_renders_and_loads_in_preview(page, server):
+    page.goto(server)
+    page.once("dialog", lambda d: d.accept("Image Note"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Image Note", timeout=8000)
+    # upload a 1x1 png the way paste/drop does, then embed it
+    path = page.evaluate(
+        "async () => {"
+        "const b64='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';"
+        "const bin=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));"
+        "const fd=new FormData(); fd.append('file', new Blob([bin],{type:'image/png'}), 'dot.png');"
+        "const r=await fetch('/api/attach',{method:'POST',body:fd}); return (await r.json()).path; }")
+    assert path and path.startswith("attachments/")
+    page.fill("#content", f"# Image Note\n\n![[{path}]]")
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
+    page.click("#preview-toggle")
+    img = page.locator("#preview img.embed")
+    expect(img).to_be_visible()
+    # the embedded image actually decodes (served by /api/file)
+    loaded = page.evaluate(
+        "() => { const i=document.querySelector('#preview img.embed');"
+        "return i && i.complete && i.naturalWidth>0; }")
+    assert loaded, "embedded image did not load from /api/file"
+
+
 def test_daily_note(page, server):
     page.goto(server)
     page.click("#daily")
