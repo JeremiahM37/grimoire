@@ -33,6 +33,9 @@ def _free(port):
 def server(tmp_path_factory):
     vault = tmp_path_factory.mktemp("e2e-vault")
     env = {**os.environ, "MNEMO_VAULT": str(vault), "MNEMO_PORT": str(PORT)}
+    # keep e2e hermetic/offline regardless of ambient env
+    for var in ("MNEMO_OLLAMA_URL", "MNEMO_LLM", "MNEMO_LLM_MODEL", "MNEMO_WHISPER_URL"):
+        env.pop(var, None)
     _free(PORT)
     proc = subprocess.Popen([sys.executable, "-m", "server"], cwd=ROOT, env=env,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)

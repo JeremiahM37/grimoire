@@ -111,16 +111,29 @@ def cosine(a: list[float], b: list[float]) -> float:
 
 # ---- answer synthesis -------------------------------------------------------
 
+def _answer_backend() -> str:
+    """Which LLM (if any) synthesizes answers. Explicit MNEMO_LLM wins; otherwise
+    if a local Ollama is reachable we AUTO-enable generative answers (the homelab
+    deployment sets only MNEMO_OLLAMA_URL). Falls back to extractive when neither
+    is present — keeping the offline default and hermetic tests deterministic."""
+    b = _llm()
+    if b in ("ollama", "claude"):
+        return b
+    if _ollama_url():
+        return "ollama"
+    return ""
+
+
 def answer(question: str, contexts: list[dict]) -> str:
-    """contexts: [{path, title, chunk}]. Generative if MNEMO_LLM set, else extractive."""
+    """contexts: [{path, title, chunk}]. Generative when an LLM is available, else extractive."""
     if not contexts:
         return "I couldn't find anything in your notes about that."
-    backend = _llm()
-    if backend in ("ollama", "claude"):
+    backend = _answer_backend()
+    if backend:
         try:
             return _llm_answer(question, contexts, backend)
         except Exception:
-            pass   # fall through to extractive
+            pass   # fall through to extractive — never fail the request on AI outage
     return _extractive_answer(question, contexts)
 
 
