@@ -143,6 +143,20 @@ function renderPreview() {
     t.style.cursor = "pointer";
     t.onclick = () => filterByTag(t.textContent.replace(/^#/, ""));
   });
+  $("#preview").querySelectorAll(".task-box").forEach((box) => {
+    box.onchange = () => toggleTask(+box.dataset.line, box.checked);
+  });
+}
+
+// flip a `- [ ]` ↔ `- [x]` on a specific source line and persist
+function toggleTask(lineNo, done) {
+  const lines = $("#content").value.split("\n");
+  if (lineNo < 0 || lineNo >= lines.length) return;
+  lines[lineNo] = lines[lineNo].replace(/^(\s*[-*]\s+)\[[ xX]\]/,
+    (_, pre) => pre + (done ? "[x]" : "[ ]"));
+  $("#content").value = lines.join("\n");
+  renderPreview();
+  scheduleSave();
 }
 
 async function filterByTag(tag) {
@@ -190,11 +204,20 @@ function mdToHtml(src) {
     .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, "<em>$1</em>")
     .replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
   const closeList = () => { if (listOpen) { html += "</ul>"; listOpen = false; } };
-  for (const raw of lines) {
+  for (let lineNo = 0; lineNo < lines.length; lineNo++) {
+    const raw = lines[lineNo];
     if (raw.trim().startsWith("```")) { closeList(); inCode = !inCode; html += inCode ? "<pre><code>" : "</code></pre>"; continue; }
     if (inCode) { html += esc(raw) + "\n"; continue; }
     const h = raw.match(/^(#{1,3})\s+(.+)$/);
     if (h) { closeList(); html += `<h${h[1].length}>${inline(h[2])}</h${h[1].length}>`; continue; }
+    const task = raw.match(/^\s*[-*]\s+\[([ xX])\]\s+(.*)$/);
+    if (task) {
+      if (!listOpen) { html += "<ul>"; listOpen = true; }
+      const done = task[1].toLowerCase() === "x";
+      html += `<li class="task${done ? " done" : ""}"><input type="checkbox" class="task-box" `
+        + `data-line="${lineNo}"${done ? " checked" : ""}>${inline(task[2])}</li>`;
+      continue;
+    }
     if (/^\s*[-*]\s+/.test(raw)) { if (!listOpen) { html += "<ul>"; listOpen = true; } html += `<li>${inline(raw.replace(/^\s*[-*]\s+/, ""))}</li>`; continue; }
     if (/^\s*>\s?/.test(raw)) { closeList(); html += `<blockquote>${inline(raw.replace(/^\s*>\s?/, ""))}</blockquote>`; continue; }
     if (raw.trim() === "") { closeList(); continue; }
@@ -217,8 +240,79 @@ $("#search").oninput = (e) => {
   }, 200);
 };
 
-/* ---------- [[ autocomplete ---------- */
+/* ---------- editor: toolbar, smart lists, tab ---------- */
 const ta = $("#content");
+function surround(pre, post = pre, placeholder = "") {
+  const s = ta.selectionStart, e = ta.selectionEnd, v = ta.value;
+  const sel = v.slice(s, e) || placeholder;
+  ta.value = v.slice(0, s) + pre + sel + post + v.slice(e);
+  ta.selectionStart = s + pre.length;
+  ta.selectionEnd = s + pre.length + sel.length;
+  ta.focus(); scheduleSave();
+}
+function prefixLine(prefix) {
+  const s = ta.selectionStart, v = ta.value;
+  const lineStart = v.lastIndexOf("\n", s - 1) + 1;
+  ta.value = v.slice(0, lineStart) + prefix + v.slice(lineStart);
+  ta.selectionStart = ta.selectionEnd = s + prefix.length;
+  ta.focus(); scheduleSave();
+}
+const TB = {
+  bold: () => surround("**", "**", "bold"),
+  italic: () => surround("*", "*", "italic"),
+  code: () => surround("`", "`", "code"),
+  link: () => surround("[[", "]]", "note"),
+  h: () => prefixLine("# "),
+  ul: () => prefixLine("- "),
+  task: () => prefixLine("- [ ] "),
+  quote: () => prefixLine("> "),
+};
+$("#ed-toolbar").querySelectorAll(".tb").forEach((b) =>
+  (b.onmousedown = (e) => { e.preventDefault(); TB[b.dataset.md]?.(); }));
+
+// Enter continues lists/tasks; Tab indents — only when autocomplete isn't showing
+ta.addEventListener("keydown", (e) => {
+  if (!$("#complete").classList.contains("hidden")) return;   // let autocomplete win
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") { e.preventDefault(); return TB.bold(); }
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "i") { e.preventDefault(); return TB.italic(); }
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "l") { e.preventDefault(); return TB.link(); }
+  const v = ta.value, s = ta.selectionStart;
+  const lineStart = v.lastIndexOf("\n", s - 1) + 1;
+  const line = v.slice(lineStart, s);
+  if (e.key === "Tab") {
+    e.preventDefault();
+    if (e.shiftKey) {
+      if (v.slice(lineStart, lineStart + 2) === "  ") {
+        ta.value = v.slice(0, lineStart) + v.slice(lineStart + 2);
+        ta.selectionStart = ta.selectionEnd = Math.max(lineStart, s - 2);
+      }
+    } else {
+      ta.value = v.slice(0, s) + "  " + v.slice(ta.selectionEnd);
+      ta.selectionStart = ta.selectionEnd = s + 2;
+    }
+    scheduleSave(); return;
+  }
+  if (e.key === "Enter" && !e.shiftKey) {
+    const m = line.match(/^(\s*)([-*]\s(?:\[[ xX]\]\s)?)(.*)$/);
+    if (m) {
+      e.preventDefault();
+      if (m[3].trim() === "") {
+        // empty list item → end the list (clear the marker)
+        ta.value = v.slice(0, lineStart) + v.slice(s);
+        ta.selectionStart = ta.selectionEnd = lineStart;
+      } else {
+        // continue the list; a checked task continues as an unchecked one
+        const marker = m[2].replace(/\[[xX]\]/, "[ ]");
+        const ins = "\n" + m[1] + marker;
+        ta.value = v.slice(0, s) + ins + v.slice(ta.selectionEnd);
+        ta.selectionStart = ta.selectionEnd = s + ins.length;
+      }
+      scheduleSave(); return;
+    }
+  }
+});
+
+/* ---------- [[ autocomplete ---------- */
 ta.addEventListener("input", () => { scheduleSave(); maybeComplete(); });
 ta.addEventListener("keydown", (e) => {
   const box = $("#complete");
@@ -368,6 +462,166 @@ async function openVault() {
       await api(`/secrets/${encodeURIComponent(x.dataset.n)}`, { method: "DELETE" }); openVault();
     }));
   }
+}
+
+/* ---------- command palette (Ctrl/Cmd-K quick switcher) ---------- */
+const COMMANDS = [
+  { icon: "＋", name: "New note", run: newNote },
+  { icon: "◈", name: "Open today's daily note", run: openDaily },
+  { icon: "✦", name: "Ask your notes", run: () => $("#ask-open").click() },
+  { icon: "◉", name: "Open graph view", run: openGraph },
+  { icon: "◐", name: "Toggle preview", run: () => $("#preview-toggle").click() },
+  { icon: "🔐", name: "Open secret vault", run: openVault },
+  { icon: "🎙", name: "Record audio memo", run: () => $("#audio-memo").click() },
+];
+let palIdx = 0, palItems = [];
+function openPalette() {
+  $("#palette").classList.remove("hidden");
+  const inp = $("#palette-input"); inp.value = ""; inp.focus();
+  renderPalette("");
+}
+function closePalette() { $("#palette").classList.add("hidden"); }
+function fuzzy(needle, hay) {
+  needle = needle.toLowerCase(); hay = hay.toLowerCase();
+  if (!needle) return 1;
+  let i = 0, score = 0, streak = 0;
+  for (const ch of hay) {
+    if (i < needle.length && ch === needle[i]) { i++; streak++; score += streak; }
+    else streak = 0;
+  }
+  return i === needle.length ? score : 0;
+}
+function renderPalette(q) {
+  const cmds = COMMANDS.map((c) => ({ ...c, kind: "cmd", label: c.name, s: fuzzy(q, c.name) }));
+  const notes = state.notes.map((n) => ({
+    kind: "note", label: n.title || n.path, path: n.path,
+    s: fuzzy(q, (n.title || "") + " " + n.path) }));
+  palItems = [...cmds, ...notes].filter((x) => x.s > 0)
+    .sort((a, b) => b.s - a.s).slice(0, 40);
+  palIdx = 0;
+  const el = $("#palette-list");
+  el.innerHTML = palItems.map((it, i) =>
+    `<div class="pal-item${i === 0 ? " sel" : ""}" data-i="${i}">`
+    + `<span class="pk">${it.kind === "cmd" ? it.icon : "◦"}</span>`
+    + `<span>${esc(it.label)}</span>`
+    + (it.kind === "note" ? '<span class="pm">note</span>' : '<span class="pm">command</span>')
+    + `</div>`).join("") || '<div class="pal-item">No matches</div>';
+  el.querySelectorAll(".pal-item[data-i]").forEach((d) =>
+    (d.onclick = () => runPalette(+d.dataset.i)));
+}
+function runPalette(i) {
+  const it = palItems[i]; if (!it) return;
+  closePalette();
+  if (it.kind === "note") openNote(it.path); else it.run();
+}
+$("#palette-open").onclick = openPalette;
+$("#palette-input").oninput = (e) => renderPalette(e.target.value.trim());
+$("#palette").onclick = (e) => { if (e.target.id === "palette") closePalette(); };
+$("#palette-input").onkeydown = (e) => {
+  const items = [...$("#palette-list").querySelectorAll(".pal-item[data-i]")];
+  if (e.key === "ArrowDown") { e.preventDefault(); palIdx = Math.min(palIdx + 1, items.length - 1); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); palIdx = Math.max(palIdx - 1, 0); }
+  else if (e.key === "Enter") { e.preventDefault(); return runPalette(palIdx); }
+  else if (e.key === "Escape") { return closePalette(); }
+  else return;
+  items.forEach((x) => x.classList.remove("sel"));
+  if (items[palIdx]) { items[palIdx].classList.add("sel"); items[palIdx].scrollIntoView({ block: "nearest" }); }
+};
+addEventListener("keydown", (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+    e.preventDefault();
+    $("#palette").classList.contains("hidden") ? openPalette() : closePalette();
+  }
+});
+
+/* ---------- graph view (canvas force-directed, no deps) ---------- */
+let graphAnim = null;
+$("#graph-open").onclick = openGraph;
+$("#graph-close").onclick = closeGraph;
+$("#graph-modal").onclick = (e) => { if (e.target.id === "graph-modal") closeGraph(); };
+function closeGraph() {
+  $("#graph-modal").classList.add("hidden");
+  if (graphAnim) { cancelAnimationFrame(graphAnim); graphAnim = null; }
+}
+async function openGraph() {
+  const g = await api("/graph");
+  $("#graph-modal").classList.remove("hidden");
+  const cv = $("#graph-canvas"), ctx = cv.getContext("2d");
+  const dpr = devicePixelRatio || 1;
+  const fit = () => {
+    const r = cv.getBoundingClientRect();
+    cv.width = r.width * dpr; cv.height = r.height * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { w: r.width, h: r.height };
+  };
+  let { w, h } = fit();
+  const idx = new Map(g.nodes.map((n, i) => [n.id, i]));
+  const deg = new Map();
+  for (const e of g.edges) { deg.set(e.src, (deg.get(e.src) || 0) + 1); deg.set(e.dst, (deg.get(e.dst) || 0) + 1); }
+  // deterministic seed positions (no Math.random — spread on a phyllotaxis spiral)
+  const N = g.nodes.length || 1;
+  const nodes = g.nodes.map((n, i) => {
+    const a = i * 2.399963, rad = 10 + 16 * Math.sqrt(i);
+    return { ...n, x: w / 2 + rad * Math.cos(a), y: h / 2 + rad * Math.sin(a),
+             vx: 0, vy: 0, d: deg.get(n.id) || 0 };
+  });
+  const edges = g.edges.filter((e) => idx.has(e.src) && idx.has(e.dst))
+    .map((e) => [idx.get(e.src), idx.get(e.dst)]);
+  $("#graph-stat").textContent = `${nodes.length} notes · ${edges.length} links`;
+
+  let alpha = 1;
+  const step = () => {
+    alpha *= 0.985;
+    const k = 0.9;
+    // repulsion (O(n²) — fine for a personal vault)
+    for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
+      const a = nodes[i], b = nodes[j];
+      let dx = a.x - b.x, dy = a.y - b.y, d2 = dx * dx + dy * dy || 0.01;
+      const f = (2600 * alpha) / d2, d = Math.sqrt(d2);
+      dx /= d; dy /= d; a.vx += dx * f; a.vy += dy * f; b.vx -= dx * f; b.vy -= dy * f;
+    }
+    // spring attraction along links
+    for (const [i, j] of edges) {
+      const a = nodes[i], b = nodes[j];
+      let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 0.01;
+      const f = (d - 70) * 0.02 * alpha; dx /= d; dy /= d;
+      a.vx += dx * f; a.vy += dy * f; b.vx -= dx * f; b.vy -= dy * f;
+    }
+    // gravity to center + integrate
+    for (const n of nodes) {
+      n.vx += (w / 2 - n.x) * 0.002 * alpha; n.vy += (h / 2 - n.y) * 0.002 * alpha;
+      n.x += n.vx * k; n.y += n.vy * k; n.vx *= 0.85; n.vy *= 0.85;
+      n.x = Math.max(14, Math.min(w - 14, n.x)); n.y = Math.max(14, Math.min(h - 14, n.y));
+    }
+    draw();
+    if (alpha > 0.02) graphAnim = requestAnimationFrame(step);
+  };
+  const cssVar = (v) => getComputedStyle(document.body).getPropertyValue(v).trim();
+  function draw() {
+    ctx.clearRect(0, 0, w, h);
+    ctx.strokeStyle = cssVar("--line"); ctx.lineWidth = 1; ctx.globalAlpha = 0.7;
+    for (const [i, j] of edges) { ctx.beginPath(); ctx.moveTo(nodes[i].x, nodes[i].y); ctx.lineTo(nodes[j].x, nodes[j].y); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+    for (const n of nodes) {
+      const r = 4 + Math.min(9, n.d * 1.6);
+      const active = n.id === state.path;
+      ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, 7);
+      ctx.fillStyle = active ? cssVar("--accent") : cssVar("--link"); ctx.fill();
+      if (r >= 7 || active) {
+        ctx.fillStyle = cssVar("--ink"); ctx.font = "12px var(--sans)"; ctx.textAlign = "center";
+        ctx.fillText((n.title || n.id).slice(0, 22), n.x, n.y - r - 4);
+      }
+    }
+  }
+  cv.onclick = (ev) => {
+    const r = cv.getBoundingClientRect(), mx = ev.clientX - r.left, my = ev.clientY - r.top;
+    let hit = null, best = 400;
+    for (const n of nodes) { const d = (n.x - mx) ** 2 + (n.y - my) ** 2; if (d < best) { best = d; hit = n; } }
+    if (hit) { closeGraph(); openNote(hit.id); }
+  };
+  addEventListener("resize", () => { if (!$("#graph-modal").classList.contains("hidden")) ({ w, h } = fit()); }, { once: true });
+  draw();   // paint an initial frame immediately (before the first rAF tick)
+  step();
 }
 
 /* ---------- inline AI actions ---------- */
