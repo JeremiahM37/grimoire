@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>mnemo</title>
+<meta name="theme-color" content="#faf7f0">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <header id="side-head">
+      <h1>mnemo</h1>
+      <button id="menu-close" class="icon" title="close">✕</button>
+    </header>
+    <div class="side-actions">
+      <input id="search" placeholder="⌕ search notes" autocomplete="off">
+    </div>
+    <div class="side-actions row">
+      <button id="new-note" class="btn">＋ New</button>
+      <button id="daily" class="btn">◈ Today</button>
+    </div>
+    <div class="side-actions">
+      <button id="ask-open" class="btn full">✦ Ask your notes</button>
+    </div>
+    <div class="side-actions row">
+      <button id="audio-memo" class="btn">🎙 Memo</button>
+      <button id="vault-open" class="btn">🔐 Vault</button>
+    </div>
+    <nav id="note-list"></nav>
+    <footer id="side-foot"><span id="stat"></span></footer>
+  </aside>
+
+  <main id="editor">
+    <header id="ed-head">
+      <button id="menu-open" class="icon" title="notes">☰</button>
+      <input id="title" placeholder="Untitled" spellcheck="false">
+      <span id="save-state" class="save-state"></span>
+      <button id="ai-btn" class="icon" title="AI actions">✦</button>
+      <button id="private-toggle" class="icon" title="private note">🔓</button>
+      <button id="preview-toggle" class="icon" title="preview">◐</button>
+      <button id="delete-note" class="icon danger" title="delete">🗑</button>
+    </header>
+    <div id="ed-body">
+      <textarea id="content" placeholder="Write in markdown.  [[link]] to other notes.  #tag your thoughts." spellcheck="false"></textarea>
+      <div id="preview" class="hidden"></div>
+    </div>
+    <section id="backlinks"></section>
+  </main>
+
+  <div id="complete" class="hidden"></div>
+
+  <div id="ask-modal" class="modal hidden">
+    <div class="modal-box">
+      <header class="modal-head">
+        <span>✦ Ask your notes</span>
+        <button id="ask-close" class="icon">✕</button>
+      </header>
+      <div class="ask-input-row">
+        <input id="ask-q" placeholder="What do my notes say about…?" autocomplete="off">
+        <label class="chk"><input type="checkbox" id="ask-priv"> private</label>
+        <button id="ask-go" class="btn">Ask</button>
+      </div>
+      <div id="ask-answer"></div>
+      <div id="ask-cites"></div>
+    </div>
+  </div>
+
+  <div id="vault-modal" class="modal hidden">
+    <div class="modal-box">
+      <header class="modal-head">
+        <span>🔐 Secret vault</span>
+        <button id="vault-close" class="icon">✕</button>
+      </header>
+      <div id="vault-body"></div>
+    </div>
+  </div>
+
+  <div id="ai-menu" class="menu hidden">
+    <div class="mi" data-a="summarize">Summarize</div>
+    <div class="mi" data-a="expand">Expand draft</div>
+    <div class="mi" data-a="tags">Suggest tags</div>
+  </div>
+
+  <div id="toast"></div>
+</div>
+<script type="module" src="/app.js"></script>
+</body>
+</html>

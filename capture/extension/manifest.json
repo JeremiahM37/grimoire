@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Clip to mnemo",
+  "version": "0.1.0",
+  "description": "Clip selections and pages to your mnemo notes vault.",
+  "permissions": ["contextMenus", "activeTab", "scripting", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_title": "Clip to mnemo" },
+  "options_ui": { "page": "options.html", "open_in_tab": false }
+}

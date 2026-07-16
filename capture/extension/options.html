@@ -1,0 +1,18 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><style>
+body { font: 14px system-ui; padding: 14px; width: 280px; }
+input { width: 100%; padding: 8px; box-sizing: border-box; margin: 6px 0; }
+button { padding: 8px 14px; }
+</style></head><body>
+<label>mnemo server URL</label>
+<input id="url" placeholder="http://notes.homelab.internal">
+<button id="save">Save</button>
+<span id="ok"></span>
+<script>
+chrome.storage.sync.get("mnemoUrl", ({ mnemoUrl }) => { document.getElementById("url").value = mnemoUrl || ""; });
+document.getElementById("save").onclick = () => {
+  chrome.storage.sync.set({ mnemoUrl: document.getElementById("url").value }, () => {
+    document.getElementById("ok").textContent = "saved";
+  });
+};
+</script></body></html>

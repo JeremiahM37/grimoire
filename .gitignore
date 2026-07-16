@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+# a vault is user data — never commit
+mnemo-vault/
+*.tmp
+.mnemo/
+.playwright-mcp/
+/tmp/
