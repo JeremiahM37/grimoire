@@ -62,6 +62,16 @@
       <button data-md="code" class="tb" title="Code">&lt;/&gt;</button>
       <button data-md="quote" class="tb" title="Quote">❝</button>
     </div>
+    <div id="find-bar" class="find-bar hidden">
+      <input id="find-input" placeholder="Find" autocomplete="off" spellcheck="false">
+      <span id="find-count" class="find-count"></span>
+      <button id="find-prev" class="icon" title="previous (⇧⏎)">↑</button>
+      <button id="find-next" class="icon" title="next (⏎)">↓</button>
+      <input id="replace-input" placeholder="Replace" autocomplete="off" spellcheck="false">
+      <button id="find-replace" class="btn">Replace</button>
+      <button id="find-all" class="btn">All</button>
+      <button id="find-close" class="icon" title="close (Esc)">✕</button>
+    </div>
     <div id="ed-body">
       <textarea id="content" placeholder="Write in markdown.  [[link]] to other notes.  #tag your thoughts." spellcheck="false"></textarea>
       <div id="preview" class="hidden"></div>
