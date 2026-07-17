@@ -1,5 +1,6 @@
 """mnemo app factory. Run: python -m server (or uvicorn server.app:create_app --factory)."""
 import contextlib
+import os
 
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
@@ -17,10 +18,13 @@ def create_app() -> FastAPI:
         config.mnemo_dir().mkdir(parents=True, exist_ok=True)
         db.init()
         index.reindex()   # rebuild the cache from the vault on boot
-        from .watcher import watcher
-        watcher.start()   # pick up external edits (Obsidian/vim/sync) live
+        watch = None
+        if not os.environ.get("MNEMO_NO_WATCHER"):
+            from .watcher import watcher as watch
+            watch.start()   # pick up external edits (Obsidian/vim/sync) live
         yield
-        watcher.stop()
+        if watch:
+            watch.stop()
         db.close()
 
     app = FastAPI(title="mnemo", version="0.1.0", lifespan=lifespan)

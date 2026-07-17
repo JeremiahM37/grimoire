@@ -36,9 +36,15 @@ def server(tmp_path_factory):
     # keep e2e hermetic/offline regardless of ambient env
     for var in ("MNEMO_OLLAMA_URL", "MNEMO_LLM", "MNEMO_LLM_MODEL", "MNEMO_WHISPER_URL"):
         env.pop(var, None)
+    # the API indexes on every write; the watcher would only add redundant reindex
+    # churn over the shared, ever-growing e2e vault (and can starve the server)
+    env["MNEMO_NO_WATCHER"] = "1"
     _free(PORT)
+    # IMPORTANT: discard server output. A PIPE that nobody drains fills the ~64KB
+    # OS buffer after enough uvicorn access-log lines, blocking the server on
+    # write — it silently stops serving late in a large run.
     proc = subprocess.Popen([sys.executable, "-m", "server"], cwd=ROOT, env=env,
-                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     for _ in range(100):
         with socket.socket() as s:
             if s.connect_ex(("127.0.0.1", PORT)) == 0:
