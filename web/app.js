@@ -551,6 +551,7 @@ const COMMANDS = [
   { icon: "🗑", name: "Open trash", run: openTrash },
   { icon: "📌", name: "Pin / unpin this note", run: togglePin },
   { icon: "📅", name: "Open calendar", run: () => openCalendar() },
+  { icon: "☑", name: "Open tasks (all notes)", run: openTasks },
 ];
 async function togglePin() {
   if (!state.path) return toast("Open a note first", true);
@@ -843,6 +844,48 @@ function scrollToHeading(lineNo, hIdx) {
   const style = getComputedStyle(ta);
   const lh = parseFloat(style.lineHeight) || 24;
   ta.scrollTop = Math.max(0, lineNo * lh - ta.clientHeight / 3);
+}
+
+/* ---------- tasks (aggregated across notes) ---------- */
+$("#tasks-close").onclick = () => $("#tasks-modal").classList.add("hidden");
+$("#tasks-modal").onclick = (e) => { if (e.target.id === "tasks-modal") $("#tasks-modal").classList.add("hidden"); };
+$("#tasks-done").onchange = renderTasks;
+async function openTasks() {
+  $("#tasks-modal").classList.remove("hidden");
+  await renderTasks();
+}
+async function renderTasks() {
+  const showDone = $("#tasks-done").checked;
+  const tasks = await api(`/tasks?include_done=${showDone}`);
+  const open = tasks.filter((t) => !t.done).length;
+  $("#tasks-count").textContent = `${open} open`;
+  const b = $("#tasks-body");
+  if (!tasks.length) { b.innerHTML = '<p class="vault-note">No tasks yet. Add <code>- [ ] a todo</code> to any note.</p>'; return; }
+  const byNote = {};
+  for (const t of tasks) (byNote[t.path] ||= { title: t.title, items: [] }).items.push(t);
+  b.innerHTML = Object.entries(byNote).map(([path, g]) =>
+    `<div class="task-group"><div class="tg-head" data-p="${esc(path)}">${esc(g.title)}</div>`
+    + g.items.map((t) =>
+      `<label class="tg-item${t.done ? " done" : ""}"><input type="checkbox" class="tg-box"${t.done ? " checked" : ""} `
+      + `data-p="${esc(t.path)}" data-line="${t.line}"><span class="tg-text" data-p="${esc(t.path)}" data-line="${t.line}">${esc(t.text)}</span></label>`).join("")
+    + `</div>`).join("");
+  b.querySelectorAll(".tg-box").forEach((x) => (x.onchange = () =>
+    toggleTaskInNote(x.dataset.p, +x.dataset.line, x.checked).then(renderTasks)));
+  b.querySelectorAll(".tg-text, .tg-head").forEach((x) => (x.onclick = () => {
+    $("#tasks-modal").classList.add("hidden");
+    openNote(x.dataset.p).then(() => {
+      if (x.dataset.line !== undefined) scrollToHeading(+x.dataset.line, 0);
+    });
+  }));
+}
+async function toggleTaskInNote(path, line, done) {
+  const n = await api(`/notes/${encodeURI(path)}`);
+  if (n.locked) { toast("Note is locked", true); return; }
+  const lines = (n.body || "").split("\n");
+  if (line < 0 || line >= lines.length) return;
+  lines[line] = lines[line].replace(/^(\s*[-*]\s+)\[[ xX]\]/, (_, p) => p + (done ? "[x]" : "[ ]"));
+  await api(`/notes/${encodeURI(path)}`, { method: "PUT", body: { body: lines.join("\n"), frontmatter: n.frontmatter } });
+  if (path === state.path) openNote(path);   // keep the open editor in sync
 }
 
 /* ---------- calendar (daily notes) ---------- */
