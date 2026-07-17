@@ -65,7 +65,7 @@ def capture(c: CaptureIn):
     index.upsert(rel)
     # thread into today's daily note
     drel = _daily_rel()
-    day = daily()  # ensure it exists
+    daily()  # ensure today's note exists
     note = vault.read(drel)
     stem = rel.rsplit("/", 1)[-1][:-3]
     vault.write(drel, note["body"].rstrip() + f"\n- [[{stem}|{title}]]\n",
