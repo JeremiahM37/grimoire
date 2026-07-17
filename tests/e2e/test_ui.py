@@ -705,6 +705,29 @@ def test_rename_tag_via_palette(page, server):
     page.remove_listener("dialog", handle)
 
 
+def test_offline_edit_recovers_and_retries(page, server):
+    page.goto(server)
+    page.once("dialog", lambda d: d.accept("Offline Note"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Offline Note", timeout=8000)
+    page.fill("#content", "start")
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
+    # go offline and edit — the save fails but the draft is preserved
+    page.context.set_offline(True)
+    page.fill("#content", "edited while offline")
+    expect(page.locator("#save-state")).to_contain_text("offline", timeout=6000)
+    draft = page.evaluate("() => localStorage.getItem('mnemo-draft')")
+    assert draft and "edited while offline" in draft
+    # back online → the queued save retries automatically
+    page.context.set_offline(False)
+    page.evaluate("() => window.dispatchEvent(new Event('online'))")
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=8000)
+    # persisted to the server
+    page.reload()
+    page.click(".note-row .t >> text=Offline Note")
+    expect(page.locator("#content")).to_have_value(re.compile("edited while offline"), timeout=8000)
+
+
 def test_tag_browser_filters(page, server):
     page.goto(server)
     page.once("dialog", lambda d: d.accept("Browse Seed"))
