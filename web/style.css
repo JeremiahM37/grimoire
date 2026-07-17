@@ -34,6 +34,18 @@ body { background: var(--paper); color: var(--ink); font-family: var(--sans);
 #app.sidebar-collapsed.split { grid-template-columns: var(--main-w, 1fr) 1fr; }
 #app.sidebar-collapsed > #sidebar { display: none; }
 
+/* focus / zen mode — hide all chrome, center a comfortable measure */
+#app.zen { grid-template-columns: 1fr; }
+#app.zen > #sidebar, #app.zen #editor2,
+#app.zen #ed-head, #app.zen #ed-toolbar, #app.zen #find-bar,
+#app.zen #backlinks, #app.zen #unlinked { display: none; }
+#app.zen #content, #app.zen #preview { max-width: 44rem; margin: 0 auto;
+  padding-top: max(6vh, 2rem); font-size: 1.02rem; }
+#zen-exit { position: fixed; top: 14px; right: 16px; z-index: 65; border: 1px solid var(--line);
+  background: var(--paper2); color: var(--ink-soft); border-radius: 20px; padding: 5px 12px;
+  font: 12px var(--sans); cursor: pointer; opacity: .5; transition: opacity .15s; }
+#zen-exit:hover { opacity: 1; color: var(--ink); }
+
 /* drag-to-resize handles (desktop) */
 .resize-h { position: absolute; top: 0; width: 8px; height: 100%; z-index: 16;
   cursor: col-resize; touch-action: none; }

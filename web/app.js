@@ -726,6 +726,7 @@ const COMMANDS = [
   { icon: "⊞", name: "Split view: open current note on the right", run: () => openSplit(state.path) },
   { icon: "⊟", name: "Close split view", run: closeSplit },
   { icon: "⇤", name: "Toggle sidebar", run: toggleSidebar },
+  { icon: "🧘", name: "Toggle focus mode (distraction-free)", run: toggleZen },
   { icon: "⬇", name: "Export whole vault (.zip)", run: () => { location.href = "/api/export/vault"; } },
   { icon: "🏷", name: "Rename a tag (across all notes)", run: renameTag },
 ];
@@ -833,7 +834,9 @@ function openPalette() {
 }
 function closePalette() { $("#palette").classList.add("hidden"); }
 function fuzzy(needle, hay) {
-  needle = needle.toLowerCase(); hay = hay.toLowerCase();
+  // normalize away spaces/punctuation so "focus mode" matches "focus-mode (…)"
+  const norm = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+  needle = norm(needle); hay = norm(hay);
   if (!needle) return 1;
   let i = 0, score = 0, streak = 0;
   for (const ch of hay) {
@@ -1247,6 +1250,18 @@ $("#theme-toggle").onclick = () => {
   applyTheme(next); toast(`Theme: ${next}`);
 };
 applyTheme(localStorage.getItem("mnemo-theme") || "auto");
+
+/* ---------- focus / zen mode ---------- */
+function setZen(on) {
+  $("#app").classList.toggle("zen", on);
+  $("#zen-exit").classList.toggle("hidden", !on);
+  if (on) $("#content").focus();
+}
+function toggleZen() { setZen(!$("#app").classList.contains("zen")); }
+$("#zen-exit").onclick = () => setZen(false);
+addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && $("#app").classList.contains("zen")) { e.preventDefault(); setZen(false); }
+});
 
 /* ---------- collapsible sidebar (desktop) ---------- */
 function setSidebarCollapsed(on) {
