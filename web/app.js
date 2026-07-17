@@ -69,7 +69,7 @@ function renderList(notes, snippets = false) {
     row.innerHTML = `<div class="t">${n.pinned ? '<span class="pin">📌</span>' : ""}${esc(n.title || n.path)}</div>` +
       (snippets && n.snippet ? `<div class="snip">${n.snippet.replace(/\[(.*?)\]/g, "<b>$1</b>")}</div>`
         : `<div class="m">${esc(n.path)}</div>`);
-    row.onclick = () => openNote(n.path);
+    row.onclick = (e) => (e.ctrlKey || e.metaKey) ? openSplit(n.path) : openNote(n.path);
     el.appendChild(row);
   }
 }
@@ -666,6 +666,8 @@ const COMMANDS = [
   { icon: "🔍", name: "Find & replace in note", run: openFind },
   { icon: "🎲", name: "Open random note", run: openRandom },
   { icon: "⧉", name: "Duplicate this note", run: duplicateNote },
+  { icon: "⊞", name: "Split view: open current note on the right", run: () => openSplit(state.path) },
+  { icon: "⊟", name: "Close split view", run: closeSplit },
   { icon: "⬇", name: "Export whole vault (.zip)", run: () => { location.href = "/api/export/vault"; } },
   { icon: "🏷", name: "Rename a tag (across all notes)", run: renameTag },
 ];
@@ -1187,6 +1189,76 @@ $("#theme-toggle").onclick = () => {
   applyTheme(next); toast(`Theme: ${next}`);
 };
 applyTheme(localStorage.getItem("mnemo-theme") || "auto");
+
+/* ---------- split view (second editor pane) ---------- */
+const pane2 = { path: null, dirty: false, frontmatter: {}, saveTimer: null, locked: false };
+const ta2 = $("#content2");
+const isNarrow = () => matchMedia("(max-width: 780px)").matches;
+function openSplit(path) {
+  path = path || state.path;
+  if (!path) return toast("Open a note first", true);
+  if (isNarrow()) return openNote(path);   // no split on phones
+  $("#app").classList.add("split");
+  loadPane2(path);
+}
+async function loadPane2(path) {
+  if (pane2.dirty) await savePane2();
+  const n = await api(`/notes/${encodeURI(path)}`);
+  pane2.path = n.path; pane2.dirty = false; pane2.frontmatter = n.frontmatter || {}; pane2.locked = !!n.locked;
+  $("#title2").value = n.title || "";
+  if (pane2.locked) { ta2.value = "🔒 encrypted — unlock in the main pane to edit."; ta2.readOnly = true; }
+  else { ta2.value = n.body || ""; ta2.readOnly = false; }
+  $("#save-state2").textContent = "";
+  if (!$("#preview2").classList.contains("hidden")) renderPreview2();
+}
+function closeSplit() {
+  if (pane2.dirty) savePane2();
+  $("#app").classList.remove("split");
+  pane2.path = null;
+}
+function schedule2() {
+  pane2.dirty = true; $("#save-state2").textContent = "…";
+  clearTimeout(pane2.saveTimer); pane2.saveTimer = setTimeout(savePane2, 700);
+}
+async function savePane2() {
+  if (!pane2.path || !pane2.dirty || pane2.locked) return;
+  clearTimeout(pane2.saveTimer);
+  try {
+    const title = $("#title2").value.trim();
+    const fm = { ...pane2.frontmatter };
+    if (title) fm.title = title; else delete fm.title;
+    await api(`/notes/${encodeURI(pane2.path)}`, { method: "PUT", body: { body: ta2.value, frontmatter: fm } });
+    pane2.dirty = false; $("#save-state2").textContent = "saved";
+    setTimeout(() => $("#save-state2").textContent = "", 1200);
+    // if the same note is open in the main pane, pull the update in
+    if (pane2.path === state.path && !state.locked) {
+      const m = await api(`/notes/${encodeURI(state.path)}`);
+      if (!state.dirty) $("#content").value = m.body || "";
+    }
+    loadList();
+  } catch (e) { $("#save-state2").textContent = "!"; toast(e.message, true); }
+}
+function renderPreview2() {
+  $("#preview2").innerHTML = `<div class="md">${mdToHtml(ta2.value)}</div>`;
+  $("#preview2").querySelectorAll("a.wikilink").forEach((a) =>
+    (a.onclick = (e) => { e.preventDefault(); resolveIntoPane2(a.dataset.target); }));
+}
+function resolveIntoPane2(target) {
+  const hit = state.notes.find((n) => (n.title || "").toLowerCase() === target.toLowerCase()
+    || n.path.replace(/\.md$/, "").split("/").pop().toLowerCase() === target.toLowerCase());
+  const aliasPath = state.aliases[target.toLowerCase()];
+  if (hit) loadPane2(hit.path); else if (aliasPath) loadPane2(aliasPath);
+}
+$("#split-btn").onclick = () => openSplit(state.path);
+$("#editor2-close").onclick = closeSplit;
+$("#preview-toggle2").onclick = () => {
+  const pv = $("#preview2"), t = $("#content2");
+  if (pv.classList.contains("hidden")) { renderPreview2(); pv.classList.remove("hidden"); t.classList.add("hidden"); }
+  else { pv.classList.add("hidden"); t.classList.remove("hidden"); }
+};
+$("#title2").oninput = schedule2;
+ta2.addEventListener("input", () => { schedule2(); if (!$("#preview2").classList.contains("hidden")) renderPreview2(); });
+addEventListener("beforeunload", () => { if (pane2.dirty) savePane2(); });
 
 /* ---------- chrome ---------- */
 $("#title").oninput = scheduleSave;

@@ -27,6 +27,21 @@ body { background: var(--paper); color: var(--ink); font-family: var(--sans);
   font-size: 15px; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
 
 #app { display: grid; grid-template-columns: var(--side-w) 1fr; height: 100dvh; }
+#app.split { grid-template-columns: var(--side-w) 1fr 1fr; }
+
+/* second editor pane (desktop split view) */
+#editor2 { display: none; flex-direction: column; min-width: 0; min-height: 0;
+  border-left: 1px solid var(--line); }
+#app.split #editor2 { display: flex; }
+#ed-head2 { display: flex; align-items: center; gap: 8px;
+  padding: calc(10px + env(safe-area-inset-top)) 12px 8px; border-bottom: 1px solid var(--line); }
+#title2 { flex: 1; border: none; background: none; color: var(--ink); font: 600 18px/1.2 var(--serif); min-width: 0; }
+#title2:focus { outline: none; }
+#ed-body2 { flex: 1; position: relative; overflow: hidden; }
+#content2 { width: 100%; height: 100%; border: none; resize: none; padding: 18px max(14px, 2vw);
+  background: var(--paper); color: var(--ink); font: 15px/1.7 var(--mono); }
+#content2:focus { outline: none; }
+#preview2 { position: absolute; inset: 0; overflow-y: auto; padding: 18px max(14px, 2vw); background: var(--paper); }
 
 /* ---------- sidebar ---------- */
 #sidebar { background: var(--paper2); border-right: 1px solid var(--line);
@@ -285,10 +300,16 @@ body { background: var(--paper); color: var(--ink); font-family: var(--sans);
 
 /* ---------- mobile ---------- */
 @media (max-width: 780px) {
-  #app { grid-template-columns: 1fr; }
+  #app, #app.split { grid-template-columns: 1fr; }   /* split collapses on phones */
+  #editor2, #split-btn { display: none; }
   #sidebar { position: fixed; inset: 0 30% 0 0; z-index: 30; transform: translateX(-100%);
     transition: transform .2s ease; box-shadow: var(--shadow); }
   #sidebar.open { transform: translateX(0); }
   #menu-close, #menu-open { display: inline-flex; }
   #app.side-open::after { content: ""; position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,.3); }
+}
+
+/* wide desktop: keep a comfortable writing measure in a single pane */
+@media (min-width: 1100px) {
+  #app:not(.split) #content { max-width: 64rem; margin: 0 auto; }
 }
