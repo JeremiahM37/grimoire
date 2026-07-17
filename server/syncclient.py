@@ -11,10 +11,12 @@ on demand via POST /api/sync/now, or from the CLI (`mnemo sync`).
 """
 import json
 import logging
+import urllib.parse
 import urllib.request
 
-from . import db, index, vault
+from . import crdtstore, db, index, vault
 from .routers.sync import _conflict_name, _write_raw
+from .vault import _serialize
 
 log = logging.getLogger("mnemo.sync")
 
@@ -49,26 +51,65 @@ def sync_with_peer(peer: str, device: str = "mnemo", token: str | None = None) -
     remote = _req(f"{peer}/api/sync/manifest", token=token)
     local = local_manifest()
 
+    pulled = pushed = conflicts = merged = 0
     to_pull: list[str] = []
     push_changes: list[dict] = []
 
-    # decide direction per path
-    for path, meta in remote.items():
-        lm = local.get(path)
-        if not lm:
-            to_pull.append(path)                       # peer has it, we don't → pull
-        elif lm["hash"] != meta["hash"]:
-            if meta["mtime"] > lm["mtime"]:
-                to_pull.append(path)                   # peer newer → pull
-            else:
-                push_changes.append({"path": path, "content": vault.read(path)["raw"],
-                                     "base_hash": meta["hash"]})   # we're newer → push
-    for path, lm in local.items():
-        if path not in remote:
-            push_changes.append({"path": path, "content": vault.read(path)["raw"],
-                                 "base_hash": None})    # we have it, peer doesn't → push
+    # Every path that differs (or is only on one side) is handled CRDT-first so
+    # both replicas end up sharing atom ids. Encrypted/oversized notes can't be
+    # merged as text → fall back to last-writer pull/push.
+    for path in set(local) | set(remote):
+        lm, rm = local.get(path), remote.get(path)
+        if lm and rm and lm["hash"] == rm["hash"]:
+            continue                                   # already in sync
 
-    pulled = pushed = conflicts = 0
+        note = None
+        if lm:
+            try:
+                note = vault.read(path)
+            except Exception:
+                note = None
+        our_body = note["body"] if note else ""
+        our_fm = note["frontmatter"] if note else {}
+        our_raw = note["raw"] if note else ""
+        # not mergeable locally (encrypted) → last-writer
+        if lm and not crdtstore.mergeable(path, our_body):
+            if rm and rm["mtime"] > lm["mtime"]:
+                to_pull.append(path)
+            else:
+                push_changes.append({"path": path, "content": our_raw,
+                                     "base_hash": rm["hash"] if rm else None})
+            continue
+
+        try:
+            # snapshot our own body doc BEFORE merging peer's in
+            our_doc = crdtstore.body_doc_json(path, our_body) if lm else None
+            if rm:   # peer has it → pull its doc + fm and merge
+                enc = urllib.parse.quote(path, safe="/")
+                pr = _req(f"{peer}/api/crdt/doc/{enc}", token=token)
+                merged_body, win_fm, clean = crdtstore.merge_body(
+                    path, our_body, our_fm, pr["doc"], pr.get("fm", {}))
+                new_raw = _serialize(win_fm, merged_body)
+                if new_raw != our_raw:
+                    if not clean and our_raw.strip():   # independent histories → keep ours as a copy
+                        _local_conflict_copy(path)
+                        conflicts += 1
+                    _write_raw(path, new_raw)
+                    index.upsert(path)
+                merged += 1 if lm else 0
+                pulled += 0 if lm else 1
+            if lm:   # push our (pre-merge) body doc + fm so the peer converges too
+                _req(f"{peer}/api/crdt/merge", "POST",
+                     {"path": path, "doc": our_doc, "fm": our_fm}, token)
+                if not rm:
+                    pushed += 1
+        except Exception:   # peer 409 (encrypted) or transient → last-writer fallback
+            log.debug("crdt path fell back for %s", path)
+            if rm and (not lm or rm["mtime"] > (lm["mtime"] if lm else 0)):
+                to_pull.append(path)
+            elif lm:
+                push_changes.append({"path": path, "content": our_raw,
+                                     "base_hash": rm["hash"] if rm else None})
 
     if to_pull:
         contents = _req(f"{peer}/api/sync/pull", "POST", {"paths": to_pull}, token)["contents"]
@@ -91,7 +132,7 @@ def sync_with_peer(peer: str, device: str = "mnemo", token: str | None = None) -
             elif str(r.get("status", "")).startswith("conflict"):
                 conflicts += 1
 
-    stats = {"pulled": pulled, "pushed": pushed, "conflicts": conflicts,
+    stats = {"pulled": pulled, "pushed": pushed, "merged": merged, "conflicts": conflicts,
              "remote_notes": len(remote), "local_notes": len(local)}
     log.info("sync %s: %s", peer, stats)
     return stats
