@@ -174,7 +174,7 @@ async function openNote(path) {
     $("#content").readOnly = false;
     // recover unsaved work (crash / offline reload) for this exact note
     const draft = getDraft();
-    if (draft && draft.path === n.path && draft.content !== (n.body || "")) {
+    if (draft && draft.path === n.path && !n.encrypted && draft.content !== (n.body || "")) {
       $("#content").value = draft.content;
       if (draft.title) $("#title").value = draft.title;
       state.dirty = true; toast("Restored unsaved changes"); save();
@@ -197,7 +197,8 @@ function setSaveState(s) { $("#save-state").textContent = s; }
 /* offline-safe drafts: persist the in-flight edit so a crash / offline reload
    never loses work, and retry saving when connectivity returns. */
 function saveDraft() {
-  if (!state.path || state.locked) return;
+  // NEVER persist an encrypted note's decrypted plaintext to localStorage
+  if (!state.path || state.locked || state.encrypted) return;
   try { localStorage.setItem("mnemo-draft", JSON.stringify(
     { path: state.path, title: $("#title").value, content: $("#content").value })); } catch {}
 }

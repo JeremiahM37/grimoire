@@ -424,6 +424,30 @@ def test_settings_modal_persists(page, server):
     expect(page.locator("#set-model")).to_have_value("custom-model:9b")
 
 
+def test_encrypted_note_plaintext_never_in_localstorage(page, server):
+    page.goto(server)
+    page.once("dialog", lambda d: d.accept("NoDraft Secret"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("NoDraft Secret", timeout=8000)
+    page.fill("#content", "PLAINTEXTMARKER before encryption")
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
+    # init vault + encrypt this note
+    page.click("#vault-open")
+    page.fill("#v-pass", "mypassphrase123")
+    page.click("#v-init")
+    expect(page.locator("#v-lock")).to_be_visible(timeout=8000)
+    page.click("#vault-close")
+    page.keyboard.press("Control+k")
+    page.fill("#palette-input", "encrypt this note")
+    page.keyboard.press("Enter")
+    expect(page.locator("#content")).to_have_value(re.compile("PLAINTEXTMARKER"), timeout=8000)
+    # edit the (unlocked) encrypted note — the draft must NOT store plaintext
+    page.fill("#content", "PLAINTEXTMARKER edited secret content")
+    page.wait_for_timeout(400)
+    dump = page.evaluate("() => JSON.stringify(Object.entries(localStorage))")
+    assert "PLAINTEXTMARKER" not in dump, "encrypted plaintext leaked into localStorage"
+
+
 def test_encrypt_note_end_to_end(page, server):
     page.goto(server)
     page.once("dialog", lambda d: d.accept("Secret E2E"))
