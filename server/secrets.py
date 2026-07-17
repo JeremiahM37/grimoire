@@ -183,6 +183,85 @@ def lock() -> None:
     _key = None
 
 
+def change_passphrase(old: str, new: str) -> dict:
+    """Rotate the vault passphrase: verify `old`, re-derive with a fresh salt +
+    Argon2id, and RE-SEAL both the secret store and every encrypted note under the
+    new key. Old and new keys are held only for the duration of this call."""
+    global _key
+    _check_lockout()
+    if len(new) < 8:
+        raise VaultError("new passphrase must be at least 8 characters")
+    import base64
+    blob = _load_blob()
+    if not blob.get("salt"):
+        raise VaultError("vault not initialized")
+    old_key = crypto.derive_key(old, base64.b64decode(blob["salt"]), blob.get("kdf", "pbkdf2"))
+    try:
+        crypto.unseal(old_key, base64.b64decode(blob["verifier"]))   # verify old passphrase
+    except ValueError:
+        _record_failure()
+        raise VaultError("wrong current passphrase")
+    _reset_failures()
+    # current secret payload, decrypted with the OLD key
+    old_secrets = ({} if not blob.get("secrets")
+                   else json.loads(crypto.unseal(old_key, base64.b64decode(blob["secrets"]))))
+    # fresh salt + key (also upgrades legacy pbkdf2 vaults to argon2id)
+    ns = crypto.new_salt()
+    new_key = crypto.derive_key(new, ns, crypto.DEFAULT_KDF)
+    # re-seal every encrypted note under the new key BEFORE swapping keys
+    from . import index, vault
+    reencrypted = 0
+    for p in vault.walk():
+        rel = vault.rel_of(p)
+        try:
+            note = vault.read(rel)
+        except Exception:
+            continue
+        if note.get("encrypted"):
+            b = note["body"].lstrip()[len(ENC_PREFIX):].encode("utf-8")
+            plain = crypto.unseal(old_key, b)
+            sealed = ENC_PREFIX + crypto.seal(new_key, plain).decode()
+            vault.write(rel, sealed, note["frontmatter"])
+            index.upsert(rel)
+            reencrypted += 1
+    new_blob = {"salt": base64.b64encode(ns).decode(),
+                "verifier": base64.b64encode(crypto.seal(new_key, b"mnemo-vault-v1")).decode(),
+                "kdf": crypto.DEFAULT_KDF}
+    _save_blob(new_blob)
+    _key = new_key
+    _touch()
+    _write_payload(old_secrets)   # re-seal secrets with the new key
+    _audit("change_passphrase", detail=f"reencrypted_notes={reencrypted}")
+    return {"reencrypted_notes": reencrypted}
+
+
+def list_grants() -> list[dict]:
+    _require_unlocked()
+    now = _now()
+    return [{"token": g["token"], "secret": g["secret"], "grantee": g["grantee"],
+             "scope": g["scope"], "created": g["created"],
+             "expires_in": max(0, int(g["expires_at"] - now)),
+             "expired": g["expires_at"] < now}
+            for g in db.query("SELECT * FROM grants ORDER BY created DESC")]
+
+
+def revoke_grant(token: str) -> bool:
+    """Immediately invalidate a grant (e.g. a leaked token)."""
+    existed = db.one("SELECT 1 FROM grants WHERE token=?", (token,)) is not None
+    db.execute("DELETE FROM grants WHERE token=?", (token,))
+    if existed:
+        _audit("revoke", detail=f"token={token[:6]}…")
+    return existed
+
+
+def revoke_all_grants() -> int:
+    rows = db.query("SELECT COUNT(*) c FROM grants")
+    n = rows[0]["c"] if rows else 0
+    db.execute("DELETE FROM grants")
+    _audit("revoke_all", detail=f"count={n}")
+    return n
+
+
 def list_names() -> list[dict]:
     p = _payload()
     return [{"name": n, "meta": v.get("meta", {})} for n, v in sorted(p.items())]

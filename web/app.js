@@ -721,12 +721,18 @@ async function openVault() {
     };
   } else {
     const secrets = await api("/secrets");
+    const grants = await api("/grants").catch(() => []);
     b.innerHTML = `<div class="vault-actions"><span class="vault-note">${secrets.length} secret(s) — values are never shown. Your AI can use them via scoped grants.</span>
       <button id="v-lock" class="icon" title="lock">🔒 Lock</button></div>
       <div id="v-list">${secrets.map((s) => `<div class="v-row"><span>🔑 ${esc(s.name)}</span>
         <button class="icon danger v-del" data-n="${esc(s.name)}">🗑</button></div>`).join("") || '<div class="vault-note">No secrets yet.</div>'}</div>
       <div class="ask-input-row"><input id="v-name" placeholder="name (e.g. github)">
-      <input id="v-val" type="password" placeholder="value / token"><button id="v-add" class="btn">Add</button></div>`;
+      <input id="v-val" type="password" placeholder="value / token"><button id="v-add" class="btn">Add</button></div>
+      ${grants.length ? `<div class="pr-clabel">Active grants</div>
+        <div id="v-grants">${grants.map((g) => `<div class="v-row"><span>🎟 ${esc(g.grantee)} → ${esc(g.secret)}
+          <span class="pm">${g.expired ? "expired" : g.expires_in + "s"}</span></span>
+          <button class="icon danger v-revoke" data-t="${esc(g.token)}" title="revoke">✕</button></div>`).join("")}</div>` : ""}
+      <div class="vault-actions" style="margin-top:10px"><button id="v-changepass" class="btn">Change passphrase…</button></div>`;
     $("#v-lock").onclick = async () => { await api("/vault/lock", { method: "POST" }); openVault(); toast("Vault locked"); };
     $("#v-add").onclick = async () => {
       const name = $("#v-name").value.trim(), value = $("#v-val").value;
@@ -737,6 +743,17 @@ async function openVault() {
     b.querySelectorAll(".v-del").forEach((x) => (x.onclick = async () => {
       await api(`/secrets/${encodeURIComponent(x.dataset.n)}`, { method: "DELETE" }); openVault();
     }));
+    b.querySelectorAll(".v-revoke").forEach((x) => (x.onclick = async () => {
+      await api(`/grants/${encodeURIComponent(x.dataset.t)}`, { method: "DELETE" }); openVault(); toast("Grant revoked");
+    }));
+    $("#v-changepass").onclick = async () => {
+      const oldp = prompt("Current passphrase:"); if (!oldp) return;
+      const newp = prompt("New passphrase (8+ chars):"); if (!newp) return;
+      try {
+        const r = await api("/vault/change-passphrase", { method: "POST", body: { old: oldp, new: newp } });
+        toast(`Passphrase changed (re-sealed ${r.reencrypted_notes} encrypted note(s))`);
+      } catch (e) { toast(e.message, true); }
+    };
   }
 }
 
