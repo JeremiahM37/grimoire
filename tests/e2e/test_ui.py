@@ -577,6 +577,26 @@ def test_markdown_table_renders_in_preview(page, server):
     expect(page.locator("#preview tbody tr")).to_have_count(2)
 
 
+def test_find_and_replace_all(page, server):
+    page.goto(server)
+    page.once("dialog", lambda d: d.accept("FR Note"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("FR Note", timeout=8000)
+    page.fill("#content", "foo bar foo baz foo")
+    # Ctrl+F opens the find bar
+    page.locator("#content").click()
+    page.keyboard.press("Control+f")
+    expect(page.locator("#find-bar")).to_be_visible()
+    page.fill("#find-input", "foo")
+    expect(page.locator("#find-count")).to_have_text("3")     # match count
+    page.fill("#replace-input", "XX")
+    page.click("#find-all")
+    expect(page.locator("#content")).to_have_value("XX bar XX baz XX")
+    expect(page.locator("#find-count")).to_have_text("0")
+    page.keyboard.press("Escape")
+    expect(page.locator("#find-bar")).to_be_hidden()
+
+
 def test_daily_note(page, server):
     page.goto(server)
     page.click("#daily")

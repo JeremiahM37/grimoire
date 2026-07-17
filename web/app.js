@@ -284,6 +284,80 @@ $("#search").oninput = (e) => {
 
 /* ---------- editor: toolbar, smart lists, tab ---------- */
 const ta = $("#content");
+
+/* ---------- find & replace ---------- */
+function openFind() {
+  $("#find-bar").classList.remove("hidden");
+  const sel = ta.value.slice(ta.selectionStart, ta.selectionEnd);
+  if (sel && !sel.includes("\n")) $("#find-input").value = sel;
+  $("#find-input").focus(); $("#find-input").select();
+  updateFindCount();
+}
+function closeFind() { $("#find-bar").classList.add("hidden"); ta.focus(); }
+function findMatches() {
+  const q = $("#find-input").value; if (!q) return [];
+  const hay = ta.value.toLowerCase(), needle = q.toLowerCase(), idxs = [];
+  let i = hay.indexOf(needle);
+  while (i !== -1) { idxs.push(i); i = hay.indexOf(needle, i + Math.max(1, needle.length)); }
+  return idxs;
+}
+function updateFindCount() {
+  const q = $("#find-input").value;
+  $("#find-count").textContent = q ? String(findMatches().length) : "";
+}
+function findNext(dir = 1) {
+  const q = $("#find-input").value; if (!q) return;
+  const m = findMatches(); if (!m.length) return;
+  let target;
+  if (dir > 0) { target = m.find((i) => i >= ta.selectionStart + 1); if (target === undefined) target = m[0]; }
+  else { const before = m.filter((i) => i < ta.selectionStart); target = before.length ? before[before.length - 1] : m[m.length - 1]; }
+  ta.focus(); ta.setSelectionRange(target, target + q.length);
+  const lineNo = ta.value.slice(0, target).split("\n").length - 1;
+  const lh = parseFloat(getComputedStyle(ta).lineHeight) || 24;
+  ta.scrollTop = Math.max(0, lineNo * lh - ta.clientHeight / 3);
+}
+function replaceOne() {
+  const q = $("#find-input").value, r = $("#replace-input").value;
+  if (!q) return;
+  const sel = ta.value.slice(ta.selectionStart, ta.selectionEnd);
+  if (sel.toLowerCase() === q.toLowerCase()) {
+    const s = ta.selectionStart;
+    ta.value = ta.value.slice(0, s) + r + ta.value.slice(ta.selectionEnd);
+    ta.setSelectionRange(s, s + r.length);
+    scheduleSave();
+  }
+  findNext(1); updateFindCount();
+}
+function replaceAll() {
+  const q = $("#find-input").value, r = $("#replace-input").value;
+  if (!q) return;
+  const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
+  const n = (ta.value.match(re) || []).length;
+  if (!n) return toast("No matches");
+  ta.value = ta.value.replace(re, r);
+  scheduleSave(); updateFindCount(); toast(`Replaced ${n}`);
+}
+$("#find-bar").addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); closeFind(); } });
+$("#find-close").onclick = closeFind;
+$("#find-next").onclick = () => findNext(1);
+$("#find-prev").onclick = () => findNext(-1);
+$("#find-replace").onclick = replaceOne;
+$("#find-all").onclick = replaceAll;
+$("#find-input").addEventListener("input", updateFindCount);
+$("#find-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); findNext(e.shiftKey ? -1 : 1); }
+  else if (e.key === "Escape") { e.preventDefault(); closeFind(); }
+});
+$("#replace-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); replaceOne(); }
+  else if (e.key === "Escape") { e.preventDefault(); closeFind(); }
+});
+addEventListener("keydown", (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "f" && !e.shiftKey) {
+    e.preventDefault(); openFind();
+  }
+});
+
 function updateWordCount() {
   if (state.locked) { $("#wordcount").textContent = ""; return; }
   const words = (ta.value.trim().match(/\S+/g) || []).length;
@@ -566,6 +640,7 @@ const COMMANDS = [
   { icon: "📅", name: "Open calendar", run: () => openCalendar() },
   { icon: "☑", name: "Open tasks (all notes)", run: openTasks },
   { icon: "⌨", name: "Keyboard shortcuts & help", run: openHelp },
+  { icon: "🔍", name: "Find & replace in note", run: openFind },
 ];
 function openHelp() { $("#help-modal").classList.remove("hidden"); }
 $("#help-close").onclick = () => $("#help-modal").classList.add("hidden");
