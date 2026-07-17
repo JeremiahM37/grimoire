@@ -23,6 +23,12 @@ def test_clearing_a_setting_reverts_to_default(client):
     assert client.get("/api/settings").json()["settings"]["llm_model"] == "qwen3.5:4b"
 
 
+def test_invalid_llm_backend_rejected(client):
+    assert client.put("/api/settings", json={"llm": "bogus"}).status_code == 400
+    for ok in ("", "ollama", "claude"):
+        assert client.put("/api/settings", json={"llm": ok}).status_code == 200
+
+
 def test_embed_model_not_editable_via_settings(client):
     # embed_model isn't in the patch schema — sending it is ignored (would corrupt vectors)
     client.put("/api/settings", json={"embed_model": "something-else"})

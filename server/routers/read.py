@@ -84,6 +84,11 @@ def export_note(path: str, download: bool = False):
     row = db.one("SELECT * FROM notes WHERE path=?", (rel,))
     if not row:
         raise HTTPException(404, "not found")
+    # never render an encrypted note here: this route is unauthenticated, so
+    # decrypting would leak plaintext by URL, and the ciphertext blob is useless
+    from .. import secrets
+    if secrets.is_encrypted(row["body"]):
+        raise HTTPException(404, "not found")
     body = render.render(row["body"], _link_map(), img_src=_data_uri)
     doc = _page(row["title"], f"<article>{body}</article>", export=True)
     headers = {}
