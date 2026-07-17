@@ -823,6 +823,25 @@ def test_tag_autocomplete(page, server):
     expect(ta).to_have_value(re.compile(r"#zephyrtag"))
 
 
+def test_wikilink_hover_preview(page, server):
+    page.goto(server)
+    page.once("dialog", lambda d: d.accept("Hover Target"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Hover Target", timeout=8000)
+    page.fill("#content", "# Hover Target\n\nthis is the hoverable preview body")
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
+    page.once("dialog", lambda d: d.accept("Hover Source"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Hover Source", timeout=8000)
+    page.fill("#content", "see [[Hover Target]] now")
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
+    page.click("#preview-toggle")
+    # hovering the resolved wiki-link pops a preview of the target note
+    page.hover("#preview a.wikilink >> text=Hover Target")
+    expect(page.locator("#hover-preview")).to_be_visible(timeout=5000)
+    expect(page.locator("#hover-preview")).to_contain_text("hoverable preview body")
+
+
 def test_code_syntax_highlighting(page, server):
     page.goto(server)
     page.once("dialog", lambda d: d.accept("Code Note"))

@@ -147,6 +147,16 @@ body.resizing { cursor: col-resize; user-select: none; }
 .md .hl-str { color: var(--link); }
 .md .hl-com { color: var(--ink-soft); font-style: italic; }
 .md .hl-num { color: var(--link-open); }
+
+/* note hover preview */
+#hover-preview { position: fixed; z-index: 68; width: min(340px, 80vw); max-height: 200px;
+  overflow: hidden; background: var(--paper); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(40,30,10,.22); padding: 10px 14px; }
+#hover-preview .hp-title { font-family: var(--serif); font-weight: 600; margin-bottom: 4px; }
+#hover-preview .hp-body { font-size: 13px; line-height: 1.5; color: var(--ink-soft);
+  max-height: 150px; overflow: hidden; -webkit-mask-image: linear-gradient(#000 70%, transparent); }
+#hover-preview .hp-body p { margin: .3em 0; }
+@media (hover: none) { #hover-preview { display: none !important; } }
 .md a { color: var(--link); }
 .md a.wikilink { color: var(--link); text-decoration: none; border-bottom: 1px solid transparent; cursor: pointer; }
 .md a.wikilink:hover { border-bottom-color: var(--link); }

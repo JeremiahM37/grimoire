@@ -219,6 +219,7 @@ async function save() {
     const n = await api(`/notes/${encodeURI(state.path)}`, {
       method: "PUT", body: { body: $("#content").value, frontmatter: fm } });
     state.dirty = false; setSaveState("saved"); clearDraft();
+    delete hoverCache[state.path];   // preview cache may be stale now
     setTimeout(() => setSaveState(""), 1200);
     renderBacklinks(n && (await api(`/notes/${encodeURI(state.path)}`)).backlinks || []);
     loadList();
@@ -266,6 +267,42 @@ function renderBacklinks(bl) {
   el.querySelectorAll("a").forEach((a) => (a.onclick = () => openNote(a.dataset.p)));
 }
 
+/* ---------- note hover previews (desktop) ---------- */
+let hoverTimer, hideTimer;
+const hoverCache = {};
+function resolveTargetPath(target) {
+  const t = (target || "").toLowerCase();
+  const hit = state.notes.find((n) => (n.title || "").toLowerCase() === t
+    || n.path.replace(/\.md$/, "").split("/").pop().toLowerCase() === t);
+  return hit ? hit.path : (state.aliases[t] || null);
+}
+function wireHoverPreviews(container) {
+  container.querySelectorAll("a.wikilink:not(.unresolved)").forEach((a) => {
+    a.addEventListener("mouseenter", () => {
+      clearTimeout(hideTimer); clearTimeout(hoverTimer);
+      hoverTimer = setTimeout(() => showHoverPreview(a.dataset.target, a), 320);
+    });
+    a.addEventListener("mouseleave", () => { clearTimeout(hoverTimer); scheduleHideHover(); });
+  });
+  container.querySelectorAll("#backlinks a[data-p], a[data-p]").forEach(() => {});
+}
+async function showHoverPreview(target, anchor) {
+  const path = resolveTargetPath(target);
+  if (!path) return;
+  let note = hoverCache[path];
+  if (!note) { try { note = await api(`/notes/${encodeURI(path)}`); hoverCache[path] = note; } catch { return; } }
+  const box = $("#hover-preview");
+  const snippet = (note.body || "").replace(/^#\s.*$/m, "").trim().slice(0, 280);
+  box.innerHTML = `<div class="hp-title">${esc(note.title || path)}</div><div class="md hp-body">${mdToHtml(snippet)}</div>`;
+  const r = anchor.getBoundingClientRect();
+  box.style.left = Math.min(r.left, innerWidth - 340) + "px";
+  box.style.top = Math.min(r.bottom + 6, innerHeight - 220) + "px";
+  box.classList.remove("hidden");
+  box.onmouseenter = () => clearTimeout(hideTimer);
+  box.onmouseleave = scheduleHideHover;
+}
+function scheduleHideHover() { clearTimeout(hideTimer); hideTimer = setTimeout(() => $("#hover-preview").classList.add("hidden"), 220); }
+
 /* ---------- unlinked mentions ---------- */
 function renderUnlinked(items) {
   const el = $("#unlinked");
@@ -292,6 +329,7 @@ function renderPreview() {
   $("#preview").querySelectorAll("a.wikilink").forEach((a) => {
     a.onclick = (e) => { e.preventDefault(); resolveAndOpen(a.dataset.target); };
   });
+  wireHoverPreviews($("#preview"));
   $("#preview").querySelectorAll(".tag").forEach((t) => {
     t.style.cursor = "pointer";
     t.onclick = () => filterByTag(t.textContent.replace(/^#/, ""));
