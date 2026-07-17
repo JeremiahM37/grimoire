@@ -552,7 +552,18 @@ const COMMANDS = [
   { icon: "📌", name: "Pin / unpin this note", run: togglePin },
   { icon: "📅", name: "Open calendar", run: () => openCalendar() },
   { icon: "☑", name: "Open tasks (all notes)", run: openTasks },
+  { icon: "⌨", name: "Keyboard shortcuts & help", run: openHelp },
 ];
+function openHelp() { $("#help-modal").classList.remove("hidden"); }
+$("#help-close").onclick = () => $("#help-modal").classList.add("hidden");
+$("#help-modal").onclick = (e) => { if (e.target.id === "help-modal") $("#help-modal").classList.add("hidden"); };
+// "?" opens help — but not while typing in a field
+addEventListener("keydown", (e) => {
+  if (e.key !== "?" || e.metaKey || e.ctrlKey || e.altKey) return;
+  const el = document.activeElement, tag = el && el.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || (el && el.isContentEditable)) return;
+  e.preventDefault(); openHelp();
+});
 async function togglePin() {
   if (!state.path) return toast("Open a note first", true);
   try {

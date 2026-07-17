@@ -153,6 +153,14 @@ body { background: var(--paper); color: var(--ink); font-family: var(--sans);
 #v-list { margin-bottom: 10px; }
 .v-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--line); }
 
+/* help */
+#help-body { padding: 14px 16px 18px; }
+.help-grid { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; align-items: center; margin-bottom: 12px; }
+.help-grid kbd { font-family: var(--mono); font-size: 12px; background: var(--paper2);
+  border: 1px solid var(--line); border-radius: 6px; padding: 3px 7px; white-space: nowrap; text-align: center; }
+.help-grid span { font-size: 14px; }
+#help-body .vault-note kbd { font-family: var(--mono); background: var(--paper2); padding: 1px 5px; border-radius: 4px; }
+
 /* tasks */
 #tasks-body { padding: 8px 16px 16px; overflow-y: auto; max-height: 70vh; }
 .task-group { margin-bottom: 12px; }
