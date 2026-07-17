@@ -401,6 +401,23 @@ def test_export_note_via_palette_opens_standalone_html(page, server):
     assert "<h1>Exportable Note</h1>" in html and "<strong>world</strong>" in html
 
 
+def test_settings_modal_persists(page, server):
+    page.goto(server)
+    page.keyboard.press("Control+k")
+    page.fill("#palette-input", "open settings")
+    page.keyboard.press("Enter")
+    expect(page.locator("#settings-modal")).to_be_visible()
+    expect(page.locator("#settings-body")).to_contain_text("extractive")   # offline in e2e
+    page.fill("#set-model", "custom-model:9b")
+    page.click("#set-save")
+    expect(page.locator("#settings-modal")).to_be_hidden()
+    # reopen — the value persisted
+    page.keyboard.press("Control+k")
+    page.fill("#palette-input", "open settings")
+    page.keyboard.press("Enter")
+    expect(page.locator("#set-model")).to_have_value("custom-model:9b")
+
+
 def test_daily_note(page, server):
     page.goto(server)
     page.click("#daily")
