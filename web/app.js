@@ -20,6 +20,14 @@ function toast(msg, err = false) {
   setTimeout(() => t.remove(), 3000);
 }
 const esc = (s) => { const d = document.createElement("i"); d.textContent = s ?? ""; return d.innerHTML; };
+function toastAction(msg, label, fn, ms = 6000) {
+  const t = document.createElement("div");
+  t.className = "toast";
+  t.innerHTML = `<span>${esc(msg)}</span><button class="toast-btn">${esc(label)}</button>`;
+  t.querySelector(".toast-btn").onclick = () => { t.remove(); fn(); };
+  $("#toast").appendChild(t);
+  setTimeout(() => t.remove(), ms);
+}
 
 /* ---------- note list ---------- */
 async function loadList() {
@@ -124,11 +132,18 @@ async function openDaily() {
   await loadList(); openNote(d.path);
 }
 async function deleteNote() {
-  if (!state.path || !confirm("Delete this note? The .md file is removed.")) return;
-  await api(`/notes/${encodeURI(state.path)}`, { method: "DELETE" });
-  state.path = null; state.dirty = false;
-  $("#title").value = ""; $("#content").value = ""; $("#backlinks").innerHTML = "";
-  toast("Deleted"); loadList();
+  if (!state.path || !confirm("Move this note to trash?")) return;
+  const r = await api(`/notes/${encodeURI(state.path)}`, { method: "DELETE" });
+  state.path = null; state.dirty = false; state.locked = false;
+  $("#title").value = ""; $("#content").value = ""; $("#content").readOnly = false;
+  $("#backlinks").innerHTML = "";
+  loadList();
+  toastAction("Moved to trash", "Undo", async () => {
+    try {
+      const n = await api(`/trash/${r.trashed}/restore`, { method: "POST" });
+      await loadList(); openNote(n.path); toast("Restored");
+    } catch (e) { toast(e.message, true); }
+  });
 }
 
 /* ---------- backlinks ---------- */
@@ -521,7 +536,27 @@ const COMMANDS = [
   { icon: "⚙", name: "Open settings", run: openSettings },
   { icon: "🔒", name: "Encrypt this note (at rest)", run: () => cryptNote("encrypt") },
   { icon: "🔓", name: "Decrypt this note", run: () => cryptNote("decrypt") },
+  { icon: "🗑", name: "Open trash", run: openTrash },
 ];
+$("#trash-close").onclick = () => $("#trash-modal").classList.add("hidden");
+$("#trash-modal").onclick = (e) => { if (e.target.id === "trash-modal") $("#trash-modal").classList.add("hidden"); };
+async function openTrash() {
+  $("#trash-modal").classList.remove("hidden");
+  const items = await api("/trash");
+  const b = $("#trash-body");
+  if (!items.length) { b.innerHTML = '<p class="vault-note">Trash is empty.</p>'; return; }
+  b.innerHTML = items.map((t) => `<div class="v-row"><span>🗒 ${esc(t.title)} <span class="pm">${esc(t.deleted_at)}</span></span>
+    <span><button class="btn t-restore" data-id="${esc(t.id)}">Restore</button>
+    <button class="icon danger t-purge" data-id="${esc(t.id)}" title="delete forever">🗑</button></span></div>`).join("");
+  b.querySelectorAll(".t-restore").forEach((x) => (x.onclick = async () => {
+    const n = await api(`/trash/${x.dataset.id}/restore`, { method: "POST" });
+    await loadList(); openTrash(); toast("Restored"); openNote(n.path);
+  }));
+  b.querySelectorAll(".t-purge").forEach((x) => (x.onclick = async () => {
+    if (!confirm("Delete forever? This cannot be undone.")) return;
+    await api(`/trash/${x.dataset.id}`, { method: "DELETE" }); openTrash();
+  }));
+}
 async function cryptNote(which) {
   if (!state.path) return toast("Open a note first", true);
   if (state.dirty) await save();

@@ -18,7 +18,8 @@ def test_create_read_update_delete(client):
     client.put(f"/api/notes/{path}", json={"body": "# First\n\nedited #tag"})
     assert "tag" in client.get(f"/api/notes/{path}").json()["tags"]
 
-    assert client.delete(f"/api/notes/{path}").status_code == 204
+    d = client.delete(f"/api/notes/{path}")   # soft-delete → 200 + trash id
+    assert d.status_code == 200 and d.json()["trashed"]
     assert client.get(f"/api/notes/{path}").status_code == 404
 
 

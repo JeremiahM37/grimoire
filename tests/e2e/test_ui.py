@@ -447,6 +447,23 @@ def test_encrypt_note_end_to_end(page, server):
     assert page.evaluate("() => document.getElementById('content').readOnly") is True
 
 
+def test_delete_then_undo_restores_note(page, server):
+    page.goto(server)
+    page.once("dialog", lambda d: d.accept("Trash E2E"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Trash E2E", timeout=8000)
+    page.fill("#content", "please recover me")
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
+    # delete (confirm dialog) → note leaves the list, Undo toast appears
+    page.once("dialog", lambda d: d.accept())
+    page.click("#delete-note")
+    expect(page.locator(".note-row .t", has_text="Trash E2E")).to_have_count(0, timeout=8000)
+    page.click(".toast-btn >> text=Undo")
+    # restored: back in the list and open in the editor
+    expect(page.locator(".note-row .t", has_text="Trash E2E")).to_be_visible(timeout=8000)
+    expect(page.locator("#content")).to_have_value(re.compile("please recover me"), timeout=8000)
+
+
 def test_daily_note(page, server):
     page.goto(server)
     page.click("#daily")

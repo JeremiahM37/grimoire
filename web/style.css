@@ -209,6 +209,9 @@ body { background: var(--paper); color: var(--ink); font-family: var(--sans);
 .toast { background: var(--ink); color: var(--paper); padding: 9px 14px; border-radius: 20px;
   font-size: 13px; box-shadow: var(--shadow); animation: pop .2s; }
 .toast.err { background: var(--danger); }
+.toast { display: flex; align-items: center; gap: 10px; }
+.toast-btn { background: none; border: none; color: var(--accent); font: 600 13px var(--sans);
+  cursor: pointer; padding: 0; text-transform: uppercase; letter-spacing: .04em; }
 @keyframes pop { from { opacity: 0; transform: translateY(6px); } }
 
 /* ---------- mobile ---------- */
