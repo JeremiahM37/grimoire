@@ -6,7 +6,8 @@ import pytest
 def _offline_ai(monkeypatch):
     """Strip AI backend env so unit/api tests are deterministic regardless of the
     developer's/deploy box's ambient env (which may point at a live Ollama)."""
-    for var in ("MNEMO_OLLAMA_URL", "MNEMO_LLM", "MNEMO_LLM_MODEL", "MNEMO_WHISPER_URL"):
+    for var in ("MNEMO_OLLAMA_URL", "MNEMO_LLM", "MNEMO_LLM_MODEL", "MNEMO_WHISPER_URL",
+                "MNEMO_BROKER_ALLOW_PRIVATE", "MNEMO_VAULT_IDLE_LOCK"):
         monkeypatch.delenv(var, raising=False)
 
 

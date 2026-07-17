@@ -41,7 +41,7 @@ def test_grant_and_broker(client, monkeypatch):
     _init_unlock(client)
     client.post("/api/secrets", json={"name": "svc", "value": "topsecret-key"})
     g = client.post("/api/secrets/svc/grant",
-                    json={"grantee": "agent-1", "scope": "http://safe.test/",
+                    json={"grantee": "agent-1", "scope": "http://8.8.8.8/",
                           "ttl_seconds": 60}).json()["grant"]
 
     # broker injects the secret into the request; capture what goes out
@@ -60,7 +60,7 @@ def test_grant_and_broker(client, monkeypatch):
     monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
 
     r = client.post("/api/secrets/broker", json={
-        "grant": g, "method": "GET", "url": "http://safe.test/api", "header": "X-key"})
+        "grant": g, "method": "GET", "url": "http://8.8.8.8/api", "header": "X-key"})
     assert r.status_code == 200 and r.json()["status"] == 200
     assert sent["header"] == "topsecret-key"          # secret was injected...
     assert "topsecret-key" not in r.text              # ...but never returned to caller
