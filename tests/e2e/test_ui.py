@@ -94,7 +94,7 @@ def page(browser, server, request):
 @pytest.mark.parametrize("page", [DESKTOP, PHONE], indirect=True, ids=["desktop", "phone"])
 def test_app_loads(page, server):
     page.goto(server)
-    expect(page.locator("#side-head h1")).to_have_text("mnemo")
+    expect(page.locator("#side-head h1")).to_have_text("Grimoire")
 
 
 def test_create_note_and_it_appears(page, server):
@@ -939,7 +939,7 @@ def test_sidebar_collapse_toggle_and_persist(page, server):
 
 def test_sidebar_resize_drags_and_persists(page, server):
     page.goto(server)
-    expect(page.locator("#side-head h1")).to_have_text("mnemo")
+    expect(page.locator("#side-head h1")).to_have_text("Grimoire")
     w0 = page.evaluate("() => document.getElementById('sidebar').getBoundingClientRect().width")
     box = page.locator("#sidebar-resize").bounding_box()
     page.mouse.move(box["x"] + 4, box["y"] + 120)
@@ -950,7 +950,7 @@ def test_sidebar_resize_drags_and_persists(page, server):
     assert w1 > w0 + 50, f"sidebar did not widen: {w0} -> {w1}"
     # persists across reload (localStorage)
     page.reload()
-    expect(page.locator("#side-head h1")).to_have_text("mnemo")
+    expect(page.locator("#side-head h1")).to_have_text("Grimoire")
     w2 = page.evaluate("() => document.getElementById('sidebar').getBoundingClientRect().width")
     assert abs(w2 - w1) < 6, f"sidebar width not persisted: {w1} -> {w2}"
 
@@ -1001,7 +1001,7 @@ def test_split_view_desktop(page, server):
 @pytest.mark.parametrize("page", [PHONE], indirect=True, ids=["phone"])
 def test_split_falls_back_to_single_pane_on_phone(page, server):
     page.goto(server)
-    expect(page.locator("#side-head h1")).to_have_text("mnemo")
+    expect(page.locator("#side-head h1")).to_have_text("Grimoire")
     # the split control is hidden on phones, and the second pane never shows
     expect(page.locator("#split-btn")).to_be_hidden()
     page.keyboard.press("Control+k")
@@ -1111,6 +1111,6 @@ def test_no_console_errors_on_load(page, server):
     page.on("console", lambda m: errs.append(m.text) if m.type == "error" else None)
     page.on("pageerror", lambda e: errs.append(str(e)))
     page.goto(server)
-    expect(page.locator("#side-head h1")).to_have_text("mnemo")
+    expect(page.locator("#side-head h1")).to_have_text("Grimoire")
     page.wait_for_timeout(500)
     assert not [e for e in errs if "favicon" not in e], errs
