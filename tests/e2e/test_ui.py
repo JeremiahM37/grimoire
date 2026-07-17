@@ -511,6 +511,23 @@ def test_pin_via_palette_floats_to_top(page, server):
     expect(page.locator(".note-row").first.locator(".pin")).to_be_visible()
 
 
+def test_calendar_marks_and_opens_daily_note(page, server):
+    import datetime
+    page.goto(server)
+    page.click("#daily")   # ensure today's daily note exists
+    today = datetime.date.today().isoformat()
+    expect(page.locator("#title")).to_have_value(today, timeout=8000)
+    page.keyboard.press("Control+k")
+    page.fill("#palette-input", "open calendar")
+    page.keyboard.press("Enter")
+    expect(page.locator("#calendar-modal")).to_be_visible()
+    expect(page.locator(".cal-cell.today")).to_be_visible()      # today outlined
+    expect(page.locator(".cal-cell.has")).to_have_count(1)       # today has a note dot
+    page.click(".cal-cell.today")                                # opens it
+    expect(page.locator("#calendar-modal")).to_be_hidden()
+    expect(page.locator("#title")).to_have_value(today, timeout=8000)
+
+
 def test_daily_note(page, server):
     page.goto(server)
     page.click("#daily")
