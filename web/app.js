@@ -172,6 +172,13 @@ async function openNote(path) {
   } else {
     $("#content").value = n.body || "";
     $("#content").readOnly = false;
+    // recover unsaved work (crash / offline reload) for this exact note
+    const draft = getDraft();
+    if (draft && draft.path === n.path && draft.content !== (n.body || "")) {
+      $("#content").value = draft.content;
+      if (draft.title) $("#title").value = draft.title;
+      state.dirty = true; toast("Restored unsaved changes"); save();
+    }
   }
   updatePrivateToggle();
   updateWordCount();
@@ -187,8 +194,17 @@ async function openNote(path) {
   location.hash = encodeURI(path);
 }
 function setSaveState(s) { $("#save-state").textContent = s; }
+/* offline-safe drafts: persist the in-flight edit so a crash / offline reload
+   never loses work, and retry saving when connectivity returns. */
+function saveDraft() {
+  if (!state.path || state.locked) return;
+  try { localStorage.setItem("mnemo-draft", JSON.stringify(
+    { path: state.path, title: $("#title").value, content: $("#content").value })); } catch {}
+}
+function clearDraft() { try { localStorage.removeItem("mnemo-draft"); } catch {} }
+function getDraft() { try { return JSON.parse(localStorage.getItem("mnemo-draft") || "null"); } catch { return null; } }
 function scheduleSave() {
-  state.dirty = true; setSaveState("…");
+  state.dirty = true; setSaveState("…"); saveDraft();
   clearTimeout(state.saveTimer);
   state.saveTimer = setTimeout(save, 700);
 }
@@ -201,12 +217,17 @@ async function save() {
     if (title) fm.title = title; else delete fm.title;
     const n = await api(`/notes/${encodeURI(state.path)}`, {
       method: "PUT", body: { body: $("#content").value, frontmatter: fm } });
-    state.dirty = false; setSaveState("saved");
+    state.dirty = false; setSaveState("saved"); clearDraft();
     setTimeout(() => setSaveState(""), 1200);
     renderBacklinks(n && (await api(`/notes/${encodeURI(state.path)}`)).backlinks || []);
     loadList();
-  } catch (e) { setSaveState("!"); toast(e.message, true); }
+  } catch (e) {
+    // keep the draft + dirty flag; we'll retry when back online
+    setSaveState("offline ⟳"); saveDraft();
+  }
 }
+// retry any pending save the moment connectivity returns
+addEventListener("online", () => { if (state.dirty) save(); });
 
 async function newNote() {
   const title = prompt("New note title:");
