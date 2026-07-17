@@ -705,6 +705,24 @@ def test_rename_tag_via_palette(page, server):
     page.remove_listener("dialog", handle)
 
 
+def test_tag_browser_filters(page, server):
+    page.goto(server)
+    page.once("dialog", lambda d: d.accept("Browse Seed"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Browse Seed", timeout=8000)
+    page.fill("#content", "content with #browsetag")
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
+    page.keyboard.press("Control+k")
+    page.fill("#palette-input", "browse tags")
+    page.keyboard.press("Enter")
+    expect(page.locator("#tags-browser-modal")).to_be_visible()
+    chip = page.locator(".tag-chip", has_text="browsetag")
+    expect(chip).to_be_visible(timeout=5000)
+    chip.click()   # filters the note list to that tag
+    expect(page.locator("#tags-browser-modal")).to_be_hidden()
+    expect(page.locator("#tag-filter-bar")).to_contain_text("browsetag", timeout=5000)
+
+
 def test_tag_autocomplete(page, server):
     page.goto(server)
     # seed a note with a distinctive tag so it's in the tag index

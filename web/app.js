@@ -800,6 +800,7 @@ const COMMANDS = [
   { icon: "📌", name: "Pin / unpin this note", run: togglePin },
   { icon: "📅", name: "Open calendar", run: () => openCalendar() },
   { icon: "☑", name: "Open tasks (all notes)", run: openTasks },
+  { icon: "🏷", name: "Browse tags", run: openTagBrowser },
   { icon: "⌨", name: "Keyboard shortcuts & help", run: openHelp },
   { icon: "ⓘ", name: "Edit note properties", run: openProps },
   { icon: "🔍", name: "Find & replace in note", run: openFind },
@@ -1138,6 +1139,24 @@ function scrollToHeading(lineNo, hIdx) {
   const style = getComputedStyle(ta);
   const lh = parseFloat(style.lineHeight) || 24;
   ta.scrollTop = Math.max(0, lineNo * lh - ta.clientHeight / 3);
+}
+
+/* ---------- tag browser ---------- */
+$("#tags-browser-close").onclick = () => $("#tags-browser-modal").classList.add("hidden");
+$("#tags-browser-modal").onclick = (e) => { if (e.target.id === "tags-browser-modal") $("#tags-browser-modal").classList.add("hidden"); };
+async function openTagBrowser() {
+  $("#tags-browser-modal").classList.remove("hidden");
+  const tags = await api("/tags");
+  state.allTags = tags;
+  $("#tags-browser-count").textContent = `${tags.length}`;
+  const b = $("#tags-browser-body");
+  b.innerHTML = tags.length
+    ? `<div class="tag-cloud">${tags.map((t) =>
+        `<button class="tag-chip" data-t="${esc(t.tag)}">#${esc(t.tag)} <span>${t.c}</span></button>`).join("")}</div>`
+    : '<p class="vault-note">No tags yet. Add <code>#tags</code> to your notes.</p>';
+  b.querySelectorAll(".tag-chip").forEach((c) => (c.onclick = () => {
+    $("#tags-browser-modal").classList.add("hidden"); filterByTag(c.dataset.t);
+  }));
 }
 
 /* ---------- tasks (aggregated across notes) ---------- */
