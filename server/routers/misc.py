@@ -28,6 +28,12 @@ def reindex():
     return {"indexed": index.reindex()}
 
 
+@router.get("/aliases")
+def aliases():
+    """{alias: path} map so the editor can resolve [[alias]] wiki-links."""
+    return index.alias_map()
+
+
 @router.get("/complete")
 def complete(q: str = "", limit: int = 12):
     """`[[` autocomplete: note titles/stems matching a prefix."""

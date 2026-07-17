@@ -86,18 +86,42 @@ def _embed_note(note: dict) -> None:
 
 
 def _resolve_all() -> None:
-    """Resolve every link's target → a note path (by title or filename stem)."""
-    notes = db.query("SELECT path, title FROM notes")
-    by_title, by_stem = {}, {}
+    """Resolve every link's target → a note path (by title, filename stem, or a
+    frontmatter alias)."""
+    notes = db.query("SELECT path, title, frontmatter_json FROM notes")
+    by_title, by_stem, by_alias = {}, {}, {}
     for n in notes:
         by_title[n["title"].lower()] = n["path"]
         stem = n["path"].rsplit("/", 1)[-1][:-3].lower()   # filename without .md
         by_stem.setdefault(stem, n["path"])
+        for a in _aliases(n["frontmatter_json"]):
+            by_alias.setdefault(a.lower(), n["path"])
     for link in db.query("SELECT rowid, target FROM links"):
         key = link["target"].lower()
-        dst = by_title.get(key) or by_stem.get(key)
+        dst = by_title.get(key) or by_stem.get(key) or by_alias.get(key)
         db.execute("UPDATE links SET dst=?, resolved=? WHERE rowid=?",
                    (dst, 1 if dst else 0, link["rowid"]))
+
+
+def _aliases(frontmatter_json: str) -> list[str]:
+    try:
+        a = json.loads(frontmatter_json or "{}").get("aliases")
+    except Exception:
+        return []
+    if isinstance(a, str):
+        return [a]
+    if isinstance(a, list):
+        return [str(x) for x in a]
+    return []
+
+
+def alias_map() -> dict:
+    """{alias_lower: path} across all notes — for link resolution in the UI."""
+    out = {}
+    for n in db.query("SELECT path, frontmatter_json FROM notes"):
+        for a in _aliases(n["frontmatter_json"]):
+            out.setdefault(a.lower(), n["path"])
+    return out
 
 
 def retrieve(query: str, k: int = 6, include_private: bool = False) -> list[dict]:

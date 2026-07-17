@@ -1,6 +1,6 @@
 /* mnemo PWA — vanilla ES module, offline-capable, no build step */
 const $ = (s) => document.querySelector(s);
-const state = { path: null, notes: [], dirty: false, saveTimer: null, frontmatter: {}, templates: [] };
+const state = { path: null, notes: [], dirty: false, saveTimer: null, frontmatter: {}, templates: [], aliases: {} };
 
 async function api(path, opts = {}) {
   const r = await fetch(`/api${path}`, {
@@ -33,6 +33,7 @@ function toastAction(msg, label, fn, ms = 6000) {
 async function loadList() {
   state.notes = await api("/notes");
   renderList(state.notes);
+  api("/aliases").then((a) => (state.aliases = a || {})).catch(() => {});
   const h = await api("/health");
   state.rev = h.rev;
   $("#stat").textContent = `${h.notes} notes · ${h.tags} tags · ${h.unresolved_links} unlinked`;
@@ -88,6 +89,7 @@ async function openNote(path) {
     $("#content").readOnly = false;
   }
   updatePrivateToggle();
+  updateWordCount();
   renderBacklinks(n.backlinks || []);
   state.filterTag = null;
   $("#tag-filter-bar")?.remove();
@@ -202,6 +204,8 @@ async function resolveAndOpen(target) {
   const hit = state.notes.find((n) => (n.title || "").toLowerCase() === target.toLowerCase()
     || n.path.replace(/\.md$/, "").split("/").pop().toLowerCase() === target.toLowerCase());
   if (hit) return openNote(hit.path);
+  const aliasPath = state.aliases[target.toLowerCase()];
+  if (aliasPath) return openNote(aliasPath);
   // create-on-click for unresolved links
   if (confirm(`"${target}" doesn't exist yet. Create it?`)) {
     const n = await api("/notes", { method: "POST", body: { title: target, body: `# ${target}\n\n` } });
@@ -212,6 +216,7 @@ function mdToHtml(src) {
   // small, safe-ish markdown: escape first, then apply inline + block rules
   let resolved = new Set(state.notes.flatMap((n) => [
     (n.title || "").toLowerCase(), n.path.replace(/\.md$/, "").split("/").pop().toLowerCase()]));
+  Object.keys(state.aliases || {}).forEach((a) => resolved.add(a));
   const lines = src.split("\n");
   let html = "", inCode = false, listOpen = false;
   const inline = (t) => esc(t)
@@ -266,6 +271,13 @@ $("#search").oninput = (e) => {
 
 /* ---------- editor: toolbar, smart lists, tab ---------- */
 const ta = $("#content");
+function updateWordCount() {
+  if (state.locked) { $("#wordcount").textContent = ""; return; }
+  const words = (ta.value.trim().match(/\S+/g) || []).length;
+  const mins = Math.max(1, Math.round(words / 200));
+  $("#wordcount").textContent = words ? `${words} words · ${mins} min` : "";
+}
+ta.addEventListener("input", updateWordCount);
 function surround(pre, post = pre, placeholder = "") {
   const s = ta.selectionStart, e = ta.selectionEnd, v = ta.value;
   const sel = v.slice(s, e) || placeholder;
