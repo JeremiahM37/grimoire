@@ -705,6 +705,46 @@ def test_rename_tag_via_palette(page, server):
     page.remove_listener("dialog", handle)
 
 
+def test_split_view_desktop(page, server):
+    page.goto(server)
+    page.once("dialog", lambda d: d.accept("Split Left"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Split Left", timeout=8000)
+    page.once("dialog", lambda d: d.accept("Split Right"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Split Right", timeout=8000)
+    # main pane = Split Left
+    page.click(".note-row .t >> text=Split Left")
+    expect(page.locator("#title")).to_have_value("Split Left", timeout=8000)
+    # Ctrl+click Split Right → opens in the second pane
+    page.click(".note-row .t >> text=Split Right", modifiers=["Control"])
+    expect(page.locator("#editor2")).to_be_visible()
+    expect(page.locator("#title2")).to_have_value("Split Right", timeout=8000)
+    expect(page.locator("#title")).to_have_value("Split Left")     # panes independent
+    # edit the right pane; it autosaves
+    page.fill("#content2", "right pane edited text")
+    expect(page.locator("#save-state2")).to_have_text("saved", timeout=5000)
+    # close split, reopen the right note in the main pane → edit persisted
+    page.click("#editor2-close")
+    expect(page.locator("#editor2")).to_be_hidden()
+    page.click(".note-row .t >> text=Split Right")
+    expect(page.locator("#content")).to_have_value(re.compile("right pane edited text"), timeout=8000)
+
+
+@pytest.mark.parametrize("page", [PHONE], indirect=True, ids=["phone"])
+def test_split_falls_back_to_single_pane_on_phone(page, server):
+    page.goto(server)
+    expect(page.locator("#side-head h1")).to_have_text("mnemo")
+    # the split control is hidden on phones, and the second pane never shows
+    expect(page.locator("#split-btn")).to_be_hidden()
+    page.keyboard.press("Control+k")
+    page.fill("#palette-input", "split view open current note on the right")
+    page.keyboard.press("Enter")
+    page.wait_for_timeout(300)
+    assert "split" not in (page.locator("#app").get_attribute("class") or "")
+    expect(page.locator("#editor2")).to_be_hidden()
+
+
 def test_daily_note(page, server):
     page.goto(server)
     page.click("#daily")
