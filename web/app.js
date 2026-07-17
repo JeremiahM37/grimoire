@@ -66,6 +66,7 @@ function renderList(notes, snippets = false) {
   for (const n of notes) {
     const row = document.createElement("div");
     row.className = "note-row" + (n.path === state.path ? " active" : "");
+    row.dataset.path = n.path;
     row.innerHTML = `<div class="t">${n.pinned ? '<span class="pin">📌</span>' : ""}${esc(n.title || n.path)}</div>` +
       (snippets && n.snippet ? `<div class="snip">${n.snippet.replace(/\[(.*?)\]/g, "<b>$1</b>")}</div>`
         : `<div class="m">${esc(n.path)}</div>`);
@@ -73,7 +74,33 @@ function renderList(notes, snippets = false) {
     row.oncontextmenu = (e) => { e.preventDefault(); showContext(n.path, e.clientX, e.clientY); };
     el.appendChild(row);
   }
+  listSel = -1;
 }
+
+/* keyboard navigation of the note list (↑/↓ move, Enter opens) */
+let listSel = -1;
+function moveListSel(delta) {
+  const rows = [...$("#note-list").querySelectorAll(".note-row[data-path]")];
+  if (!rows.length) return;
+  rows.forEach((r) => r.classList.remove("kbd-sel"));
+  listSel = Math.max(0, Math.min(rows.length - 1, listSel + delta));
+  const row = rows[listSel];
+  row.classList.add("kbd-sel");
+  row.scrollIntoView({ block: "nearest" });
+}
+function openListSel(split) {
+  const rows = [...$("#note-list").querySelectorAll(".note-row[data-path]")];
+  const row = rows[listSel] || rows[0];
+  if (row) split ? openSplit(row.dataset.path) : openNote(row.dataset.path);
+}
+function listNavKey(e) {
+  if (e.key === "ArrowDown") { e.preventDefault(); moveListSel(listSel < 0 ? 0 : 1); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); moveListSel(-1); }
+  else if (e.key === "Enter" && listSel >= 0) { e.preventDefault(); openListSel(e.ctrlKey || e.metaKey); }
+}
+$("#search").addEventListener("keydown", listNavKey);
+$("#note-list").tabIndex = 0;
+$("#note-list").addEventListener("keydown", listNavKey);
 
 /* ---------- note actions by path (context menu) ---------- */
 async function pinByPath(path) { await api(`/notes/${encodeURI(path)}/pin`, { method: "POST" }); loadList(); }
