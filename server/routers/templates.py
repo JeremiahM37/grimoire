@@ -6,7 +6,7 @@ import time
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from .. import config, db, index, vault
+from .. import index, vault
 from ..vault import VaultError
 
 router = APIRouter(prefix="/api")

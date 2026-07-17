@@ -200,7 +200,6 @@ def transcribe(audio: bytes, filename: str = "memo.webm") -> str:
     if not url:
         return "[audio memo — transcription unavailable; set MNEMO_WHISPER_URL]"
     try:
-        import io
         boundary = "----mnemo" + os.urandom(8).hex()
         parts = [
             f'--{boundary}\r\nContent-Disposition: form-data; name="model"\r\n\r\n'
