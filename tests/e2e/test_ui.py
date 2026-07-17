@@ -597,6 +597,25 @@ def test_find_and_replace_all(page, server):
     expect(page.locator("#find-bar")).to_be_hidden()
 
 
+def test_unlinked_mentions_show_and_link(page, server):
+    page.goto(server)
+    page.once("dialog", lambda d: d.accept("Widget Factory"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Widget Factory", timeout=8000)
+    page.once("dialog", lambda d: d.accept("Widget Report"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Widget Report", timeout=8000)
+    page.fill("#content", "the Widget Factory shipped on time")
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
+    # open the target — Widget Report shows as an unlinked mention
+    page.click(".note-row .t >> text=Widget Factory")
+    expect(page.locator("#unlinked")).to_contain_text("Widget Report", timeout=8000)
+    # one-click link → becomes a backlink, leaves the unlinked list
+    page.locator("#unlinked .link-btn").first.click()
+    expect(page.locator("#backlinks")).to_contain_text("Widget Report", timeout=8000)
+    expect(page.locator("#unlinked")).not_to_contain_text("Widget Report")
+
+
 def test_daily_note(page, server):
     page.goto(server)
     page.click("#daily")

@@ -91,6 +91,8 @@ async function openNote(path) {
   updatePrivateToggle();
   updateWordCount();
   renderBacklinks(n.backlinks || []);
+  $("#unlinked").innerHTML = "";
+  if (!state.locked) api(`/notes/${encodeURI(n.path)}/unlinked`).then(renderUnlinked).catch(() => {});
   state.filterTag = null;
   $("#tag-filter-bar")?.remove();
   renderList(state.notes);
@@ -155,6 +157,26 @@ function renderBacklinks(bl) {
   el.innerHTML = "<h4>Backlinks</h4>" +
     bl.map((b) => `<a data-p="${esc(b.path)}">← ${esc(b.title)}</a>`).join("");
   el.querySelectorAll("a").forEach((a) => (a.onclick = () => openNote(a.dataset.p)));
+}
+
+/* ---------- unlinked mentions ---------- */
+function renderUnlinked(items) {
+  const el = $("#unlinked");
+  if (!items || !items.length) { el.innerHTML = ""; return; }
+  el.innerHTML = "<h4>Unlinked mentions</h4>" + items.map((u) =>
+    `<div class="unlinked-row"><div class="ul-top"><a data-p="${esc(u.path)}">${esc(u.title)}</a>
+      <button class="link-btn" data-p="${esc(u.path)}" data-n="${esc(u.name)}">🔗 link</button></div>
+      <div class="ctx">${esc(u.context)}</div></div>`).join("");
+  el.querySelectorAll("a[data-p]").forEach((a) => (a.onclick = () => openNote(a.dataset.p)));
+  el.querySelectorAll(".link-btn").forEach((b) => (b.onclick = async () => {
+    try {
+      await api(`/notes/${encodeURI(state.path)}/link`, { method: "POST", body: { source: b.dataset.p, name: b.dataset.n } });
+      toast("Linked 🔗");
+      const n = await api(`/notes/${encodeURI(state.path)}`);
+      renderBacklinks(n.backlinks || []);
+      api(`/notes/${encodeURI(state.path)}/unlinked`).then(renderUnlinked).catch(() => {});
+    } catch (e) { toast(e.message, true); }
+  }));
 }
 
 /* ---------- preview (offline markdown → html) ---------- */

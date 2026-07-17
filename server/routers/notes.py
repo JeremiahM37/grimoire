@@ -1,5 +1,6 @@
-"""Notes: CRUD (files ⇄ index), backlinks, rename."""
+"""Notes: CRUD (files ⇄ index), backlinks, rename, unlinked mentions."""
 import json
+import re
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -111,6 +112,49 @@ def create_note(n: NoteIn):
     return _view(db.one("SELECT * FROM notes WHERE path=?", (note["path"],)))
 
 
+def _names_for(rel: str, title: str) -> list[str]:
+    row = db.one("SELECT frontmatter_json FROM notes WHERE path=?", (rel,))
+    names = [title]
+    if row:
+        names += index._aliases(row["frontmatter_json"])
+    return [n for n in dict.fromkeys(names) if len(n) >= 3]
+
+
+def _mention_re(name: str) -> re.Pattern:
+    # a whole-word match NOT already inside a [[wiki-link]]
+    return re.compile(r"(?<![\w\[])" + re.escape(name) + r"(?![\w\]])", re.I)
+
+
+# NOTE: must be declared BEFORE get_note — its greedy /notes/{path:path} would
+# otherwise swallow this GET route.
+@router.get("/notes/{path:path}/unlinked")
+def unlinked_mentions(path: str):
+    """Notes that mention this note's title/aliases as plain text but don't link it."""
+    rel = _norm(path)
+    target = db.one("SELECT title FROM notes WHERE path=?", (rel,))
+    if not target:
+        raise HTTPException(404, "no such note")
+    names = _names_for(rel, target["title"])
+    if not names:
+        return []
+    linked = {l["src"] for l in db.query("SELECT src FROM links WHERE dst=?", (rel,))}
+    pats = [(n, _mention_re(n)) for n in names]
+    out = []
+    for r in db.query("SELECT path, title, body FROM notes WHERE path != ?", (rel,)):
+        if r["path"] in linked or secrets.is_encrypted(r["body"] or ""):
+            continue
+        for name, pat in pats:
+            m = pat.search(r["body"] or "")
+            if m:
+                start = r["body"].rfind("\n", 0, m.start()) + 1
+                end = r["body"].find("\n", m.end())
+                snippet = r["body"][start:end if end != -1 else None].strip()
+                out.append({"path": r["path"], "title": r["title"], "name": name,
+                            "context": snippet[:160]})
+                break
+    return out
+
+
 @router.get("/notes/{path:path}")
 def get_note(path: str):
     row = db.one("SELECT * FROM notes WHERE path=?", (_norm(path),))
@@ -199,6 +243,36 @@ def delete_note(path: str):
         raise HTTPException(404, str(e))
     index.remove(rel)
     return {"trashed": tid, "path": rel}
+
+
+class LinkMentionIn(BaseModel):
+    source: str          # the note that mentions this one
+    name: str            # the mentioned string to wrap
+
+
+@router.post("/notes/{path:path}/link")
+def link_mention(path: str, m: LinkMentionIn):
+    """Wrap the first unlinked mention of `name` in `source` with a wiki-link to
+    this note (so an unlinked mention becomes a real link)."""
+    rel = _norm(path)
+    target = db.one("SELECT title FROM notes WHERE path=?", (rel,))
+    if not target:
+        raise HTTPException(404, "no such note")
+    src = _norm(m.source)
+    try:
+        note = vault.read(src)
+    except VaultError:
+        raise HTTPException(404, "no such source note")
+    if note.get("encrypted"):
+        raise HTTPException(400, "cannot edit an encrypted note")
+    link = f"[[{m.name}]]" if m.name.lower() == target["title"].lower() \
+        else f"[[{target['title']}|{m.name}]]"
+    new_body, n = _mention_re(m.name).subn(link, note["body"], count=1)
+    if not n:
+        raise HTTPException(404, "mention not found")
+    vault.write(src, new_body, note["frontmatter"])
+    index.upsert(src)
+    return {"linked": src, "count": n}
 
 
 @router.get("/trash")
