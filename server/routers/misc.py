@@ -1,12 +1,13 @@
-"""Health + reindex + link autocomplete + task aggregation + vault export."""
+"""Health + reindex + link autocomplete + task aggregation + vault export/import."""
 import io
 import re
 import zipfile
 
-from fastapi import APIRouter
+from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import Response
 
 from .. import config, db, index, vault
+from ..vault import VaultError
 
 router = APIRouter(prefix="/api")
 
@@ -26,6 +27,44 @@ def export_vault():
                     z.write(p, arcname=str(p.relative_to(root)))
     return Response(buf.getvalue(), media_type="application/zip",
                     headers={"Content-Disposition": 'attachment; filename="mnemo-vault.zip"'})
+
+
+@router.post("/import/vault")
+async def import_vault(file: UploadFile = File(...)):
+    """Extract a .zip into the vault. Each entry is confined via safe_raw_path
+    (zip-slip protection), .mnemo entries are refused, and total uncompressed
+    size is capped (zip-bomb protection). Existing files are overwritten."""
+    data = await file.read()
+    if len(data) > 200 * 1024 * 1024:
+        raise HTTPException(413, "archive too large")
+    imported, skipped, total = 0, 0, 0
+    CAP = 500 * 1024 * 1024
+    try:
+        zf = zipfile.ZipFile(io.BytesIO(data))
+    except zipfile.BadZipFile:
+        raise HTTPException(400, "not a valid zip archive")
+    with zf:
+        for info in zf.infolist():
+            if info.is_dir():
+                continue
+            total += info.file_size
+            if total > CAP:
+                raise HTTPException(413, "archive expands too large")
+            name = info.filename.replace("\\", "/")
+            if ".mnemo" in name.split("/"):
+                skipped += 1
+                continue
+            try:
+                p = vault.safe_raw_path(name)   # zip-slip: confine to the vault
+            except VaultError:
+                skipped += 1
+                continue
+            p.parent.mkdir(parents=True, exist_ok=True)
+            with zf.open(info) as src:
+                p.write_bytes(src.read())
+            imported += 1
+    index.reindex()
+    return {"imported": imported, "skipped": skipped}
 
 
 @router.get("/health")

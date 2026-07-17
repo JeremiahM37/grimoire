@@ -836,8 +836,26 @@ const COMMANDS = [
   { icon: "⇤", name: "Toggle sidebar", run: toggleSidebar },
   { icon: "🧘", name: "Toggle focus mode (distraction-free)", run: toggleZen },
   { icon: "⬇", name: "Export whole vault (.zip)", run: () => { location.href = "/api/export/vault"; } },
+  { icon: "⬆", name: "Import vault from .zip", run: importVault },
   { icon: "🏷", name: "Rename a tag (across all notes)", run: renameTag },
 ];
+function importVault() {
+  const inp = document.createElement("input");
+  inp.type = "file"; inp.accept = ".zip,application/zip";
+  inp.onchange = async () => {
+    const f = inp.files[0]; if (!f) return;
+    const fd = new FormData(); fd.append("file", f, f.name);
+    toast("Importing…");
+    try {
+      const r = await fetch("/api/import/vault", { method: "POST", body: fd });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.statusText);
+      const j = await r.json();
+      toast(`Imported ${j.imported} file(s)${j.skipped ? `, skipped ${j.skipped}` : ""}`);
+      await loadList();
+    } catch (e) { toast("Import failed: " + e.message, true); }
+  };
+  inp.click();
+}
 async function renameTag() {
   const old = prompt("Rename which tag? (without #)");
   if (!old) return;
