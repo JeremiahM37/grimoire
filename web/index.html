@@ -47,6 +47,7 @@
       <span id="wordcount" class="wordcount"></span>
       <span id="save-state" class="save-state"></span>
       <button id="ai-btn" class="icon" title="AI actions">✦</button>
+      <button id="props-btn" class="icon" title="properties">ⓘ</button>
       <button id="outline-btn" class="icon" title="outline">⊟</button>
       <button id="private-toggle" class="icon" title="private note">🔓</button>
       <button id="preview-toggle" class="icon" title="preview">◐</button>
@@ -115,6 +116,16 @@
   </div>
 
   <div id="outline" class="menu hidden"></div>
+
+  <div id="props-modal" class="modal hidden">
+    <div class="modal-box">
+      <header class="modal-head">
+        <span>ⓘ Properties</span>
+        <button id="props-close" class="icon">✕</button>
+      </header>
+      <div id="props-body"></div>
+    </div>
+  </div>
 
   <div id="help-modal" class="modal hidden">
     <div class="modal-box">

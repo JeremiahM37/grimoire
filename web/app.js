@@ -662,11 +662,25 @@ const COMMANDS = [
   { icon: "📅", name: "Open calendar", run: () => openCalendar() },
   { icon: "☑", name: "Open tasks (all notes)", run: openTasks },
   { icon: "⌨", name: "Keyboard shortcuts & help", run: openHelp },
+  { icon: "ⓘ", name: "Edit note properties", run: openProps },
   { icon: "🔍", name: "Find & replace in note", run: openFind },
   { icon: "🎲", name: "Open random note", run: openRandom },
   { icon: "⧉", name: "Duplicate this note", run: duplicateNote },
   { icon: "⬇", name: "Export whole vault (.zip)", run: () => { location.href = "/api/export/vault"; } },
+  { icon: "🏷", name: "Rename a tag (across all notes)", run: renameTag },
 ];
+async function renameTag() {
+  const old = prompt("Rename which tag? (without #)");
+  if (!old) return;
+  const nw = prompt(`Rename #${old.replace(/^#/, "")} to: (without #)`);
+  if (!nw) return;
+  try {
+    const r = await api("/tags/rename", { method: "POST", body: { old, new: nw } });
+    toast(`Renamed #${r.renamed} → #${r.to} in ${r.notes} note(s)`);
+    await loadList();
+    if (state.path) openNote(state.path);
+  } catch (e) { toast(e.message, true); }
+}
 async function openRandom() {
   try { const r = await api("/notes/random"); openNote(r.path); }
   catch (e) { toast(e.message, true); }
@@ -1091,6 +1105,70 @@ async function openSettings() {
       $("#settings-modal").classList.add("hidden");
     } catch (e) { toast(e.message, true); }
   };
+}
+
+/* ---------- properties / frontmatter editor ---------- */
+const PROP_HIDDEN = new Set(["title", "tags", "aliases", "pinned", "private", "created", "updated", "encrypted"]);
+$("#props-btn").onclick = openProps;
+$("#props-close").onclick = () => $("#props-modal").classList.add("hidden");
+$("#props-modal").onclick = (e) => { if (e.target.id === "props-modal") $("#props-modal").classList.add("hidden"); };
+function _prCustomRow(k = "", v = "") {
+  return `<div class="pr-crow"><input class="pr-ck" value="${esc(k)}" placeholder="key">`
+    + `<input class="pr-cv" value="${esc(typeof v === "object" ? JSON.stringify(v) : v)}" placeholder="value">`
+    + `<button class="icon danger pr-del" title="remove">🗑</button></div>`;
+}
+function openProps() {
+  if (!state.path) return toast("Open a note first", true);
+  if (state.locked) return toast("Unlock the vault to edit properties", true);
+  const fm = state.frontmatter || {};
+  const list = (v) => Array.isArray(v) ? v.join(", ") : (v ? String(v) : "");
+  const custom = Object.entries(fm).filter(([k]) => !PROP_HIDDEN.has(k));
+  $("#props-body").innerHTML = `
+    <label class="set-row"><span>Title</span><input id="pr-title" value="${esc(fm.title || $("#title").value || "")}"></label>
+    <label class="set-row"><span>Tags</span><input id="pr-tags" value="${esc(list(fm.tags))}" placeholder="comma, separated"></label>
+    <label class="set-row"><span>Aliases</span><input id="pr-aliases" value="${esc(list(fm.aliases))}" placeholder="comma, separated"></label>
+    <div class="set-row"><span>Flags</span><span class="pr-flags">
+      <label class="chk"><input type="checkbox" id="pr-pinned"${fm.pinned ? " checked" : ""}> pinned</label>
+      <label class="chk"><input type="checkbox" id="pr-private"${fm.private ? " checked" : ""}> private</label></span></div>
+    <div class="pr-clabel">Custom fields</div>
+    <div id="pr-custom">${custom.map((c) => _prCustomRow(c[0], c[1])).join("")}</div>
+    <button id="pr-add" class="btn">+ field</button>
+    <p class="vault-note">Created ${esc(fm.created || "—")} · Updated ${esc(fm.updated || "—")}</p>
+    <div class="ask-input-row"><button id="pr-save" class="btn full">Save properties</button></div>`;
+  $("#props-modal").classList.remove("hidden");
+  const wireDel = () => $("#pr-custom").querySelectorAll(".pr-del").forEach((b) =>
+    (b.onclick = () => { b.closest(".pr-crow").remove(); }));
+  wireDel();
+  $("#pr-add").onclick = () => { $("#pr-custom").insertAdjacentHTML("beforeend", _prCustomRow()); wireDel(); };
+  $("#pr-save").onclick = saveProps;
+}
+async function saveProps() {
+  const fm = { ...(state.frontmatter || {}) };
+  const newFm = {};
+  // custom fields first (title/tags/etc. override below)
+  $("#pr-custom").querySelectorAll(".pr-crow").forEach((r) => {
+    const k = r.querySelector(".pr-ck").value.trim();
+    if (k && !PROP_HIDDEN.has(k)) newFm[k] = r.querySelector(".pr-cv").value;
+  });
+  const title = $("#pr-title").value.trim();
+  if (title) newFm.title = title;
+  const tags = $("#pr-tags").value.split(",").map((s) => s.trim()).filter(Boolean);
+  if (tags.length) newFm.tags = tags;
+  const aliases = $("#pr-aliases").value.split(",").map((s) => s.trim()).filter(Boolean);
+  if (aliases.length) newFm.aliases = aliases;
+  if ($("#pr-pinned").checked) newFm.pinned = true;
+  if ($("#pr-private").checked) newFm.private = true;
+  if (fm.created) newFm.created = fm.created;              // preserve creation stamp
+  try {
+    const n = await api(`/notes/${encodeURI(state.path)}`, { method: "PUT",
+      body: { body: $("#content").value, frontmatter: newFm } });
+    state.frontmatter = n.frontmatter || newFm;
+    $("#title").value = n.title || title;
+    updatePrivateToggle();
+    $("#props-modal").classList.add("hidden");
+    toast("Properties saved");
+    loadList(); refreshTemplates();
+  } catch (e) { toast(e.message, true); }
 }
 
 /* ---------- theme (auto / light / dark, persisted) ---------- */
