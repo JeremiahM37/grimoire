@@ -27,10 +27,20 @@ body { background: var(--paper); color: var(--ink); font-family: var(--sans);
   font-size: 15px; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
 
 #app { display: grid; grid-template-columns: var(--side-w) 1fr; height: 100dvh; }
-#app.split { grid-template-columns: var(--side-w) 1fr 1fr; }
+#app.split { grid-template-columns: var(--side-w) var(--main-w, 1fr) 1fr; }
+
+/* drag-to-resize handles (desktop) */
+.resize-h { position: absolute; top: 0; width: 8px; height: 100%; z-index: 16;
+  cursor: col-resize; touch-action: none; }
+.resize-h::after { content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 2px;
+  background: transparent; transition: background .15s; }
+.resize-h:hover::after, .resize-h.dragging::after { background: var(--accent); }
+#sidebar-resize { right: -4px; }
+#split-resize { left: -4px; }
+body.resizing { cursor: col-resize; user-select: none; }
 
 /* second editor pane (desktop split view) */
-#editor2 { display: none; flex-direction: column; min-width: 0; min-height: 0;
+#editor2 { display: none; position: relative; flex-direction: column; min-width: 0; min-height: 0;
   border-left: 1px solid var(--line); }
 #app.split #editor2 { display: flex; }
 #ed-head2 { display: flex; align-items: center; gap: 8px;
@@ -45,7 +55,7 @@ body { background: var(--paper); color: var(--ink); font-family: var(--sans);
 
 /* ---------- sidebar ---------- */
 #sidebar { background: var(--paper2); border-right: 1px solid var(--line);
-  display: flex; flex-direction: column; min-height: 0; }
+  display: flex; flex-direction: column; min-height: 0; position: relative; }
 #side-head { display: flex; align-items: center; justify-content: space-between;
   padding: calc(12px + env(safe-area-inset-top)) 14px 10px; }
 #side-head h1 { margin: 0; font-family: var(--serif); font-size: 22px; font-weight: 600;
@@ -301,7 +311,7 @@ body { background: var(--paper); color: var(--ink); font-family: var(--sans);
 /* ---------- mobile ---------- */
 @media (max-width: 780px) {
   #app, #app.split { grid-template-columns: 1fr; }   /* split collapses on phones */
-  #editor2, #split-btn { display: none; }
+  #editor2, #split-btn, #sidebar-resize { display: none; }
   #sidebar { position: fixed; inset: 0 30% 0 0; z-index: 30; transform: translateX(-100%);
     transition: transform .2s ease; box-shadow: var(--shadow); }
   #sidebar.open { transform: translateX(0); }

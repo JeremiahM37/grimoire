@@ -1190,6 +1190,40 @@ $("#theme-toggle").onclick = () => {
 };
 applyTheme(localStorage.getItem("mnemo-theme") || "auto");
 
+/* ---------- drag-to-resize (sidebar + split divider) ---------- */
+function makeResizer(handle, onDrag) {
+  handle.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    handle.setPointerCapture(e.pointerId);
+    handle.classList.add("dragging"); document.body.classList.add("resizing");
+    const move = (ev) => onDrag(ev.clientX);
+    const up = (ev) => {
+      handle.releasePointerCapture(e.pointerId);
+      handle.classList.remove("dragging"); document.body.classList.remove("resizing");
+      handle.removeEventListener("pointermove", move);
+      handle.removeEventListener("pointerup", up);
+    };
+    handle.addEventListener("pointermove", move);
+    handle.addEventListener("pointerup", up);
+  });
+}
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+// sidebar width — persisted
+const savedSide = localStorage.getItem("mnemo-side-w");
+if (savedSide) document.documentElement.style.setProperty("--side-w", savedSide + "px");
+makeResizer($("#sidebar-resize"), (x) => {
+  const w = clamp(Math.round(x), 200, Math.min(560, innerWidth - 360));
+  document.documentElement.style.setProperty("--side-w", w + "px");
+  localStorage.setItem("mnemo-side-w", w);
+});
+// split divider — middle pane width (px); resets to 50/50 each split
+makeResizer($("#split-resize"), (x) => {
+  const sideW = $("#sidebar").getBoundingClientRect().width;
+  const avail = innerWidth - sideW;
+  const mainW = clamp(Math.round(x - sideW), 280, avail - 280);
+  document.documentElement.style.setProperty("--main-w", mainW + "px");
+});
+
 /* ---------- split view (second editor pane) ---------- */
 const pane2 = { path: null, dirty: false, frontmatter: {}, saveTimer: null, locked: false };
 const ta2 = $("#content2");
@@ -1198,6 +1232,7 @@ function openSplit(path) {
   path = path || state.path;
   if (!path) return toast("Open a note first", true);
   if (isNarrow()) return openNote(path);   // no split on phones
+  document.documentElement.style.setProperty("--main-w", "1fr");   // start balanced
   $("#app").classList.add("split");
   loadPane2(path);
 }
