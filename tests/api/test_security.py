@@ -140,3 +140,12 @@ def test_secret_value_never_returned_by_api(client):
     assert "sk-supersecret-123" not in listing         # names/meta only
     # and it isn't retrievable through any documented note/search path
     assert "sk-supersecret-123" not in client.get("/api/search?q=supersecret").text
+
+
+def test_audit_log_requires_unlock(client):
+    _init(client)
+    client.post("/api/secrets", json={"name": "gh", "value": "ghp_secret_audit"})
+    client.post("/api/vault/lock")
+    r = client.get("/api/audit")
+    assert r.status_code == 423                    # no vault metadata while locked
+    assert "gh" not in r.text and "ghp_secret_audit" not in r.text
