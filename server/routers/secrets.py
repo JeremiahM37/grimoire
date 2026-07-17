@@ -45,6 +45,37 @@ def vault_lock():
     return {"ok": True, "unlocked": False}
 
 
+class ChangePass(BaseModel):
+    old: str
+    new: str
+
+
+@router.post("/vault/change-passphrase")
+def change_pass(p: ChangePass):
+    try:
+        return {"ok": True, **secrets.change_passphrase(p.old, p.new)}
+    except VaultError as e:
+        raise HTTPException(400, str(e))
+
+
+@router.get("/grants")
+def get_grants():
+    try:
+        return secrets.list_grants()
+    except VaultLocked:
+        raise HTTPException(423, "vault locked")
+
+
+@router.delete("/grants/{token}")
+def revoke(token: str):
+    return {"revoked": secrets.revoke_grant(token)}
+
+
+@router.delete("/grants")
+def revoke_all():
+    return {"revoked": secrets.revoke_all_grants()}
+
+
 @router.get("/secrets")
 def list_secrets():
     try:
