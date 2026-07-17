@@ -705,6 +705,23 @@ def test_rename_tag_via_palette(page, server):
     page.remove_listener("dialog", handle)
 
 
+def test_focus_mode_hides_chrome_and_escapes(page, server):
+    page.goto(server)
+    page.once("dialog", lambda d: d.accept("Zen Note"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Zen Note", timeout=8000)
+    page.keyboard.press("Control+k")
+    page.fill("#palette-input", "toggle focus mode distraction free")
+    page.keyboard.press("Enter")
+    expect(page.locator("#ed-toolbar")).to_be_hidden()
+    expect(page.locator("#sidebar")).to_be_hidden()
+    expect(page.locator("#zen-exit")).to_be_visible()
+    expect(page.locator("#content")).to_be_visible()      # writing surface stays
+    page.keyboard.press("Escape")                          # exit focus
+    expect(page.locator("#ed-toolbar")).to_be_visible()
+    expect(page.locator("#zen-exit")).to_be_hidden()
+
+
 def test_note_context_menu_duplicate_and_rename(page, server):
     page.goto(server)
     page.once("dialog", lambda d: d.accept("Ctx Note"))
