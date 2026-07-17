@@ -12,12 +12,46 @@ can USE but never READ:
   value never crosses to the client. Every use is written to an audit log.
 """
 import json
+import os
 import time
 
 from . import config, crypto, db
 
 # in-memory session key (never persisted); None when locked
 _key: bytes | None = None
+
+# --- brute-force + idle protection (in-memory, per process) -------------------
+_failures = 0
+_lock_until = 0.0
+_last_activity = 0.0
+MAX_FAILURES = 5
+# auto-lock the vault after this many idle seconds (0 disables)
+IDLE_LOCK_SECONDS = int(os.environ.get("MNEMO_VAULT_IDLE_LOCK", "900"))
+
+
+def _touch() -> None:
+    global _last_activity
+    _last_activity = time.time()
+
+
+def _check_lockout() -> None:
+    remaining = _lock_until - time.time()
+    if remaining > 0:
+        raise VaultError(f"too many attempts — locked for {int(remaining) + 1}s")
+
+
+def _record_failure() -> None:
+    global _failures, _lock_until
+    _failures += 1
+    if _failures >= MAX_FAILURES:
+        # exponential backoff: 30s, 60s, 120s … capped at 1h
+        _lock_until = time.time() + min(3600, 30 * (2 ** (_failures - MAX_FAILURES)))
+
+
+def _reset_failures() -> None:
+    global _failures, _lock_until
+    _failures = 0
+    _lock_until = 0.0
 
 # marker for an encrypted note body on disk
 ENC_PREFIX = "mnemo:enc:v1:"
@@ -63,6 +97,9 @@ def is_initialized() -> bool:
 
 
 def is_unlocked() -> bool:
+    global _key
+    if _key is not None and IDLE_LOCK_SECONDS > 0 and (time.time() - _last_activity) > IDLE_LOCK_SECONDS:
+        _key = None   # auto-lock after idle — shrink the key's exposure window
     return _key is not None
 
 
@@ -80,8 +117,9 @@ class VaultError(Exception):
 
 
 def _require_unlocked():
-    if _key is None:
+    if not is_unlocked():
         raise VaultLocked("vault is locked")
+    _touch()   # refresh the idle timer on every sensitive operation
 
 
 def _payload() -> dict:
@@ -104,28 +142,40 @@ def _write_payload(payload: dict) -> None:
 def initialize(passphrase: str) -> None:
     if is_initialized():
         raise VaultError("vault already initialized")
+    if len(passphrase) < 8:
+        raise VaultError("passphrase must be at least 8 characters")
     salt = crypto.new_salt()
     import base64
-    key = crypto.derive_key(passphrase, salt)
+    key = crypto.derive_key(passphrase, salt, crypto.DEFAULT_KDF)
     # a verifier: seal a known token so unlock can validate the passphrase
     blob = {"salt": base64.b64encode(salt).decode(),
-            "verifier": base64.b64encode(crypto.seal(key, b"mnemo-vault-v1")).decode()}
+            "verifier": base64.b64encode(crypto.seal(key, b"mnemo-vault-v1")).decode(),
+            "kdf": crypto.DEFAULT_KDF}
     _save_blob(blob)
     global _key
     _key = key
+    _touch()
     _write_payload({})
 
 
 def unlock(passphrase: str) -> None:
     global _key
+    _check_lockout()   # brute-force backoff
     blob = _load_blob()
     if not blob.get("salt"):
         raise VaultError("vault not initialized")
     import base64
-    key = crypto.derive_key(passphrase, base64.b64decode(blob["salt"]))
-    # validate against the verifier — raises ValueError on wrong passphrase
-    crypto.unseal(key, base64.b64decode(blob["verifier"]))
+    kdf = blob.get("kdf", "pbkdf2")   # legacy vaults predate the kdf field
+    key = crypto.derive_key(passphrase, base64.b64decode(blob["salt"]), kdf)
+    try:
+        # validate against the verifier — raises ValueError on wrong passphrase
+        crypto.unseal(key, base64.b64decode(blob["verifier"]))
+    except ValueError:
+        _record_failure()
+        raise
+    _reset_failures()
     _key = key
+    _touch()
 
 
 def lock() -> None:
@@ -170,6 +220,10 @@ def grant(secret: str, grantee: str, scope: str, ttl_seconds: int) -> str:
     _require_unlocked()
     if secret not in {s["name"] for s in list_names()}:
         raise VaultError(f"no such secret: {secret}")
+    from urllib.parse import urlparse
+    sp = urlparse(scope or "")
+    if sp.scheme not in ("http", "https") or not sp.hostname:
+        raise VaultError("grant scope must be an absolute http(s) URL (e.g. https://api.github.com/)")
     import secrets as pysecrets
     token = pysecrets.token_urlsafe(24)
     db.execute(
@@ -179,13 +233,54 @@ def grant(secret: str, grantee: str, scope: str, ttl_seconds: int) -> str:
     return token
 
 
+def _scope_permits(scope: str, url: str) -> bool:
+    """Origin-exact + path-prefix match. Prevents the classic prefix bypass where
+    `https://api.github.com` would otherwise 'match' `https://api.github.com.evil.com`."""
+    from urllib.parse import urlparse
+    s, u = urlparse(scope), urlparse(url)
+    if (s.scheme.lower(), s.hostname, s.port) != (u.scheme.lower(), u.hostname, u.port):
+        return False
+    sp = s.path if s.path.endswith("/") or not s.path else s.path
+    return u.path.startswith(s.path) or (u.path + "/").startswith(sp)
+
+
+def _assert_url_safe(url: str) -> None:
+    """SSRF guard: only http/https, and (by default) refuse to broker a secret to
+    a private / loopback / link-local / reserved address. Cloud-metadata and
+    link-local are ALWAYS blocked. Set MNEMO_BROKER_ALLOW_PRIVATE=1 to reach
+    internal hosts (e.g. a self-hosted homelab)."""
+    import ipaddress
+    import socket
+    from urllib.parse import urlparse
+    p = urlparse(url)
+    if p.scheme not in ("http", "https"):
+        raise VaultError("broker: only http(s) URLs are allowed")
+    host = p.hostname
+    if not host:
+        raise VaultError("broker: URL has no host")
+    allow_private = os.environ.get("MNEMO_BROKER_ALLOW_PRIVATE") == "1"
+    try:
+        infos = socket.getaddrinfo(host, p.port or (443 if p.scheme == "https" else 80),
+                                   proto=socket.IPPROTO_TCP)
+    except socket.gaierror:
+        raise VaultError("broker: could not resolve host")
+    for info in infos:
+        ip = ipaddress.ip_address(info[4][0])
+        if ip.is_link_local or str(ip) in ("169.254.169.254", "::ffff:169.254.169.254"):
+            raise VaultError("broker: blocked link-local / cloud-metadata address")
+        if not allow_private and (ip.is_private or ip.is_loopback or ip.is_reserved
+                                  or ip.is_multicast or ip.is_unspecified):
+            raise VaultError(f"broker: refusing non-public address {ip} "
+                             "(set MNEMO_BROKER_ALLOW_PRIVATE=1 for internal hosts)")
+
+
 def _valid_grant(token: str, url: str) -> dict:
     g = db.one("SELECT * FROM grants WHERE token=?", (token,))
     if not g:
         raise VaultError("invalid grant")
     if g["expires_at"] < _now():
         raise VaultError("grant expired")
-    if g["scope"] and not url.startswith(g["scope"]):
+    if not g["scope"] or not _scope_permits(g["scope"], url):
         raise VaultError(f"grant scope does not permit {url}")
     return g
 
@@ -196,6 +291,7 @@ def broker(token: str, method: str, url: str, header: str,
     authorized by a grant. The secret value never returns to the caller."""
     _require_unlocked()
     g = _valid_grant(token, url)
+    _assert_url_safe(url)
     value = _get_value(g["secret"])
     import urllib.request
     req = urllib.request.Request(url, method=method.upper(),
@@ -205,6 +301,8 @@ def broker(token: str, method: str, url: str, header: str,
     try:
         with urllib.request.urlopen(req, timeout=30) as r:
             return {"status": r.status, "body": r.read(65536).decode(errors="replace")}
+    except VaultError:
+        raise
     except Exception as e:  # noqa: BLE001
         return {"status": 0, "error": str(e)}
 
@@ -227,6 +325,9 @@ def _iso() -> str:
 
 
 def reset_for_tests() -> None:
-    """Drop the in-memory key between tests."""
-    global _key
+    """Drop the in-memory key and protection state between tests."""
+    global _key, _failures, _lock_until, _last_activity
     _key = None
+    _failures = 0
+    _lock_until = 0.0
+    _last_activity = 0.0

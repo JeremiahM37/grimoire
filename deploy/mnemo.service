@@ -17,6 +17,8 @@ Environment=MNEMO_EMBED_MODEL=nomic-embed-text
 # a reachable Ollama auto-enables generative ask-your-notes; this picks the model
 # (an MoE: 3B active / 35B total — quality answers, fast inference)
 Environment=MNEMO_LLM_MODEL=qwen3.6:35b-a3b
+# homelab: allow brokering to internal hosts (metadata/link-local still blocked)
+Environment=MNEMO_BROKER_ALLOW_PRIVATE=1
 ExecStart=/home/admin/projects/mnemo/.venv/bin/python -m server
 Restart=on-failure
 RestartSec=5

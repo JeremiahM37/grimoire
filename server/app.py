@@ -1,5 +1,6 @@
 """mnemo app factory. Run: python -m server (or uvicorn server.app:create_app --factory)."""
 import contextlib
+import hmac
 import os
 
 from fastapi import FastAPI, Request
@@ -29,13 +30,34 @@ def create_app() -> FastAPI:
 
     app = FastAPI(title="mnemo", version="0.1.0", lifespan=lifespan)
 
+    # Security headers on every response. Strict CSP (no inline/external scripts)
+    # is defense-in-depth against XSS; the renderers already escape HTML. No
+    # frame-ancestors restriction so the app can still be embedded behind the
+    # homelab reverse proxy — front that with Authelia/Tailscale as configured.
+    CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+           "img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; "
+           "media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'")
+
+    @app.middleware("http")
+    async def security_headers(request: Request, call_next):
+        resp = await call_next(request)
+        resp.headers["X-Content-Type-Options"] = "nosniff"
+        resp.headers["Referrer-Policy"] = "no-referrer"
+        resp.headers["X-Frame-Options"] = os.environ.get("MNEMO_FRAME_OPTIONS", "SAMEORIGIN")
+        resp.headers.setdefault("Content-Security-Policy", CSP)
+        resp.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+        return resp
+
     if config.AUTH_TOKEN:
         @app.middleware("http")
         async def auth(request: Request, call_next):
             if request.url.path.startswith("/api"):
                 supplied = request.headers.get("authorization", "").removeprefix("Bearer ")
-                if supplied != config.AUTH_TOKEN and \
-                        request.query_params.get("token") != config.AUTH_TOKEN:
+                qtoken = request.query_params.get("token", "")
+                # constant-time comparison — no early-exit timing leak
+                ok = (hmac.compare_digest(supplied, config.AUTH_TOKEN)
+                      or hmac.compare_digest(qtoken, config.AUTH_TOKEN))
+                if not ok:
                     return JSONResponse({"detail": "unauthorized"}, status_code=401)
             return await call_next(request)
 
