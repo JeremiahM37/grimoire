@@ -4,7 +4,7 @@ import json
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from .. import db, index, secrets, vault
+from .. import db, index, secrets, trash, vault
 from ..vault import VaultError
 
 router = APIRouter(prefix="/api")
@@ -154,14 +154,39 @@ def decrypt_note(path: str):
     return _view(db.one("SELECT * FROM notes WHERE path=?", (rel,)))
 
 
-@router.delete("/notes/{path:path}", status_code=204)
+@router.delete("/notes/{path:path}")
 def delete_note(path: str):
+    """Soft-delete: move the note to trash (recoverable) and drop it from the
+    index. Returns the trash id so the UI can offer Undo."""
     rel = _norm(path)
+    row = db.one("SELECT title FROM notes WHERE path=?", (rel,))
+    title = row["title"] if row else rel
     try:
-        vault.delete(rel)
+        tid = trash.trash(rel, title)
     except VaultError as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(404, str(e))
     index.remove(rel)
+    return {"trashed": tid, "path": rel}
+
+
+@router.get("/trash")
+def list_trash():
+    return trash.list_trash()
+
+
+@router.post("/trash/{tid}/restore")
+def restore_trashed(tid: str):
+    try:
+        rel = trash.restore(tid)
+    except VaultError as e:
+        raise HTTPException(404, str(e))
+    index.upsert(rel)
+    return _view(db.one("SELECT * FROM notes WHERE path=?", (rel,)))
+
+
+@router.delete("/trash/{tid}", status_code=204)
+def purge_trashed(tid: str):
+    trash.purge(tid)
 
 
 class RenameIn(BaseModel):
