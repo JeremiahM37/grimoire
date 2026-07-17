@@ -631,6 +631,24 @@ def test_duplicate_note_via_palette(page, server):
     expect(page.locator(".note-row .t", has_text="Original ZZ (copy)")).to_be_visible()
 
 
+def test_search_tag_operator_in_ui(page, server):
+    page.goto(server)
+    page.once("dialog", lambda d: d.accept("Op Note ZZ"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Op Note ZZ", timeout=8000)
+    page.fill("#content", "content here #opztag")
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
+    page.once("dialog", lambda d: d.accept("Other ZZ"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Other ZZ", timeout=8000)
+    page.fill("#content", "content here no tag")
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
+    # a tag: operator narrows the results
+    page.fill("#search", "content tag:opztag")
+    expect(page.locator(".note-row", has_text="Op Note ZZ")).to_be_visible(timeout=8000)
+    expect(page.locator(".note-row .t", has_text="Other ZZ")).to_have_count(0)
+
+
 def test_daily_note(page, server):
     page.goto(server)
     page.click("#daily")
