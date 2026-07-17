@@ -1,6 +1,6 @@
 """Read/update user settings (AI backend/model, service URLs). embed_model is
 intentionally NOT editable here — changing it would invalidate stored vectors."""
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from .. import ai, settings
@@ -28,5 +28,7 @@ class SettingsPatch(BaseModel):
 @router.put("/settings")
 def put_settings(p: SettingsPatch):
     patch = {k: v for k, v in p.model_dump(exclude_unset=True).items()}
+    if patch.get("llm") not in (None, "", "ollama", "claude"):
+        raise HTTPException(400, "llm must be '', 'ollama', or 'claude'")
     settings.update(patch)
     return _state()

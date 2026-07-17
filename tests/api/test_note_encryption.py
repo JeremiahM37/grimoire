@@ -83,3 +83,13 @@ def test_decrypt_restores_plaintext_and_search(client, vaultdir):
 def test_encrypt_requires_unlocked_vault(client):
     client.post("/api/notes", json={"title": "Needs Vault", "body": "x"})
     assert client.post("/api/notes/needs-vault.md/encrypt").status_code == 423
+
+
+def test_encrypted_note_is_not_exportable(client):
+    # export is an unauthenticated route — it must never render an encrypted note
+    _unlock(client)
+    client.post("/api/notes", json={"title": "No Export", "body": "leak me if you can"})
+    client.post("/api/notes/no-export.md/encrypt")
+    r = client.get("/notes/no-export/export.html")
+    assert r.status_code == 404
+    assert "leak me" not in r.text
