@@ -1,9 +1,13 @@
-"""Health + reindex + link autocomplete."""
+"""Health + reindex + link autocomplete + task aggregation."""
+import re
+
 from fastapi import APIRouter
 
 from .. import config, db, index
 
 router = APIRouter(prefix="/api")
+
+_TASK_RE = re.compile(r"^\s*[-*]\s+\[([ xX])\]\s+(.*)$")
 
 
 @router.get("/health")
@@ -32,6 +36,25 @@ def reindex():
 def aliases():
     """{alias: path} map so the editor can resolve [[alias]] wiki-links."""
     return index.alias_map()
+
+
+@router.get("/tasks")
+def tasks(include_done: bool = False):
+    """Every `- [ ]` / `- [x]` task across the vault (encrypted notes excluded —
+    their ciphertext body has no parseable tasks). Open tasks first."""
+    out = []
+    for r in db.query("SELECT path, title, body FROM notes ORDER BY updated DESC"):
+        for i, line in enumerate((r["body"] or "").split("\n")):
+            m = _TASK_RE.match(line)
+            if not m:
+                continue
+            done = m.group(1).lower() == "x"
+            if done and not include_done:
+                continue
+            out.append({"path": r["path"], "title": r["title"], "line": i,
+                        "text": m.group(2).strip(), "done": done})
+    out.sort(key=lambda t: t["done"])   # open tasks first
+    return out
 
 
 @router.get("/complete")

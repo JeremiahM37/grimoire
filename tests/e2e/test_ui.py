@@ -528,6 +528,27 @@ def test_calendar_marks_and_opens_daily_note(page, server):
     expect(page.locator("#title")).to_have_value(today, timeout=8000)
 
 
+def test_tasks_view_lists_toggles_and_jumps(page, server):
+    page.goto(server)
+    page.once("dialog", lambda d: d.accept("Task Alpha ZZ"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Task Alpha ZZ", timeout=8000)
+    page.fill("#content", "# A\n- [ ] finish quarterly report zz\n- [ ] call alice zz")
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
+    page.keyboard.press("Control+k")
+    page.fill("#palette-input", "open tasks all notes")
+    page.keyboard.press("Enter")
+    expect(page.locator("#tasks-modal")).to_be_visible()
+    expect(page.locator(".tg-text", has_text="finish quarterly report zz")).to_be_visible()
+    # tick one → it leaves the open list
+    page.locator(".tg-item", has_text="call alice zz").locator(".tg-box").check()
+    expect(page.locator(".tg-text", has_text="call alice zz")).to_have_count(0, timeout=8000)
+    # clicking a task jumps to its note
+    page.locator(".tg-text", has_text="finish quarterly report zz").click()
+    expect(page.locator("#tasks-modal")).to_be_hidden()
+    expect(page.locator("#title")).to_have_value("Task Alpha ZZ", timeout=8000)
+
+
 def test_daily_note(page, server):
     page.goto(server)
     page.click("#daily")
