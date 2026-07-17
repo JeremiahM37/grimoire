@@ -1,13 +1,31 @@
-"""Health + reindex + link autocomplete + task aggregation."""
+"""Health + reindex + link autocomplete + task aggregation + vault export."""
+import io
 import re
+import zipfile
 
 from fastapi import APIRouter
+from fastapi.responses import Response
 
-from .. import config, db, index
+from .. import config, db, index, vault
 
 router = APIRouter(prefix="/api")
 
 _TASK_RE = re.compile(r"^\s*[-*]\s+\[([ xX])\]\s+(.*)$")
+
+
+@router.get("/export/vault")
+def export_vault():
+    """Download the whole vault as a .zip (all files except the internal .mnemo/
+    dir — so the secret store and rebuildable index are never included)."""
+    root = vault.vault_root()
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        if root.exists():
+            for p in sorted(root.rglob("*")):
+                if p.is_file() and ".mnemo" not in p.parts:
+                    z.write(p, arcname=str(p.relative_to(root)))
+    return Response(buf.getvalue(), media_type="application/zip",
+                    headers={"Content-Disposition": 'attachment; filename="mnemo-vault.zip"'})
 
 
 @router.get("/health")

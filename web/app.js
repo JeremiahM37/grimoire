@@ -665,6 +665,7 @@ const COMMANDS = [
   { icon: "🔍", name: "Find & replace in note", run: openFind },
   { icon: "🎲", name: "Open random note", run: openRandom },
   { icon: "⧉", name: "Duplicate this note", run: duplicateNote },
+  { icon: "⬇", name: "Export whole vault (.zip)", run: () => { location.href = "/api/export/vault"; } },
 ];
 async function openRandom() {
   try { const r = await api("/notes/random"); openNote(r.path); }

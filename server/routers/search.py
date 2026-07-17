@@ -1,4 +1,6 @@
-"""Local full-text search (FTS5) + tag/graph endpoints."""
+"""Local full-text search (FTS5, with tag:/is:pinned/path: operators) + graph."""
+import json
+
 from fastapi import APIRouter
 
 from .. import db, index
@@ -12,25 +14,55 @@ def _fts_escape(q: str) -> str:
     return " ".join(f'"{t}"*' for t in terms) if terms else '""'
 
 
+def _is_pinned(path: str) -> bool:
+    r = db.one("SELECT frontmatter_json FROM notes WHERE path=?", (path,))
+    try:
+        return bool(json.loads(r["frontmatter_json"] or "{}").get("pinned")) if r else False
+    except Exception:
+        return False
+
+
 @router.get("/search")
 def search(q: str = "", tag: str | None = None, limit: int = 50):
-    if not q.strip():
+    # operators: tag:X  is:pinned  path:X  — the rest is full-text
+    op_tag, want_pinned, path_like, terms = tag, False, None, []
+    for tok in q.split():
+        low = tok.lower()
+        if low.startswith("tag:"):
+            op_tag = tok[4:]
+        elif low in ("is:pinned", "is:pin"):
+            want_pinned = True
+        elif low.startswith("path:"):
+            path_like = tok[5:].lower()
+        else:
+            terms.append(tok)
+    text = " ".join(terms).strip()
+
+    if text:
+        try:
+            rows = db.query(
+                "SELECT f.path, f.title, snippet(fts, 2, '[', ']', ' … ', 12) AS snippet, "
+                "bm25(fts) AS score FROM fts f WHERE fts MATCH ? ORDER BY score LIMIT 500",
+                (_fts_escape(text),))
+        except Exception:
+            return []
+    elif op_tag or want_pinned or path_like:
+        rows = db.query("SELECT path, title, '' AS snippet FROM notes ORDER BY updated DESC LIMIT 500")
+    else:
         return []
-    match = _fts_escape(q)
-    sql = ("SELECT f.path, f.title, snippet(fts, 2, '[', ']', ' … ', 12) AS snippet, "
-           "bm25(fts) AS score FROM fts f ")
-    params: list = []
-    if tag:
-        sql += "JOIN tags t ON t.note=f.path AND t.tag=? "
-        params.append(tag)
-    sql += "WHERE fts MATCH ? ORDER BY score LIMIT ?"
-    params += [match, limit]
-    try:
-        rows = db.query(sql, tuple(params))
-    except Exception:
-        return []
-    return [{"path": r["path"], "title": r["title"], "snippet": r["snippet"]}
-            for r in rows]
+
+    out = []
+    for r in rows:
+        if op_tag and not db.one("SELECT 1 FROM tags WHERE note=? AND tag=?", (r["path"], op_tag)):
+            continue
+        if path_like and path_like not in r["path"].lower():
+            continue
+        if want_pinned and not _is_pinned(r["path"]):
+            continue
+        out.append({"path": r["path"], "title": r["title"], "snippet": r["snippet"]})
+        if len(out) >= limit:
+            break
+    return out
 
 
 @router.get("/tags")
