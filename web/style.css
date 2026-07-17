@@ -63,6 +63,8 @@ body { background: var(--paper); color: var(--ink); font-family: var(--sans);
 #title { flex: 1; border: none; background: none; color: var(--ink); font: 600 20px/1.2 var(--serif); }
 #title:focus { outline: none; }
 .save-state { font-size: 11px; color: var(--ink-soft); min-width: 44px; text-align: right; }
+.wordcount { font-size: 11px; color: var(--ink-soft); white-space: nowrap; }
+@media (max-width: 640px) { .wordcount { display: none; } }
 .icon { background: none; border: none; color: var(--ink-soft); font-size: 17px;
   cursor: pointer; padding: 4px 6px; border-radius: 6px; }
 .icon:hover { background: var(--paper2); color: var(--ink); }

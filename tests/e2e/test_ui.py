@@ -464,6 +464,34 @@ def test_delete_then_undo_restores_note(page, server):
     expect(page.locator("#content")).to_have_value(re.compile("please recover me"), timeout=8000)
 
 
+def test_word_count_updates(page, server):
+    page.goto(server)
+    page.once("dialog", lambda d: d.accept("Wordy Note"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Wordy Note", timeout=8000)
+    page.fill("#content", "one two three four five")
+    expect(page.locator("#wordcount")).to_contain_text("5 words")
+
+
+def test_alias_wikilink_navigates(page, server):
+    page.goto(server)
+    page.evaluate(
+        "async () => {"
+        "const p=(b)=>fetch('/api/notes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});"
+        "await p({title:'United States', body:'the country', frontmatter:{aliases:['USA']}});"
+        "await p({title:'Geo Note', body:'I live in [[USA]]'}); }")
+    page.reload()   # boot re-fetches notes + aliases
+    page.click(".note-row .t >> text=Geo Note")
+    expect(page.locator("#title")).to_have_value("Geo Note", timeout=8000)
+    page.click("#preview-toggle")
+    # [[USA]] renders as a RESOLVED wiki-link (alias known) and navigates
+    link = page.locator("#preview a.wikilink", has_text="USA")
+    expect(link).to_be_visible()
+    assert "unresolved" not in (link.get_attribute("class") or "")
+    link.click()
+    expect(page.locator("#title")).to_have_value("United States", timeout=8000)
+
+
 def test_daily_note(page, server):
     page.goto(server)
     page.click("#daily")
