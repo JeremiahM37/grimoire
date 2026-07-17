@@ -383,6 +383,24 @@ def test_templates_save_and_apply_via_palette(page, server):
     expect(page.locator("#content")).not_to_have_value(re.compile(r"\{\{"))
 
 
+def test_export_note_via_palette_opens_standalone_html(page, server):
+    page.goto(server)
+    page.once("dialog", lambda d: d.accept("Exportable Note"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Exportable Note", timeout=8000)
+    page.fill("#content", "# Exportable Note\n\nhello **world**")
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
+    page.keyboard.press("Control+k")
+    page.fill("#palette-input", "export note as html")
+    expect(page.locator("#palette-list .pal-item.sel")).to_contain_text("Export")
+    with page.expect_popup() as pop:
+        page.keyboard.press("Enter")
+    exported = pop.value
+    exported.wait_for_load_state()
+    html = exported.content()
+    assert "<h1>Exportable Note</h1>" in html and "<strong>world</strong>" in html
+
+
 def test_daily_note(page, server):
     page.goto(server)
     page.click("#daily")

@@ -13,7 +13,7 @@ def test_read_note_renders_wikilinks_as_hyperlinks(client):
     client.post("/api/notes", json={"title": "Target", "body": "the target"})
     client.post("/api/notes", json={"title": "Source", "body": "see [[Target]] here"})
     html = client.get("/read/source").text
-    assert '<a href="/read/target">Target</a>' in html
+    assert 'href="/read/target">Target</a>' in html
     # backlink footer on the target
     tgt = client.get("/read/target").text
     assert "Linked from" in tgt and "Source" in tgt

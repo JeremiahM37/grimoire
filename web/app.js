@@ -510,7 +510,12 @@ const COMMANDS = [
   { icon: "🔐", name: "Open secret vault", run: openVault },
   { icon: "🎙", name: "Record audio memo", run: () => $("#audio-memo").click() },
   { icon: "🗂", name: "Save current note as template", run: saveAsTemplate },
+  { icon: "⇩", name: "Export note as HTML (print to PDF)", run: exportNote },
 ];
+function exportNote() {
+  if (!state.path) return toast("Open a note first", true);
+  window.open(`/notes/${encodeURI(state.path)}/export.html`, "_blank");
+}
 async function refreshTemplates() {
   try { state.templates = await api("/templates"); } catch { state.templates = []; }
 }

@@ -4,14 +4,14 @@ A read-mostly device (Kindle browser, e-reader) can open /read to browse the
 whole vault without needing the PWA. Wiki-links resolve to hyperlinks; private
 notes are excluded.
 """
+import base64
 import html
-import re
-from urllib.parse import quote
+import mimetypes
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
 
-from .. import db, index, vault
+from .. import db, index, render, vault
 
 router = APIRouter()
 
@@ -51,47 +51,67 @@ def read_note(path: str):
                  f'<p class="back"><a href="/read">← all notes</a></p>{body}{back}')
 
 
-def _render(body: str) -> str:
-    """Minimal, safe markdown → HTML with wiki-links as hyperlinks."""
+def _link_map() -> dict:
     resolved = {}
     for n in db.query("SELECT path, title FROM notes WHERE private=0"):
         resolved[n["title"].lower()] = n["path"]
         resolved[n["path"].rsplit("/", 1)[-1][:-3].lower()] = n["path"]
-    out, in_code = [], False
-    for raw in body.split("\n"):
-        if raw.strip().startswith("```"):
-            in_code = not in_code
-            out.append("<pre>" if in_code else "</pre>")
-            continue
-        if in_code:
-            out.append(html.escape(raw)); continue
-        line = html.escape(raw)
-        line = re.sub(r"!\[\[([^\[\]|]+?)\]\]", lambda m:
-                      f'<img src="/api/file/{quote(m.group(1).strip())}" '
-                      f'alt="{html.escape(m.group(1).strip())}">', line)
-        line = re.sub(r"\[\[([^\]|]+?)(?:\|([^\]]+))?\]\]", lambda m: _wl(m, resolved), line)
-        h = re.match(r"^(#{1,3})\s+(.+)$", raw)
-        if h:
-            out.append(f"<h{len(h.group(1))}>{html.escape(h.group(2))}</h{len(h.group(1))}>")
-        elif raw.strip():
-            out.append(f"<p>{line}</p>")
-    return "\n".join(out)
+    return resolved
 
 
-def _wl(m, resolved) -> str:
-    base = m.group(1).split("#")[0].strip()
-    label = html.escape(m.group(2) or m.group(1))
-    dst = resolved.get(base.lower())
-    if dst:
-        return f'<a href="/read/{_u(dst)}">{label}</a>'
-    return f'<span class="unresolved">{label}</span>'
+def _render(body: str) -> str:
+    """Full markdown → safe HTML with wiki-links + images, via the shared renderer."""
+    return render.render(body, _link_map())
+
+
+def _data_uri(rel: str) -> str:
+    """Inline a vault image as a data: URI so an exported file is self-contained."""
+    try:
+        p = vault.safe_raw_path(rel)
+        if not p.exists() or p.stat().st_size > 8 * 1024 * 1024:
+            return "/api/file/" + rel
+        mime = mimetypes.guess_type(str(p))[0] or "application/octet-stream"
+        return f"data:{mime};base64," + base64.b64encode(p.read_bytes()).decode()
+    except Exception:
+        return "/api/file/" + rel
+
+
+@router.get("/notes/{path:path}/export.html", response_class=HTMLResponse)
+def export_note(path: str, download: bool = False):
+    """Standalone, self-contained HTML (images inlined). Opens inline for
+    print-to-PDF by default; `?download=1` forces a file download."""
+    rel = path if path.endswith(".md") else path + ".md"
+    row = db.one("SELECT * FROM notes WHERE path=?", (rel,))
+    if not row:
+        raise HTTPException(404, "not found")
+    body = render.render(row["body"], _link_map(), img_src=_data_uri)
+    doc = _page(row["title"], f"<article>{body}</article>", export=True)
+    headers = {}
+    if download:
+        headers["Content-Disposition"] = f'attachment; filename="{vault.slugify(row["title"])}.html"'
+    return HTMLResponse(doc, headers=headers)
 
 
 def _u(path: str) -> str:
     return path[:-3] if path.endswith(".md") else path
 
 
-def _page(title: str, body: str) -> str:
+_EXPORT_STYLE = """<style>
+body{font-family:Georgia,'Iowan Old Style',serif;max-width:44rem;margin:2rem auto;
+padding:0 1.4rem;font-size:1.05rem;line-height:1.65;color:#1a1a1a;background:#fff}
+h1,h2,h3{line-height:1.25;font-weight:600}code{font-family:ui-monospace,monospace;
+background:#f2f0ea;padding:1px 5px;border-radius:4px}pre{background:#f2f0ea;padding:.8rem;
+border-radius:8px;overflow-x:auto}blockquote{border-left:3px solid #ccc;margin:0;
+padding-left:1rem;color:#555}img{max-width:100%;height:auto;border-radius:6px}
+.tag{color:#6a4bd8}a{color:#245}.unresolved{color:#999}
+li input{margin-right:.4rem}li.done{color:#888;text-decoration:line-through}
+hr{border:none;border-top:1px solid #ddd;margin:1.5rem 0}
+@media print{body{margin:0;max-width:none}a{color:#000;text-decoration:none}}
+</style>"""
+
+
+def _page(title: str, body: str, export: bool = False) -> str:
+    style = _EXPORT_STYLE if export else _STYLE
     return (f"<!doctype html><html><head><meta charset='utf-8'>"
             f"<meta name='viewport' content='width=device-width,initial-scale=1'>"
-            f"<title>{html.escape(title)}</title>{_STYLE}</head><body>{body}</body></html>")
+            f"<title>{html.escape(title)}</title>{style}</head><body>{body}</body></html>")
