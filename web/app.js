@@ -70,8 +70,15 @@ async function openNote(path) {
   if (state.dirty) await save();
   const n = await api(`/notes/${encodeURI(path)}`);
   state.path = n.path; state.dirty = false; state.frontmatter = n.frontmatter || {};
+  state.locked = !!n.locked; state.encrypted = !!n.encrypted;
   $("#title").value = n.title || "";
-  $("#content").value = n.body || "";
+  if (state.locked) {
+    $("#content").value = "🔒 This note is encrypted at rest.\n\nUnlock the secret vault (🔐 in the sidebar) to view and edit it.";
+    $("#content").readOnly = true;
+  } else {
+    $("#content").value = n.body || "";
+    $("#content").readOnly = false;
+  }
   updatePrivateToggle();
   renderBacklinks(n.backlinks || []);
   state.filterTag = null;
@@ -89,7 +96,7 @@ function scheduleSave() {
   state.saveTimer = setTimeout(save, 700);
 }
 async function save() {
-  if (!state.path || !state.dirty) return;
+  if (!state.path || !state.dirty || state.locked) return;
   clearTimeout(state.saveTimer);
   try {
     const title = $("#title").value.trim();
@@ -512,7 +519,21 @@ const COMMANDS = [
   { icon: "🗂", name: "Save current note as template", run: saveAsTemplate },
   { icon: "⇩", name: "Export note as HTML (print to PDF)", run: exportNote },
   { icon: "⚙", name: "Open settings", run: openSettings },
+  { icon: "🔒", name: "Encrypt this note (at rest)", run: () => cryptNote("encrypt") },
+  { icon: "🔓", name: "Decrypt this note", run: () => cryptNote("decrypt") },
 ];
+async function cryptNote(which) {
+  if (!state.path) return toast("Open a note first", true);
+  if (state.dirty) await save();
+  try {
+    await api(`/notes/${encodeURI(state.path)}/${which}`, { method: "POST" });
+    toast(which === "encrypt" ? "Encrypted at rest 🔒" : "Decrypted 🔓");
+    openNote(state.path);
+  } catch (e) {
+    if (/423|lock/i.test(e.message)) { toast("Unlock the secret vault first", true); openVault(); }
+    else toast(e.message, true);
+  }
+}
 function exportNote() {
   if (!state.path) return toast("Open a note first", true);
   window.open(`/notes/${encodeURI(state.path)}/export.html`, "_blank");

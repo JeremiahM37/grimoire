@@ -51,15 +51,18 @@ def _write_note_rows(note: dict) -> None:
     db.execute("DELETE FROM links WHERE src=?", (rel,))
     db.execute("DELETE FROM tags WHERE note=?", (rel,))
     db.execute("DELETE FROM vectors WHERE note=?", (rel,))
-    _embed_note(note)
+    encrypted = note.get("encrypted")
+    if not encrypted:
+        _embed_note(note)   # NEVER embed ciphertext — encrypted notes stay out of RAG
     fm = note["frontmatter"]
     db.execute(
         "INSERT INTO notes(path,title,body,frontmatter_json,private,mtime,hash,created,updated)"
         " VALUES(?,?,?,?,?,?,?,?,?)",
         (rel, note["title"], note["body"], json.dumps(fm), int(note["private"]),
          note["mtime"], note["hash"], fm.get("created", ""), fm.get("updated", "")))
+    # index only the title for encrypted notes — the ciphertext body is never searchable
     db.execute("INSERT INTO fts(path,title,body) VALUES(?,?,?)",
-               (rel, note["title"], note["body"]))
+               (rel, note["title"], "" if encrypted else note["body"]))
     if note["links"]:
         db.executemany(
             "INSERT INTO links(src,target,alias,resolved) VALUES(?,?,?,0)",

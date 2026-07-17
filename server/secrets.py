@@ -19,6 +19,28 @@ from . import config, crypto, db
 # in-memory session key (never persisted); None when locked
 _key: bytes | None = None
 
+# marker for an encrypted note body on disk
+ENC_PREFIX = "mnemo:enc:v1:"
+
+
+def is_encrypted(body: str) -> bool:
+    return body.lstrip().startswith(ENC_PREFIX)
+
+
+def seal_text(plaintext: str) -> str:
+    """Seal a note body with the (unlocked) vault key. Requires unlock."""
+    _require_unlocked()
+    return ENC_PREFIX + crypto.seal(_key, plaintext.encode("utf-8")).decode()
+
+
+def unseal_text(body: str) -> str:
+    """Decrypt an encrypted note body. Requires unlock; raises on wrong key."""
+    _require_unlocked()
+    b = body.lstrip()
+    if not b.startswith(ENC_PREFIX):
+        return body
+    return crypto.unseal(_key, b[len(ENC_PREFIX):].encode("utf-8")).decode("utf-8")
+
 
 def store_path():
     return config.mnemo_dir() / "secrets.enc"
