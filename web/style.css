@@ -101,6 +101,10 @@ body { background: var(--paper); color: var(--ink); font-family: var(--sans);
 .md li.task.done { color: var(--ink-soft); text-decoration: line-through; }
 .md img.embed { max-width: 100%; height: auto; border-radius: 8px; margin: 8px 0;
   box-shadow: var(--shadow); display: block; }
+.md .table-wrap { overflow-x: auto; margin: 10px 0; }
+.md table { border-collapse: collapse; font-family: var(--sans); font-size: .95em; }
+.md th, .md td { border: 1px solid var(--line); padding: 6px 12px; text-align: left; }
+.md th { background: var(--paper2); font-weight: 600; }
 
 #tag-filter-bar { display: flex; align-items: center; justify-content: space-between;
   margin: 4px 8px 0; padding: 5px 10px; border-radius: 8px; background: var(--paper);

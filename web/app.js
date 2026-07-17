@@ -212,6 +212,9 @@ async function resolveAndOpen(target) {
     await loadList(); openNote(n.path);
   }
 }
+const isTableRow = (l) => { const s = l.trim(); return s.startsWith("|") && (s.match(/\|/g) || []).length >= 2; };
+const isTableSep = (l) => { const s = l.trim(); return /^\|?[\s:|-]*-[\s:|-]*\|?$/.test(s) && s.includes("-") && s.includes("|"); };
+const tableCells = (l) => l.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
 function mdToHtml(src) {
   // small, safe-ish markdown: escape first, then apply inline + block rules
   let resolved = new Set(state.notes.flatMap((n) => [
@@ -237,6 +240,16 @@ function mdToHtml(src) {
     const raw = lines[lineNo];
     if (raw.trim().startsWith("```")) { closeList(); inCode = !inCode; html += inCode ? "<pre><code>" : "</code></pre>"; continue; }
     if (inCode) { html += esc(raw) + "\n"; continue; }
+    if (isTableRow(raw) && lineNo + 1 < lines.length && isTableSep(lines[lineNo + 1])) {
+      closeList();
+      let j = lineNo + 2; const rows = [];
+      while (j < lines.length && isTableRow(lines[j])) rows.push(lines[j++]);
+      const th = tableCells(raw).map((c) => `<th>${inline(c)}</th>`).join("");
+      const tb = rows.map((r) => `<tr>${tableCells(r).map((c) => `<td>${inline(c)}</td>`).join("")}</tr>`).join("");
+      html += `<div class="table-wrap"><table><thead><tr>${th}</tr></thead><tbody>${tb}</tbody></table></div>`;
+      lineNo = j - 1;   // the for-loop ++ lands on j
+      continue;
+    }
     const h = raw.match(/^(#{1,3})\s+(.+)$/);
     if (h) { closeList(); html += `<h${h[1].length}>${inline(h[2])}</h${h[1].length}>`; continue; }
     const task = raw.match(/^\s*[-*]\s+\[([ xX])\]\s+(.*)$/);
