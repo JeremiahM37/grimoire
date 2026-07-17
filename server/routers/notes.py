@@ -125,8 +125,16 @@ def _mention_re(name: str) -> re.Pattern:
     return re.compile(r"(?<![\w\[])" + re.escape(name) + r"(?![\w\]])", re.I)
 
 
-# NOTE: must be declared BEFORE get_note — its greedy /notes/{path:path} would
-# otherwise swallow this GET route.
+# NOTE: these GET routes must precede get_note — its greedy /notes/{path:path}
+# would otherwise swallow them.
+@router.get("/notes/random")
+def random_note():
+    row = db.one("SELECT path FROM notes ORDER BY RANDOM() LIMIT 1")
+    if not row:
+        raise HTTPException(404, "no notes yet")
+    return {"path": row["path"]}
+
+
 @router.get("/notes/{path:path}/unlinked")
 def unlinked_mentions(path: str):
     """Notes that mention this note's title/aliases as plain text but don't link it."""
@@ -273,6 +281,24 @@ def link_mention(path: str, m: LinkMentionIn):
     vault.write(src, new_body, note["frontmatter"])
     index.upsert(src)
     return {"linked": src, "count": n}
+
+
+@router.post("/notes/{path:path}/duplicate", status_code=201)
+def duplicate_note(path: str):
+    """Copy a note (title + ' (copy)', fresh timestamps). Encrypted notes copy
+    their ciphertext verbatim — the duplicate stays sealed."""
+    rel = _norm(path)
+    try:
+        note = vault.read(rel)
+    except VaultError:
+        raise HTTPException(404, "no such note")
+    title = (note["frontmatter"].get("title") or note["title"]) + " (copy)"
+    new_rel = _unique_path(f"{vault.slugify(title)}.md")
+    fm = {k: v for k, v in note["frontmatter"].items() if k not in ("created", "updated")}
+    fm["title"] = title
+    vault.write(new_rel, note["body"], fm)
+    index.upsert(new_rel)
+    return _view(db.one("SELECT * FROM notes WHERE path=?", (new_rel,)))
 
 
 @router.get("/trash")

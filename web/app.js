@@ -663,7 +663,20 @@ const COMMANDS = [
   { icon: "☑", name: "Open tasks (all notes)", run: openTasks },
   { icon: "⌨", name: "Keyboard shortcuts & help", run: openHelp },
   { icon: "🔍", name: "Find & replace in note", run: openFind },
+  { icon: "🎲", name: "Open random note", run: openRandom },
+  { icon: "⧉", name: "Duplicate this note", run: duplicateNote },
 ];
+async function openRandom() {
+  try { const r = await api("/notes/random"); openNote(r.path); }
+  catch (e) { toast(e.message, true); }
+}
+async function duplicateNote() {
+  if (!state.path) return toast("Open a note first", true);
+  try {
+    const n = await api(`/notes/${encodeURI(state.path)}/duplicate`, { method: "POST" });
+    await loadList(); openNote(n.path); toast("Duplicated");
+  } catch (e) { toast(e.message, true); }
+}
 function openHelp() { $("#help-modal").classList.remove("hidden"); }
 $("#help-close").onclick = () => $("#help-modal").classList.add("hidden");
 $("#help-modal").onclick = (e) => { if (e.target.id === "help-modal") $("#help-modal").classList.add("hidden"); };

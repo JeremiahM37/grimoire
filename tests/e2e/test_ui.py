@@ -616,6 +616,21 @@ def test_unlinked_mentions_show_and_link(page, server):
     expect(page.locator("#unlinked")).not_to_contain_text("Widget Report")
 
 
+def test_duplicate_note_via_palette(page, server):
+    page.goto(server)
+    page.once("dialog", lambda d: d.accept("Original ZZ"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Original ZZ", timeout=8000)
+    page.fill("#content", "duplicate me please")
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
+    page.keyboard.press("Control+k")
+    page.fill("#palette-input", "duplicate this note")
+    page.keyboard.press("Enter")
+    expect(page.locator("#title")).to_have_value("Original ZZ (copy)", timeout=8000)
+    expect(page.locator("#content")).to_have_value(re.compile("duplicate me please"))
+    expect(page.locator(".note-row .t", has_text="Original ZZ (copy)")).to_be_visible()
+
+
 def test_daily_note(page, server):
     page.goto(server)
     page.click("#daily")
