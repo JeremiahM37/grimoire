@@ -146,4 +146,7 @@ def broker(b: BrokerIn):
 
 @router.get("/audit")
 def audit():
+    # the log reveals secret names, grantees, and brokered URLs — gate on unlock
+    if not secrets.is_unlocked():
+        raise HTTPException(423, "vault locked")
     return secrets.audit_log()
