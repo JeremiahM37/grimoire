@@ -242,6 +242,15 @@ body.resizing { cursor: col-resize; user-select: none; }
 .help-grid span { font-size: 14px; }
 #help-body .vault-note kbd { font-family: var(--mono); background: var(--paper2); padding: 1px 5px; border-radius: 4px; }
 
+/* tag browser */
+#tags-browser-body { padding: 14px 16px 18px; overflow-y: auto; max-height: 66vh; }
+.tag-cloud { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag-chip { border: 1px solid var(--line); background: var(--paper2); color: var(--accent);
+  border-radius: 16px; padding: 5px 12px; font: 13px var(--sans); cursor: pointer; }
+.tag-chip:hover { background: var(--accent); color: #fff; }
+.tag-chip span { opacity: .6; margin-left: 3px; font-size: 11px; }
+.tag-chip:hover span { color: #fff; opacity: .85; }
+
 /* tasks */
 #tasks-body { padding: 8px 16px 16px; overflow-y: auto; max-height: 70vh; }
 .task-group { margin-bottom: 12px; }
