@@ -11,12 +11,29 @@ Protocol:
 """
 import time
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from .. import db, index, vault
+from .. import config, db, index, vault
 
 router = APIRouter(prefix="/api")
+
+
+@router.post("/sync/now")
+def sync_now():
+    """Trigger a bidirectional sync with the configured peer right now."""
+    if not config.SYNC_PEER:
+        raise HTTPException(400, "no peer configured (set MNEMO_SYNC_PEER)")
+    from .. import syncclient
+    try:
+        return syncclient.sync_with_peer(config.SYNC_PEER, "manual", config.SYNC_TOKEN)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(502, f"sync failed: {e}")
+
+
+@router.get("/sync/status")
+def sync_status():
+    return {"peer": config.SYNC_PEER or None, "interval": config.SYNC_INTERVAL}
 
 
 @router.get("/sync/manifest")
