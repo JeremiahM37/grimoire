@@ -821,6 +821,9 @@ const COMMANDS = [
   { icon: "🗑", name: "Open trash", run: openTrash },
   { icon: "📌", name: "Pin / unpin this note", run: togglePin },
   { icon: "📅", name: "Open calendar", run: () => openCalendar() },
+  { icon: "◀", name: "Previous day (daily note)", run: () => shiftDaily(-1) },
+  { icon: "▶", name: "Next day (daily note)", run: () => shiftDaily(1) },
+  { icon: "📆", name: "Insert today's date", run: () => insertAtCursor(_isoLocal(new Date())) },
   { icon: "☑", name: "Open tasks (all notes)", run: openTasks },
   { icon: "🏷", name: "Browse tags", run: openTagBrowser },
   { icon: "⌨", name: "Keyboard shortcuts & help", run: openHelp },
@@ -1260,6 +1263,15 @@ async function openDay(date) {
   $("#calendar-modal").classList.add("hidden");
   const d = await api(`/daily?date=${date}`);
   await loadList(); openNote(d.path);
+}
+const _isoLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+function shiftDaily(delta) {
+  // base on the open daily note if there is one, else today
+  let base = null;
+  const m = (state.path || "").match(/(\d{4})-(\d{2})-(\d{2})\.md$/);
+  const d = m ? new Date(+m[1], +m[2] - 1, +m[3], 12) : new Date();
+  d.setDate(d.getDate() + delta);
+  openDay(_isoLocal(d));
 }
 
 /* ---------- settings ---------- */

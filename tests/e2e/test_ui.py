@@ -758,6 +758,31 @@ def test_offline_edit_recovers_and_retries(page, server):
     expect(page.locator("#content")).to_have_value(re.compile("edited while offline"), timeout=8000)
 
 
+def test_daily_prev_next_and_insert_date(page, server):
+    import datetime
+    page.goto(server)
+    page.click("#daily")   # today's daily note
+    today = datetime.date.today()
+    expect(page.locator("#title")).to_have_value(today.isoformat(), timeout=8000)
+    # previous day
+    page.keyboard.press("Control+k")
+    page.fill("#palette-input", "previous day daily note")
+    page.keyboard.press("Enter")
+    yday = (today - datetime.timedelta(days=1)).isoformat()
+    expect(page.locator("#title")).to_have_value(yday, timeout=8000)
+    # next day → back to today
+    page.keyboard.press("Control+k")
+    page.fill("#palette-input", "next day daily note")
+    page.keyboard.press("Enter")
+    expect(page.locator("#title")).to_have_value(today.isoformat(), timeout=8000)
+    # insert today's date at cursor
+    page.locator("#content").click()
+    page.keyboard.press("Control+k")
+    page.fill("#palette-input", "insert todays date")
+    page.keyboard.press("Enter")
+    expect(page.locator("#content")).to_have_value(re.compile(today.isoformat()))
+
+
 def test_tag_browser_filters(page, server):
     page.goto(server)
     page.once("dialog", lambda d: d.accept("Browse Seed"))
