@@ -22,6 +22,8 @@ def _inline(text: str, link_map: dict, img_src: Callable[[str], str]) -> str:
     out = re.sub(r"`([^`]+)`", lambda m: f"<code>{m.group(1)}</code>", out)
     out = _IMG.sub(lambda m: _img(m.group(1).strip(), img_src), out)
     out = _WIKILINK.sub(lambda m: _wl(m, link_map), out)
+    out = re.sub(r"==([^=]+)==", r"<mark>\1</mark>", out)
+    out = re.sub(r"~~([^~]+)~~", r"<del>\1</del>", out)
     out = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", out)
     out = re.sub(r"(?<!\*)\*([^*]+)\*(?!\*)", r"<em>\1</em>", out)
     out = re.sub(r"\[([^\]]+)\]\((https?:[^)]+)\)",
@@ -72,6 +74,22 @@ def render(body: str, link_map: Optional[dict] = None,
         if in_code:
             out.append(html.escape(raw))
             i += 1
+            continue
+        # a callout: > [!type] title  followed by more > lines
+        cm = re.match(r"^\s*>\s*\[!(\w+)\]\s*(.*)$", raw)
+        if cm:
+            close_lists()
+            kind = cm.group(1).lower()
+            title = cm.group(2).strip() or kind.capitalize()
+            j = i + 1
+            body = []
+            while j < len(lines) and re.match(r"^\s*>", lines[j]):
+                body.append(re.sub(r"^\s*>\s?", "", lines[j])); j += 1
+            inner = render("\n".join(body), link_map, img_src) if body else ""
+            out.append(f'<div class="callout callout-{html.escape(kind)}">'
+                       f'<div class="callout-title">{_inline(title, link_map, img_src)}</div>'
+                       f'<div class="callout-body">{inner}</div></div>')
+            i = j
             continue
         # a table: a header row followed by a |---|---| separator
         if not in_code and _is_table_row(raw) and i + 1 < len(lines) and _is_table_sep(lines[i + 1]):

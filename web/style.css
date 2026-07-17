@@ -166,6 +166,19 @@ body.resizing { cursor: col-resize; user-select: none; }
   cursor: pointer; font: inherit; }
 #tag-filter-bar button:hover { color: var(--ink); }
 .md blockquote { border-left: 3px solid var(--line); margin: .6em 0; padding-left: 1em; color: var(--ink-soft); }
+.md mark { background: color-mix(in srgb, var(--accent) 28%, transparent); color: inherit; padding: 0 2px; border-radius: 3px; }
+.md del { color: var(--ink-soft); }
+.md .callout { border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 8px;
+  margin: .8em 0; padding: 8px 14px; background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.md .callout-title { font-weight: 600; font-family: var(--sans); margin-bottom: 2px; }
+.md .callout-body > :first-child { margin-top: 0; }
+.md .callout-body > :last-child { margin-bottom: 0; }
+.md .callout-warning, .md .callout-caution { border-left-color: var(--link-open); background: color-mix(in srgb, var(--link-open) 8%, transparent); }
+.md .callout-warning .callout-title, .md .callout-caution .callout-title { color: var(--link-open); }
+.md .callout-danger, .md .callout-error, .md .callout-bug { border-left-color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, transparent); }
+.md .callout-danger .callout-title, .md .callout-error .callout-title, .md .callout-bug .callout-title { color: var(--danger); }
+.md .callout-tip, .md .callout-success, .md .callout-note .callout-title { }
+.md .callout-title { color: var(--accent); }
 
 #backlinks { border-top: 1px solid var(--line); padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
   max-height: 30vh; overflow-y: auto; background: var(--paper2); }
