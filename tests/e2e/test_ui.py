@@ -563,6 +563,20 @@ def test_help_modal_via_palette_and_shortcut(page, server):
     expect(page.locator("#help-modal")).to_be_visible()
 
 
+def test_markdown_table_renders_in_preview(page, server):
+    page.goto(server)
+    page.once("dialog", lambda d: d.accept("Table Note"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Table Note", timeout=8000)
+    page.fill("#content", "# T\n\n| Fruit | Qty |\n|-------|-----|\n| Apple | 3 |\n| Pear | 5 |")
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
+    page.click("#preview-toggle")
+    expect(page.locator("#preview table")).to_be_visible()
+    expect(page.locator("#preview th", has_text="Fruit")).to_be_visible()
+    expect(page.locator("#preview td", has_text="Apple")).to_be_visible()
+    expect(page.locator("#preview tbody tr")).to_have_count(2)
+
+
 def test_daily_note(page, server):
     page.goto(server)
     page.click("#daily")

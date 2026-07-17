@@ -60,23 +60,36 @@ def render(body: str, link_map: Optional[dict] = None,
         while list_stack:
             out.append(f"</{list_stack.pop()}>")
 
-    for raw in lines:
+    i = 0
+    while i < len(lines):
+        raw = lines[i]
         if raw.strip().startswith("```"):
             close_lists()
             in_code = not in_code
             out.append("<pre><code>" if in_code else "</code></pre>")
+            i += 1
             continue
         if in_code:
             out.append(html.escape(raw))
+            i += 1
+            continue
+        # a table: a header row followed by a |---|---| separator
+        if not in_code and _is_table_row(raw) and i + 1 < len(lines) and _is_table_sep(lines[i + 1]):
+            close_lists()
+            j = i + 2
+            body_rows = []
+            while j < len(lines) and _is_table_row(lines[j]):
+                body_rows.append(lines[j]); j += 1
+            out.append(_table_html(raw, body_rows, link_map, img_src))
+            i = j
             continue
         h = _HEADING.match(raw)
         if h:
             close_lists()
             lvl = len(h.group(1))
             out.append(f"<h{lvl}>{_inline(h.group(2), link_map, img_src)}</h{lvl}>")
-            continue
-        task = _TASK.match(raw)
-        if task:
+        elif _TASK.match(raw):
+            task = _TASK.match(raw)
             if not list_stack or list_stack[-1] != "ul":
                 close_lists(); out.append("<ul>"); list_stack.append("ul")
             done = task.group(1).lower() == "x"
@@ -84,29 +97,47 @@ def render(body: str, link_map: Optional[dict] = None,
             cls = " class='done'" if done else ""
             out.append(f"<li{cls}><input type='checkbox' {box}> "
                        f"{_inline(task.group(2), link_map, img_src)}</li>")
-            continue
-        oli = _OLI.match(raw)
-        if oli:
+        elif _OLI.match(raw):
             if not list_stack or list_stack[-1] != "ol":
                 close_lists(); out.append("<ol>"); list_stack.append("ol")
-            out.append(f"<li>{_inline(oli.group(1), link_map, img_src)}</li>")
-            continue
-        uli = _ULI.match(raw)
-        if uli:
+            out.append(f"<li>{_inline(_OLI.match(raw).group(1), link_map, img_src)}</li>")
+        elif _ULI.match(raw):
             if not list_stack or list_stack[-1] != "ul":
                 close_lists(); out.append("<ul>"); list_stack.append("ul")
-            out.append(f"<li>{_inline(uli.group(1), link_map, img_src)}</li>")
-            continue
-        if raw.strip() == "":
-            close_lists(); continue
-        if re.match(r"^\s*>\s?", raw):
+            out.append(f"<li>{_inline(_ULI.match(raw).group(1), link_map, img_src)}</li>")
+        elif raw.strip() == "":
+            close_lists()
+        elif re.match(r"^\s*>\s?", raw):
             close_lists()
             quoted = re.sub(r"^\s*>\s?", "", raw)
             out.append(f"<blockquote>{_inline(quoted, link_map, img_src)}</blockquote>")
-            continue
-        if re.match(r"^\s*(---|\*\*\*)\s*$", raw):
-            close_lists(); out.append("<hr>"); continue
-        close_lists()
-        out.append(f"<p>{_inline(raw, link_map, img_src)}</p>")
+        elif re.match(r"^\s*(---|\*\*\*)\s*$", raw):
+            close_lists(); out.append("<hr>")
+        else:
+            close_lists()
+            out.append(f"<p>{_inline(raw, link_map, img_src)}</p>")
+        i += 1
     close_lists()
     return "\n".join(out)
+
+
+def _is_table_row(line: str) -> bool:
+    s = line.strip()
+    return s.startswith("|") and s.count("|") >= 2
+
+
+def _is_table_sep(line: str) -> bool:
+    s = line.strip()
+    return bool(re.match(r"^\|?[\s:|-]*-[\s:|-]*\|?$", s)) and "-" in s and "|" in s
+
+
+def _cells(line: str) -> list[str]:
+    return [c.strip() for c in line.strip().strip("|").split("|")]
+
+
+def _table_html(header: str, rows: list[str], link_map, img_src) -> str:
+    head = "".join(f"<th>{_inline(c, link_map, img_src)}</th>" for c in _cells(header))
+    body = "".join(
+        "<tr>" + "".join(f"<td>{_inline(c, link_map, img_src)}</td>" for c in _cells(r)) + "</tr>"
+        for r in rows)
+    return f'<div class="table-wrap"><table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></div>'

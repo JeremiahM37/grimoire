@@ -35,3 +35,17 @@ def test_code_block_is_escaped_verbatim():
     h = render.render("```\n<b>x</b> [[not a link]]\n```")
     assert "&lt;b&gt;x&lt;/b&gt;" in h
     assert "[[not a link]]" in h and "<pre>" in h
+
+
+def test_tables_render_with_header_and_rows():
+    md = "| Name | Age |\n|------|-----|\n| Bob | 30 |\n| Ann | 25 |"
+    h = render.render(md)
+    assert "<table>" in h and "<th>Name</th>" in h
+    assert "<td>Bob</td>" in h and "<td>25</td>" in h
+    assert h.count("<tr>") == 3          # header + 2 body rows
+
+
+def test_table_needs_separator_else_plain_paragraph():
+    # a lone pipe line without a |---| separator is NOT a table
+    h = render.render("| just | text |\nno separator here")
+    assert "<table>" not in h
