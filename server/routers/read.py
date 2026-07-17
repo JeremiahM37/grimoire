@@ -22,6 +22,9 @@ a{color:#000}h1,h2,h3{line-height:1.25}code{font-family:monospace}
 .unresolved{color:#888}nav a{display:block;padding:.3rem 0}
 hr{border:none;border-top:1px solid #ccc;margin:1.5rem 0}
 img{max-width:100%;height:auto}
+mark{background:#fdf3b0}del{color:#888}
+.callout{border:1px solid #ddd;border-left:4px solid #888;border-radius:8px;margin:1rem 0;padding:.5rem 1rem}
+.callout-title{font-weight:600;margin-bottom:.2rem}
 .back{font-size:1rem}
 </style>"""
 
@@ -109,6 +112,10 @@ background:#f2f0ea;padding:1px 5px;border-radius:4px}pre{background:#f2f0ea;padd
 border-radius:8px;overflow-x:auto}blockquote{border-left:3px solid #ccc;margin:0;
 padding-left:1rem;color:#555}img{max-width:100%;height:auto;border-radius:6px}
 .tag{color:#6a4bd8}a{color:#245}.unresolved{color:#999}
+mark{background:#fdf3b0}del{color:#888}
+table{border-collapse:collapse}th,td{border:1px solid #ccc;padding:5px 10px}
+.callout{border:1px solid #ddd;border-left:4px solid #6a4bd8;border-radius:8px;margin:1rem 0;padding:.5rem 1rem}
+.callout-title{font-weight:600;margin-bottom:.2rem;color:#6a4bd8}
 li input{margin-right:.4rem}li.done{color:#888;text-decoration:line-through}
 hr{border:none;border-top:1px solid #ddd;margin:1.5rem 0}
 @media print{body{margin:0;max-width:none}a{color:#000;text-decoration:none}}

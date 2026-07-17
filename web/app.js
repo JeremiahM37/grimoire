@@ -338,6 +338,8 @@ function mdToHtml(src) {
       return `<a class="${cls}" data-target="${esc(base)}">${esc(al || tgt)}</a>`;
     })
     .replace(/(^|\s)#([A-Za-z][\w/-]*)/g, '$1<span class="tag">#$2</span>')
+    .replace(/==([^=]+)==/g, "<mark>$1</mark>")
+    .replace(/~~([^~]+)~~/g, "<del>$1</del>")
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, "<em>$1</em>")
     .replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
@@ -367,6 +369,17 @@ function mdToHtml(src) {
       continue;
     }
     if (/^\s*[-*]\s+/.test(raw)) { if (!listOpen) { html += "<ul>"; listOpen = true; } html += `<li>${inline(raw.replace(/^\s*[-*]\s+/, ""))}</li>`; continue; }
+    const cm = raw.match(/^\s*>\s*\[!(\w+)\]\s*(.*)$/);
+    if (cm) {
+      closeList();
+      let j = lineNo + 1; const body = [];
+      while (j < lines.length && /^\s*>/.test(lines[j])) { body.push(lines[j].replace(/^\s*>\s?/, "")); j++; }
+      const kind = cm[1].toLowerCase();
+      const title = cm[2].trim() || kind.charAt(0).toUpperCase() + kind.slice(1);
+      const inner = body.filter((l) => l.trim() !== "").map((l) => `<p>${inline(l)}</p>`).join("");
+      html += `<div class="callout callout-${esc(kind)}"><div class="callout-title">${inline(title)}</div><div class="callout-body">${inner}</div></div>`;
+      lineNo = j - 1; continue;
+    }
     if (/^\s*>\s?/.test(raw)) { closeList(); html += `<blockquote>${inline(raw.replace(/^\s*>\s?/, ""))}</blockquote>`; continue; }
     if (raw.trim() === "") { closeList(); continue; }
     closeList(); html += `<p>${inline(raw)}</p>`;

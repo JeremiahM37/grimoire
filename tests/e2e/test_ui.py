@@ -705,6 +705,19 @@ def test_rename_tag_via_palette(page, server):
     page.remove_listener("dialog", handle)
 
 
+def test_callouts_and_highlights_render(page, server):
+    page.goto(server)
+    page.once("dialog", lambda d: d.accept("Callout Note"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Callout Note", timeout=8000)
+    page.fill("#content", "> [!tip] Pro tip\n> use ==highlights== here\n\nplain")
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
+    page.click("#preview-toggle")
+    expect(page.locator("#preview .callout.callout-tip")).to_be_visible()
+    expect(page.locator("#preview .callout-title", has_text="Pro tip")).to_be_visible()
+    expect(page.locator("#preview mark", has_text="highlights")).to_be_visible()
+
+
 def test_note_list_keyboard_navigation(page, server):
     page.goto(server)
     for t in ("KbdNav Aaa", "KbdNav Bbb"):

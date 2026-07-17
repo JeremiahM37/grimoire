@@ -49,3 +49,20 @@ def test_table_needs_separator_else_plain_paragraph():
     # a lone pipe line without a |---| separator is NOT a table
     h = render.render("| just | text |\nno separator here")
     assert "<table>" not in h
+
+
+def test_highlight_and_strikethrough():
+    h = render.render("this is ==hot== and ~~cold~~")
+    assert "<mark>hot</mark>" in h and "<del>cold</del>" in h
+
+
+def test_callout_block():
+    h = render.render("> [!warning] Heads up\n> be ==careful==\n>\n> more")
+    assert 'class="callout callout-warning"' in h
+    assert "Heads up" in h and "<mark>careful</mark>" in h
+    assert h.count("<p>") >= 2   # two paragraphs in the body
+
+
+def test_callout_default_title_from_type():
+    h = render.render("> [!note]\n> content")
+    assert 'callout-note' in h and "Note" in h
