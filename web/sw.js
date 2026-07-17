@@ -1,4 +1,4 @@
-/* mnemo service worker — offline shell */
+/* Grimoire Notes service worker — offline shell */
 const CACHE = "mnemo-v1";
 const SHELL = ["/", "/style.css", "/app.js", "/icon.svg", "/manifest.webmanifest"];
 self.addEventListener("install", (e) => {

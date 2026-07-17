@@ -35,7 +35,7 @@ def read_index():
     rows = db.query("SELECT path, title FROM notes WHERE private=0 ORDER BY title")
     items = "".join(f'<a href="/read/{_u(r["path"])}">{html.escape(r["title"])}</a>'
                     for r in rows)
-    return _page("mnemo — notes", f"<h1>mnemo</h1><nav>{items}</nav>")
+    return _page("Grimoire — notes", f"<h1>Grimoire</h1><nav>{items}</nav>")
 
 
 @router.get("/read/{path:path}", response_class=HTMLResponse)

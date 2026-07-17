@@ -1,6 +1,6 @@
 {
-  "name": "mnemo",
-  "short_name": "mnemo",
+  "name": "Grimoire Notes",
+  "short_name": "Grimoire",
   "description": "Local-first, AI-native notes",
   "start_url": "/",
   "display": "standalone",

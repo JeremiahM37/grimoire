@@ -20,7 +20,7 @@ from mcp.server.fastmcp import FastMCP  # noqa: E402
 
 API = os.environ.get("MNEMO_API", "http://127.0.0.1:9111").rstrip("/")
 TOKEN = os.environ.get("MNEMO_AUTH_TOKEN", "")
-mcp = FastMCP("mnemo")
+mcp = FastMCP("grimoire-notes")
 
 
 def api(method: str, path: str, body: dict | None = None):
