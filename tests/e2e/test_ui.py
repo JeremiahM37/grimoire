@@ -418,6 +418,35 @@ def test_settings_modal_persists(page, server):
     expect(page.locator("#set-model")).to_have_value("custom-model:9b")
 
 
+def test_encrypt_note_end_to_end(page, server):
+    page.goto(server)
+    page.once("dialog", lambda d: d.accept("Secret E2E"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Secret E2E", timeout=8000)
+    page.fill("#content", "confidential body text")
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
+    # initialize the secret vault (creates + unlocks)
+    page.click("#vault-open")
+    page.fill("#v-pass", "mypassphrase123")
+    page.click("#v-init")
+    expect(page.locator("#v-lock")).to_be_visible(timeout=8000)
+    page.click("#vault-close")
+    # encrypt the note via the command palette
+    page.keyboard.press("Control+k")
+    page.fill("#palette-input", "encrypt this note")
+    page.keyboard.press("Enter")
+    # still editable/plaintext while unlocked
+    expect(page.locator("#content")).to_have_value(re.compile("confidential body text"), timeout=8000)
+    # lock the vault, reopen → the body is hidden and read-only
+    page.click("#vault-open")
+    page.click("#v-lock")
+    page.click("#vault-close")
+    page.reload()
+    page.click(".note-row .t >> text=Secret E2E")
+    expect(page.locator("#content")).to_have_value(re.compile("encrypted at rest"), timeout=8000)
+    assert page.evaluate("() => document.getElementById('content').readOnly") is True
+
+
 def test_daily_note(page, server):
     page.goto(server)
     page.click("#daily")

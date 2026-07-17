@@ -4,7 +4,7 @@ import json
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from .. import db, index, vault
+from .. import db, index, secrets, vault
 from ..vault import VaultError
 
 router = APIRouter(prefix="/api")
@@ -16,6 +16,21 @@ def _view(row: dict) -> dict:
     row["private"] = bool(row.get("private"))
     row["tags"] = [t["tag"] for t in
                    db.query("SELECT tag FROM tags WHERE note=?", (row["path"],))]
+    # transparently present encrypted notes: decrypt when the vault is unlocked,
+    # otherwise blank the body and flag it locked (never leak ciphertext to the UI)
+    body = row.get("body", "")
+    row["encrypted"] = secrets.is_encrypted(body)
+    if row["encrypted"]:
+        if secrets.is_unlocked():
+            try:
+                row["body"] = secrets.unseal_text(body)
+                row["locked"] = False
+            except Exception:
+                row["body"] = ""; row["locked"] = True
+        else:
+            row["body"] = ""; row["locked"] = True
+    else:
+        row["locked"] = False
     return row
 
 
@@ -87,10 +102,55 @@ def update_note(path: str, u: NoteUpdate):
     try:
         existing = vault.read(rel) if vault.safe_path(rel).exists() else None
         fm = u.frontmatter if u.frontmatter is not None else (existing["frontmatter"] if existing else {})
-        vault.write(rel, u.body, fm)
+        body = u.body
+        if existing and existing.get("encrypted"):
+            # the editor holds plaintext; re-seal it (requires an unlocked vault)
+            if not secrets.is_unlocked():
+                raise HTTPException(423, "vault locked — unlock to edit this encrypted note")
+            body = secrets.seal_text(u.body)
+            fm = {**fm, "encrypted": True, "private": True}
+        vault.write(rel, body, fm)
     except VaultError as e:
         raise HTTPException(400, str(e))
     index.upsert(rel)
+    return _view(db.one("SELECT * FROM notes WHERE path=?", (rel,)))
+
+
+@router.post("/notes/{path:path}/encrypt")
+def encrypt_note(path: str):
+    """Seal a note's body at rest with the vault key. Requires an unlocked vault."""
+    rel = _norm(path)
+    if not secrets.is_unlocked():
+        raise HTTPException(423, "unlock the secret vault first")
+    try:
+        note = vault.read(rel)
+    except VaultError:
+        raise HTTPException(404, "no such note")
+    if not note.get("encrypted"):
+        fm = {**note["frontmatter"], "encrypted": True, "private": True}
+        vault.write(rel, secrets.seal_text(note["body"]), fm)
+        index.upsert(rel)
+    return _view(db.one("SELECT * FROM notes WHERE path=?", (rel,)))
+
+
+@router.post("/notes/{path:path}/decrypt")
+def decrypt_note(path: str):
+    """Remove at-rest encryption, restoring plain markdown. Requires unlock."""
+    rel = _norm(path)
+    if not secrets.is_unlocked():
+        raise HTTPException(423, "unlock the secret vault first")
+    try:
+        note = vault.read(rel)
+    except VaultError:
+        raise HTTPException(404, "no such note")
+    if note.get("encrypted"):
+        try:
+            plain = secrets.unseal_text(note["body"])
+        except ValueError:
+            raise HTTPException(400, "cannot decrypt — wrong vault key")
+        fm = {k: v for k, v in note["frontmatter"].items() if k != "encrypted"}
+        vault.write(rel, plain, fm)
+        index.upsert(rel)
     return _view(db.one("SELECT * FROM notes WHERE path=?", (rel,)))
 
 

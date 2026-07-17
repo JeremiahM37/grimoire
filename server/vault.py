@@ -70,14 +70,18 @@ def read(rel: str) -> dict:
 
 
 def note_from_text(rel: str, text: str, mtime: float) -> dict:
+    from . import secrets   # lazy: avoid import cycle at module load
     fm, body = markdown.parse_frontmatter(text)
     stem = Path(rel).stem
     title = markdown.derive_title(fm, body, stem)
+    encrypted = secrets.is_encrypted(body)
     return {
         "path": rel, "title": title, "frontmatter": fm, "body": body, "raw": text,
-        "tags": _tag_union(fm, body), "links": markdown.extract_links(body),
-        "private": bool(fm.get("private")), "mtime": mtime,
-        "hash": _hash(text),
+        # an encrypted body is opaque: no body tags/links, and always private
+        "tags": _tag_union(fm, "") if encrypted else _tag_union(fm, body),
+        "links": [] if encrypted else markdown.extract_links(body),
+        "private": True if encrypted else bool(fm.get("private")),
+        "encrypted": encrypted, "mtime": mtime, "hash": _hash(text),
     }
 
 
