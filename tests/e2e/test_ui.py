@@ -705,6 +705,28 @@ def test_rename_tag_via_palette(page, server):
     page.remove_listener("dialog", handle)
 
 
+def test_tag_autocomplete(page, server):
+    page.goto(server)
+    # seed a note with a distinctive tag so it's in the tag index
+    page.once("dialog", lambda d: d.accept("Tag Seed"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Tag Seed", timeout=8000)
+    page.fill("#content", "seeded #zephyrtag here")
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
+    page.reload()   # boot re-fetches the tag list
+    page.once("dialog", lambda d: d.accept("Tag User"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Tag User", timeout=8000)
+    ta = page.locator("#content")
+    ta.click()
+    ta.fill("about ")
+    page.keyboard.type("#zeph")
+    # suggestion dropdown shows the existing tag
+    expect(page.locator("#complete .c", has_text="zephyrtag")).to_be_visible(timeout=5000)
+    page.keyboard.press("Enter")   # accept
+    expect(ta).to_have_value(re.compile(r"#zephyrtag"))
+
+
 def test_callouts_and_highlights_render(page, server):
     page.goto(server)
     page.once("dialog", lambda d: d.accept("Callout Note"))
