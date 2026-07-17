@@ -24,19 +24,24 @@ import urllib.request
 
 EMBED_DIM = 256
 
-# ---- config (read live so tests/env can flip it) ----------------------------
+# ---- config (settings.json → env → default, read live) ----------------------
+# imported lazily to avoid a cycle (settings imports config only)
+
+def _cfg(key: str) -> str:
+    from . import settings
+    return settings.get(key) or ""
 
 def _ollama_url() -> str:
-    return os.environ.get("MNEMO_OLLAMA_URL", "").rstrip("/")
+    return _cfg("ollama_url").rstrip("/")
 
 def _embed_model() -> str:
-    return os.environ.get("MNEMO_EMBED_MODEL", "nomic-embed-text")
+    return _cfg("embed_model") or "nomic-embed-text"
 
 def _llm() -> str:
-    return os.environ.get("MNEMO_LLM", "").lower()   # '', 'ollama', 'claude'
+    return _cfg("llm").lower()   # '', 'ollama', 'claude'
 
 def _llm_model() -> str:
-    return os.environ.get("MNEMO_LLM_MODEL", "qwen3.5:4b")
+    return _cfg("llm_model") or "qwen3.5:4b"
 
 
 # ---- chunking ---------------------------------------------------------------
@@ -191,7 +196,7 @@ def transcribe(audio: bytes, filename: str = "memo.webm") -> str:
     (MNEMO_WHISPER_URL, OpenAI-compatible /v1/audio/transcriptions), else returns a
     placeholder so the memo is still saved with its audio attachment. Tests
     monkeypatch this."""
-    url = os.environ.get("MNEMO_WHISPER_URL", "").rstrip("/")
+    url = _cfg("whisper_url").rstrip("/")
     if not url:
         return "[audio memo — transcription unavailable; set MNEMO_WHISPER_URL]"
     try:

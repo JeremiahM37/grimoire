@@ -511,6 +511,7 @@ const COMMANDS = [
   { icon: "🎙", name: "Record audio memo", run: () => $("#audio-memo").click() },
   { icon: "🗂", name: "Save current note as template", run: saveAsTemplate },
   { icon: "⇩", name: "Export note as HTML (print to PDF)", run: exportNote },
+  { icon: "⚙", name: "Open settings", run: openSettings },
 ];
 function exportNote() {
   if (!state.path) return toast("Open a note first", true);
@@ -764,6 +765,37 @@ function scrollToHeading(lineNo, hIdx) {
   const style = getComputedStyle(ta);
   const lh = parseFloat(style.lineHeight) || 24;
   ta.scrollTop = Math.max(0, lineNo * lh - ta.clientHeight / 3);
+}
+
+/* ---------- settings ---------- */
+$("#settings-close").onclick = () => $("#settings-modal").classList.add("hidden");
+$("#settings-modal").onclick = (e) => { if (e.target.id === "settings-modal") $("#settings-modal").classList.add("hidden"); };
+async function openSettings() {
+  $("#settings-modal").classList.remove("hidden");
+  const st = await api("/settings");
+  const s = st.settings;
+  const opt = (v, cur) => `<option value="${v}"${v === cur ? " selected" : ""}>${v || "auto"}</option>`;
+  $("#settings-body").innerHTML = `
+    <p class="vault-note">AI answers currently use: <b>${esc(st.answer_backend)}</b>${st.answer_backend === "extractive" ? " (no LLM reachable — set an Ollama URL below for generative answers)" : ""}.</p>
+    <label class="set-row"><span>Answer backend</span>
+      <select id="set-llm">${["", "ollama", "claude"].map((v) => opt(v, s.llm)).join("")}</select></label>
+    <label class="set-row"><span>Answer model</span>
+      <input id="set-model" value="${esc(s.llm_model)}" placeholder="qwen3.5:4b"></label>
+    <label class="set-row"><span>Ollama URL</span>
+      <input id="set-ollama" value="${esc(s.ollama_url)}" placeholder="http://host:11434"></label>
+    <label class="set-row"><span>Whisper URL</span>
+      <input id="set-whisper" value="${esc(s.whisper_url)}" placeholder="(optional) OpenAI-compatible"></label>
+    <p class="vault-note">Embedding model: <code>${esc(s.embed_model)}</code> (fixed — changing it needs a reindex).</p>
+    <div class="ask-input-row"><button id="set-save" class="btn full">Save</button></div>`;
+  $("#set-save").onclick = async () => {
+    try {
+      const r = await api("/settings", { method: "PUT", body: {
+        llm: $("#set-llm").value, llm_model: $("#set-model").value.trim(),
+        ollama_url: $("#set-ollama").value.trim(), whisper_url: $("#set-whisper").value.trim() } });
+      toast(`Saved — answers: ${r.answer_backend}`);
+      $("#settings-modal").classList.add("hidden");
+    } catch (e) { toast(e.message, true); }
+  };
 }
 
 /* ---------- theme (auto / light / dark, persisted) ---------- */
