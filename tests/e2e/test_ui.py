@@ -649,6 +649,56 @@ def test_search_tag_operator_in_ui(page, server):
     expect(page.locator(".note-row .t", has_text="Other ZZ")).to_have_count(0)
 
 
+def test_properties_editor_saves_and_reloads(page, server):
+    page.goto(server)
+    page.once("dialog", lambda d: d.accept("Props Note"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Props Note", timeout=8000)
+    page.fill("#content", "# Props\n\ncontent")
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
+    page.click("#props-btn")
+    expect(page.locator("#props-modal")).to_be_visible()
+    page.fill("#pr-tags", "alpha, beta")
+    page.fill("#pr-aliases", "PN Alias")
+    page.check("#pr-pinned")
+    page.click("#pr-add")
+    page.locator(".pr-crow .pr-ck").last.fill("author")
+    page.locator(".pr-crow .pr-cv").last.fill("jm")
+    page.click("#pr-save")
+    expect(page.locator("#props-modal")).to_be_hidden()
+    # pinned marker shows in the list
+    expect(page.locator(".note-row", has_text="Props Note").locator(".pin")).to_be_visible(timeout=8000)
+    # a tag: search now finds it
+    page.fill("#search", "content tag:alpha")
+    expect(page.locator(".note-row", has_text="Props Note")).to_be_visible(timeout=8000)
+    page.fill("#search", "")
+    # reopen properties → values persisted
+    page.click(".note-row .t >> text=Props Note")
+    page.click("#props-btn")
+    expect(page.locator("#pr-tags")).to_have_value(re.compile("alpha"))
+    expect(page.locator("#pr-pinned")).to_be_checked()
+    expect(page.locator(".pr-crow .pr-ck")).to_have_value("author")
+
+
+def test_rename_tag_via_palette(page, server):
+    page.goto(server)
+    page.once("dialog", lambda d: d.accept("Tag Rename Note"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Tag Rename Note", timeout=8000)
+    page.fill("#content", "has #renameme here")
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
+
+    def handle(d):
+        d.accept("freshtag" if "to:" in d.message else "renameme")
+    page.on("dialog", handle)
+    page.keyboard.press("Control+k")
+    page.fill("#palette-input", "rename a tag across all notes")
+    page.keyboard.press("Enter")
+    # the open note's body is rewritten to the new tag
+    expect(page.locator("#content")).to_have_value(re.compile(r"#freshtag"), timeout=8000)
+    page.remove_listener("dialog", handle)
+
+
 def test_daily_note(page, server):
     page.goto(server)
     page.click("#daily")

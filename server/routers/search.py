@@ -1,9 +1,13 @@
-"""Local full-text search (FTS5, with tag:/is:pinned/path: operators) + graph."""
+"""Local full-text search (FTS5, with tag:/is:pinned/path: operators) + graph
++ tag rename."""
 import json
+import re
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
-from .. import db, index
+from .. import db, index, vault
+from ..vault import VaultError
 
 router = APIRouter(prefix="/api")
 
@@ -68,6 +72,41 @@ def search(q: str = "", tag: str | None = None, limit: int = 50):
 @router.get("/tags")
 def tags():
     return db.query("SELECT tag, COUNT(*) c FROM tags GROUP BY tag ORDER BY c DESC")
+
+
+class TagRename(BaseModel):
+    old: str
+    new: str
+
+
+@router.post("/tags/rename")
+def rename_tag(r: TagRename):
+    """Rename #old → #new across every note (body occurrences + frontmatter tags).
+    Encrypted notes: only their frontmatter tags change (ciphertext body untouched)."""
+    old = r.old.strip().lstrip("#")
+    new = r.new.strip().lstrip("#")
+    if not old or not new:
+        raise HTTPException(400, "old and new tag names required")
+    # match '#old' as a whole tag (not '#oldsuffix' or 'word#old')
+    pat = re.compile(r"(?<![\w#/])#" + re.escape(old) + r"(?![\w/-])")
+    affected = 0
+    for row in db.query("SELECT DISTINCT note FROM tags WHERE tag=?", (old,)):
+        rel = row["note"]
+        try:
+            note = vault.read(rel)
+        except VaultError:
+            continue
+        fm = dict(note["frontmatter"])
+        body = note["body"] if note.get("encrypted") else pat.sub("#" + new, note["body"])
+        fmtags = fm.get("tags")
+        if isinstance(fmtags, list):
+            fm["tags"] = [new if str(t) == old else t for t in fmtags]
+        elif isinstance(fmtags, str) and fmtags == old:
+            fm["tags"] = new
+        vault.write(rel, body, fm)
+        index.upsert(rel)
+        affected += 1
+    return {"renamed": old, "to": new, "notes": affected}
 
 
 @router.get("/graph")
