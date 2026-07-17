@@ -55,7 +55,6 @@ def render(body: str, link_map: Optional[dict] = None,
     img_src = img_src or (lambda rel: "/api/file/" + rel)
     lines = body.split("\n")
     out: list[str] = []
-    in_code = False
     list_stack: list[str] = []   # 'ul' | 'ol'
 
     def close_lists():
@@ -65,15 +64,17 @@ def render(body: str, link_map: Optional[dict] = None,
     i = 0
     while i < len(lines):
         raw = lines[i]
+        # fenced code block — buffer until the closing fence, then highlight
         if raw.strip().startswith("```"):
             close_lists()
-            in_code = not in_code
-            out.append("<pre><code>" if in_code else "</code></pre>")
-            i += 1
-            continue
-        if in_code:
-            out.append(html.escape(raw))
-            i += 1
+            lang = raw.strip()[3:].strip()
+            j = i + 1
+            buf = []
+            while j < len(lines) and not lines[j].strip().startswith("```"):
+                buf.append(lines[j]); j += 1
+            cls = f' class="lang-{html.escape(lang)}"' if lang else ""
+            out.append(f"<pre><code{cls}>{highlight_code(chr(10).join(buf), lang)}</code></pre>")
+            i = j + 1
             continue
         # a callout: > [!type] title  followed by more > lines
         cm = re.match(r"^\s*>\s*\[!(\w+)\]\s*(.*)$", raw)
@@ -92,7 +93,7 @@ def render(body: str, link_map: Optional[dict] = None,
             i = j
             continue
         # a table: a header row followed by a |---|---| separator
-        if not in_code and _is_table_row(raw) and i + 1 < len(lines) and _is_table_sep(lines[i + 1]):
+        if _is_table_row(raw) and i + 1 < len(lines) and _is_table_sep(lines[i + 1]):
             close_lists()
             j = i + 2
             body_rows = []
@@ -137,6 +138,45 @@ def render(body: str, link_map: Optional[dict] = None,
         i += 1
     close_lists()
     return "\n".join(out)
+
+
+# lightweight, language-agnostic syntax highlighting (no external deps)
+_KEYWORDS = {
+    "const", "let", "var", "function", "func", "fn", "return", "if", "else", "elif",
+    "for", "while", "class", "struct", "interface", "type", "enum", "import", "export",
+    "from", "package", "use", "pub", "async", "await", "new", "def", "lambda", "try",
+    "except", "catch", "finally", "throw", "with", "match", "case", "switch", "break",
+    "continue", "in", "of", "is", "not", "and", "or", "public", "private", "protected",
+    "static", "void", "int", "float", "double", "string", "str", "bool", "true", "false",
+    "True", "False", "None", "null", "nil", "self", "this", "super", "impl", "trait",
+    "yield", "do", "then", "end", "module", "namespace", "typedef", "extends", "implements",
+}
+_TOKEN = re.compile(
+    r"(//[^\n]*|#[^\n]*|/\*[\s\S]*?\*/)"          # comments
+    r'|("(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|`(?:\\.|[^`\\])*`)'  # strings
+    r"|(\b\d[\d_.]*(?:[eE][+-]?\d+)?\b|\b0[xX][0-9a-fA-F]+\b)"      # numbers
+    r"|([A-Za-z_$][\w$]*)")                        # identifiers
+
+
+def highlight_code(code: str, lang: str = "") -> str:
+    def repl(m):
+        if m.group(1):
+            return f'<span class="hl-com">{html.escape(m.group(1))}</span>'
+        if m.group(2):
+            return f'<span class="hl-str">{html.escape(m.group(2))}</span>'
+        if m.group(3):
+            return f'<span class="hl-num">{html.escape(m.group(3))}</span>'
+        word = m.group(4)
+        if word in _KEYWORDS:
+            return f'<span class="hl-kw">{html.escape(word)}</span>'
+        return html.escape(word)
+    out, last = [], 0
+    for m in _TOKEN.finditer(code):
+        out.append(html.escape(code[last:m.start()]))
+        out.append(repl(m))
+        last = m.end()
+    out.append(html.escape(code[last:]))
+    return "".join(out)
 
 
 def _is_table_row(line: str) -> bool:

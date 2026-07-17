@@ -344,13 +344,33 @@ async function resolveAndOpen(target) {
 const isTableRow = (l) => { const s = l.trim(); return s.startsWith("|") && (s.match(/\|/g) || []).length >= 2; };
 const isTableSep = (l) => { const s = l.trim(); return /^\|?[\s:|-]*-[\s:|-]*\|?$/.test(s) && s.includes("-") && s.includes("|"); };
 const tableCells = (l) => l.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
+const _HL_KW = new Set(("const let var function func fn return if else elif for while class struct interface "
+  + "type enum import export from package use pub async await new def lambda try except catch finally throw with "
+  + "match case switch break continue in of is not and or public private protected static void int float double "
+  + "string str bool true false True False None null nil self this super impl trait yield do then end module "
+  + "namespace typedef extends implements").split(" "));
+const _HL_TOKEN = /(\/\/[^\n]*|#[^\n]*|\/\*[\s\S]*?\*\/)|("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`)|(\b\d[\d_.]*(?:[eE][+-]?\d+)?\b|\b0[xX][0-9a-fA-F]+\b)|([A-Za-z_$][\w$]*)/g;
+function highlightCode(code) {
+  let out = "", last = 0, m;
+  _HL_TOKEN.lastIndex = 0;
+  while ((m = _HL_TOKEN.exec(code))) {
+    out += esc(code.slice(last, m.index));
+    if (m[1]) out += `<span class="hl-com">${esc(m[1])}</span>`;
+    else if (m[2]) out += `<span class="hl-str">${esc(m[2])}</span>`;
+    else if (m[3]) out += `<span class="hl-num">${esc(m[3])}</span>`;
+    else out += _HL_KW.has(m[4]) ? `<span class="hl-kw">${esc(m[4])}</span>` : esc(m[4]);
+    last = m.index + m[0].length;
+  }
+  out += esc(code.slice(last));
+  return out;
+}
 function mdToHtml(src) {
   // small, safe-ish markdown: escape first, then apply inline + block rules
   let resolved = new Set(state.notes.flatMap((n) => [
     (n.title || "").toLowerCase(), n.path.replace(/\.md$/, "").split("/").pop().toLowerCase()]));
   Object.keys(state.aliases || {}).forEach((a) => resolved.add(a));
   const lines = src.split("\n");
-  let html = "", inCode = false, listOpen = false;
+  let html = "", listOpen = false;
   const inline = (t) => esc(t)
     .replace(/`([^`]+)`/g, "<code>$1</code>")
     .replace(/!\[\[([^\[\]|]+?)\]\]/g, (_, src) =>
@@ -369,8 +389,15 @@ function mdToHtml(src) {
   const closeList = () => { if (listOpen) { html += "</ul>"; listOpen = false; } };
   for (let lineNo = 0; lineNo < lines.length; lineNo++) {
     const raw = lines[lineNo];
-    if (raw.trim().startsWith("```")) { closeList(); inCode = !inCode; html += inCode ? "<pre><code>" : "</code></pre>"; continue; }
-    if (inCode) { html += esc(raw) + "\n"; continue; }
+    if (raw.trim().startsWith("```")) {
+      closeList();
+      const lang = raw.trim().slice(3).trim();
+      let j = lineNo + 1; const buf = [];
+      while (j < lines.length && !lines[j].trim().startsWith("```")) buf.push(lines[j++]);
+      const cls = lang ? ` class="lang-${esc(lang)}"` : "";
+      html += `<pre><code${cls}>${highlightCode(buf.join("\n"))}</code></pre>`;
+      lineNo = j; continue;
+    }
     if (isTableRow(raw) && lineNo + 1 < lines.length && isTableSep(lines[lineNo + 1])) {
       closeList();
       let j = lineNo + 2; const rows = [];
