@@ -325,6 +325,64 @@ def test_image_embed_renders_and_loads_in_preview(page, server):
     assert loaded, "embedded image did not load from /api/file"
 
 
+def test_theme_toggle_cycles_and_persists(page, server):
+    page.goto(server)
+    get = "() => document.documentElement.getAttribute('data-theme')"
+    assert page.evaluate(get) in (None, "")          # auto by default
+    page.click("#theme-toggle")
+    assert page.evaluate(get) == "light"
+    page.click("#theme-toggle")
+    assert page.evaluate(get) == "dark"
+    page.reload()                                     # persists
+    assert page.evaluate(get) == "dark"
+    page.click("#theme-toggle")
+    assert page.evaluate(get) in (None, "")           # back to auto
+
+
+def test_outline_lists_headings_and_navigates(page, server):
+    page.goto(server)
+    page.once("dialog", lambda d: d.accept("Outline Note"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Outline Note", timeout=8000)
+    page.fill("#content", "# Top\n\nintro\n\n## Section A\n\naaa\n\n## Section B\n\nbbb")
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
+    page.click("#outline-btn")
+    expect(page.locator("#outline .mi[data-line]")).to_have_count(3)
+    expect(page.locator("#outline")).to_contain_text("Section B")
+    # clicking a heading moves the caret to that line in the editor
+    page.click("#outline .mi >> text=Section B")
+    at_caret = page.evaluate(
+        "() => { const t=document.getElementById('content');"
+        "return t.value.slice(t.selectionStart, t.selectionStart+12); }")
+    assert at_caret == "## Section B", f"caret landed at {at_caret!r}"
+
+
+def test_templates_save_and_apply_via_palette(page, server):
+    page.goto(server)
+    page.once("dialog", lambda d: d.accept("Template Source"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Template Source", timeout=8000)
+    page.fill("#content", "# {{title}}\n\nmeeting on {{date}}")
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
+    # save the current note as a template (palette command → name prompt)
+    page.keyboard.press("Control+k")
+    page.fill("#palette-input", "save current note as template")
+    page.once("dialog", lambda d: d.accept("Meeting Tpl"))
+    page.keyboard.press("Enter")
+    page.wait_for_timeout(400)   # let refreshTemplates run
+    # now create a note from it (palette shows "New from: Meeting Tpl" → title prompt)
+    page.keyboard.press("Control+k")
+    page.fill("#palette-input", "new from meeting")
+    expect(page.locator("#palette-list .pal-item.sel")).to_contain_text("New from: Meeting Tpl")
+    page.once("dialog", lambda d: d.accept("Monday Standup"))
+    page.keyboard.press("Enter")
+    expect(page.locator("#title")).to_have_value("Monday Standup", timeout=8000)
+    import datetime
+    today = datetime.date.today().isoformat()
+    expect(page.locator("#content")).to_have_value(re.compile(rf"meeting on {today}"))
+    expect(page.locator("#content")).not_to_have_value(re.compile(r"\{\{"))
+
+
 def test_daily_note(page, server):
     page.goto(server)
     page.click("#daily")

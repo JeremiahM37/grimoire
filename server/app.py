@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import config, db, index
 from .routers import (ask, daily, media, misc, notes, read, search,
-                      secrets as secrets_router, sync)
+                      secrets as secrets_router, sync, templates)
 
 
 def create_app() -> FastAPI:
@@ -34,7 +34,7 @@ def create_app() -> FastAPI:
                     return JSONResponse({"detail": "unauthorized"}, status_code=401)
             return await call_next(request)
 
-    for r in (notes, search, daily, misc, ask, secrets_router, media, sync, read):
+    for r in (notes, search, daily, misc, ask, secrets_router, media, sync, read, templates):
         app.include_router(r.router)
 
     @app.get("/")

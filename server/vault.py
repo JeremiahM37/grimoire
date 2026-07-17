@@ -36,6 +36,21 @@ def safe_path(rel: str) -> Path:
     return target
 
 
+def safe_raw_path(rel: str) -> Path:
+    """Like safe_path but preserves the real extension — for attachments/binary
+    files (images, PDFs) that must NOT be coerced to .md. Same sandboxing."""
+    rel = (rel or "").strip().lstrip("/")
+    if not rel:
+        raise VaultError("empty path")
+    root = vault_root().resolve()
+    target = (root / rel).resolve()
+    if target != root and root not in target.parents:
+        raise VaultError(f"path escapes vault: {rel!r}")
+    if ".mnemo" in target.relative_to(root).parts:
+        raise VaultError(".mnemo is reserved")
+    return target
+
+
 def rel_of(path: Path) -> str:
     return str(path.resolve().relative_to(vault_root().resolve()))
 
@@ -140,14 +155,24 @@ def rename(old_rel: str, new_rel: str) -> str:
     return rel_of(dst)
 
 
+# dirs that hold files but are NOT part of the note graph (not indexed/searched)
+RESERVED_DIRS = (".mnemo", "templates")
+
+
+def is_reserved(rel: str) -> bool:
+    """True for paths under a reserved dir (.mnemo internals, templates/)."""
+    parts = rel.replace("\\", "/").split("/")
+    return any(d in parts for d in RESERVED_DIRS)
+
+
 def walk() -> list[Path]:
-    """All .md files in the vault, excluding the reserved .mnemo dir."""
+    """All indexable .md files in the vault (excludes reserved dirs)."""
     root = vault_root()
     if not root.exists():
         return []
     out = []
     for p in root.rglob("*.md"):
-        if ".mnemo" in p.parts:
+        if any(d in p.parts for d in RESERVED_DIRS):
             continue
         out.append(p)
     return out
