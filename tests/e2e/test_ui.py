@@ -549,6 +549,20 @@ def test_tasks_view_lists_toggles_and_jumps(page, server):
     expect(page.locator("#title")).to_have_value("Task Alpha ZZ", timeout=8000)
 
 
+def test_help_modal_via_palette_and_shortcut(page, server):
+    page.goto(server)
+    page.keyboard.press("Control+k")
+    page.fill("#palette-input", "keyboard shortcuts help")
+    page.keyboard.press("Enter")
+    expect(page.locator("#help-modal")).to_be_visible()
+    expect(page.locator("#help-body")).to_contain_text("Command palette")
+    page.click("#help-close")
+    expect(page.locator("#help-modal")).to_be_hidden()
+    # "?" reopens it (focus is on the close button, not a text field)
+    page.keyboard.press("?")
+    expect(page.locator("#help-modal")).to_be_visible()
+
+
 def test_daily_note(page, server):
     page.goto(server)
     page.click("#daily")
