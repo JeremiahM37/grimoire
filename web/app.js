@@ -66,7 +66,7 @@ function renderList(notes, snippets = false) {
   for (const n of notes) {
     const row = document.createElement("div");
     row.className = "note-row" + (n.path === state.path ? " active" : "");
-    row.innerHTML = `<div class="t">${esc(n.title || n.path)}</div>` +
+    row.innerHTML = `<div class="t">${n.pinned ? '<span class="pin">📌</span>' : ""}${esc(n.title || n.path)}</div>` +
       (snippets && n.snippet ? `<div class="snip">${n.snippet.replace(/\[(.*?)\]/g, "<b>$1</b>")}</div>`
         : `<div class="m">${esc(n.path)}</div>`);
     row.onclick = () => openNote(n.path);
@@ -549,7 +549,16 @@ const COMMANDS = [
   { icon: "🔒", name: "Encrypt this note (at rest)", run: () => cryptNote("encrypt") },
   { icon: "🔓", name: "Decrypt this note", run: () => cryptNote("decrypt") },
   { icon: "🗑", name: "Open trash", run: openTrash },
+  { icon: "📌", name: "Pin / unpin this note", run: togglePin },
 ];
+async function togglePin() {
+  if (!state.path) return toast("Open a note first", true);
+  try {
+    const r = await api(`/notes/${encodeURI(state.path)}/pin`, { method: "POST" });
+    toast(r.pinned ? "Pinned 📌" : "Unpinned");
+    loadList();
+  } catch (e) { toast(e.message, true); }
+}
 $("#trash-close").onclick = () => $("#trash-modal").classList.add("hidden");
 $("#trash-modal").onclick = (e) => { if (e.target.id === "trash-modal") $("#trash-modal").classList.add("hidden"); };
 async function openTrash() {

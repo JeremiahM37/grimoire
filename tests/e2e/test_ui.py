@@ -492,6 +492,25 @@ def test_alias_wikilink_navigates(page, server):
     expect(page.locator("#title")).to_have_value("United States", timeout=8000)
 
 
+def test_pin_via_palette_floats_to_top(page, server):
+    page.goto(server)
+    page.once("dialog", lambda d: d.accept("Pin First"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Pin First", timeout=8000)
+    page.once("dialog", lambda d: d.accept("Pin Second"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Pin Second", timeout=8000)
+    # open the older note and pin it via the palette
+    page.click(".note-row .t >> text=Pin First")
+    expect(page.locator("#title")).to_have_value("Pin First", timeout=8000)
+    page.keyboard.press("Control+k")
+    page.fill("#palette-input", "pin unpin this note")
+    page.keyboard.press("Enter")
+    # it floats to the top with a pin marker
+    expect(page.locator(".note-row").first).to_contain_text("Pin First")
+    expect(page.locator(".note-row").first.locator(".pin")).to_be_visible()
+
+
 def test_daily_note(page, server):
     page.goto(server)
     page.click("#daily")

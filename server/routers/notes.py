@@ -42,8 +42,40 @@ def list_notes(tag: str | None = None, limit: int = 500):
             "ORDER BY n.updated DESC LIMIT ?", (tag, limit))
     else:
         rows = db.query("SELECT * FROM notes ORDER BY updated DESC LIMIT ?", (limit,))
-    return [{"path": r["path"], "title": r["title"], "updated": r["updated"],
-             "private": bool(r["private"])} for r in rows]
+    items = [{"path": r["path"], "title": r["title"], "updated": r["updated"],
+              "private": bool(r["private"]), "pinned": _pinned(r["frontmatter_json"])}
+             for r in rows]
+    # pinned notes float to the top (stable within each group)
+    items.sort(key=lambda x: not x["pinned"])
+    return items
+
+
+def _pinned(frontmatter_json: str) -> bool:
+    try:
+        return bool(json.loads(frontmatter_json or "{}").get("pinned"))
+    except Exception:
+        return False
+
+
+@router.post("/notes/{path:path}/pin")
+def toggle_pin(path: str):
+    """Toggle a note's pinned flag (frontmatter). Returns the new state."""
+    rel = _norm(path)
+    try:
+        note = vault.read(rel)
+    except VaultError:
+        raise HTTPException(404, "no such note")
+    fm = dict(note["frontmatter"])
+    pinned = not fm.get("pinned")
+    if pinned:
+        fm["pinned"] = True
+    else:
+        fm.pop("pinned", None)
+    # write the body back verbatim — for an encrypted note this is the ciphertext,
+    # so pinning needs no unlock (only frontmatter changes)
+    vault.write(rel, note["body"], fm)
+    index.upsert(rel)
+    return {"path": rel, "pinned": pinned}
 
 
 class NoteIn(BaseModel):
