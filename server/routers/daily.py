@@ -1,12 +1,15 @@
 """Daily notes + capture inbox."""
+import re
 import time
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from .. import config, db, index, vault
 
 router = APIRouter(prefix="/api")
+
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def _daily_rel(date: str | None = None) -> str:
@@ -17,6 +20,8 @@ def _daily_rel(date: str | None = None) -> str:
 @router.get("/daily")
 def daily(date: str | None = None):
     """Today's (or a given date's) note — created from a template if absent."""
+    if date and not _DATE_RE.match(date):
+        raise HTTPException(400, "date must be YYYY-MM-DD")
     d = date or time.strftime("%Y-%m-%d")
     rel = _daily_rel(d)
     if not vault.safe_path(rel).exists():
@@ -24,6 +29,18 @@ def daily(date: str | None = None):
         index.upsert(rel)
     row = db.one("SELECT * FROM notes WHERE path=?", (rel,))
     return {"path": rel, "title": row["title"], "body": row["body"]}
+
+
+@router.get("/daily/dates")
+def daily_dates():
+    """Which dates already have a daily note (for the calendar view)."""
+    rows = db.query("SELECT path FROM notes WHERE path LIKE ?", (config.DAILY_DIR + "/%",))
+    out = []
+    for r in rows:
+        stem = r["path"].rsplit("/", 1)[-1][:-3]
+        if _DATE_RE.match(stem):
+            out.append(stem)
+    return out
 
 
 class CaptureIn(BaseModel):

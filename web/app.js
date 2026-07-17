@@ -550,6 +550,7 @@ const COMMANDS = [
   { icon: "🔓", name: "Decrypt this note", run: () => cryptNote("decrypt") },
   { icon: "🗑", name: "Open trash", run: openTrash },
   { icon: "📌", name: "Pin / unpin this note", run: togglePin },
+  { icon: "📅", name: "Open calendar", run: () => openCalendar() },
 ];
 async function togglePin() {
   if (!state.path) return toast("Open a note first", true);
@@ -842,6 +843,45 @@ function scrollToHeading(lineNo, hIdx) {
   const style = getComputedStyle(ta);
   const lh = parseFloat(style.lineHeight) || 24;
   ta.scrollTop = Math.max(0, lineNo * lh - ta.clientHeight / 3);
+}
+
+/* ---------- calendar (daily notes) ---------- */
+let calYear, calMonth;   // month currently shown
+const MONTHS = ["January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"];
+$("#cal-close").onclick = () => $("#calendar-modal").classList.add("hidden");
+$("#calendar-modal").onclick = (e) => { if (e.target.id === "calendar-modal") $("#calendar-modal").classList.add("hidden"); };
+$("#cal-prev").onclick = () => { if (--calMonth < 0) { calMonth = 11; calYear--; } renderCalendar(); };
+$("#cal-next").onclick = () => { if (++calMonth > 11) { calMonth = 0; calYear++; } renderCalendar(); };
+async function openCalendar() {
+  $("#calendar-modal").classList.remove("hidden");
+  const now = new Date();
+  calYear = now.getFullYear(); calMonth = now.getMonth();
+  await renderCalendar();
+}
+async function renderCalendar() {
+  const dates = new Set(await api("/daily/dates").catch(() => []));
+  const pad = (n) => String(n).padStart(2, "0");
+  const iso = (d) => `${calYear}-${pad(calMonth + 1)}-${pad(d)}`;
+  const todayIso = (() => { const n = new Date(); return `${n.getFullYear()}-${pad(n.getMonth() + 1)}-${pad(n.getDate())}`; })();
+  $("#cal-title").textContent = `${MONTHS[calMonth]} ${calYear}`;
+  const first = new Date(calYear, calMonth, 1).getDay();     // 0=Sun
+  const days = new Date(calYear, calMonth + 1, 0).getDate(); // last day
+  let cells = ["S", "M", "T", "W", "T", "F", "S"].map((d) => `<div class="cal-dow">${d}</div>`).join("");
+  for (let i = 0; i < first; i++) cells += '<div class="cal-cell empty"></div>';
+  for (let d = 1; d <= days; d++) {
+    const id = iso(d);
+    const cls = "cal-cell" + (dates.has(id) ? " has" : "") + (id === todayIso ? " today" : "");
+    cells += `<div class="${cls}" data-d="${id}">${d}</div>`;
+  }
+  $("#calendar-body").innerHTML = `<div class="cal-grid">${cells}</div>`;
+  $("#calendar-body").querySelectorAll(".cal-cell[data-d]").forEach((c) =>
+    (c.onclick = () => openDay(c.dataset.d)));
+}
+async function openDay(date) {
+  $("#calendar-modal").classList.add("hidden");
+  const d = await api(`/daily?date=${date}`);
+  await loadList(); openNote(d.path);
 }
 
 /* ---------- settings ---------- */
