@@ -84,6 +84,16 @@ and never needs the key. Editing requires an unlocked vault.
   index never leave.
 - **No CORS headers** are set → browsers enforce same-origin for API calls.
 
+## Sync
+
+Background auto-sync (`MNEMO_SYNC_PEER`) authenticates to the peer with
+`MNEMO_SYNC_TOKEN` (sent as a Bearer header, so it never appears in a URL/log).
+Sync moves plain note files; it never transmits the secret store (`.mnemo/` is
+excluded from every export/sync path). Direction is last-writer-by-mtime, but no
+edit is silently lost — a pull that would overwrite a locally-changed note first
+preserves the local copy as a `… (conflict …)` file, and pushes are conflict-
+copied on the peer.
+
 ## Deployment guidance
 
 - Front mnemo with your own authenticated reverse proxy (the homelab uses

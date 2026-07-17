@@ -24,21 +24,31 @@ live watcher keeps up.
 
 ## Features
 
-- **Editing** — mobile-first offline PWA, formatting toolbar, smart list/task
-  continuation, Tab indent, live markdown preview, `[[` autocomplete, command
-  palette (Ctrl/Cmd-K), outline/TOC, word count, light/dark theme.
-- **Linking** — `[[wiki-links]]` + backlinks, frontmatter **aliases**, `#tags`
-  (click to filter), an interactive **graph view**, create-on-click.
-- **Notes** — daily notes + a **calendar**, **templates** (`{{date}}`/`{{title}}`),
-  clickable **task checkboxes**, **pin/favorite**, image/file **attachments**
-  (paste / drag-drop / `![[embed]]`), capture inbox.
+- **Editing (desktop + mobile equal)** — offline PWA, formatting toolbar, smart
+  list/task continuation, Tab indent, find & replace, live preview, `[[` and
+  `#tag` autocomplete, command palette (Ctrl/Cmd-K), keyboard list nav, outline,
+  word count, light/dark theme, **split view** with a draggable divider,
+  collapsible/resizable sidebar, right-click context menu, focus mode, **offline
+  draft protection** (unsaved work survives a crash / offline reload).
+- **Rich markdown** — tables, **callouts** (`> [!note]`), `==highlight==`,
+  `~~strike~~`, and dependency-free **code syntax highlighting**.
+- **Linking** — `[[wiki-links]]` + backlinks + **unlinked mentions** (one-click
+  link), **hover previews**, frontmatter **aliases**, `#tags` (click-to-filter +
+  a tag browser), an interactive **graph view**, create-on-click.
+- **Notes** — daily notes + a **calendar** (prev/next nav), **templates**
+  (`{{date}}`/`{{title}}`), clickable **task checkboxes** + a cross-note task
+  view, **pin/favorite**, image/file **attachments** (paste / drag-drop /
+  `![[embed]]`), rename/duplicate/random, capture inbox.
 - **AI** — ask-your-notes (RAG + citations), inline summarize/expand/tag/title,
   audio memos (whisper), browser capture (extension + bookmarklet + share target).
-- **Security & safety** — the secret vault + broker; **encryption-at-rest** for
-  private notes; **soft-delete/trash + undo**; private notes excluded from AI.
-- **Sync & reach** — delta sync with conflict copies (never silent data loss),
-  live cross-device refresh, an e-ink/Kindle `/read` surface, self-contained
-  **HTML export** (print-to-PDF), a scriptable **CLI**, and an **MCP server**.
+- **Security & safety** — the secret vault + broker (Argon2id, brute-force
+  lockout, idle auto-lock, passphrase rotation, grant revoke, SSRF-guarded);
+  **encryption-at-rest** for private notes; **soft-delete/trash + undo**; strict
+  CSP + security headers. See `SECURITY.md`.
+- **Sync & reach** — delta sync with conflict copies (never silent data loss) +
+  **background auto-sync** with a peer, live cross-device refresh, an
+  e-ink/Kindle `/read` surface, self-contained **HTML export** (print-to-PDF),
+  whole-vault **zip import/export**, a scriptable **CLI**, and an **MCP server**.
 
 ## Run
 
@@ -57,6 +67,7 @@ python cli/mnemo.py new "Title" "body..."     # or pipe: echo hi | mnemo capture
 python cli/mnemo.py daily "a log line"
 python cli/mnemo.py search QUERY
 python cli/mnemo.py export note.md            # standalone HTML
+python cli/mnemo.py sync http://peer:9111 --watch   # bidirectional auto-sync
 python cli/mnemo.py mcp                        # run as an MCP server
 python cli/mnemo.py serve --port 9111
 ```
