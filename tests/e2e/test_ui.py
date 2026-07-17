@@ -705,6 +705,23 @@ def test_rename_tag_via_palette(page, server):
     page.remove_listener("dialog", handle)
 
 
+def test_note_list_keyboard_navigation(page, server):
+    page.goto(server)
+    for t in ("KbdNav Aaa", "KbdNav Bbb"):
+        page.once("dialog", lambda d, t=t: d.accept(t))
+        page.click("#new-note")
+        expect(page.locator("#title")).to_have_value(t, timeout=8000)
+    # search to narrow to the two, then arrow-navigate + Enter
+    page.fill("#search", "kbdnav")
+    expect(page.locator(".note-row .t", has_text="KbdNav")).to_have_count(2, timeout=8000)
+    page.locator("#search").press("ArrowDown")
+    expect(page.locator(".note-row.kbd-sel")).to_have_count(1)
+    page.locator("#search").press("ArrowDown")
+    page.locator("#search").press("Enter")
+    # a KbdNav note is now open
+    expect(page.locator("#title")).to_have_value(re.compile("KbdNav"), timeout=8000)
+
+
 def test_focus_mode_hides_chrome_and_escapes(page, server):
     page.goto(server)
     page.once("dialog", lambda d: d.accept("Zen Note"))
