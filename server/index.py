@@ -16,7 +16,20 @@ def upsert(rel: str) -> dict:
         return note
     _write_note_rows(note)
     _resolve_all()   # a new/edited note can resolve others' dangling links
+    try:
+        from . import crdtstore
+        crdtstore.update_from_body(rel, note["body"])   # track for CRDT sync
+    except Exception:
+        pass
     return note
+
+
+def remove_crdt(rel: str) -> None:
+    try:
+        from . import crdtstore
+        crdtstore.delete_doc(rel)
+    except Exception:
+        pass
 
 
 def remove(rel: str) -> None:
@@ -24,6 +37,7 @@ def remove(rel: str) -> None:
         db.execute(f"DELETE FROM {tbl} WHERE path=?", (rel,))
     db.execute("DELETE FROM links WHERE src=?", (rel,))
     db.execute("DELETE FROM tags WHERE note=?", (rel,))
+    remove_crdt(rel)
     _resolve_all()
 
 

@@ -1,54 +1,68 @@
-"""Bidirectional sync client — direction, pull/push, conflict-safety."""
-from server import index, syncclient, vault
+"""Sync client — CRDT-first flow + last-writer fallback + endpoints.
+(Content-correctness of merges is proven in tests/integration/test_sync_e2e.py.)"""
+from server import crdt, index, syncclient, vault
 
 
-def test_sync_pulls_missing_and_pushes_local(vaultdir, monkeypatch):
-    vault.write("local-only.md", "# Local Only\n\nmine")
+def test_mergeable_notes_use_the_crdt_path(vaultdir, monkeypatch):
+    vault.write("note.md", "local body", {"title": "N"})
     index.reindex()
-    remote_manifest = {"peer-only.md": {"hash": "deadbeef", "mtime": 9_999_999_999.0}}
-    captured = {}
+    remote = {"note.md": {"hash": "different", "mtime": 1.0}}
+    calls = {"doc": 0, "merge": 0}
+    peer_doc = crdt.Doc.from_text("peer body", "peer").to_json()
 
     def fake_req(url, method="GET", body=None, token=None, timeout=30):
         if url.endswith("/sync/manifest"):
-            return remote_manifest
-        if url.endswith("/sync/pull"):
-            return {"contents": {"peer-only.md": "# Peer Only\n\ntheirs"}}
-        if url.endswith("/sync/push"):
-            captured["push"] = body
-            return {"results": [{"path": c["path"], "status": "created"} for c in body["changes"]]}
-        return {}
+            return remote
+        if "/crdt/doc/" in url:
+            calls["doc"] += 1
+            return {"doc": peer_doc, "fm": {"title": "N"}}
+        if url.endswith("/crdt/merge"):
+            calls["merge"] += 1
+            return {"changed": True}
+        return {"contents": {}, "results": []}
     monkeypatch.setattr(syncclient, "_req", fake_req)
 
     stats = syncclient.sync_with_peer("http://peer", "test")
-    assert stats["pulled"] == 1 and stats["pushed"] == 1
-    # pulled peer note landed locally
-    assert (vaultdir / "peer-only.md").exists() and "theirs" in (vaultdir / "peer-only.md").read_text()
-    # local-only was pushed
-    assert any(c["path"] == "local-only.md" for c in captured["push"]["changes"])
+    assert calls["doc"] >= 1 and calls["merge"] >= 1     # exchanged CRDT docs both ways
+    assert stats["merged"] >= 1
 
 
-def test_sync_pull_preserves_local_as_conflict_copy(vaultdir, monkeypatch):
-    # local + peer both have note.md with different content; peer is "newer"
-    vault.write("note.md", "# Note\n\nlocal version")
+def test_local_only_note_pushed_via_crdt(vaultdir, monkeypatch):
+    vault.write("local-only.md", "mine", {"title": "L"})
     index.reindex()
-    remote_manifest = {"note.md": {"hash": "differenthash", "mtime": 9_999_999_999.0}}
+    pushed = []
 
     def fake_req(url, method="GET", body=None, token=None, timeout=30):
         if url.endswith("/sync/manifest"):
-            return remote_manifest
-        if url.endswith("/sync/pull"):
-            return {"contents": {"note.md": "# Note\n\npeer version"}}
-        if url.endswith("/sync/push"):
-            return {"results": []}
-        return {}
+            return {}                                    # peer is empty
+        if url.endswith("/crdt/merge"):
+            pushed.append(body["path"])
+            return {"changed": True}
+        return {"contents": {}, "results": []}
     monkeypatch.setattr(syncclient, "_req", fake_req)
 
     stats = syncclient.sync_with_peer("http://peer", "test")
-    # peer version won, but the local version was preserved as a conflict copy — no data loss
-    assert "peer version" in (vaultdir / "note.md").read_text()
-    assert stats["conflicts"] == 1
-    conflicts = list(vaultdir.glob("note (conflict *).md"))
-    assert conflicts and "local version" in conflicts[0].read_text()
+    assert stats["pushed"] == 1 and "local-only.md" in pushed
+
+
+def test_oversized_note_falls_back_to_last_writer(vaultdir, monkeypatch):
+    big = "x" * (syncclient.crdtstore.MAX_CRDT_BYTES + 10)
+    vault.write("huge.md", big, {"title": "H"})
+    index.reindex()
+    remote = {"huge.md": {"hash": "different", "mtime": 9_999_999_999.0}}   # peer newer
+    pulled = []
+
+    def fake_req(url, method="GET", body=None, token=None, timeout=30):
+        if url.endswith("/sync/manifest"):
+            return remote
+        if url.endswith("/sync/pull"):
+            pulled.extend(body["paths"])
+            return {"contents": {"huge.md": None}}
+        return {"contents": {}, "results": []}
+    monkeypatch.setattr(syncclient, "_req", fake_req)
+
+    syncclient.sync_with_peer("http://peer", "test")
+    assert "huge.md" in pulled              # non-mergeable → last-writer pull, not CRDT
 
 
 def test_sync_status_endpoint(client):

@@ -58,6 +58,43 @@ def _post(base, path, body):
         return json.load(r)
 
 
+def _peer_body(base, rel):
+    return _get(base + "/api/notes/" + rel)["body"]
+
+
+def test_crdt_concurrent_edits_auto_merge(vaultdir, peer):
+    """Both replicas edit the SAME note concurrently; sync converges them to the
+    same text with BOTH edits — no conflict copy."""
+    from server import index, syncclient, vault
+    base, peer_vault = peer
+
+    # create a note locally and sync it to the peer (peer adopts our CRDT ids)
+    vault.write("collab.md", "line one\nline two\nline three", {"title": "Collab"})
+    index.reindex()
+    syncclient.sync_with_peer(base, "A")
+    assert (peer_vault / "collab.md").exists()
+
+    # concurrent edits: local prepends, peer appends (disjoint positions)
+    ours = vault.read("collab.md")
+    vault.write("collab.md", "ZERO\n" + ours["body"], ours["frontmatter"])
+    index.upsert("collab.md")
+    # peer edit via its notes API (a PUT)
+    import json
+    req = urllib.request.Request(base + "/api/notes/collab.md", method="PUT",
+                                 data=json.dumps({"body": "line one\nline two\nline three\nFOUR"}).encode(),
+                                 headers={"Content-Type": "application/json"})
+    urllib.request.urlopen(req, timeout=5).read()
+
+    # sync twice (one round each way settles the bidirectional merge)
+    syncclient.sync_with_peer(base, "A")
+    syncclient.sync_with_peer(base, "A")
+
+    local_body = vault.read("collab.md")["body"]
+    peer_body = _peer_body(base, "collab.md")
+    assert local_body == peer_body, f"diverged:\nLOCAL:\n{local_body}\nPEER:\n{peer_body}"
+    assert "ZERO" in local_body and "FOUR" in local_body   # both edits survived
+
+
 def test_bidirectional_sync_between_two_instances(vaultdir, peer):
     from server import index, syncclient, vault
     base, peer_vault = peer
