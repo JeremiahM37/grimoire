@@ -1,6 +1,6 @@
 /* mnemo PWA — vanilla ES module, offline-capable, no build step */
 const $ = (s) => document.querySelector(s);
-const state = { path: null, notes: [], dirty: false, saveTimer: null, frontmatter: {}, templates: [], aliases: {} };
+const state = { path: null, notes: [], dirty: false, saveTimer: null, frontmatter: {}, templates: [], aliases: {}, allTags: [] };
 
 async function api(path, opts = {}) {
   const r = await fetch(`/api${path}`, {
@@ -34,6 +34,7 @@ async function loadList() {
   state.notes = await api("/notes");
   renderList(state.notes);
   api("/aliases").then((a) => (state.aliases = a || {})).catch(() => {});
+  api("/tags").then((t) => (state.allTags = t || [])).catch(() => {});
   const h = await api("/health");
   state.rev = h.rev;
   $("#stat").textContent = `${h.notes} notes · ${h.tags} tags · ${h.unresolved_links} unlinked`;
@@ -602,22 +603,46 @@ ta.addEventListener("keydown", (e) => {
   else return;
   items.forEach((x) => x.classList.remove("sel")); if (items[i]) items[i].classList.add("sel");
 });
-async function maybeComplete() {
-  const pos = ta.selectionStart;
-  const before = ta.value.slice(0, pos);
-  const m = before.match(/\[\[([^\]|\n]*)$/);
-  if (!m) return hideComplete();
-  const res = await api(`/complete?q=${encodeURIComponent(m[1])}`);
-  const box = $("#complete");
-  if (!res.length) return hideComplete();
-  box.innerHTML = res.map((r, idx) =>
-    `<div class="c${idx === 0 ? " sel" : ""}" data-stem="${esc(r.stem)}">${esc(r.title)}</div>`).join("");
-  box.querySelectorAll(".c").forEach((c) => (c.onclick = () => insertLink(c.dataset.stem, m.index)));
-  // position near the caret (approx: below the textarea top)
+function _positionComplete(box) {
   const rect = ta.getBoundingClientRect();
   box.style.left = rect.left + 20 + "px";
   box.style.top = rect.top + 40 + "px";
   box.classList.remove("hidden");
+}
+async function maybeComplete() {
+  const pos = ta.selectionStart;
+  const before = ta.value.slice(0, pos);
+  const box = $("#complete");
+  // [[ wiki-link completion
+  const m = before.match(/\[\[([^\]|\n]*)$/);
+  if (m) {
+    const res = await api(`/complete?q=${encodeURIComponent(m[1])}`);
+    if (!res.length) return hideComplete();
+    box.innerHTML = res.map((r, idx) =>
+      `<div class="c${idx === 0 ? " sel" : ""}" data-stem="${esc(r.stem)}">${esc(r.title)}</div>`).join("");
+    box.querySelectorAll(".c").forEach((c) => (c.onclick = () => insertLink(c.dataset.stem, m.index)));
+    return _positionComplete(box);
+  }
+  // #tag completion — suggest existing tags
+  const tm = before.match(/(?:^|\s)#([A-Za-z][\w/-]*)$/);
+  if (tm) {
+    const q = tm[1].toLowerCase();
+    const matches = (state.allTags || [])
+      .filter((t) => t.tag.toLowerCase().startsWith(q) && t.tag.toLowerCase() !== q).slice(0, 10);
+    if (!matches.length) return hideComplete();
+    box.innerHTML = matches.map((r, idx) =>
+      `<div class="c${idx === 0 ? " sel" : ""}" data-tag="${esc(r.tag)}">#${esc(r.tag)} <span class="pm">${r.c}</span></div>`).join("");
+    box.querySelectorAll(".c").forEach((c) => (c.onclick = () => insertTag(c.dataset.tag)));
+    return _positionComplete(box);
+  }
+  hideComplete();
+}
+function insertTag(tag) {
+  const pos = ta.selectionStart;
+  const before = ta.value.slice(0, pos).replace(/#[A-Za-z][\w/-]*$/, `#${tag}`);
+  ta.value = before + ta.value.slice(pos);
+  ta.selectionStart = ta.selectionEnd = before.length;
+  hideComplete(); scheduleSave(); ta.focus();
 }
 function insertLink(stem, start) {
   const pos = ta.selectionStart;
