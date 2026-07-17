@@ -141,10 +141,32 @@ def cmd_mcp(args):
     mcp_server.mcp.run()
 
 
+def cmd_sync(args):
+    """Sync with a peer mnemo. Usage: mnemo sync PEER_URL [--watch] [--interval N] [--token T]"""
+    import time as _t
+    from server import syncclient
+    if not args or args[0].startswith("--"):
+        print("usage: mnemo sync PEER_URL [--watch] [--interval N] [--token T]", file=sys.stderr)
+        return 2
+    peer = args[0]
+    token = args[args.index("--token") + 1] if "--token" in args else None
+    interval = int(args[args.index("--interval") + 1]) if "--interval" in args else 60
+    index.reindex()
+    while True:
+        try:
+            s = syncclient.sync_with_peer(peer, "cli", token)
+            print(f"synced {peer}: pulled {s['pulled']}, pushed {s['pushed']}, conflicts {s['conflicts']}")
+        except Exception as e:  # noqa: BLE001
+            print(f"sync error: {e}", file=sys.stderr)
+        if "--watch" not in args:
+            break
+        _t.sleep(interval)
+
+
 COMMANDS = {"new": cmd_new, "daily": cmd_daily, "capture": cmd_capture,
             "search": cmd_search, "ls": cmd_ls, "open": cmd_open,
             "reindex": cmd_reindex, "serve": cmd_serve, "export": cmd_export,
-            "mcp": cmd_mcp}
+            "mcp": cmd_mcp, "sync": cmd_sync}
 
 
 def main(argv=None):

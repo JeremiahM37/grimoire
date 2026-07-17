@@ -26,3 +26,8 @@ WEB_DIR = ROOT / "web"
 
 # Optional single bearer token for the API/PWA ("none" auth when empty).
 AUTH_TOKEN = os.environ.get("MNEMO_AUTH_TOKEN", "")
+
+# Background auto-sync with a peer mnemo (empty = off).
+SYNC_PEER = os.environ.get("MNEMO_SYNC_PEER", "")
+SYNC_TOKEN = os.environ.get("MNEMO_SYNC_TOKEN", "")      # peer's auth token, if any
+SYNC_INTERVAL = int(os.environ.get("MNEMO_SYNC_INTERVAL", "0"))   # seconds; 0 = no timer

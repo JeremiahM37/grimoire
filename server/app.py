@@ -23,7 +23,24 @@ def create_app() -> FastAPI:
         if not os.environ.get("MNEMO_NO_WATCHER"):
             from .watcher import watcher as watch
             watch.start()   # pick up external edits (Obsidian/vim/sync) live
+        sync_task = None
+        if config.SYNC_PEER and config.SYNC_INTERVAL > 0:
+            import asyncio
+
+            from . import syncclient
+
+            async def _sync_loop():
+                while True:
+                    await asyncio.sleep(config.SYNC_INTERVAL)
+                    try:
+                        await asyncio.get_running_loop().run_in_executor(
+                            None, syncclient.sync_with_peer, config.SYNC_PEER, "server", config.SYNC_TOKEN)
+                    except Exception:  # noqa: BLE001
+                        pass   # transient peer outage — try again next tick
+            sync_task = asyncio.create_task(_sync_loop())
         yield
+        if sync_task:
+            sync_task.cancel()
         if watch:
             watch.stop()
         db.close()

@@ -902,8 +902,17 @@ const COMMANDS = [
   { icon: "🧘", name: "Toggle focus mode (distraction-free)", run: toggleZen },
   { icon: "⬇", name: "Export whole vault (.zip)", run: () => { location.href = "/api/export/vault"; } },
   { icon: "⬆", name: "Import vault from .zip", run: importVault },
+  { icon: "🔄", name: "Sync now (with configured peer)", run: syncNow },
   { icon: "🏷", name: "Rename a tag (across all notes)", run: renameTag },
 ];
+async function syncNow() {
+  try {
+    toast("Syncing…");
+    const s = await api("/sync/now", { method: "POST" });
+    toast(`Synced: ↓${s.pulled} ↑${s.pushed}${s.conflicts ? ` · ${s.conflicts} conflict(s)` : ""}`);
+    await loadList();
+  } catch (e) { toast(e.message, true); }
+}
 function importVault() {
   const inp = document.createElement("input");
   inp.type = "file"; inp.accept = ".zip,application/zip";
