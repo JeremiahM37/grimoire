@@ -705,6 +705,40 @@ def test_rename_tag_via_palette(page, server):
     page.remove_listener("dialog", handle)
 
 
+def test_note_context_menu_duplicate_and_rename(page, server):
+    page.goto(server)
+    page.once("dialog", lambda d: d.accept("Ctx Note"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Ctx Note", timeout=8000)
+    page.fill("#content", "context content")
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
+    # right-click the note row → context menu
+    page.locator(".note-row .t >> text=Ctx Note").click(button="right")
+    expect(page.locator("#ctx-menu")).to_be_visible()
+    expect(page.locator("#ctx-menu")).to_contain_text("Duplicate")
+    page.locator("#ctx-menu .mi", has_text="Duplicate").click()
+    expect(page.locator(".note-row .t", has_text="Ctx Note (copy)")).to_be_visible(timeout=8000)
+    # rename the copy via the context menu (updates the displayed title)
+    page.once("dialog", lambda d: d.accept("Ctx Renamed"))
+    page.locator(".note-row .t >> text=Ctx Note (copy)").click(button="right")
+    page.locator("#ctx-menu .mi", has_text="Rename").click()
+    expect(page.locator(".note-row .t", has_text="Ctx Renamed")).to_be_visible(timeout=8000)
+
+
+def test_sidebar_collapse_toggle_and_persist(page, server):
+    page.goto(server)
+    expect(page.locator("#sidebar")).to_be_visible()
+    page.click("#sidebar-toggle")
+    expect(page.locator("#sidebar")).to_be_hidden()
+    # persists across reload
+    page.reload()
+    expect(page.locator("#editor")).to_be_visible()
+    expect(page.locator("#sidebar")).to_be_hidden()
+    # Ctrl+\ brings it back
+    page.keyboard.press("Control+\\")
+    expect(page.locator("#sidebar")).to_be_visible()
+
+
 def test_sidebar_resize_drags_and_persists(page, server):
     page.goto(server)
     expect(page.locator("#side-head h1")).to_have_text("mnemo")

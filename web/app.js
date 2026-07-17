@@ -70,9 +70,66 @@ function renderList(notes, snippets = false) {
       (snippets && n.snippet ? `<div class="snip">${n.snippet.replace(/\[(.*?)\]/g, "<b>$1</b>")}</div>`
         : `<div class="m">${esc(n.path)}</div>`);
     row.onclick = (e) => (e.ctrlKey || e.metaKey) ? openSplit(n.path) : openNote(n.path);
+    row.oncontextmenu = (e) => { e.preventDefault(); showContext(n.path, e.clientX, e.clientY); };
     el.appendChild(row);
   }
 }
+
+/* ---------- note actions by path (context menu) ---------- */
+async function pinByPath(path) { await api(`/notes/${encodeURI(path)}/pin`, { method: "POST" }); loadList(); }
+async function duplicateByPath(path) {
+  try { const n = await api(`/notes/${encodeURI(path)}/duplicate`, { method: "POST" }); await loadList(); openNote(n.path); toast("Duplicated"); }
+  catch (e) { toast(e.message, true); }
+}
+const slugify = (s) => (s.toLowerCase().replace(/[^\w\s-]/g, "").trim().replace(/[\s_-]+/g, "-") || "untitled");
+async function renameNote(path) {
+  const n = await api(`/notes/${encodeURI(path)}`);
+  const cur = n.title || path.replace(/\.md$/, "").split("/").pop();
+  const to = prompt("Rename note to:", cur);
+  if (!to || to === cur) return;
+  try {
+    // rename = update the display title AND move the file to a matching slug
+    if (!n.locked) {
+      await api(`/notes/${encodeURI(path)}`, { method: "PUT",
+        body: { body: n.body, frontmatter: { ...(n.frontmatter || {}), title: to } } });
+    }
+    const dir = path.includes("/") ? path.slice(0, path.lastIndexOf("/") + 1) : "";
+    const r = await api(`/notes/${encodeURI(path)}/rename`, { method: "POST", body: { to: dir + slugify(to) + ".md" } });
+    await loadList();
+    if (state.path === path) openNote(r.path);
+    toast("Renamed");
+  } catch (e) { toast(e.message, true); }
+}
+async function deleteNoteByPath(path) {
+  if (!confirm("Move this note to trash?")) return;
+  try {
+    const r = await api(`/notes/${encodeURI(path)}`, { method: "DELETE" });
+    if (state.path === path) { state.path = null; $("#title").value = ""; $("#content").value = ""; $("#content").readOnly = false; $("#backlinks").innerHTML = ""; $("#unlinked").innerHTML = ""; }
+    loadList();
+    toastAction("Moved to trash", "Undo", async () => {
+      const n = await api(`/trash/${r.trashed}/restore`, { method: "POST" });
+      await loadList(); openNote(n.path); toast("Restored");
+    });
+  } catch (e) { toast(e.message, true); }
+}
+const ctxMenu = $("#ctx-menu");
+function showContext(path, x, y) {
+  const items = [
+    ["⊞ Open in split", () => openSplit(path)],
+    ["📌 Pin / unpin", () => pinByPath(path)],
+    ["⧉ Duplicate", () => duplicateByPath(path)],
+    ["✎ Rename…", () => renameNote(path)],
+    ["🗑 Delete", () => deleteNoteByPath(path)],
+  ];
+  ctxMenu.innerHTML = items.map((it, i) => `<div class="mi" data-i="${i}">${it[0]}</div>`).join("");
+  ctxMenu.querySelectorAll(".mi").forEach((el, i) =>
+    (el.onclick = () => { ctxMenu.classList.add("hidden"); items[i][1](); }));
+  ctxMenu.style.top = Math.min(y, innerHeight - 190) + "px";
+  ctxMenu.style.left = Math.min(x, innerWidth - 180) + "px";
+  ctxMenu.style.right = "";
+  ctxMenu.classList.remove("hidden");
+}
+addEventListener("click", (e) => { if (!e.target.closest("#ctx-menu")) ctxMenu.classList.add("hidden"); });
 
 /* ---------- open / save ---------- */
 async function openNote(path) {
@@ -668,6 +725,7 @@ const COMMANDS = [
   { icon: "⧉", name: "Duplicate this note", run: duplicateNote },
   { icon: "⊞", name: "Split view: open current note on the right", run: () => openSplit(state.path) },
   { icon: "⊟", name: "Close split view", run: closeSplit },
+  { icon: "⇤", name: "Toggle sidebar", run: toggleSidebar },
   { icon: "⬇", name: "Export whole vault (.zip)", run: () => { location.href = "/api/export/vault"; } },
   { icon: "🏷", name: "Rename a tag (across all notes)", run: renameTag },
 ];
@@ -1189,6 +1247,23 @@ $("#theme-toggle").onclick = () => {
   applyTheme(next); toast(`Theme: ${next}`);
 };
 applyTheme(localStorage.getItem("mnemo-theme") || "auto");
+
+/* ---------- collapsible sidebar (desktop) ---------- */
+function setSidebarCollapsed(on) {
+  $("#app").classList.toggle("sidebar-collapsed", on);
+  localStorage.setItem("mnemo-side-collapsed", on ? "1" : "");
+  $("#sidebar-toggle").textContent = on ? "⇥" : "⇤";
+  $("#sidebar-toggle").title = (on ? "show" : "hide") + " sidebar (Ctrl+\\)";
+}
+function toggleSidebar() {
+  if (isNarrow()) { $("#menu-open").click(); return; }   // phones use the overlay
+  setSidebarCollapsed(!$("#app").classList.contains("sidebar-collapsed"));
+}
+$("#sidebar-toggle").onclick = toggleSidebar;
+addEventListener("keydown", (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === "\\") { e.preventDefault(); toggleSidebar(); }
+});
+if (localStorage.getItem("mnemo-side-collapsed")) setSidebarCollapsed(true);
 
 /* ---------- drag-to-resize (sidebar + split divider) ---------- */
 function makeResizer(handle, onDrag) {
