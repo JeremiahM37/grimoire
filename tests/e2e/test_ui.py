@@ -16,6 +16,20 @@ PORT = 9121
 BASE = f"http://127.0.0.1:{PORT}"
 PHONE = {"width": 390, "height": 844}
 DESKTOP = {"width": 1280, "height": 860}
+VAULT_PASS = "mypassphrase123"
+
+
+def _ensure_vault_unlocked(page):
+    """The e2e server shares one vault across tests — init OR unlock as needed."""
+    page.click("#vault-open")
+    page.wait_for_selector("#v-init, #v-unlock, #v-lock", timeout=8000)
+    if page.locator("#v-init").count():
+        page.fill("#v-pass", VAULT_PASS); page.click("#v-init")
+    elif page.locator("#v-unlock").count():
+        page.fill("#v-pass", VAULT_PASS); page.click("#v-unlock")
+    from playwright.sync_api import expect as _expect
+    _expect(page.locator("#v-lock")).to_be_visible(timeout=8000)
+    page.click("#vault-close")
 
 
 def _free(port):
@@ -431,12 +445,8 @@ def test_encrypted_note_plaintext_never_in_localstorage(page, server):
     expect(page.locator("#title")).to_have_value("NoDraft Secret", timeout=8000)
     page.fill("#content", "PLAINTEXTMARKER before encryption")
     expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
-    # init vault + encrypt this note
-    page.click("#vault-open")
-    page.fill("#v-pass", "mypassphrase123")
-    page.click("#v-init")
-    expect(page.locator("#v-lock")).to_be_visible(timeout=8000)
-    page.click("#vault-close")
+    # init/unlock vault + encrypt this note
+    _ensure_vault_unlocked(page)
     page.keyboard.press("Control+k")
     page.fill("#palette-input", "encrypt this note")
     page.keyboard.press("Enter")
@@ -455,12 +465,8 @@ def test_encrypt_note_end_to_end(page, server):
     expect(page.locator("#title")).to_have_value("Secret E2E", timeout=8000)
     page.fill("#content", "confidential body text")
     expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
-    # initialize the secret vault (creates + unlocks)
-    page.click("#vault-open")
-    page.fill("#v-pass", "mypassphrase123")
-    page.click("#v-init")
-    expect(page.locator("#v-lock")).to_be_visible(timeout=8000)
-    page.click("#vault-close")
+    # secret vault (shared across tests — init or unlock as needed)
+    _ensure_vault_unlocked(page)
     # encrypt the note via the command palette
     page.keyboard.press("Control+k")
     page.fill("#palette-input", "encrypt this note")
