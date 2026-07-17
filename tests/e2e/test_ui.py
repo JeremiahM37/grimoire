@@ -823,6 +823,20 @@ def test_tag_autocomplete(page, server):
     expect(ta).to_have_value(re.compile(r"#zephyrtag"))
 
 
+def test_code_syntax_highlighting(page, server):
+    page.goto(server)
+    page.once("dialog", lambda d: d.accept("Code Note"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Code Note", timeout=8000)
+    page.fill("#content", '# Code\n\n```python\ndef f(x):\n    return "hi"  # c\n```')
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
+    page.click("#preview-toggle")
+    expect(page.locator("#preview pre code.lang-python")).to_be_visible()
+    expect(page.locator("#preview .hl-kw", has_text="def")).to_be_visible()
+    expect(page.locator("#preview .hl-str", has_text="hi")).to_be_visible()
+    expect(page.locator("#preview .hl-com", has_text="# c")).to_be_visible()
+
+
 def test_callouts_and_highlights_render(page, server):
     page.goto(server)
     page.once("dialog", lambda d: d.accept("Callout Note"))

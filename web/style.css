@@ -142,6 +142,11 @@ body.resizing { cursor: col-resize; user-select: none; }
 .md p { margin: .6em 0; } .md ul,.md ol { padding-left: 1.4em; }
 .md code { font-family: var(--mono); background: var(--paper2); padding: 1px 5px; border-radius: 4px; font-size: .9em; }
 .md pre { background: var(--paper2); padding: 12px; border-radius: 8px; overflow-x: auto; }
+.md pre code { background: none; padding: 0; }
+.md .hl-kw { color: var(--accent); font-weight: 600; }
+.md .hl-str { color: var(--link); }
+.md .hl-com { color: var(--ink-soft); font-style: italic; }
+.md .hl-num { color: var(--link-open); }
 .md a { color: var(--link); }
 .md a.wikilink { color: var(--link); text-decoration: none; border-bottom: 1px solid transparent; cursor: pointer; }
 .md a.wikilink:hover { border-bottom-color: var(--link); }

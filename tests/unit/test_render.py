@@ -31,10 +31,11 @@ def test_escapes_html_no_script_execution():
     assert "<script>" not in h and "&lt;script&gt;" in h
 
 
-def test_code_block_is_escaped_verbatim():
+def test_code_block_is_escaped_and_not_wikilinked():
     h = render.render("```\n<b>x</b> [[not a link]]\n```")
-    assert "&lt;b&gt;x&lt;/b&gt;" in h
-    assert "[[not a link]]" in h and "<pre>" in h
+    assert "&lt;b&gt;x&lt;/b&gt;" in h            # HTML escaped
+    assert "<pre>" in h and "[[" in h             # inside a code block, brackets kept
+    assert 'class="wikilink"' not in h            # NOT turned into a link
 
 
 def test_tables_render_with_header_and_rows():
@@ -66,3 +67,16 @@ def test_callout_block():
 def test_callout_default_title_from_type():
     h = render.render("> [!note]\n> content")
     assert 'callout-note' in h and "Note" in h
+
+
+def test_code_syntax_highlighting():
+    h = render.render("```js\nconst x = \"hi\"; // note\n```")
+    assert 'class="lang-js"' in h
+    assert '<span class="hl-kw">const</span>' in h
+    assert '<span class="hl-str">&quot;hi&quot;</span>' in h
+    assert '<span class="hl-com">// note</span>' in h
+
+
+def test_highlighting_is_xss_safe():
+    h = render.render("```\n<script>alert(1)</script>\n```")
+    assert "&lt;script&gt;" in h and "<script>alert" not in h
