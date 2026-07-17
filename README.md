@@ -1,4 +1,6 @@
-# mnemo
+# Grimoire Notes
+
+> *(working codename `mnemo` internally — env vars, service, and paths still use the `MNEMO_`/`mnemo` prefix.)*
 
 > Local-first, **AI-native** notes — Obsidian/SilverBullet class, plain-markdown,
 > wiki-linked — with an encrypted secret vault your AI can *use* but never *read*.

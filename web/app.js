@@ -1,4 +1,4 @@
-/* mnemo PWA — vanilla ES module, offline-capable, no build step */
+/* Grimoire Notes PWA — vanilla ES module, offline-capable, no build step */
 const $ = (s) => document.querySelector(s);
 const state = { path: null, notes: [], dirty: false, saveTimer: null, frontmatter: {}, templates: [], aliases: {}, allTags: [] };
 
@@ -1641,7 +1641,7 @@ async function handleShareTarget() {
     const r = await api("/capture", { method: "POST",
       body: { text: text || p.get("title"), title: p.get("title"), url: p.get("url"), source: "share" } });
     history.replaceState(null, "", "/");
-    toast("Shared to mnemo"); await loadList(); openNote(r.path);
+    toast("Shared to Grimoire"); await loadList(); openNote(r.path);
     return true;
   } catch { return false; }
 }

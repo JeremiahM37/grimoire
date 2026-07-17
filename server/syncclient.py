@@ -46,7 +46,7 @@ def _local_conflict_copy(path: str) -> None:
         log.debug("could not conflict-copy %s", path)
 
 
-def sync_with_peer(peer: str, device: str = "mnemo", token: str | None = None) -> dict:
+def sync_with_peer(peer: str, device: str = "grimoire", token: str | None = None) -> dict:
     peer = peer.rstrip("/")
     remote = _req(f"{peer}/api/sync/manifest", token=token)
     local = local_manifest()

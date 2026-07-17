@@ -1,6 +1,6 @@
-# mnemo — Design Document
+# Grimoire Notes — Design Document
 
-> **Working name.** `mnemo` (from Mnemosyne, memory) is a placeholder — final name decided before publishing.
+> **Name:** **Grimoire Notes** (product name). The codebase still uses the original `mnemo` codename internally (the `server` package, the `MNEMO_` env prefix, the systemd service, and the `/home/admin/projects/mnemo` path) — user-facing surfaces all say Grimoire.
 > **One-liner:** A local-first, AI-native notes app in the Obsidian/SilverBullet class — plain-markdown, wiki-linked, synced everywhere — with a built-in **encrypted secret vault** your AI can use, scoped and audited.
 
 Status: v0.1–v0.9 shipped · Started 2026-07-16 · Lives at `/home/admin/projects/mnemo/`

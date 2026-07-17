@@ -45,7 +45,7 @@ def create_app() -> FastAPI:
             watch.stop()
         db.close()
 
-    app = FastAPI(title="mnemo", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="Grimoire Notes", version="1.0.0", lifespan=lifespan)
 
     # Security headers on every response. Strict CSP (no inline/external scripts)
     # is defense-in-depth against XSS; the renderers already escape HTML. No
