@@ -3,7 +3,7 @@
 > **Working name.** `mnemo` (from Mnemosyne, memory) is a placeholder — final name decided before publishing.
 > **One-liner:** A local-first, AI-native notes app in the Obsidian/SilverBullet class — plain-markdown, wiki-linked, synced everywhere — with a built-in **encrypted secret vault** your AI can use, scoped and audited.
 
-Status: v0 design · Started 2026-07-16 · Lives at `/home/admin/projects/mnemo/`
+Status: v0.1–v0.9 shipped · Started 2026-07-16 · Lives at `/home/admin/projects/mnemo/`
 
 ---
 
@@ -173,12 +173,14 @@ Four kinds, all hermetic by default (temp vault, no network, local stub embedder
 - **Install:** `pipx install mnemo` → `mnemo serve --vault ~/notes`; Docker image; systemd unit. "Easy install" is a design constraint, tested.
 
 ## 9. Roadmap
-- **v0.1 (core):** vault + watcher/reindex, note CRUD (files ⇄ index), frontmatter, `[[wiki-links]]` + backlinks, tags, daily notes, FTS5 search, PWA editor (CodeMirror), CLI (new/daily/search/serve/reindex), hermetic test suite + `.verify.yaml`.
-- **v0.2 (AI):** embeddings + ask-your-notes (Ollama), mnemo-as-MCP-server, inline AI actions, private-notes exclusion.
-- **v0.3 (secrets):** encrypted vault, `{{secret:}}` handles, grants + audit, AI secret-broker (scoped MCP/service calls).
-- **v0.4 (capture):** browser extension, audio memos + whisper, share target, CLI capture.
-- **v0.5 (sync):** delta sync + conflict copies, devices, static e-ink export.
-- **v1.0:** CRDT sync, packaging/docs, threat-model doc, rename + publish (OSP).
+Status: **v0.1–v0.9 shipped** (2026-07-16) — deployed, 160 hermetic tests + Playwright e2e + `verify` 3/3.
+- **v0.1 (core) ✅:** vault + watcher/reindex, note CRUD (files ⇄ index), frontmatter, `[[wiki-links]]` + backlinks, tags, daily notes, FTS5 search, PWA editor, CLI, hermetic test suite + `.verify.yaml`.
+- **v0.2 (AI) ✅:** embeddings + ask-your-notes (auto-Ollama, else offline extractive), mnemo-as-MCP-server, inline AI actions, private-notes exclusion.
+- **v0.3 (secrets) ✅:** encrypted vault, grants + audit, AI secret-broker (USE-not-READ).
+- **v0.4 (capture) ✅:** browser extension, audio memos + whisper, share target, CLI capture.
+- **v0.5 (sync) ✅:** delta sync + conflict copies, live cross-device refresh, static e-ink export.
+- **v0.6–v0.9 ✅ (best-in-class):** tag browsing, graph view, task checkboxes, command palette (Ctrl-K), real editor (toolbar/smart-lists/tab), image/file attachments, theme toggle, outline/TOC, note templates, per-note HTML export, in-app settings, **encryption-at-rest for private notes**, soft-delete/trash + undo, aliases, word count, pin/favorite, calendar.
+- **v1.0 (todo):** CRDT sync, threat-model doc, rename off the "mnemo" placeholder, publish (OSP). Niche backlog: kanban board, split-view, version history (partly covered by the git-friendly plain-md vault).
 
 ## 10. Risks & threat model (sketch — expanded per phase)
 - **Vault brokering is the crown jewel and the biggest risk.** A compromised unlocked session could request grants. Mitigations: grants are scoped + time-boxed + revocable + audited; secrets never leave the process as plaintext to the client; per-secret allow-lists of which MCP/service a token may be used against; a "panic lock" that drops the in-memory key. Default-deny.
