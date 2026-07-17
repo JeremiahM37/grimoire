@@ -705,6 +705,41 @@ def test_rename_tag_via_palette(page, server):
     page.remove_listener("dialog", handle)
 
 
+def test_sidebar_resize_drags_and_persists(page, server):
+    page.goto(server)
+    expect(page.locator("#side-head h1")).to_have_text("mnemo")
+    w0 = page.evaluate("() => document.getElementById('sidebar').getBoundingClientRect().width")
+    box = page.locator("#sidebar-resize").bounding_box()
+    page.mouse.move(box["x"] + 4, box["y"] + 120)
+    page.mouse.down()
+    page.mouse.move(box["x"] + 4 + 90, box["y"] + 120, steps=6)
+    page.mouse.up()
+    w1 = page.evaluate("() => document.getElementById('sidebar').getBoundingClientRect().width")
+    assert w1 > w0 + 50, f"sidebar did not widen: {w0} -> {w1}"
+    # persists across reload (localStorage)
+    page.reload()
+    expect(page.locator("#side-head h1")).to_have_text("mnemo")
+    w2 = page.evaluate("() => document.getElementById('sidebar').getBoundingClientRect().width")
+    assert abs(w2 - w1) < 6, f"sidebar width not persisted: {w1} -> {w2}"
+
+
+def test_split_divider_resizes(page, server):
+    page.goto(server)
+    page.once("dialog", lambda d: d.accept("Divider A"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Divider A", timeout=8000)
+    page.click("#split-btn")
+    expect(page.locator("#editor2")).to_be_visible()
+    main0 = page.evaluate("() => document.getElementById('editor').getBoundingClientRect().width")
+    box = page.locator("#split-resize").bounding_box()
+    page.mouse.move(box["x"] + 4, box["y"] + 150)
+    page.mouse.down()
+    page.mouse.move(box["x"] + 4 - 120, box["y"] + 150, steps=6)   # drag divider left
+    page.mouse.up()
+    main1 = page.evaluate("() => document.getElementById('editor').getBoundingClientRect().width")
+    assert main1 < main0 - 60, f"main pane did not shrink: {main0} -> {main1}"
+
+
 def test_split_view_desktop(page, server):
     page.goto(server)
     page.once("dialog", lambda d: d.accept("Split Left"))
