@@ -23,7 +23,8 @@ class _Handler(FileSystemEventHandler):
 
     def _relevant(self, path: str) -> bool:
         p = Path(path)
-        return p.suffix == ".md" and ".mnemo" not in p.parts and not p.name.endswith(".tmp")
+        return (p.suffix == ".md" and not p.name.endswith(".tmp")
+                and not any(d in p.parts for d in vault.RESERVED_DIRS))
 
     def on_any_event(self, event):
         if event.is_directory:

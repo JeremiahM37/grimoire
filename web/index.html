@@ -15,6 +15,7 @@
   <aside id="sidebar">
     <header id="side-head">
       <h1>mnemo</h1>
+      <button id="theme-toggle" class="icon" title="theme">◐</button>
       <button id="menu-close" class="icon" title="close">✕</button>
     </header>
     <div class="side-actions">
@@ -45,6 +46,7 @@
       <input id="title" placeholder="Untitled" spellcheck="false">
       <span id="save-state" class="save-state"></span>
       <button id="ai-btn" class="icon" title="AI actions">✦</button>
+      <button id="outline-btn" class="icon" title="outline">⊟</button>
       <button id="private-toggle" class="icon" title="private note">🔓</button>
       <button id="preview-toggle" class="icon" title="preview">◐</button>
       <button id="delete-note" class="icon danger" title="delete">🗑</button>
@@ -99,6 +101,8 @@
     <div class="mi" data-a="expand">Expand draft</div>
     <div class="mi" data-a="tags">Suggest tags</div>
   </div>
+
+  <div id="outline" class="menu hidden"></div>
 
   <div id="graph-modal" class="modal hidden">
     <div class="graph-box">

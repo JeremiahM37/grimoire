@@ -1,6 +1,6 @@
 /* mnemo PWA — vanilla ES module, offline-capable, no build step */
 const $ = (s) => document.querySelector(s);
-const state = { path: null, notes: [], dirty: false, saveTimer: null, frontmatter: {} };
+const state = { path: null, notes: [], dirty: false, saveTimer: null, frontmatter: {}, templates: [] };
 
 async function api(path, opts = {}) {
   const r = await fetch(`/api${path}`, {
@@ -509,7 +509,28 @@ const COMMANDS = [
   { icon: "◐", name: "Toggle preview", run: () => $("#preview-toggle").click() },
   { icon: "🔐", name: "Open secret vault", run: openVault },
   { icon: "🎙", name: "Record audio memo", run: () => $("#audio-memo").click() },
+  { icon: "🗂", name: "Save current note as template", run: saveAsTemplate },
 ];
+async function refreshTemplates() {
+  try { state.templates = await api("/templates"); } catch { state.templates = []; }
+}
+async function saveAsTemplate() {
+  if (!state.path) return toast("Open a note first", true);
+  const name = prompt("Template name:", $("#title").value || "");
+  if (!name) return;
+  try {
+    await api("/templates", { method: "POST", body: { name, body: $("#content").value } });
+    await refreshTemplates(); toast(`Saved template “${name}”`);
+  } catch (e) { toast(e.message, true); }
+}
+async function newFromTemplate(tplPath) {
+  const title = prompt("Title for the new note:");
+  if (!title) return;
+  try {
+    const n = await api("/templates/apply", { method: "POST", body: { template: tplPath, title } });
+    await loadList(); openNote(n.path);
+  } catch (e) { toast(e.message, true); }
+}
 let palIdx = 0, palItems = [];
 function openPalette() {
   $("#palette").classList.remove("hidden");
@@ -532,15 +553,20 @@ function renderPalette(q) {
   const notes = state.notes.map((n) => ({
     kind: "note", label: n.title || n.path, path: n.path,
     s: fuzzy(q, (n.title || "") + " " + n.path) }));
-  palItems = [...cmds, ...notes].filter((x) => x.s > 0)
+  const tpls = (state.templates || []).map((t) => ({
+    kind: "template", label: `New from: ${t.name}`, tpl: t.path,
+    s: fuzzy(q, "new from template " + t.name) }));
+  palItems = [...cmds, ...tpls, ...notes].filter((x) => x.s > 0)
     .sort((a, b) => b.s - a.s).slice(0, 40);
   palIdx = 0;
   const el = $("#palette-list");
+  const ICON = { cmd: (it) => it.icon, template: () => "🗂", note: () => "◦" };
+  const KIND = { cmd: "command", template: "template", note: "note" };
   el.innerHTML = palItems.map((it, i) =>
     `<div class="pal-item${i === 0 ? " sel" : ""}" data-i="${i}">`
-    + `<span class="pk">${it.kind === "cmd" ? it.icon : "◦"}</span>`
+    + `<span class="pk">${(ICON[it.kind] || ICON.note)(it)}</span>`
     + `<span>${esc(it.label)}</span>`
-    + (it.kind === "note" ? '<span class="pm">note</span>' : '<span class="pm">command</span>')
+    + `<span class="pm">${KIND[it.kind] || ""}</span>`
     + `</div>`).join("") || '<div class="pal-item">No matches</div>';
   el.querySelectorAll(".pal-item[data-i]").forEach((d) =>
     (d.onclick = () => runPalette(+d.dataset.i)));
@@ -548,7 +574,9 @@ function renderPalette(q) {
 function runPalette(i) {
   const it = palItems[i]; if (!it) return;
   closePalette();
-  if (it.kind === "note") openNote(it.path); else it.run();
+  if (it.kind === "note") openNote(it.path);
+  else if (it.kind === "template") newFromTemplate(it.tpl);
+  else it.run();
 }
 $("#palette-open").onclick = openPalette;
 $("#palette-input").oninput = (e) => renderPalette(e.target.value.trim());
@@ -690,6 +718,66 @@ function insertAtEnd(s) {
   scheduleSave();
 }
 
+/* ---------- outline / table of contents ---------- */
+function buildOutline() {
+  const lines = $("#content").value.split("\n");
+  const items = [];
+  let inCode = false;
+  lines.forEach((ln, i) => {
+    if (ln.trim().startsWith("```")) { inCode = !inCode; return; }
+    if (inCode) return;
+    const m = ln.match(/^(#{1,3})\s+(.+)$/);
+    if (m) items.push({ level: m[1].length, text: m[2].trim(), line: i, hIdx: items.length });
+  });
+  return items;
+}
+$("#outline-btn").onclick = (e) => {
+  const box = $("#outline");
+  const items = buildOutline();
+  box.innerHTML = items.length
+    ? items.map((it) =>
+        `<div class="mi ol-l${it.level}" data-line="${it.line}" data-h="${it.hIdx}">${esc(it.text)}</div>`).join("")
+    : '<div class="mi empty">No headings</div>';
+  box.querySelectorAll(".mi[data-line]").forEach((d) =>
+    (d.onclick = () => { scrollToHeading(+d.dataset.line, +d.dataset.h); box.classList.add("hidden"); }));
+  const r = e.target.getBoundingClientRect();
+  box.style.top = r.bottom + 4 + "px"; box.style.right = (innerWidth - r.right) + "px"; box.style.left = "";
+  box.classList.toggle("hidden");
+};
+addEventListener("click", (e) => { if (!e.target.closest("#outline-btn,#outline")) $("#outline").classList.add("hidden"); });
+function scrollToHeading(lineNo, hIdx) {
+  if (!$("#preview").classList.contains("hidden")) {
+    const hs = $("#preview").querySelectorAll("h1,h2,h3");
+    if (hs[hIdx]) hs[hIdx].scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  // edit mode: put the caret on the heading line and scroll it into view
+  const lines = $("#content").value.split("\n");
+  const offset = lines.slice(0, lineNo).reduce((a, l) => a + l.length + 1, 0);
+  ta.focus();
+  ta.selectionStart = ta.selectionEnd = offset;
+  const style = getComputedStyle(ta);
+  const lh = parseFloat(style.lineHeight) || 24;
+  ta.scrollTop = Math.max(0, lineNo * lh - ta.clientHeight / 3);
+}
+
+/* ---------- theme (auto / light / dark, persisted) ---------- */
+const THEMES = ["auto", "light", "dark"];
+const THEME_ICON = { auto: "◐", light: "☀", dark: "☾" };
+function applyTheme(t) {
+  if (t === "auto") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", t);
+  const btn = $("#theme-toggle");
+  if (btn) { btn.textContent = THEME_ICON[t] || "◐"; btn.title = `theme: ${t}`; }
+}
+$("#theme-toggle").onclick = () => {
+  const cur = localStorage.getItem("mnemo-theme") || "auto";
+  const next = THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length];
+  localStorage.setItem("mnemo-theme", next);
+  applyTheme(next); toast(`Theme: ${next}`);
+};
+applyTheme(localStorage.getItem("mnemo-theme") || "auto");
+
 /* ---------- chrome ---------- */
 $("#title").oninput = scheduleSave;
 $("#new-note").onclick = newNote;
@@ -726,6 +814,7 @@ async function handleShareTarget() {
 
 (async function boot() {
   await loadList();
+  refreshTemplates();
   if (await handleShareTarget()) return;
   const hash = decodeURI(location.hash.slice(1));
   if (hash && state.notes.some((n) => n.path === hash)) openNote(hash);

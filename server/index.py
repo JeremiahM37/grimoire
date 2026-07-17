@@ -9,8 +9,11 @@ from . import ai, db, vault
 
 
 def upsert(rel: str) -> dict:
-    """Index a single note from its file, resolving its links. Returns the note."""
+    """Index a single note from its file, resolving its links. Returns the note.
+    Files under reserved dirs (templates/, .mnemo/) are never indexed."""
     note = vault.read(rel)
+    if vault.is_reserved(rel):
+        return note
     _write_note_rows(note)
     _resolve_all()   # a new/edited note can resolve others' dangling links
     return note

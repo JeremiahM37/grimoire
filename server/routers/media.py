@@ -28,7 +28,7 @@ async def attach(file: UploadFile = File(...)):
     slug = vault.slugify(base or name)[:40] or "file"
     rel = f"{ATTACH_DIR}/{stamp}-{slug}.{ext}"
     try:
-        p = vault.safe_path(rel)   # confined to the vault, rejects traversal/.mnemo
+        p = vault.safe_raw_path(rel)   # sandboxed, but keeps the real extension
     except VaultError as e:
         raise HTTPException(400, str(e))
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -40,7 +40,7 @@ async def attach(file: UploadFile = File(...)):
 def get_file(path: str):
     """Serve a raw vault file (attachments, images) for embeds and the e-ink view."""
     try:
-        p = vault.safe_path(path.strip("/"))
+        p = vault.safe_raw_path(path.strip("/"))
     except VaultError:
         raise HTTPException(400, "bad path")
     if not p.exists() or not p.is_file():
@@ -56,7 +56,7 @@ async def audio_memo(file: UploadFile = File(...), title: str | None = Form(None
     stamp = time.strftime("%Y%m%d-%H%M%S")
     ext = (file.filename or "memo.webm").rsplit(".", 1)[-1][:8] or "webm"
     audio_rel = f"{ATTACH_DIR}/{stamp}.{ext}"
-    apath = vault.safe_path(audio_rel.replace(f".{ext}", ".md")).parent / f"{stamp}.{ext}"
+    apath = vault.safe_raw_path(audio_rel)
     apath.parent.mkdir(parents=True, exist_ok=True)
     apath.write_bytes(data)
 

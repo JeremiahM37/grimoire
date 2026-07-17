@@ -18,6 +18,17 @@ def test_attach_image_stores_and_serves(client):
     assert g.status_code == 200 and g.content == PNG
 
 
+def test_attachment_stored_with_real_extension_and_type(client, vaultdir):
+    j = client.post("/api/attach", files={"file": ("photo.png", PNG, "image/png")}).json()
+    # the on-disk file keeps its real extension (NOT coerced to .md)
+    stored = vaultdir / j["path"]
+    assert stored.exists() and stored.suffix == ".png"
+    assert not (vaultdir / (j["path"] + ".md")).exists()
+    # and it's served with an image content-type, not text/markdown
+    g = client.get("/api/file/" + j["path"])
+    assert g.headers["content-type"].startswith("image/")
+
+
 def test_attach_non_image_flagged(client):
     r = client.post("/api/attach", files={"file": ("report.pdf", b"%PDF-1.4 x", "application/pdf")})
     assert r.status_code == 201
