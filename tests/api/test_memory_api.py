@@ -97,3 +97,40 @@ def test_topicless_memory_lands_on_a_daily_note(client):
     assert r.status_code == 201
     import re
     assert re.fullmatch(r"memory/\d{4}-\d{2}-\d{2}\.md", r.json()["path"])
+
+
+def test_briefing_bundles_pinned_onboarding_and_memories(client):
+    client.post("/api/notes", json={"title": "Team Conventions", "body": "rules"})
+    client.post("/api/notes/team-conventions.md/pin")
+    client.post("/api/notes", json={"title": "Env Setup",
+                                    "body": "export APP_ENV=test first #onboarding"})
+    client.post("/api/memory", json={"text": "vendor sandbox flaky", "topic": "ops"})
+    b = client.get("/api/briefing").json()
+    assert [n["title"] for n in b["pinned"]] == ["Team Conventions"]
+    assert [n["title"] for n in b["onboarding"]] == ["Env Setup"]
+    assert b["recent_memories"][0]["path"] == "memory/ops.md"
+
+
+def test_briefing_excludes_private(client):
+    client.post("/api/notes", json={"title": "Secret Pin", "body": "x #onboarding"})
+    client.put("/api/notes/secret-pin.md",
+               json={"body": "x #onboarding", "frontmatter": {"private": True,
+                                                              "pinned": True}})
+    b = client.get("/api/briefing").json()
+    for section in b.values():
+        assert all(n["path"] != "secret-pin.md" for n in section)
+
+
+def test_recall_semantic_fallback_on_partial_match(client):
+    """regression (benchmark finding): FTS recall ANDs every term, so a query
+    with one wrong word dead-ends. The vector fallback must still land when
+    only some terms overlap. (Full paraphrase matching needs a real embedding
+    model; the offline hashing embedder covers token overlap.)"""
+    client.post("/api/memory", json={
+        "text": "the vendor sandbox is unreliable so exports mock the sync",
+        "topic": "flaky-upstream"})
+    # "timeout"/"issues" appear nowhere → FTS AND finds nothing; overlap on
+    # "sandbox" lets the semantic fallback rank the memory
+    hits = client.get("/api/memory",
+                      params={"q": "sandbox timeout issues"}).json()
+    assert any(h["path"] == "memory/flaky-upstream.md" for h in hits)

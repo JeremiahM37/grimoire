@@ -39,7 +39,7 @@ def _is_pinned(path: str) -> bool:
 
 
 @router.get("/search")
-def search(q: str = "", tag: str | None = None, limit: int = 50):
+def search(q: str = "", tag: str | None = None, limit: int = 50, full: bool = False):
     # operators: tag:X  is:pinned  path:X  — the rest is full-text
     op_tag, want_pinned, path_like, terms = tag, False, None, []
     for tok in q.split():
@@ -75,7 +75,16 @@ def search(q: str = "", tag: str | None = None, limit: int = 50):
             continue
         if want_pinned and not _is_pinned(r["path"]):
             continue
-        out.append({"path": r["path"], "title": r["title"], "snippet": r["snippet"]})
+        hit = {"path": r["path"], "title": r["title"], "snippet": r["snippet"]}
+        if full:
+            # agents opt in to whole bodies to avoid a search→read round-trip
+            # per hit; encrypted notes stay sealed (their body is ciphertext,
+            # so return nothing rather than noise)
+            row = db.one("SELECT body FROM notes WHERE path=?", (r["path"],))
+            from .. import secrets as _secrets
+            body = (row or {}).get("body") or ""
+            hit["body"] = "" if _secrets.is_encrypted(body) else body
+        out.append(hit)
         if len(out) >= limit:
             break
     return out

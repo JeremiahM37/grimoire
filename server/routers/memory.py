@@ -89,9 +89,56 @@ def recall(q: str = "", limit: int = 20):
             "WHERE n.path LIKE ? AND n.path IN (SELECT path FROM fts WHERE fts MATCH ?) "
             "ORDER BY n.updated DESC LIMIT ?",
             (f"{MEMORY_DIR}/%", match, limit))
+        if not rows:
+            # exact terms missed — fall back to semantic retrieval over the
+            # memory namespace so paraphrased recalls still land
+            hits = index.retrieve(q, k=limit * 3)
+            paths = []
+            for h in hits:
+                if h["path"].startswith(f"{MEMORY_DIR}/") and h["path"] not in paths:
+                    paths.append(h["path"])
+            rows = [db.one("SELECT path, title, body, updated FROM notes WHERE path=?",
+                           (pth,)) for pth in paths[:limit]]
     else:
         rows = db.query(
             "SELECT path, title, body, updated FROM notes WHERE path LIKE ? "
             "ORDER BY updated DESC LIMIT ?", (f"{MEMORY_DIR}/%", limit))
     return [{"path": r["path"], "title": r["title"], "updated": r["updated"],
              "body": r["body"]} for r in rows]
+
+@router.get("/briefing")
+def briefing(memories: int = 5):
+    """The "read this first" pack for an agent joining a session: pinned notes,
+    onboarding-tagged notes, and the most recent agent memories — one call.
+
+    Exists because retrieval only surfaces what an agent thinks to ask for;
+    standing context (conventions, environment rules, active decisions) must
+    arrive unprompted or it gets skipped. (Benchmark finding: an agent missed a
+    documented env rule because it lived in an onboarding memory it never
+    queried.) Private notes stay excluded — this can feed unauthenticated
+    automation."""
+    memories = max(1, min(memories, 20))
+
+    def rows_to_notes(rows):
+        return [{"path": r["path"], "title": r["title"], "body": r["body"]}
+                for r in rows]
+
+    pinned = db.query(
+        "SELECT path, title, body FROM notes WHERE private=0 "
+        "AND frontmatter_json LIKE '%\"pinned\": true%' ORDER BY updated DESC LIMIT 10")
+    onboarding = db.query(
+        "SELECT n.path, n.title, n.body FROM notes n JOIN tags t ON t.note=n.path "
+        "WHERE t.tag='onboarding' AND n.private=0 ORDER BY n.updated DESC LIMIT 10")
+    recent = db.query(
+        "SELECT path, title, body FROM notes WHERE path LIKE ? AND private=0 "
+        "ORDER BY updated DESC LIMIT ?", (f"{MEMORY_DIR}/%", memories))
+    seen: set[str] = set()
+    out = {"pinned": [], "onboarding": [], "recent_memories": []}
+    for key, rows in (("pinned", pinned), ("onboarding", onboarding),
+                      ("recent_memories", recent)):
+        for n in rows_to_notes(rows):
+            if n["path"] not in seen:
+                seen.add(n["path"])
+                out[key].append(n)
+    return out
+

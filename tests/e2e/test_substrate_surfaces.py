@@ -68,3 +68,21 @@ def test_agent_memories_palette_entry(page, server):
     page.fill("#palette-input", "agent memories")
     page.keyboard.press("Enter")
     expect(page.locator("#title")).to_have_value("Memory: palette-probe", timeout=8000)
+
+
+def test_agent_briefing_surface(page, server):
+    """The human console shows the same standing context get_briefing serves."""
+    page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
+    page.evaluate(
+        "() => fetch('/api/notes', {method:'POST',"
+        "headers:{'Content-Type':'application/json'},"
+        "body: JSON.stringify({title:'Env Rules', body:'export APP_ENV=test #onboarding'})})")
+    _remember(page, "vendor sandbox flaky, mock it", "ops-briefing")
+    page.keyboard.press("Control+k")
+    page.fill("#palette-input", "agent briefing")
+    page.keyboard.press("Enter")
+    expect(page.locator("#inspect-title")).to_contain_text("briefing", timeout=6000)
+    expect(page.locator("#inspect-body", )).to_contain_text("Onboarding", timeout=6000)
+    expect(page.locator(".inspect-chunk", has_text="Env Rules")).to_be_visible()
+    expect(page.locator(".inspect-chunk", has_text="ops-briefing")).to_be_visible()

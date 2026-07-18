@@ -885,6 +885,7 @@ function renderProvenance(n) {
 async function openInspect() {
   const q = prompt("What would the agent see for…");
   if (!q) return;
+  $("#inspect-title").textContent = "🔎 What the agent sees";
   $("#inspect-modal").classList.remove("hidden");
   const b = $("#inspect-body");
   b.innerHTML = '<p class="vault-note">Retrieving…</p>';
@@ -905,6 +906,33 @@ async function openInspect() {
 }
 $("#inspect-close").onclick = () => $("#inspect-modal").classList.add("hidden");
 
+/* Agent briefing viewer — the standing context agents receive from the
+   get_briefing MCP tool (pinned + onboarding + recent memories). The human
+   should be able to read exactly what agents are told first. */
+async function openBriefing() {
+  $("#inspect-title").textContent = "📋 Agent briefing (what agents get first)";
+  $("#inspect-modal").classList.remove("hidden");
+  const b = $("#inspect-body");
+  b.innerHTML = '<p class="vault-note">Loading…</p>';
+  try {
+    const br = await api("/briefing");
+    const section = (label, notes) => notes.length
+      ? `<p class="vault-note"><b>${label}</b></p>` + notes.map((n) => `
+          <div class="inspect-chunk">
+            <div class="ic-head"><a class="wikilink" data-path="${esc(n.path)}">${esc(n.title || n.path)}</a></div>
+            <div class="ic-text">${esc(n.body.slice(0, 400))}</div>
+          </div>`).join("")
+      : "";
+    b.innerHTML = section("Pinned", br.pinned)
+      + section("Onboarding", br.onboarding)
+      + section("Recent agent memories", br.recent_memories)
+      || '<p class="vault-note">Nothing yet — pin a note, tag one #onboarding, or let an agent remember something.</p>';
+    b.querySelectorAll("a.wikilink").forEach((a) => (a.onclick = () => {
+      $("#inspect-modal").classList.add("hidden"); openNote(a.dataset.path);
+    }));
+  } catch (e) { b.innerHTML = `<p class="vault-note">${esc(e.message)}</p>`; }
+}
+
 /* ---------- command palette (Ctrl/Cmd-K quick switcher) ---------- */
 const COMMANDS = [
   { icon: "＋", name: "New note", run: newNote },
@@ -915,6 +943,7 @@ const COMMANDS = [
   { icon: "🔐", name: "Open secret vault", run: openVault },
   { icon: "⚖", name: "Agent grants & audit (credential console)", run: openVault },
   { icon: "🔎", name: "What would the agent see… (retrieval inspection)", run: openInspect },
+  { icon: "📋", name: "Agent briefing (standing context)", run: openBriefing },
   { icon: "🤖", name: "Agent memories (recent)", run: async () => {
     const mems = await api("/memory");
     if (!mems.length) return toast("No agent memories yet — agents write them via the MCP remember tool");

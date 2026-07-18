@@ -42,15 +42,20 @@ def api(method: str, path: str, body: dict | None = None):
 
 
 @mcp.tool()
-def search_notes(query: str, limit: int = 20) -> list:
-    """Full-text search the vault. Returns path/title/snippet."""
-    return api("GET", f"/search?q={urllib.parse.quote(query)}&limit={limit}")
+def search_notes(query: str, limit: int = 20, full: bool = False) -> list:
+    """Full-text search the team's knowledge base (runbooks, conventions,
+    decisions, notes). CONSULT THIS BEFORE ASSUMING project facts — the vault
+    records things the code doesn't say. Returns path/title/snippet; pass
+    full=True to get whole bodies and skip follow-up reads."""
+    return api("GET", f"/search?q={urllib.parse.quote(query)}&limit={limit}"
+                      f"&full={'true' if full else 'false'}")
 
 
 @mcp.tool()
 def ask_notes(question: str, include_private: bool = False) -> dict:
-    """Answer a question from the notes (RAG) with citations. Private notes are
-    excluded unless include_private=True."""
+    """Ask the knowledge base a question and get a cited answer (RAG). The
+    fastest way to check "does the team already know this?" before deciding
+    anything. Private notes excluded unless include_private=True."""
     return api("POST", "/ask", {"q": question, "include_private": include_private})
 
 
@@ -111,8 +116,10 @@ def remember(text: str, topic: str = "", task: str = "") -> dict:
 
 @mcp.tool()
 def recall(query: str = "", limit: int = 10) -> list:
-    """Recall memories. With a query: full-text search over the memory
-    namespace. Without: the most recently touched memory notes."""
+    """Recall what agents previously learned here (tickets, decisions, gotchas).
+    CONSULT THIS BEFORE ASSUMING project facts or choosing an approach — teams
+    record accepted fixes and conventions that are NOT visible in the code.
+    With a query: search (exact terms, semantic fallback). Without: recent."""
     q = urllib.parse.urlencode({"q": query, "limit": limit})
     return api("GET", f"/memory?{q}")
 
@@ -125,6 +132,22 @@ def use_credential(grant: str, url: str, method: str = "GET",
     prefix, time-boxed, audited). 403 = outside your grant's scope or expired."""
     return api("POST", "/secrets/broker", {"grant": grant, "method": method,
                                            "url": url, "header": header, "body": body})
+
+
+@mcp.tool()
+def get_briefing() -> dict:
+    """START HERE when beginning work: the team's standing context in one call —
+    pinned notes, onboarding rules (environment requirements, required steps),
+    and the most recent agent memories. Cheap; call it before your first edit."""
+    return api("GET", "/briefing")
+
+
+@mcp.tool()
+def kb_info() -> dict:
+    """Connectivity + scope check: confirms the knowledge base is reachable and
+    reports note/tag counts. Use to verify your mount (a silent MCP failure
+    otherwise looks identical to 'no knowledge exists')."""
+    return api("GET", "/health")
 
 
 @mcp.tool()
