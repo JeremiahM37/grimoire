@@ -38,5 +38,5 @@ def test_apply_rejects_non_template_path(client):
     client.post("/api/notes", json={"title": "Regular", "body": "secret"})
     r = client.post("/api/templates/apply", json={"template": "regular.md", "title": "x"})
     assert r.status_code == 400
-    r2 = client.post("/api/templates/apply", json={"template": ".mnemo/secrets.enc", "title": "x"})
+    r2 = client.post("/api/templates/apply", json={"template": ".grimoire/secrets.enc", "title": "x"})
     assert r2.status_code == 400

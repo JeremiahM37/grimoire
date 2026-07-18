@@ -3,9 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Grimoire Notes</title>
+<title>Grimoire</title>
 <meta name="theme-color" content="#faf7f0">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Grimoire">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/style.css">
@@ -37,6 +41,7 @@
       <button id="palette-open" class="btn">⌘ Palette</button>
     </div>
     <nav id="note-list"></nav>
+    <div id="plugin-panels"></div><!-- sidebar sections contributed by plugins -->
     <footer id="side-foot"><span id="stat"></span></footer>
     <div id="sidebar-resize" class="resize-h" title="drag to resize"></div>
   </aside>
@@ -76,8 +81,10 @@
       <button id="find-all" class="btn">All</button>
       <button id="find-close" class="icon" title="close (Esc)">✕</button>
     </div>
+    <div id="provenance" class="hidden"></div>
     <div id="ed-body">
       <textarea id="content" placeholder="Write in markdown.  [[link]] to other notes.  #tag your thoughts." spellcheck="false"></textarea>
+      <div id="live-editor"></div><!-- CM6 live-preview mount; hidden in classic mode -->
       <div id="preview" class="hidden"></div>
     </div>
     <section id="backlinks"></section>
@@ -202,6 +209,26 @@
         </span>
       </header>
       <div id="calendar-body"></div>
+    </div>
+  </div>
+
+  <div id="inspect-modal" class="modal hidden">
+    <div class="modal-box">
+      <header class="modal-head">
+        <span>🔎 What the agent sees</span>
+        <button id="inspect-close" class="icon">✕</button>
+      </header>
+      <div id="inspect-body"></div>
+    </div>
+  </div>
+
+  <div id="history-modal" class="modal hidden">
+    <div class="modal-box">
+      <header class="modal-head">
+        <span>🕘 Version history</span>
+        <button id="history-close" class="icon">✕</button>
+      </header>
+      <div id="history-body"></div>
     </div>
   </div>
 

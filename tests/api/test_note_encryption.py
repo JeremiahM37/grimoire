@@ -28,7 +28,7 @@ def test_ciphertext_on_disk_hides_plaintext(client, vaultdir):
     client.post("/api/notes", json={"title": "Sensitive", "body": "my password is hunter2"})
     client.post("/api/notes/sensitive.md/encrypt")
     disk = (vaultdir / "sensitive.md").read_text()
-    assert "hunter2" not in disk and "mnemo:enc:v1:" in disk
+    assert "hunter2" not in disk and "grimoire:enc:v1:" in disk
 
 
 def test_encrypted_note_not_in_rag_or_read_surface(client):
@@ -57,7 +57,7 @@ def test_edit_encrypted_note_reseals(client, vaultdir):
     client.post("/api/notes/edit-enc.md/encrypt")
     client.put("/api/notes/edit-enc.md", json={"body": "version two updated"})
     disk = (vaultdir / "edit-enc.md").read_text()
-    assert "version two" not in disk and "mnemo:enc" in disk      # still sealed
+    assert "version two" not in disk and "grimoire:enc" in disk      # still sealed
     assert client.get("/api/notes/edit-enc.md").json()["body"] == "version two updated"
 
 

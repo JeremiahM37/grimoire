@@ -16,23 +16,23 @@ _TASK_RE = re.compile(r"^\s*[-*]\s+\[([ xX])\]\s+(.*)$")
 
 @router.get("/export/vault")
 def export_vault():
-    """Download the whole vault as a .zip (all files except the internal .mnemo/
+    """Download the whole vault as a .zip (all files except the internal .grimoire/
     dir — so the secret store and rebuildable index are never included)."""
     root = vault.vault_root()
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         if root.exists():
             for p in sorted(root.rglob("*")):
-                if p.is_file() and ".mnemo" not in p.parts:
+                if p.is_file() and ".grimoire" not in p.parts:
                     z.write(p, arcname=str(p.relative_to(root)))
     return Response(buf.getvalue(), media_type="application/zip",
-                    headers={"Content-Disposition": 'attachment; filename="mnemo-vault.zip"'})
+                    headers={"Content-Disposition": 'attachment; filename="grimoire-vault.zip"'})
 
 
 @router.post("/import/vault")
 async def import_vault(file: UploadFile = File(...)):
     """Extract a .zip into the vault. Each entry is confined via safe_raw_path
-    (zip-slip protection), .mnemo entries are refused, and total uncompressed
+    (zip-slip protection), .grimoire entries are refused, and total uncompressed
     size is capped (zip-bomb protection). Existing files are overwritten."""
     data = await file.read()
     if len(data) > 200 * 1024 * 1024:
@@ -42,7 +42,7 @@ async def import_vault(file: UploadFile = File(...)):
     try:
         zf = zipfile.ZipFile(io.BytesIO(data))
     except zipfile.BadZipFile:
-        raise HTTPException(400, "not a valid zip archive")
+        raise HTTPException(400, "not a valid zip archive") from None
     with zf:
         for info in zf.infolist():
             if info.is_dir():
@@ -51,7 +51,7 @@ async def import_vault(file: UploadFile = File(...)):
             if total > CAP:
                 raise HTTPException(413, "archive expands too large")
             name = info.filename.replace("\\", "/")
-            if ".mnemo" in name.split("/"):
+            if ".grimoire" in name.split("/"):
                 skipped += 1
                 continue
             try:

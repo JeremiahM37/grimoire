@@ -1,4 +1,4 @@
-"""The vault watcher: external .md edits (Obsidian/vim/sync) reconcile the index."""
+"""The vault watcher: external .md edits (other editors, sync clients) reconcile the index."""
 import time
 
 from server import db, index
@@ -21,7 +21,7 @@ def test_external_create_is_indexed(vaultdir):
     try:
         # write a note the way an external editor / sync client would
         (vaultdir / "external.md").write_text(
-            "---\ntitle: External Note\n---\nwritten outside mnemo [[Target]] #ext")
+            "---\ntitle: External Note\n---\nwritten outside grimoire [[Target]] #ext")
         assert _wait(lambda: db.one("SELECT 1 FROM notes WHERE path='external.md'")), \
             "watcher did not index an externally-created note"
         n = db.one("SELECT title FROM notes WHERE path='external.md'")

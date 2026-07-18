@@ -1,4 +1,4 @@
-"""Vault zip import — round-trip + zip-slip / .mnemo / zip-bomb protection."""
+"""Vault zip import — round-trip + zip-slip / .grimoire / zip-bomb protection."""
 import io
 import zipfile
 
@@ -32,11 +32,11 @@ def test_import_blocks_zip_slip(client, vaultdir):
     assert not (vaultdir.parent.parent / "evil.md").exists()
 
 
-def test_import_skips_mnemo_entries(client, vaultdir):
-    data = _zip({".mnemo/secrets.enc": "SHOULD_NOT_LAND", "real.md": "# Real"})
+def test_import_skips_grimoire_entries(client, vaultdir):
+    data = _zip({".grimoire/secrets.enc": "SHOULD_NOT_LAND", "real.md": "# Real"})
     j = client.post("/api/import/vault", files={"file": ("v.zip", data, "application/zip")}).json()
     assert j["imported"] == 1 and j["skipped"] == 1
-    assert not (vaultdir / ".mnemo" / "secrets.enc").read_text() if (vaultdir / ".mnemo" / "secrets.enc").exists() else True
+    assert not (vaultdir / ".grimoire" / "secrets.enc").read_text() if (vaultdir / ".grimoire" / "secrets.enc").exists() else True
 
 
 def test_import_rejects_non_zip(client):

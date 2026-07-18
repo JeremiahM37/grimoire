@@ -22,13 +22,13 @@ def test_no_frontmatter():
 
 def test_wikilinks_alias_and_dedupe():
     links = md.extract_links("See [[Alpha]] and [[Beta|the beta]] and [[Alpha]] again")
-    assert [l["target"] for l in links] == ["Alpha", "Beta"]
+    assert [lk["target"] for lk in links] == ["Alpha", "Beta"]
     assert links[1]["alias"] == "the beta"
 
 
 def test_wikilinks_ignore_code_and_anchors():
     links = md.extract_links("`[[not a link]]` but [[Real#heading]] counts")
-    assert [l["target"] for l in links] == ["Real"]
+    assert [lk["target"] for lk in links] == ["Real"]
 
 
 def test_tags_extraction_ignores_headings_and_code():

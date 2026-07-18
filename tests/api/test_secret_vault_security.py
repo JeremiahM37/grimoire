@@ -1,7 +1,7 @@
 """Negative / adversarial: the secret vault's security invariants.
 
 If any of these fail, the vault's entire premise is broken — so they're the most
-important tests in mnemo.
+important tests in grimoire.
 """
 
 
@@ -82,5 +82,5 @@ def test_grant_for_missing_secret_rejected(client):
 
 def test_secrets_file_on_disk_is_ciphertext(client, vaultdir):
     _armed(client)
-    blob = (vaultdir / ".mnemo" / "secrets.enc").read_text()
+    blob = (vaultdir / ".grimoire" / "secrets.enc").read_text()
     assert "sk-DEADBEEF-secret" not in blob and "apikey" not in blob   # sealed

@@ -1,4 +1,4 @@
-"""Per-note CRDT documents, persisted in .mnemo/crdt/, keyed by note path.
+"""Per-note CRDT documents, persisted in .grimoire/crdt/, keyed by note path.
 
 We CRDT the note **body** (not the raw file) so the volatile frontmatter
 timestamps don't garble a character merge. On merge the body is auto-merged
@@ -17,17 +17,17 @@ MAX_CRDT_BYTES = 200_000
 
 
 def site_id() -> str:
-    p = config.mnemo_dir() / "site_id"
+    p = config.grimoire_dir() / "site_id"
     if p.exists():
         return p.read_text().strip()
-    config.mnemo_dir().mkdir(parents=True, exist_ok=True)
+    config.grimoire_dir().mkdir(parents=True, exist_ok=True)
     sid = pysecrets.token_hex(4)
     p.write_text(sid)
     return sid
 
 
 def _dir():
-    d = config.mnemo_dir() / "crdt"
+    d = config.grimoire_dir() / "crdt"
     d.mkdir(parents=True, exist_ok=True)
     return d
 

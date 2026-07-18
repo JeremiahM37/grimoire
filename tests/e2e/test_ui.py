@@ -1,21 +1,11 @@
 """Playwright e2e — real browser against a real server on a temp vault."""
-import os
-import socket
-import subprocess
-import sys
-import time
-from pathlib import Path
 
 import re
 
 import pytest
-from playwright.sync_api import expect, sync_playwright
+from conftest import DESKTOP, PHONE  # viewports (conftest dir is on sys.path)
+from playwright.sync_api import expect
 
-ROOT = Path(__file__).resolve().parents[2]
-PORT = 9121
-BASE = f"http://127.0.0.1:{PORT}"
-PHONE = {"width": 390, "height": 844}
-DESKTOP = {"width": 1280, "height": 860}
 VAULT_PASS = "mypassphrase123"
 
 
@@ -32,73 +22,19 @@ def _ensure_vault_unlocked(page):
     page.click("#vault-close")
 
 
-def _free(port):
-    try:
-        out = subprocess.run(["ss", "-tlnp"], capture_output=True, text=True).stdout
-        for line in out.splitlines():
-            if f":{port} " in line and "pid=" in line:
-                subprocess.run(["kill", "-9", line.split("pid=")[1].split(",")[0]],
-                               capture_output=True)
-    except Exception:
-        pass
 
-
-@pytest.fixture(scope="session")
-def server(tmp_path_factory):
-    vault = tmp_path_factory.mktemp("e2e-vault")
-    env = {**os.environ, "MNEMO_VAULT": str(vault), "MNEMO_PORT": str(PORT)}
-    # keep e2e hermetic/offline regardless of ambient env
-    for var in ("MNEMO_OLLAMA_URL", "MNEMO_LLM", "MNEMO_LLM_MODEL", "MNEMO_WHISPER_URL"):
-        env.pop(var, None)
-    # the API indexes on every write; the watcher would only add redundant reindex
-    # churn over the shared, ever-growing e2e vault (and can starve the server)
-    env["MNEMO_NO_WATCHER"] = "1"
-    _free(PORT)
-    # IMPORTANT: discard server output. A PIPE that nobody drains fills the ~64KB
-    # OS buffer after enough uvicorn access-log lines, blocking the server on
-    # write — it silently stops serving late in a large run.
-    proc = subprocess.Popen([sys.executable, "-m", "server"], cwd=ROOT, env=env,
-                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    for _ in range(100):
-        with socket.socket() as s:
-            if s.connect_ex(("127.0.0.1", PORT)) == 0:
-                break
-        time.sleep(0.1)
-    else:
-        proc.kill(); raise RuntimeError("server did not start")
-    yield BASE
-    proc.terminate()
-    try:
-        proc.wait(timeout=10)
-    except subprocess.TimeoutExpired:
-        proc.kill()
-    _free(PORT)
-
-
-@pytest.fixture(scope="session")
-def browser():
-    with sync_playwright() as p:
-        b = p.chromium.launch()
-        yield b
-        b.close()
-
-
-@pytest.fixture()
-def page(browser, server, request):
-    ctx = browser.new_context(viewport=getattr(request, "param", DESKTOP))
-    pg = ctx.new_page()
-    yield pg
-    ctx.close()
 
 
 @pytest.mark.parametrize("page", [DESKTOP, PHONE], indirect=True, ids=["desktop", "phone"])
 def test_app_loads(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     expect(page.locator("#side-head h1")).to_have_text("Grimoire")
 
 
 def test_create_note_and_it_appears(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("My E2E Note"))
     page.click("#new-note")
     expect(page.locator(".note-row .t", has_text="My E2E Note")).to_be_visible(timeout=8000)
@@ -107,6 +43,7 @@ def test_create_note_and_it_appears(page, server):
 
 def test_edit_saves_and_persists(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Persist Test"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Persist Test", timeout=8000)
@@ -121,6 +58,7 @@ def test_edit_saves_and_persists(page, server):
 
 def test_wikilink_backlink_and_navigation(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Target Note"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Target Note", timeout=8000)
@@ -139,6 +77,7 @@ def test_wikilink_backlink_and_navigation(page, server):
 
 def test_search_filters_list(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Searchable Apples"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Searchable Apples", timeout=8000)
@@ -150,6 +89,7 @@ def test_search_filters_list(page, server):
 
 def test_tag_click_filters_list(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     # a note that carries a distinctive tag
     page.once("dialog", lambda d: d.accept("Tagged Alpha"))
     page.click("#new-note")
@@ -181,6 +121,7 @@ def test_external_note_appears_without_reload(page, server):
     """The 'syncs from all devices' promise: a note created OUTSIDE this tab
     (device sync / MCP agent / external editor) shows up via the live poll."""
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     expect(page.locator(".note-row").first).to_be_visible(timeout=8000)
     # create a note out-of-band, exactly as a sync client or the AI would
     page.evaluate(
@@ -193,6 +134,7 @@ def test_external_note_appears_without_reload(page, server):
 
 def test_graph_view_opens_and_renders(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     # two linked notes so the graph has at least one edge
     page.once("dialog", lambda d: d.accept("Graph Hub"))
     page.click("#new-note")
@@ -220,6 +162,7 @@ def test_graph_view_opens_and_renders(page, server):
 
 def test_task_checkbox_toggles_and_persists(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Task List"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Task List", timeout=8000)
@@ -244,6 +187,7 @@ def test_task_checkbox_toggles_and_persists(page, server):
 
 def test_command_palette_jumps_to_note(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Palette Target Note"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Palette Target Note", timeout=8000)
@@ -263,6 +207,7 @@ def test_command_palette_jumps_to_note(page, server):
 
 def test_command_palette_runs_command(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     expect(page.locator(".note-row").first).to_be_visible(timeout=8000)
     page.click("#palette-open")
     expect(page.locator("#palette")).to_be_visible()
@@ -275,6 +220,7 @@ def test_command_palette_runs_command(page, server):
 
 def test_editor_smart_list_continuation(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("List Editor Note"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("List Editor Note", timeout=8000)
@@ -298,6 +244,7 @@ def test_editor_smart_list_continuation(page, server):
 
 def test_editor_toolbar_and_tab(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Toolbar Note"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Toolbar Note", timeout=8000)
@@ -322,6 +269,7 @@ def test_editor_toolbar_and_tab(page, server):
 
 def test_image_embed_renders_and_loads_in_preview(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Image Note"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Image Note", timeout=8000)
@@ -347,6 +295,7 @@ def test_image_embed_renders_and_loads_in_preview(page, server):
 
 def test_theme_toggle_cycles_and_persists(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     get = "() => document.documentElement.getAttribute('data-theme')"
     assert page.evaluate(get) in (None, "")          # auto by default
     page.click("#theme-toggle")
@@ -361,6 +310,7 @@ def test_theme_toggle_cycles_and_persists(page, server):
 
 def test_outline_lists_headings_and_navigates(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Outline Note"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Outline Note", timeout=8000)
@@ -379,6 +329,7 @@ def test_outline_lists_headings_and_navigates(page, server):
 
 def test_templates_save_and_apply_via_palette(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Template Source"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Template Source", timeout=8000)
@@ -405,6 +356,7 @@ def test_templates_save_and_apply_via_palette(page, server):
 
 def test_export_note_via_palette_opens_standalone_html(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Exportable Note"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Exportable Note", timeout=8000)
@@ -418,11 +370,12 @@ def test_export_note_via_palette_opens_standalone_html(page, server):
     exported = pop.value
     exported.wait_for_load_state()
     html = exported.content()
-    assert "<h1>Exportable Note</h1>" in html and "<strong>world</strong>" in html
+    assert '<h1 id="h-exportable-note">Exportable Note</h1>' in html and "<strong>world</strong>" in html
 
 
 def test_settings_modal_persists(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.keyboard.press("Control+k")
     page.fill("#palette-input", "open settings")
     page.keyboard.press("Enter")
@@ -440,6 +393,7 @@ def test_settings_modal_persists(page, server):
 
 def test_encrypted_note_plaintext_never_in_localstorage(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("NoDraft Secret"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("NoDraft Secret", timeout=8000)
@@ -460,6 +414,7 @@ def test_encrypted_note_plaintext_never_in_localstorage(page, server):
 
 def test_encrypt_note_end_to_end(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Secret E2E"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Secret E2E", timeout=8000)
@@ -485,6 +440,7 @@ def test_encrypt_note_end_to_end(page, server):
 
 def test_delete_then_undo_restores_note(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Trash E2E"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Trash E2E", timeout=8000)
@@ -502,6 +458,7 @@ def test_delete_then_undo_restores_note(page, server):
 
 def test_word_count_updates(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Wordy Note"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Wordy Note", timeout=8000)
@@ -511,6 +468,7 @@ def test_word_count_updates(page, server):
 
 def test_alias_wikilink_navigates(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.evaluate(
         "async () => {"
         "const p=(b)=>fetch('/api/notes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});"
@@ -530,6 +488,7 @@ def test_alias_wikilink_navigates(page, server):
 
 def test_pin_via_palette_floats_to_top(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Pin First"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Pin First", timeout=8000)
@@ -550,6 +509,7 @@ def test_pin_via_palette_floats_to_top(page, server):
 def test_calendar_marks_and_opens_daily_note(page, server):
     import datetime
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.click("#daily")   # ensure today's daily note exists
     today = datetime.date.today().isoformat()
     expect(page.locator("#title")).to_have_value(today, timeout=8000)
@@ -566,6 +526,7 @@ def test_calendar_marks_and_opens_daily_note(page, server):
 
 def test_tasks_view_lists_toggles_and_jumps(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Task Alpha ZZ"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Task Alpha ZZ", timeout=8000)
@@ -587,6 +548,7 @@ def test_tasks_view_lists_toggles_and_jumps(page, server):
 
 def test_help_modal_via_palette_and_shortcut(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.keyboard.press("Control+k")
     page.fill("#palette-input", "keyboard shortcuts help")
     page.keyboard.press("Enter")
@@ -601,6 +563,7 @@ def test_help_modal_via_palette_and_shortcut(page, server):
 
 def test_markdown_table_renders_in_preview(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Table Note"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Table Note", timeout=8000)
@@ -615,6 +578,7 @@ def test_markdown_table_renders_in_preview(page, server):
 
 def test_find_and_replace_all(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("FR Note"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("FR Note", timeout=8000)
@@ -635,6 +599,7 @@ def test_find_and_replace_all(page, server):
 
 def test_unlinked_mentions_show_and_link(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Widget Factory"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Widget Factory", timeout=8000)
@@ -654,6 +619,7 @@ def test_unlinked_mentions_show_and_link(page, server):
 
 def test_duplicate_note_via_palette(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Original ZZ"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Original ZZ", timeout=8000)
@@ -669,6 +635,7 @@ def test_duplicate_note_via_palette(page, server):
 
 def test_search_tag_operator_in_ui(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Op Note ZZ"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Op Note ZZ", timeout=8000)
@@ -687,6 +654,7 @@ def test_search_tag_operator_in_ui(page, server):
 
 def test_properties_editor_saves_and_reloads(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Props Note"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Props Note", timeout=8000)
@@ -718,6 +686,7 @@ def test_properties_editor_saves_and_reloads(page, server):
 
 def test_rename_tag_via_palette(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Tag Rename Note"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Tag Rename Note", timeout=8000)
@@ -737,6 +706,7 @@ def test_rename_tag_via_palette(page, server):
 
 def test_offline_edit_recovers_and_retries(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Offline Note"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Offline Note", timeout=8000)
@@ -746,7 +716,7 @@ def test_offline_edit_recovers_and_retries(page, server):
     page.context.set_offline(True)
     page.fill("#content", "edited while offline")
     expect(page.locator("#save-state")).to_contain_text("offline", timeout=6000)
-    draft = page.evaluate("() => localStorage.getItem('mnemo-draft')")
+    draft = page.evaluate("() => localStorage.getItem('grimoire-draft')")
     assert draft and "edited while offline" in draft
     # back online → the queued save retries automatically
     page.context.set_offline(False)
@@ -761,6 +731,7 @@ def test_offline_edit_recovers_and_retries(page, server):
 def test_daily_prev_next_and_insert_date(page, server):
     import datetime
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.click("#daily")   # today's daily note
     today = datetime.date.today()
     expect(page.locator("#title")).to_have_value(today.isoformat(), timeout=8000)
@@ -785,6 +756,7 @@ def test_daily_prev_next_and_insert_date(page, server):
 
 def test_tag_browser_filters(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Browse Seed"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Browse Seed", timeout=8000)
@@ -803,6 +775,7 @@ def test_tag_browser_filters(page, server):
 
 def test_tag_autocomplete(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     # seed a note with a distinctive tag so it's in the tag index
     page.once("dialog", lambda d: d.accept("Tag Seed"))
     page.click("#new-note")
@@ -825,6 +798,7 @@ def test_tag_autocomplete(page, server):
 
 def test_wikilink_hover_preview(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Hover Target"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Hover Target", timeout=8000)
@@ -844,6 +818,7 @@ def test_wikilink_hover_preview(page, server):
 
 def test_code_syntax_highlighting(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Code Note"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Code Note", timeout=8000)
@@ -858,6 +833,7 @@ def test_code_syntax_highlighting(page, server):
 
 def test_callouts_and_highlights_render(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Callout Note"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Callout Note", timeout=8000)
@@ -871,6 +847,7 @@ def test_callouts_and_highlights_render(page, server):
 
 def test_note_list_keyboard_navigation(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     for t in ("KbdNav Aaa", "KbdNav Bbb"):
         page.once("dialog", lambda d, t=t: d.accept(t))
         page.click("#new-note")
@@ -888,6 +865,7 @@ def test_note_list_keyboard_navigation(page, server):
 
 def test_focus_mode_hides_chrome_and_escapes(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Zen Note"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Zen Note", timeout=8000)
@@ -905,6 +883,7 @@ def test_focus_mode_hides_chrome_and_escapes(page, server):
 
 def test_note_context_menu_duplicate_and_rename(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Ctx Note"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Ctx Note", timeout=8000)
@@ -925,6 +904,7 @@ def test_note_context_menu_duplicate_and_rename(page, server):
 
 def test_sidebar_collapse_toggle_and_persist(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     expect(page.locator("#sidebar")).to_be_visible()
     page.click("#sidebar-toggle")
     expect(page.locator("#sidebar")).to_be_hidden()
@@ -939,6 +919,7 @@ def test_sidebar_collapse_toggle_and_persist(page, server):
 
 def test_sidebar_resize_drags_and_persists(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     expect(page.locator("#side-head h1")).to_have_text("Grimoire")
     w0 = page.evaluate("() => document.getElementById('sidebar').getBoundingClientRect().width")
     box = page.locator("#sidebar-resize").bounding_box()
@@ -957,6 +938,7 @@ def test_sidebar_resize_drags_and_persists(page, server):
 
 def test_split_divider_resizes(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Divider A"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Divider A", timeout=8000)
@@ -974,6 +956,7 @@ def test_split_divider_resizes(page, server):
 
 def test_split_view_desktop(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Split Left"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Split Left", timeout=8000)
@@ -1001,6 +984,7 @@ def test_split_view_desktop(page, server):
 @pytest.mark.parametrize("page", [PHONE], indirect=True, ids=["phone"])
 def test_split_falls_back_to_single_pane_on_phone(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     expect(page.locator("#side-head h1")).to_have_text("Grimoire")
     # the split control is hidden on phones, and the second pane never shows
     expect(page.locator("#split-btn")).to_be_hidden()
@@ -1014,6 +998,7 @@ def test_split_falls_back_to_single_pane_on_phone(page, server):
 
 def test_daily_note(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.click("#daily")
     import time as _t
     expect(page.locator("#title")).to_have_value(_t.strftime("%Y-%m-%d"), timeout=8000)
@@ -1021,6 +1006,7 @@ def test_daily_note(page, server):
 
 def test_ask_your_notes(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Coffee Guide"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Coffee Guide", timeout=8000)
@@ -1038,6 +1024,7 @@ def test_ask_your_notes(page, server):
 
 def test_private_toggle_hides_from_ask(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Secret Recipe"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Secret Recipe", timeout=8000)
@@ -1056,6 +1043,7 @@ def test_private_toggle_hides_from_ask(page, server):
 
 def test_secret_vault_flow(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.click("#vault-open")
     # wait for the vault body to finish its async render, then branch on state
     page.wait_for_selector("#v-init, #v-unlock, #v-add", timeout=8000)
@@ -1080,6 +1068,7 @@ def test_secret_vault_flow(page, server):
 
 def test_deep_link_hashchange_navigates(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Deep A"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Deep A", timeout=8000)
@@ -1093,6 +1082,7 @@ def test_deep_link_hashchange_navigates(page, server):
 
 def test_preview_does_not_execute_injected_script(page, server):
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("XSS Probe"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("XSS Probe", timeout=8000)
@@ -1111,6 +1101,167 @@ def test_no_console_errors_on_load(page, server):
     page.on("console", lambda m: errs.append(m.text) if m.type == "error" else None)
     page.on("pageerror", lambda e: errs.append(str(e)))
     page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     expect(page.locator("#side-head h1")).to_have_text("Grimoire")
     page.wait_for_timeout(500)
     assert not [e for e in errs if "favicon" not in e], errs
+
+
+def test_query_block_renders_live_results_in_preview(page, server):
+    page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
+    for title, body in [("Qproj A", "alpha #qproj"), ("Qproj B", "beta #qproj")]:
+        page.evaluate(
+            "([t, b]) => fetch('/api/notes', {method:'POST',"
+            "headers:{'Content-Type':'application/json'},"
+            "body: JSON.stringify({title:t, body:b})})", [title, body])
+    page.once("dialog", lambda d: d.accept("Query Dashboard"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Query Dashboard", timeout=8000)
+    page.fill("#content", "# Dash\n\n```query\ntag: qproj\nsort: title asc\n```")
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
+    page.click("#preview-toggle")
+    # placeholder hydrates into a live list of matching notes
+    expect(page.locator("#preview .query li", has_text="Qproj A")).to_be_visible(timeout=8000)
+    expect(page.locator("#preview .query li", has_text="Qproj B")).to_be_visible()
+
+
+def test_note_transclusion_renders_in_preview(page, server):
+    page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
+    page.evaluate(
+        "() => fetch('/api/notes', {method:'POST',"
+        "headers:{'Content-Type':'application/json'},"
+        "body: JSON.stringify({title:'Embed Source', body:'EMBEDDED-CONTENT-42'})})")
+    page.once("dialog", lambda d: d.accept("Embed Host"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Embed Host", timeout=8000)
+    page.fill("#content", "before\n\n![[Embed Source]]\n\nafter")
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
+    page.click("#preview-toggle")
+    expect(page.locator("#preview .embed", has_text="EMBEDDED-CONTENT-42")).to_be_visible(timeout=8000)
+
+
+def test_footnotes_render_in_preview(page, server):
+    page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
+    page.once("dialog", lambda d: d.accept("Footnote Note"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Footnote Note", timeout=8000)
+    page.fill("#content", "A claim.[^1]\n\n[^1]: The source of truth.")
+    page.click("#preview-toggle")
+    expect(page.locator("#preview .footnotes li", has_text="The source of truth.")).to_be_visible(timeout=8000)
+    expect(page.locator("#preview sup.fn-ref")).to_be_visible()
+
+
+def test_mobile_edge_swipe_opens_and_closes_sidebar(browser, server):
+    ctx = browser.new_context(viewport=PHONE, has_touch=True)
+    ctx.add_init_script("localStorage.setItem('grimoire-editor-mode', 'classic')")
+    pg = ctx.new_page()
+    try:
+        pg.goto(server)
+        pg.wait_for_selector("body[data-ready]", timeout=10000)
+        assert not pg.locator("#sidebar").evaluate("el => el.classList.contains('open')")
+        # swipe right from the left edge → sidebar opens
+        pg.evaluate("""() => {
+          const mk = (type, x, y) => new TouchEvent(type, { bubbles: true,
+            touches: [new Touch({ identifier: 1, target: document.body, clientX: x, clientY: y })],
+            changedTouches: [new Touch({ identifier: 1, target: document.body, clientX: x, clientY: y })] });
+          document.body.dispatchEvent(mk('touchstart', 10, 300));
+          document.body.dispatchEvent(mk('touchend', 180, 305));
+        }""")
+        expect(pg.locator("#sidebar")).to_have_class(re.compile(r"\bopen\b"), timeout=4000)
+        # swipe left on the sidebar → closes
+        pg.evaluate("""() => {
+          const side = document.querySelector('#sidebar');
+          const mk = (type, x, y) => new TouchEvent(type, { bubbles: true,
+            touches: [new Touch({ identifier: 2, target: side, clientX: x, clientY: y })],
+            changedTouches: [new Touch({ identifier: 2, target: side, clientX: x, clientY: y })] });
+          side.dispatchEvent(mk('touchstart', 200, 300));
+          side.dispatchEvent(mk('touchend', 40, 300));
+        }""")
+        pg.wait_for_function(
+            "() => !document.querySelector('#sidebar').classList.contains('open')", timeout=4000)
+    finally:
+        ctx.close()
+
+
+def test_ios_standalone_metas_and_touch_icon(page, server):
+    page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
+    assert page.locator('meta[name="apple-mobile-web-app-capable"]').get_attribute("content") == "yes"
+    assert page.locator('link[rel="apple-touch-icon"]').get_attribute("href") == "/apple-touch-icon.png"
+    status = page.evaluate("async () => (await fetch('/apple-touch-icon.png')).status")
+    assert status == 200
+
+
+def test_sidebar_panels_do_not_mutate_a_fresh_vault(browser, server):
+    """regression G1: the word-goal panel called GET /api/daily, which CREATES
+    today's daily note — merely loading the app modified a brand-new vault."""
+    ctx = browser.new_context(viewport=DESKTOP)
+    ctx.add_init_script("localStorage.setItem('grimoire-editor-mode', 'classic')")
+    pg = ctx.new_page()
+    try:
+        before = pg.request.get(server + "/api/notes").json()
+        known = {n["path"] for n in before}
+        pg.goto(server)
+        pg.wait_for_selector("body[data-ready]", timeout=10000)
+        pg.wait_for_selector(".plugin-panel", timeout=8000)
+        pg.wait_for_timeout(1500)              # let every panel finish fetching
+        after = {n["path"] for n in pg.request.get(server + "/api/notes").json()}
+        assert after == known, f"panels created notes: {after - known}"
+    finally:
+        ctx.close()
+
+
+def test_outgoing_panel_survives_autosave(page, server):
+    """regression G4: save() re-rendered backlinks by REPLACING the panel html,
+    silently deleting the outgoing-links box after the first autosave."""
+    page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
+    page.evaluate(
+        "() => fetch('/api/notes', {method:'POST',"
+        "headers:{'Content-Type':'application/json'},"
+        "body: JSON.stringify({title:'Stay Target', body:'x'})})")
+    page.reload()
+    page.wait_for_selector("body[data-ready]", timeout=10000)
+    page.once("dialog", lambda d: d.accept("Stay Source"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Stay Source", timeout=8000)
+    page.fill("#content", "links to [[Stay Target]]")
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=6000)
+    expect(page.locator(".outgoing", has_text="Stay Target")).to_be_visible(timeout=6000)
+    # edit again — the panel must survive the SECOND save too
+    page.fill("#content", "links to [[Stay Target]] more words")
+    expect(page.locator("#save-state")).to_have_text("saved", timeout=6000)
+    expect(page.locator(".outgoing", has_text="Stay Target")).to_be_visible()
+
+
+def test_hash_navigation_to_freshly_created_note(page, server):
+    """regression G5: setting location.hash to a note not yet in the cached
+    note list silently did nothing (stale-list guard swallowed navigation)."""
+    page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
+    page.evaluate(
+        "() => fetch('/api/notes', {method:'POST',"
+        "headers:{'Content-Type':'application/json'},"
+        "body: JSON.stringify({title:'Hash Fresh', body:'navigated'})})")
+    page.evaluate("() => { location.hash = 'hash-fresh.md'; }")
+    expect(page.locator("#title")).to_have_value("Hash Fresh", timeout=6000)
+
+
+def test_mobile_header_core_buttons_fit_viewport(browser, server):
+    """regression G6: on a 390px phone the preview and delete buttons rendered
+    past the right edge of the viewport — unreachable."""
+    ctx = browser.new_context(viewport=PHONE)
+    ctx.add_init_script("localStorage.setItem('grimoire-editor-mode', 'classic')")
+    pg = ctx.new_page()
+    try:
+        pg.goto(server)
+        pg.wait_for_selector("body[data-ready]", timeout=10000)
+        for btn in ("#preview-toggle", "#delete-note", "#ai-btn"):
+            right = pg.evaluate(
+                f"() => document.querySelector('{btn}').getBoundingClientRect().right")
+            assert right <= 390, f"{btn} overflows the phone viewport ({right}px)"
+    finally:
+        ctx.close()

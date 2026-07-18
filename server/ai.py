@@ -1,15 +1,15 @@
 """AI layer: embeddings, retrieval, and answer synthesis — pluggable and offline-safe.
 
-Design principle: mnemo works **fully offline with zero external deps** by default,
+Design principle: grimoire works **fully offline with zero external deps** by default,
 and gets *smarter* (not merely functional) when you point it at a local Ollama or
 Claude. So:
 
 - Embeddings default to a deterministic **hashing embedder** (bag-of-tokens hashed
   into a fixed-dim L2-normalized vector). Cosine over these reflects real token
   overlap — good enough for retrieval, instant, private, and deterministic for
-  tests. Set MNEMO_OLLAMA_URL + MNEMO_EMBED_MODEL for semantic embeddings.
+  tests. Set GRIMOIRE_OLLAMA_URL + GRIMOIRE_EMBED_MODEL for semantic embeddings.
 - Answers default to an **extractive** synthesizer (stitches the most relevant
-  note chunks with citations). Set MNEMO_LLM=ollama|claude for generative answers.
+  note chunks with citations). Set GRIMOIRE_LLM=ollama|claude for generative answers.
 
 Every note chunk is embedded on index; private notes are excluded from the vector
 store unless a query explicitly opts in.
@@ -108,7 +108,7 @@ def unpack(blob: bytes) -> list[float]:
 def cosine(a: list[float], b: list[float]) -> float:
     if len(a) != len(b):
         return 0.0
-    dot = sum(x * y for x, y in zip(a, b))
+    dot = sum(x * y for x, y in zip(a, b, strict=False))
     na = math.sqrt(sum(x * x for x in a)) or 1.0
     nb = math.sqrt(sum(y * y for y in b)) or 1.0
     return dot / (na * nb)
@@ -117,9 +117,9 @@ def cosine(a: list[float], b: list[float]) -> float:
 # ---- answer synthesis -------------------------------------------------------
 
 def _answer_backend() -> str:
-    """Which LLM (if any) synthesizes answers. Explicit MNEMO_LLM wins; otherwise
+    """Which LLM (if any) synthesizes answers. Explicit GRIMOIRE_LLM wins; otherwise
     if a local Ollama is reachable we AUTO-enable generative answers (the homelab
-    deployment sets only MNEMO_OLLAMA_URL). Falls back to extractive when neither
+    deployment sets only GRIMOIRE_OLLAMA_URL). Falls back to extractive when neither
     is present — keeping the offline default and hermetic tests deterministic."""
     b = _llm()
     if b in ("ollama", "claude"):
@@ -177,7 +177,7 @@ def _llm_answer(question: str, contexts: list[dict], backend: str) -> str:
         "https://api.anthropic.com/v1/messages", method="POST",
         headers={"content-type": "application/json", "x-api-key": key,
                  "anthropic-version": "2023-06-01"},
-        data=json.dumps({"model": os.environ.get("MNEMO_LLM_MODEL", "claude-sonnet-5"),
+        data=json.dumps({"model": os.environ.get("GRIMOIRE_LLM_MODEL", "claude-sonnet-5"),
                          "max_tokens": 1024,
                          "messages": [{"role": "user", "content": prompt}]}).encode())
     with urllib.request.urlopen(req, timeout=120) as r:
@@ -193,17 +193,17 @@ def _stem(path: str) -> str:
 
 def transcribe(audio: bytes, filename: str = "memo.webm") -> str:
     """Transcribe an audio memo. Uses a local whisper HTTP service when configured
-    (MNEMO_WHISPER_URL, OpenAI-compatible /v1/audio/transcriptions), else returns a
+    (GRIMOIRE_WHISPER_URL, OpenAI-compatible /v1/audio/transcriptions), else returns a
     placeholder so the memo is still saved with its audio attachment. Tests
     monkeypatch this."""
     url = _cfg("whisper_url").rstrip("/")
     if not url:
-        return "[audio memo — transcription unavailable; set MNEMO_WHISPER_URL]"
+        return "[audio memo — transcription unavailable; set GRIMOIRE_WHISPER_URL]"
     try:
-        boundary = "----mnemo" + os.urandom(8).hex()
+        boundary = "----grimoire" + os.urandom(8).hex()
         parts = [
             f'--{boundary}\r\nContent-Disposition: form-data; name="model"\r\n\r\n'
-            f'{os.environ.get("MNEMO_WHISPER_MODEL", "whisper-1")}\r\n',
+            f'{os.environ.get("GRIMOIRE_WHISPER_MODEL", "whisper-1")}\r\n',
             f'--{boundary}\r\nContent-Disposition: form-data; name="file"; '
             f'filename="{filename}"\r\nContent-Type: application/octet-stream\r\n\r\n',
         ]

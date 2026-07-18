@@ -1,11 +1,11 @@
 # Security model
 
-mnemo stores notes and — uniquely — an encrypted vault of API keys / tokens that
+grimoire stores notes and — uniquely — an encrypted vault of API keys / tokens that
 your AI can *use* but never *read*. This document states the threat model and the
 controls that back it. Security-relevant code: `server/crypto.py`,
 `server/secrets.py`, and the middleware in `server/app.py`.
 
-## What mnemo protects
+## What grimoire protects
 
 1. **Secret values at rest** — API keys, tokens, MCP credentials.
 2. **Note contents you mark encrypted** — sealed on disk, out of index/search/RAG.
@@ -27,13 +27,13 @@ controls that back it. Security-relevant code: `server/crypto.py`,
 - **Brute-force protection:** after 5 failed unlocks the vault enters an
   exponential-backoff lockout (30s → capped at 1h) — even the correct passphrase
   is refused during the window.
-- **Idle auto-lock:** the key is dropped after `MNEMO_VAULT_IDLE_LOCK` seconds of
+- **Idle auto-lock:** the key is dropped after `GRIMOIRE_VAULT_IDLE_LOCK` seconds of
   inactivity (default 900) to shrink the exposure window.
 
 ## USE-not-READ broker
 
 Agents never get raw secrets. They get a **grant** (a random token, scoped to an
-exact origin + path prefix, time-boxed) and mnemo **brokers** the outbound call,
+exact origin + path prefix, time-boxed) and grimoire **brokers** the outbound call,
 injecting the secret into a request header. The response is returned; the secret
 value is not.
 
@@ -46,7 +46,7 @@ value is not.
   are refused. Cloud-metadata & link-local (`169.254.0.0/16`, incl.
   `169.254.169.254`) are **always** refused, even when internal targets are
   enabled. Self-hosters who legitimately broker to LAN services set
-  `MNEMO_BROKER_ALLOW_PRIVATE=1` (metadata stays blocked).
+  `GRIMOIRE_BROKER_ALLOW_PRIVATE=1` (metadata stays blocked).
   *Caveat:* DNS is resolved at check time; a determined DNS-rebinding attacker who
   also controls the vault could still race it — but brokering already requires an
   unlocked vault, which is the trust boundary.
@@ -69,26 +69,26 @@ and never needs the key. Editing requires an unlocked vault.
   (`script-src 'self'`, `object-src 'none'`, `base-uri 'self'` — no inline or
   external scripts), `X-Content-Type-Options: nosniff`, `Referrer-Policy:
   no-referrer` (so a `?token=` never leaks via Referer), `X-Frame-Options`
-  (default `SAMEORIGIN`, override with `MNEMO_FRAME_OPTIONS`), and
+  (default `SAMEORIGIN`, override with `GRIMOIRE_FRAME_OPTIONS`), and
   `Cross-Origin-Opener-Policy: same-origin`.
 - **XSS:** both renderers (`server/render.py`, the PWA's `mdToHtml`) escape HTML
   first, then apply a small allowlist of formatting. Wiki-links/images become
   attributes on escaped text; no user markup reaches the DOM as live HTML. The
   CSP is defense-in-depth on top.
-- **Auth token** (optional, `MNEMO_AUTH_TOKEN`): compared with
+- **Auth token** (optional, `GRIMOIRE_AUTH_TOKEN`): compared with
   `hmac.compare_digest` (constant-time). Prefer the `Authorization: Bearer`
   header over `?token=` (the latter can appear in proxy logs).
 - **Path traversal:** every vault path goes through `safe_path` / `safe_raw_path`,
-  which resolve and confine to the vault root and reject `.mnemo`. The
-  `/api/file` route and vault export exclude `.mnemo` so the secret store and
+  which resolve and confine to the vault root and reject `.grimoire`. The
+  `/api/file` route and vault export exclude `.grimoire` so the secret store and
   index never leave.
 - **No CORS headers** are set → browsers enforce same-origin for API calls.
 
 ## Sync
 
-Background auto-sync (`MNEMO_SYNC_PEER`) authenticates to the peer with
-`MNEMO_SYNC_TOKEN` (sent as a Bearer header, so it never appears in a URL/log).
-Sync moves plain note files; it never transmits the secret store (`.mnemo/` is
+Background auto-sync (`GRIMOIRE_SYNC_PEER`) authenticates to the peer with
+`GRIMOIRE_SYNC_TOKEN` (sent as a Bearer header, so it never appears in a URL/log).
+Sync moves plain note files; it never transmits the secret store (`.grimoire/` is
 excluded from every export/sync path). Direction is last-writer-by-mtime, but no
 edit is silently lost — a pull that would overwrite a locally-changed note first
 preserves the local copy as a `… (conflict …)` file, and pushes are conflict-
@@ -96,10 +96,10 @@ copied on the peer.
 
 ## Deployment guidance
 
-- Front mnemo with your own authenticated reverse proxy (the homelab uses
-  Authelia + a Tailscale-gated network). The optional `MNEMO_AUTH_TOKEN` is a
+- Front grimoire with your own authenticated reverse proxy (the homelab uses
+  Authelia + a Tailscale-gated network). The optional `GRIMOIRE_AUTH_TOKEN` is a
   second factor, not the primary gate.
-- Keep `.mnemo/` (which holds `secrets.enc` and the index) off any sync/backup
+- Keep `.grimoire/` (which holds `secrets.enc` and the index) off any sync/backup
   that leaves your control unless separately encrypted.
 - Choose a strong vault passphrase — Argon2id raises the cost of guessing, but a
   weak passphrase is still the weakest link.

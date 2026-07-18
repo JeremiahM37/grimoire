@@ -1,6 +1,6 @@
 [project]
-name = "mnemo"
-version = "0.5.0"
+name = "grimoire"
+version = "1.0.0"
 description = "Local-first, AI-native notes with an encrypted secret vault your AI can use"
 readme = "README.md"
 license = { text = "MIT" }
@@ -22,12 +22,26 @@ mcp = ["mcp>=1.0"]
 dev = ["pytest>=8", "playwright>=1.45"]
 
 [project.scripts]
-mnemo = "cli.mnemo:main"
+grimoire = "cli.grimoire:main"
 
 [project.urls]
-Homepage = "https://github.com/JeremiahM37/mnemo"
-Documentation = "https://github.com/JeremiahM37/mnemo/blob/main/DESIGN.md"
+Homepage = "https://github.com/JeremiahM37/grimoire"
+Documentation = "https://github.com/JeremiahM37/grimoire/blob/main/DESIGN.md"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+exclude = [".venv", "tools"]
+
+[tool.ruff.lint]
+# E/F: pycodestyle+pyflakes core · B: bugbear · I: import order · UP: modern syntax
+select = ["E", "F", "B", "I", "UP"]
+ignore = [
+  "E501",   # long lines: templates/HTML strings — line-length is advisory here
+  "E702", "E701",  # small same-line statements are idiomatic in this codebase
+  "B008",   # FastAPI Depends() in defaults is the framework idiom
+]

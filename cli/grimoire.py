@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-"""mnemo CLI — quick capture, daily, search, serve, reindex from the terminal.
+"""grimoire CLI — quick capture, daily, search, serve, reindex from the terminal.
 
 Works directly against the vault (no server needed) for local ops, so it's fast
-and scriptable. `mnemo serve` starts the web/API.
+and scriptable. `grimoire serve` starts the web/API.
 
 Usage:
-  mnemo new "Title" [body...]      create a note (body from args or stdin)
-  mnemo daily [text...]            append to today's daily note (or open it)
-  mnemo capture [text...]          quick capture → inbox + daily link
-  mnemo search QUERY               full-text search the vault
-  mnemo ls [--tag TAG]             list notes
-  mnemo open PATH                  print a note
-  mnemo reindex                    rebuild the search index
-  mnemo serve [--port N]           run the web app + API
-Env: MNEMO_VAULT (default ~/mnemo-vault)
+  grimoire new "Title" [body...]      create a note (body from args or stdin)
+  grimoire daily [text...]            append to today's daily note (or open it)
+  grimoire capture [text...]          quick capture → inbox + daily link
+  grimoire search QUERY               full-text search the vault
+  grimoire ls [--tag TAG]             list notes
+  grimoire open PATH                  print a note
+  grimoire reindex                    rebuild the search index
+  grimoire serve [--port N]           run the web app + API
+Env: GRIMOIRE_VAULT (default ~/grimoire-vault)
 """
 import sys
 from pathlib import Path
@@ -23,7 +23,7 @@ from server import config, db, index, vault  # noqa: E402
 
 
 def _ready():
-    config.mnemo_dir().mkdir(parents=True, exist_ok=True)
+    config.grimoire_dir().mkdir(parents=True, exist_ok=True)
     db.init()
     if not db.one("SELECT COUNT(*) c FROM notes")["c"]:
         index.reindex()
@@ -39,7 +39,7 @@ def _stdin_or_args(args):
 
 def cmd_new(args):
     if not args:
-        print("usage: mnemo new \"Title\" [body...]", file=sys.stderr); return 2
+        print("usage: grimoire new \"Title\" [body...]", file=sys.stderr); return 2
     title = args[0]
     body = _stdin_or_args(args[1:]) or f"# {title}\n\n"
     rel = f"{vault.slugify(title)}.md"
@@ -98,7 +98,7 @@ def cmd_ls(args):
 
 def cmd_open(args):
     if not args:
-        print("usage: mnemo open PATH", file=sys.stderr); return 2
+        print("usage: grimoire open PATH", file=sys.stderr); return 2
     print(vault.read(args[0])["raw"])
 
 
@@ -108,6 +108,7 @@ def cmd_reindex(args):
 
 def cmd_serve(args):
     import uvicorn
+
     from server.app import create_app
     port = config.PORT
     if "--port" in args:
@@ -118,8 +119,9 @@ def cmd_serve(args):
 def cmd_export(args):
     """Static HTML export of the whole vault (e-ink / offline archive)."""
     from pathlib import Path
+
     from server.routers import read as rd
-    out = Path(args[args.index("--out") + 1]) if "--out" in args else Path("mnemo-export")
+    out = Path(args[args.index("--out") + 1]) if "--out" in args else Path("grimoire-export")
     out.mkdir(parents=True, exist_ok=True)
     (out / "index.html").write_text(rd.read_index())
     n = 0
@@ -142,11 +144,12 @@ def cmd_mcp(args):
 
 
 def cmd_sync(args):
-    """Sync with a peer mnemo. Usage: mnemo sync PEER_URL [--watch] [--interval N] [--token T]"""
+    """Sync with a peer grimoire. Usage: grimoire sync PEER_URL [--watch] [--interval N] [--token T]"""
     import time as _t
+
     from server import syncclient
     if not args or args[0].startswith("--"):
-        print("usage: mnemo sync PEER_URL [--watch] [--interval N] [--token T]", file=sys.stderr)
+        print("usage: grimoire sync PEER_URL [--watch] [--interval N] [--token T]", file=sys.stderr)
         return 2
     peer = args[0]
     token = args[args.index("--token") + 1] if "--token" in args else None

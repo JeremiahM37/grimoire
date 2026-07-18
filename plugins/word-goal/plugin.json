@@ -1,0 +1,6 @@
+{
+  "name": "word-goal",
+  "version": "1.0.0",
+  "description": "Daily writing goal — a progress bar in the sidebar tracking today's daily-note word count",
+  "client": "client.js"
+}

@@ -1,0 +1,7 @@
+{
+  "name": "kanban",
+  "version": "1.0.0",
+  "description": "Kanban boards from ```kanban fences — columns are '## Name' headings, cards are list items",
+  "client": "client.js",
+  "styles": "style.css"
+}

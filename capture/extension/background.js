@@ -1,7 +1,7 @@
-// Clip to mnemo — MV3 background service worker
+// Clip to grimoire — MV3 background service worker
 async function serverUrl() {
-  const { mnemoUrl } = await chrome.storage.sync.get("mnemoUrl");
-  return (mnemoUrl || "http://notes.homelab.internal").replace(/\/$/, "");
+  const { grimoireUrl } = await chrome.storage.sync.get("grimoireUrl");
+  return (grimoireUrl || "http://localhost:9111").replace(/\/$/, "");
 }
 
 async function clip({ text, title, url }) {
@@ -20,7 +20,7 @@ async function clip({ text, title, url }) {
 }
 
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.create({ id: "clip", title: "Clip to mnemo", contexts: ["selection", "page"] });
+  chrome.contextMenus.create({ id: "clip", title: "Clip to grimoire", contexts: ["selection", "page"] });
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {

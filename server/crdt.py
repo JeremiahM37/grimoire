@@ -93,7 +93,7 @@ class Doc:
                 self._insert_run(ids, i1, new_text[j1:j2])
 
     # ---- merge (the CRDT join) ---------------------------------------------
-    def merge(self, other: "Doc") -> "Doc":
+    def merge(self, other: Doc) -> Doc:
         self.tombs |= other.tombs
         for aid, ch in other.atoms.items():
             if aid not in self.tombs:
@@ -117,7 +117,7 @@ class Doc:
         }, separators=(",", ":"))
 
     @classmethod
-    def from_json(cls, data: str, site: str = "local") -> "Doc":
+    def from_json(cls, data: str, site: str = "local") -> Doc:
         d = json.loads(data)
         doc = cls(site)
         doc.clock = d.get("clock", 0)
@@ -126,7 +126,7 @@ class Doc:
         return doc
 
     @classmethod
-    def from_text(cls, text: str, site: str = "local") -> "Doc":
+    def from_text(cls, text: str, site: str = "local") -> Doc:
         doc = cls(site)
         doc.local_edit(text)
         return doc

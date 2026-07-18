@@ -27,7 +27,7 @@ def test_conflict_creates_copy_never_loses_data(client, vaultdir):
     # client edits from a STALE base_hash (server changed since)
     client.post("/api/sync/push", json={"changes": [
         {"path": "shared.md", "content": "server version", "base_hash": None}]})  # server write
-    server_hash = client.get("/api/sync/manifest").json()["shared.md"]["hash"]
+    client.get("/api/sync/manifest").json()["shared.md"]["hash"]   # server accepted it
     # now a second client pushes with a DIFFERENT stale base
     r = client.post("/api/sync/push", json={"changes": [
         {"path": "shared.md", "content": "client's divergent version",

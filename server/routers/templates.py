@@ -56,7 +56,7 @@ def create_template(t: TemplateIn):
     try:
         vault.write(rel, t.body, {"title": t.name})
     except VaultError as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from None
     return {"path": rel, "name": t.name}
 
 
@@ -73,7 +73,7 @@ def apply_template(a: ApplyIn):
     try:
         tpl = vault.read(trel)
     except VaultError:
-        raise HTTPException(404, "no such template")
+        raise HTTPException(404, "no such template") from None
     if not vault.safe_path(trel).exists():
         raise HTTPException(404, "no such template")
     body = _expand(tpl["body"], a.title)
@@ -81,7 +81,7 @@ def apply_template(a: ApplyIn):
     try:
         vault.write(rel, body, {"title": a.title})
     except VaultError as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from None
     index.upsert(rel)
     return {"path": rel, "title": a.title}
 

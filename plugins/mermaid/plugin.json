@@ -1,0 +1,6 @@
+{
+  "name": "mermaid",
+  "version": "1.0.0",
+  "description": "Mermaid diagrams from ```mermaid fences (vendored, fully offline)",
+  "client": "client.js"
+}

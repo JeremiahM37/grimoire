@@ -56,8 +56,8 @@ def actions(a: ActionIn):
 
 
 def ai_suggest_tags(text: str) -> list[str]:
-    from collections import Counter
     import re
+    from collections import Counter
     words = re.findall(r"[a-z][a-z-]{3,}", text.lower())
     stop = {"this", "that", "with", "from", "have", "your", "into", "notes", "which",
             "these", "there", "their", "about", "would", "could", "should"}

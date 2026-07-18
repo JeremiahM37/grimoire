@@ -1,6 +1,6 @@
-/* Grimoire Notes service worker — offline shell */
-const CACHE = "mnemo-v1";
-const SHELL = ["/", "/style.css", "/app.js", "/icon.svg", "/manifest.webmanifest"];
+/* Grimoire service worker — offline shell */
+const CACHE = "grimoire-v6";
+const SHELL = ["/", "/style.css", "/app.js", "/editor.js", "/plugins.js", "/canvas.js", "/util.js", "/markdown.js", "/vendor/editor.js", "/icon.svg", "/manifest.webmanifest"];
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));
   self.skipWaiting();

@@ -1,0 +1,6 @@
+{
+  "name": "pomodoro",
+  "version": "1.0.0",
+  "description": "Focus timer in the sidebar — finished sessions are logged to today's daily note",
+  "client": "client.js"
+}

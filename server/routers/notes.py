@@ -5,7 +5,7 @@ import re
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from .. import db, index, secrets, trash, vault
+from .. import db, history, index, secrets, trash, vault
 from ..vault import VaultError
 
 router = APIRouter(prefix="/api")
@@ -65,7 +65,7 @@ def toggle_pin(path: str):
     try:
         note = vault.read(rel)
     except VaultError:
-        raise HTTPException(404, "no such note")
+        raise HTTPException(404, "no such note") from None
     fm = dict(note["frontmatter"])
     pinned = not fm.get("pinned")
     if pinned:
@@ -107,7 +107,7 @@ def create_note(n: NoteIn):
             fm["tags"] = n.tags
         vault.write(rel, n.body, fm)
     except VaultError as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from None
     note = index.upsert(rel)
     return _view(db.one("SELECT * FROM notes WHERE path=?", (note["path"],)))
 
@@ -145,7 +145,7 @@ def unlinked_mentions(path: str):
     names = _names_for(rel, target["title"])
     if not names:
         return []
-    linked = {l["src"] for l in db.query("SELECT src FROM links WHERE dst=?", (rel,))}
+    linked = {row["src"] for row in db.query("SELECT src FROM links WHERE dst=?", (rel,))}
     pats = [(n, _mention_re(n)) for n in names]
     out = []
     for r in db.query("SELECT path, title, body FROM notes WHERE path != ?", (rel,)):
@@ -161,6 +161,30 @@ def unlinked_mentions(path: str):
                             "context": snippet[:160]})
                 break
     return out
+
+
+@router.get("/notes/{path:path}/history")
+def note_history(path: str):
+    """Version list for a note (newest first)."""
+    rel = _norm(path)
+    if not db.one("SELECT 1 FROM notes WHERE path=?", (rel,)):
+        raise HTTPException(404, "no such note")
+    return history.list_versions(rel)
+
+
+@router.get("/notes/{path:path}/history/{version_id}")
+def note_history_version(path: str, version_id: str):
+    """One version's body. Encrypted snapshots decrypt only while the vault is
+    unlocked — otherwise the route answers 423, never raw ciphertext."""
+    rel = _norm(path)
+    body = history.get_version(rel, version_id)
+    if body is None:
+        raise HTTPException(404, "no such version")
+    if secrets.is_encrypted(body):
+        if not secrets.is_unlocked():
+            raise HTTPException(423, "vault locked — unlock to view this version")
+        body = secrets.unseal_text(body)
+    return {"id": version_id, "body": body}
 
 
 @router.get("/notes/{path:path}")
@@ -193,9 +217,33 @@ def update_note(path: str, u: NoteUpdate):
                 raise HTTPException(423, "vault locked — unlock to edit this encrypted note")
             body = secrets.seal_text(u.body)
             fm = {**fm, "encrypted": True, "private": True}
+        # version history: keep what's on disk now (ciphertext for encrypted
+        # notes — never their plaintext) before overwriting it. Compare modulo
+        # the trailing newline the serializer guarantees, or every save of
+        # unchanged content would count as a change.
+        if existing is not None and existing["body"].rstrip("\n") != body.rstrip("\n"):
+            history.snapshot(rel, existing["body"])
         vault.write(rel, body, fm)
     except VaultError as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from None
+    index.upsert(rel)
+    return _view(db.one("SELECT * FROM notes WHERE path=?", (rel,)))
+
+
+@router.post("/notes/{path:path}/history/{version_id}/restore")
+def note_history_restore(path: str, version_id: str):
+    """Roll a note back to a version. The current body is snapshotted first,
+    so the restore itself can be undone from the same history list."""
+    rel = _norm(path)
+    body = history.get_version(rel, version_id)
+    if body is None:
+        raise HTTPException(404, "no such version")
+    try:
+        note = vault.read(rel)
+    except VaultError:
+        raise HTTPException(404, "no such note") from None
+    history.snapshot(rel, note["body"])
+    vault.write(rel, body, note["frontmatter"])
     index.upsert(rel)
     return _view(db.one("SELECT * FROM notes WHERE path=?", (rel,)))
 
@@ -209,7 +257,7 @@ def encrypt_note(path: str):
     try:
         note = vault.read(rel)
     except VaultError:
-        raise HTTPException(404, "no such note")
+        raise HTTPException(404, "no such note") from None
     if not note.get("encrypted"):
         fm = {**note["frontmatter"], "encrypted": True, "private": True}
         vault.write(rel, secrets.seal_text(note["body"]), fm)
@@ -226,12 +274,12 @@ def decrypt_note(path: str):
     try:
         note = vault.read(rel)
     except VaultError:
-        raise HTTPException(404, "no such note")
+        raise HTTPException(404, "no such note") from None
     if note.get("encrypted"):
         try:
             plain = secrets.unseal_text(note["body"])
         except ValueError:
-            raise HTTPException(400, "cannot decrypt — wrong vault key")
+            raise HTTPException(400, "cannot decrypt — wrong vault key") from None
         fm = {k: v for k, v in note["frontmatter"].items() if k != "encrypted"}
         vault.write(rel, plain, fm)
         index.upsert(rel)
@@ -248,7 +296,7 @@ def delete_note(path: str):
     try:
         tid = trash.trash(rel, title)
     except VaultError as e:
-        raise HTTPException(404, str(e))
+        raise HTTPException(404, str(e)) from None
     index.remove(rel)
     return {"trashed": tid, "path": rel}
 
@@ -270,7 +318,7 @@ def link_mention(path: str, m: LinkMentionIn):
     try:
         note = vault.read(src)
     except VaultError:
-        raise HTTPException(404, "no such source note")
+        raise HTTPException(404, "no such source note") from None
     if note.get("encrypted"):
         raise HTTPException(400, "cannot edit an encrypted note")
     link = f"[[{m.name}]]" if m.name.lower() == target["title"].lower() \
@@ -291,7 +339,7 @@ def duplicate_note(path: str):
     try:
         note = vault.read(rel)
     except VaultError:
-        raise HTTPException(404, "no such note")
+        raise HTTPException(404, "no such note") from None
     title = (note["frontmatter"].get("title") or note["title"]) + " (copy)"
     new_rel = _unique_path(f"{vault.slugify(title)}.md")
     fm = {k: v for k, v in note["frontmatter"].items() if k not in ("created", "updated")}
@@ -311,7 +359,7 @@ def restore_trashed(tid: str):
     try:
         rel = trash.restore(tid)
     except VaultError as e:
-        raise HTTPException(404, str(e))
+        raise HTTPException(404, str(e)) from None
     index.upsert(rel)
     return _view(db.one("SELECT * FROM notes WHERE path=?", (rel,)))
 
@@ -330,7 +378,7 @@ def rename_note(path: str, r: RenameIn):
     try:
         new_rel = vault.rename(_norm(path), r.to)
     except VaultError as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from None
     index.remove(_norm(path))
     index.upsert(new_rel)
     return {"path": new_rel}

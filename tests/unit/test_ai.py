@@ -35,18 +35,18 @@ def test_extractive_answer_cites_and_handles_empty():
 
 
 def test_answer_backend_auto_selects_ollama_when_url_present(monkeypatch):
-    monkeypatch.delenv("MNEMO_LLM", raising=False)
-    monkeypatch.delenv("MNEMO_OLLAMA_URL", raising=False)
+    monkeypatch.delenv("GRIMOIRE_LLM", raising=False)
+    monkeypatch.delenv("GRIMOIRE_OLLAMA_URL", raising=False)
     assert ai._answer_backend() == ""            # offline default → extractive
-    monkeypatch.setenv("MNEMO_OLLAMA_URL", "http://127.0.0.1:1")  # reachable-looking
+    monkeypatch.setenv("GRIMOIRE_OLLAMA_URL", "http://127.0.0.1:1")  # reachable-looking
     assert ai._answer_backend() == "ollama"      # auto-enable generative
-    monkeypatch.setenv("MNEMO_LLM", "claude")    # explicit wins
+    monkeypatch.setenv("GRIMOIRE_LLM", "claude")    # explicit wins
     assert ai._answer_backend() == "claude"
 
 
 def test_answer_falls_back_to_extractive_when_llm_unreachable(monkeypatch):
     # point at a dead Ollama; answer() must still return a useful extractive result
-    monkeypatch.setenv("MNEMO_OLLAMA_URL", "http://127.0.0.1:1")
-    monkeypatch.delenv("MNEMO_LLM", raising=False)
+    monkeypatch.setenv("GRIMOIRE_OLLAMA_URL", "http://127.0.0.1:1")
+    monkeypatch.delenv("GRIMOIRE_LLM", raising=False)
     out = ai.answer("apples", [{"path": "fruit.md", "title": "Fruit", "chunk": "apples are red"}])
     assert "apples are red" in out               # graceful, no crash
