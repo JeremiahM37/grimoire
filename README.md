@@ -95,6 +95,12 @@ The agent gets: `search_notes` · `ask_notes` · `read_note` · `create_note` ·
 > explicit MCP-config flag) and have the agent call `kb_info` once to verify the
 > mount. A silently missing mount looks identical to "no knowledge exists."
 
+> **Make agents actually use it:** mounted tools are necessary, not sufficient —
+> agents reliably read a repo's context file, and only sometimes browse tool
+> lists. Run `grimoire agent-setup` to print the MCP config **plus a
+> CLAUDE.md/AGENTS.md snippet** that tells agents to call `get_briefing` first
+> and consult the KB before assuming project facts.
+
 **The 60-second demo:** ask your agent to research something → it `ask`s your
 notes (you can inspect exactly what it retrieved) → it calls an API with
 `use_credential` (the key never enters its context) → it `remember`s what it

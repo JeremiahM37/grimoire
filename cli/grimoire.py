@@ -166,10 +166,43 @@ def cmd_sync(args):
         _t.sleep(interval)
 
 
+AGENT_SNIPPET = """\
+## Team knowledge base (Grimoire)
+
+This project has a Grimoire context server: runbooks, conventions, ticket
+decisions, and agent memory, exposed through the `grimoire` MCP tools.
+
+- Call `get_briefing` once before starting work (pinned notes, onboarding
+  rules, recent agent memories).
+- Before assuming any project-specific fact or picking an approach, check
+  `search_notes` / `ask_notes` / `recall` — the team records accepted fixes
+  that are not visible in the code.
+- Persist anything future agents need with `remember`.
+"""
+
+
+def cmd_agent_setup(args):
+    """Print everything needed to make agents discover the knowledge base:
+    an MCP config block and a snippet for the repo's agent context file
+    (CLAUDE.md / AGENTS.md). Discoverability is a deployment concern — agents
+    reliably read project context files; they only sometimes browse tool lists."""
+    import json as _json
+    api_url = args[0] if args else "http://localhost:9111"
+    mcp_config = {"mcpServers": {"grimoire": {
+        "command": sys.executable,
+        "args": ["-m", "server.mcp_server"],
+        "env": {"GRIMOIRE_API": api_url, "GRIMOIRE_AGENT_NAME": "my-agent"}}}}
+    print("# 1. MCP config (e.g. .mcp.json), or register at user scope for headless runs:")
+    print(_json.dumps(mcp_config, indent=2))
+    print()
+    print("# 2. Add to the repo's CLAUDE.md / AGENTS.md so agents consult the KB:")
+    print(AGENT_SNIPPET)
+
+
 COMMANDS = {"new": cmd_new, "daily": cmd_daily, "capture": cmd_capture,
             "search": cmd_search, "ls": cmd_ls, "open": cmd_open,
             "reindex": cmd_reindex, "serve": cmd_serve, "export": cmd_export,
-            "mcp": cmd_mcp, "sync": cmd_sync}
+            "mcp": cmd_mcp, "sync": cmd_sync, "agent-setup": cmd_agent_setup}
 
 
 def main(argv=None):
@@ -179,7 +212,7 @@ def main(argv=None):
     cmd = argv[0]
     if cmd not in COMMANDS:
         print(f"unknown command {cmd!r}. Try: {', '.join(COMMANDS)}", file=sys.stderr); return 2
-    if cmd != "serve":
+    if cmd not in ("serve", "agent-setup"):
         _ready()
     return COMMANDS[cmd](argv[1:]) or 0
 
