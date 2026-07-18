@@ -74,15 +74,16 @@ GRIMOIRE_VAULT=~/notes .venv/bin/python -m server      # → http://<host>:9111
 ```
 </details>
 
-**Connect an agent (MCP):**
+**Connect an agent (MCP):** any MCP client can mount Grimoire — Claude Code,
+desktop assistants, custom agents. Example config:
 
 ```jsonc
-// e.g. Claude Code: .mcp.json
+// Claude Code's .mcp.json shown; adapt to your client
 { "mcpServers": { "grimoire": {
     "command": "/path/to/grimoire/.venv/bin/python",
     "args": ["-m", "server.mcp_server"],
     "env": { "GRIMOIRE_API": "http://localhost:9111",
-             "GRIMOIRE_AGENT_NAME": "claude-code" } } } }
+             "GRIMOIRE_AGENT_NAME": "my-agent" } } } }
 ```
 
 The agent gets: `search_notes` · `ask_notes` · `read_note` · `create_note` ·
