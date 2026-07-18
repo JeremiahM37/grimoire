@@ -91,3 +91,14 @@ def test_version_is_one_point_oh():
     assert 'version = "1.0.0"' in py
     app_src = (ROOT / "server" / "app.py").read_text()
     assert 'version="1.0.0"' in app_src
+
+
+def test_agent_setup_emits_discoverability_snippet(capsys):
+    """regression (benchmark round 3): agents with mounted-but-unadvertised MCP
+    tools made ZERO knowledge-base calls. Discoverability must be deployable:
+    agent-setup prints the MCP config plus a context-file snippet."""
+    from cli.grimoire import cmd_agent_setup
+    cmd_agent_setup(["http://example-host:9111"])
+    out = capsys.readouterr().out
+    assert "mcpServers" in out and "http://example-host:9111" in out
+    assert "get_briefing" in out and "CLAUDE.md" in out

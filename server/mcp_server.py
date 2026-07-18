@@ -28,7 +28,18 @@ from mcp.server.fastmcp import FastMCP  # noqa: E402
 
 API = os.environ.get("GRIMOIRE_API", "http://127.0.0.1:9111").rstrip("/")
 TOKEN = os.environ.get("GRIMOIRE_AUTH_TOKEN", "")
-mcp = FastMCP("grimoire")
+mcp = FastMCP(
+    "grimoire",
+    instructions=(
+        "This server is the team's knowledge base and memory: runbooks, "
+        "conventions, ticket decisions, and what previous agents learned. "
+        "Call get_briefing ONCE at the start of any work session (pinned notes, "
+        "onboarding rules, recent agent memories). Before assuming any "
+        "project-specific fact or choosing an approach, check search_notes / "
+        "ask_notes / recall — teams record accepted fixes that are not visible "
+        "in the code. Use remember to persist anything future agents need."
+    ),
+)
 
 
 def api(method: str, path: str, body: dict | None = None):
