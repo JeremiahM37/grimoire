@@ -141,7 +141,11 @@ def test_locked_note_is_read_only_in_live_mode(live_page, server):
     pg.wait_for_selector("body[data-ready]", timeout=10000)
     _new_note(pg, "RO Probe")
     _type(pg, "editable")
-    expect(pg.locator("#save-state")).to_have_text("saved", timeout=6000)
+    # assert the durable outcome (note persisted), not the transient "saved"
+    # label — it clears after 1.2s and flaked on slow CI runners
+    pg.wait_for_function(
+        "async () => (await (await fetch('/api/notes/ro-probe.md')).json())"
+        ".body.includes('editable')", timeout=15000)
     ro = pg.evaluate(
         "() => document.querySelector('#live-editor .cm-content').contentEditable")
     assert ro == "true"   # a normal note stays editable
