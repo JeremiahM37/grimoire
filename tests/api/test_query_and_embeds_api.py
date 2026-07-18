@@ -66,3 +66,17 @@ def test_heading_link_resolves_with_anchor(client):
     client.post("/api/notes", json={"title": "Src", "body": "[[Target#Deep Section]]"})
     html = client.get("/read/src").text
     assert 'href="/read/target#h-deep-section"' in html
+
+
+def test_search_full_returns_bodies_but_never_ciphertext(client):
+    client.post("/api/notes", json={"title": "Deep Doc",
+                                    "body": "the rotation schedule is quarterly"})
+    hits = client.get("/api/search", params={"q": "rotation", "full": True}).json()
+    assert hits and hits[0]["body"].startswith("the rotation schedule")
+    # encrypted note: body must come back empty, not ciphertext
+    client.post("/api/vault/init", json={"passphrase": "full-search-pass-1"})
+    client.post("/api/notes", json={"title": "Sealed Doc", "body": "rotation secret"})
+    client.post("/api/notes/sealed-doc.md/encrypt")
+    hits = client.get("/api/search", params={"q": "sealed", "full": True}).json()
+    for h in hits:
+        assert "grimoire:enc:" not in (h.get("body") or "")

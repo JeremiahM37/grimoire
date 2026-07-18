@@ -90,6 +90,11 @@ The agent gets: `search_notes` · `ask_notes` · `read_note` · `create_note` ·
 `update_note` · `append_daily` · `backlinks` · `list_tags` · **`remember`** ·
 **`recall`** · **`use_credential`** · **`list_grants`**.
 
+> **Headless agents:** non-interactive runs often skip untrusted project-level
+> MCP configs silently — register the server at user scope (or pass your CLI's
+> explicit MCP-config flag) and have the agent call `kb_info` once to verify the
+> mount. A silently missing mount looks identical to "no knowledge exists."
+
 **The 60-second demo:** ask your agent to research something → it `ask`s your
 notes (you can inspect exactly what it retrieved) → it calls an API with
 `use_credential` (the key never enters its context) → it `remember`s what it
