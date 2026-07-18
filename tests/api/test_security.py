@@ -28,7 +28,7 @@ def test_kdf_backward_compatible_with_pbkdf2(vaultdir):
     salt = crypto.new_salt()
     key = crypto.derive_key(PASS, salt, "pbkdf2")
     blob = {"salt": base64.b64encode(salt).decode(),
-            "verifier": base64.b64encode(crypto.seal(key, b"mnemo-vault-v1")).decode(),
+            "verifier": base64.b64encode(crypto.seal(key, b"grimoire-vault-v1")).decode(),
             "kdf": "pbkdf2"}
     secrets.store_path().write_text(json.dumps(blob))
     secrets.unlock(PASS)          # must not raise
@@ -79,13 +79,13 @@ def test_broker_scope_no_prefix_bypass():
     "http://169.254.169.254/latest/meta-data/", "http://[::1]/", "http://0.0.0.0/",
 ])
 def test_broker_blocks_private_and_metadata(url, monkeypatch):
-    monkeypatch.delenv("MNEMO_BROKER_ALLOW_PRIVATE", raising=False)
+    monkeypatch.delenv("GRIMOIRE_BROKER_ALLOW_PRIVATE", raising=False)
     with pytest.raises(secrets.VaultError):
         secrets._assert_url_safe(url)
 
 
 def test_metadata_blocked_even_when_private_allowed(monkeypatch):
-    monkeypatch.setenv("MNEMO_BROKER_ALLOW_PRIVATE", "1")
+    monkeypatch.setenv("GRIMOIRE_BROKER_ALLOW_PRIVATE", "1")
     # link-local / cloud metadata is ALWAYS refused
     with pytest.raises(secrets.VaultError):
         secrets._assert_url_safe("http://169.254.169.254/")

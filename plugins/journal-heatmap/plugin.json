@@ -1,0 +1,7 @@
+{
+  "name": "journal-heatmap",
+  "version": "1.0.0",
+  "description": "Activity heatmap of your daily notes in the sidebar — see your writing streak at a glance",
+  "client": "client.js",
+  "styles": "style.css"
+}

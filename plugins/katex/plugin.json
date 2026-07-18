@@ -1,0 +1,6 @@
+{
+  "name": "katex",
+  "version": "1.0.0",
+  "description": "LaTeX math — $inline$, $$display$$ and ```math blocks (vendored KaTeX, fully offline)",
+  "client": "client.js"
+}

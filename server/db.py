@@ -42,21 +42,36 @@ CREATE TABLE IF NOT EXISTS audit(
 
 
 def init(path=None) -> None:
+    """Open (or re-open) the index database.
+
+    Re-initialization CLOSES the previous connection first. Without this, the
+    double-init in tests (fixture + app lifespan) leaked a live WAL connection
+    per test; hundreds of leaked handles being GC-finalized from arbitrary
+    threads caused intermittent interpreter segfaults and cross-test
+    IntegrityErrors in full-suite runs.
+    """
     global _conn
-    p = path or config.db_path()
-    p.parent.mkdir(parents=True, exist_ok=True)
-    _conn = sqlite3.connect(str(p), check_same_thread=False)
-    _conn.row_factory = sqlite3.Row
-    _conn.execute("PRAGMA journal_mode=WAL")
-    _conn.executescript(SCHEMA)
-    _conn.commit()
+    with _lock:
+        if _conn is not None:
+            try:
+                _conn.close()
+            except Exception:   # noqa: BLE001 — a dying handle must not block re-init
+                pass
+        p = path or config.db_path()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        _conn = sqlite3.connect(str(p), check_same_thread=False)
+        _conn.row_factory = sqlite3.Row
+        _conn.execute("PRAGMA journal_mode=WAL")
+        _conn.executescript(SCHEMA)
+        _conn.commit()
 
 
 def close() -> None:
     global _conn
-    if _conn is not None:
-        _conn.close()
-        _conn = None
+    with _lock:
+        if _conn is not None:
+            _conn.close()
+            _conn = None
 
 
 def query(sql: str, params: tuple = ()) -> list[dict]:

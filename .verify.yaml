@@ -1,4 +1,4 @@
-# Verify mnemo is actually in a working state. Run: verify run .verify.yaml
+# Verify grimoire is actually in a working state. Run: verify run .verify.yaml
 # (Run `.venv/bin/pytest` separately for the unit/api/e2e suite — running it here
 # would launch a second Chromium inside verify's own browser session and crash.)
 backend: web
@@ -9,8 +9,8 @@ launch:
   command: .venv/bin/python -m server
   url: http://127.0.0.1:9119
   env:
-    MNEMO_VAULT: /tmp/mnemo-verify-vault
-    MNEMO_PORT: "9119"
+    GRIMOIRE_VAULT: /tmp/grimoire-verify-vault
+    GRIMOIRE_PORT: "9119"
   ready_when: { url: http://127.0.0.1:9119/api/health }
   wait_after: 1
 
@@ -39,6 +39,6 @@ steps:
       - wait: 2
     expect:
       vision: >
-        a note-taking application titled "mnemo" with a left sidebar and an editor
+        a note-taking application titled "grimoire" with a left sidebar and an editor
         area; warm paper-colored background; it is a working app UI, not a blank
         white page, not an error message, not a stack trace

@@ -3,7 +3,7 @@ import io
 import zipfile
 
 
-def test_vault_export_is_a_zip_of_notes_without_mnemo(client, vaultdir):
+def test_vault_export_is_a_zip_of_notes_without_grimoire(client, vaultdir):
     client.post("/api/notes", json={"title": "In Zip", "body": "hello"})
     # a secret store must NOT be included
     client.post("/api/vault/init", json={"passphrase": "zippass123456"})
@@ -13,7 +13,7 @@ def test_vault_export_is_a_zip_of_notes_without_mnemo(client, vaultdir):
     z = zipfile.ZipFile(io.BytesIO(r.content))
     names = z.namelist()
     assert "in-zip.md" in names
-    assert not any(".mnemo" in n for n in names)          # index + secrets excluded
+    assert not any(".grimoire" in n for n in names)          # index + secrets excluded
 
 
 def test_search_tag_operator(client):

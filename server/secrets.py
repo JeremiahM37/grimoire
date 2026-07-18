@@ -1,14 +1,14 @@
-"""The secret vault — mnemo's unique differentiator.
+"""The secret vault — grimoire's unique differentiator.
 
 A sealed store for AI agent tokens, API keys, and MCP credentials that your AI
 can USE but never READ:
 
-- Secrets are encrypted at rest in `.mnemo/secrets.enc` (never in the notes, never
+- Secrets are encrypted at rest in `.grimoire/secrets.enc` (never in the notes, never
   indexed, never in search/RAG). The passphrase is never stored.
 - The vault is LOCKED by default. `unlock(passphrase)` holds the derived key in
   memory only; `lock()` / panic-lock drops it.
 - An agent doesn't get raw secrets. It gets a **grant** (scoped + time-boxed) and
-  mnemo BROKERS the call — injecting the secret into an outbound request — so the
+  grimoire BROKERS the call — injecting the secret into an outbound request — so the
   value never crosses to the client. Every use is written to an audit log.
 """
 import json
@@ -26,7 +26,7 @@ _lock_until = 0.0
 _last_activity = 0.0
 MAX_FAILURES = 5
 # auto-lock the vault after this many idle seconds (0 disables)
-IDLE_LOCK_SECONDS = int(os.environ.get("MNEMO_VAULT_IDLE_LOCK", "900"))
+IDLE_LOCK_SECONDS = int(os.environ.get("GRIMOIRE_VAULT_IDLE_LOCK", "900"))
 
 
 def _touch() -> None:
@@ -54,7 +54,7 @@ def _reset_failures() -> None:
     _lock_until = 0.0
 
 # marker for an encrypted note body on disk
-ENC_PREFIX = "mnemo:enc:v1:"
+ENC_PREFIX = "grimoire:enc:v1:"
 
 
 def is_encrypted(body: str) -> bool:
@@ -77,7 +77,7 @@ def unseal_text(body: str) -> str:
 
 
 def store_path():
-    return config.mnemo_dir() / "secrets.enc"
+    return config.grimoire_dir() / "secrets.enc"
 
 
 def _load_blob() -> dict:
@@ -88,7 +88,7 @@ def _load_blob() -> dict:
 
 
 def _save_blob(blob: dict) -> None:
-    config.mnemo_dir().mkdir(parents=True, exist_ok=True)
+    config.grimoire_dir().mkdir(parents=True, exist_ok=True)
     store_path().write_text(json.dumps(blob))
 
 
@@ -149,7 +149,7 @@ def initialize(passphrase: str) -> None:
     key = crypto.derive_key(passphrase, salt, crypto.DEFAULT_KDF)
     # a verifier: seal a known token so unlock can validate the passphrase
     blob = {"salt": base64.b64encode(salt).decode(),
-            "verifier": base64.b64encode(crypto.seal(key, b"mnemo-vault-v1")).decode(),
+            "verifier": base64.b64encode(crypto.seal(key, b"grimoire-vault-v1")).decode(),
             "kdf": crypto.DEFAULT_KDF}
     _save_blob(blob)
     global _key
@@ -200,7 +200,7 @@ def change_passphrase(old: str, new: str) -> dict:
         crypto.unseal(old_key, base64.b64decode(blob["verifier"]))   # verify old passphrase
     except ValueError:
         _record_failure()
-        raise VaultError("wrong current passphrase")
+        raise VaultError("wrong current passphrase") from None
     _reset_failures()
     # current secret payload, decrypted with the OLD key
     old_secrets = ({} if not blob.get("secrets")
@@ -225,7 +225,7 @@ def change_passphrase(old: str, new: str) -> dict:
             index.upsert(rel)
             reencrypted += 1
     new_blob = {"salt": base64.b64encode(ns).decode(),
-                "verifier": base64.b64encode(crypto.seal(new_key, b"mnemo-vault-v1")).decode(),
+                "verifier": base64.b64encode(crypto.seal(new_key, b"grimoire-vault-v1")).decode(),
                 "kdf": crypto.DEFAULT_KDF}
     _save_blob(new_blob)
     _key = new_key
@@ -326,7 +326,7 @@ def _scope_permits(scope: str, url: str) -> bool:
 def _assert_url_safe(url: str) -> None:
     """SSRF guard: only http/https, and (by default) refuse to broker a secret to
     a private / loopback / link-local / reserved address. Cloud-metadata and
-    link-local are ALWAYS blocked. Set MNEMO_BROKER_ALLOW_PRIVATE=1 to reach
+    link-local are ALWAYS blocked. Set GRIMOIRE_BROKER_ALLOW_PRIVATE=1 to reach
     internal hosts (e.g. a self-hosted homelab)."""
     import ipaddress
     import socket
@@ -337,12 +337,12 @@ def _assert_url_safe(url: str) -> None:
     host = p.hostname
     if not host:
         raise VaultError("broker: URL has no host")
-    allow_private = os.environ.get("MNEMO_BROKER_ALLOW_PRIVATE") == "1"
+    allow_private = os.environ.get("GRIMOIRE_BROKER_ALLOW_PRIVATE") == "1"
     try:
         infos = socket.getaddrinfo(host, p.port or (443 if p.scheme == "https" else 80),
                                    proto=socket.IPPROTO_TCP)
     except socket.gaierror:
-        raise VaultError("broker: could not resolve host")
+        raise VaultError("broker: could not resolve host") from None
     for info in infos:
         ip = ipaddress.ip_address(info[4][0])
         if ip.is_link_local or str(ip) in ("169.254.169.254", "::ffff:169.254.169.254"):
@@ -350,7 +350,7 @@ def _assert_url_safe(url: str) -> None:
         if not allow_private and (ip.is_private or ip.is_loopback or ip.is_reserved
                                   or ip.is_multicast or ip.is_unspecified):
             raise VaultError(f"broker: refusing non-public address {ip} "
-                             "(set MNEMO_BROKER_ALLOW_PRIVATE=1 for internal hosts)")
+                             "(set GRIMOIRE_BROKER_ALLOW_PRIVATE=1 for internal hosts)")
 
 
 def _valid_grant(token: str, url: str) -> dict:

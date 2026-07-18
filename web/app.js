@@ -1,39 +1,21 @@
-/* Grimoire Notes PWA — vanilla ES module, offline-capable, no build step */
-const $ = (s) => document.querySelector(s);
+/* Grimoire console PWA — vanilla ES module, offline-capable, no build step
+   (the one vendored artifact is the optional CM6 live editor, see web/editor.js) */
+import { $, api, toast, toastAction, esc, slugify } from "/util.js";
+import { mdToHtml, hydrateDynamicBlocks, headingId, setNoteIndex, setNoteOpener } from "/markdown.js";
+import { Editor } from "/editor.js";
+import { Plugins } from "/plugins.js";
+import { initCanvas, openCanvasPicker, createCanvas } from "/canvas.js";
+import { openGraph, initGraph } from "/graph.js";
+import { openVault } from "/vaultui.js";
 const state = { path: null, notes: [], dirty: false, saveTimer: null, frontmatter: {}, templates: [], aliases: {}, allTags: [] };
 
-async function api(path, opts = {}) {
-  const r = await fetch(`/api${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...opts, body: opts.body ? JSON.stringify(opts.body) : undefined,
-  });
-  if (!r.ok) {
-    let m = r.statusText; try { m = (await r.json()).detail || m; } catch {}
-    throw new Error(m);
-  }
-  return r.status === 204 ? null : r.json();
-}
-function toast(msg, err = false) {
-  const t = document.createElement("div");
-  t.className = "toast" + (err ? " err" : "");
-  t.textContent = msg; $("#toast").appendChild(t);
-  setTimeout(() => t.remove(), 3000);
-}
-const esc = (s) => { const d = document.createElement("i"); d.textContent = s ?? ""; return d.innerHTML; };
-function toastAction(msg, label, fn, ms = 6000) {
-  const t = document.createElement("div");
-  t.className = "toast";
-  t.innerHTML = `<span>${esc(msg)}</span><button class="toast-btn">${esc(label)}</button>`;
-  t.querySelector(".toast-btn").onclick = () => { t.remove(); fn(); };
-  $("#toast").appendChild(t);
-  setTimeout(() => t.remove(), ms);
-}
 
 /* ---------- note list ---------- */
 async function loadList() {
   state.notes = await api("/notes");
+  setNoteIndex(state.notes, state.aliases);        // markdown engine's link index
   renderList(state.notes);
-  api("/aliases").then((a) => (state.aliases = a || {})).catch(() => {});
+  api("/aliases").then((a) => { state.aliases = a || {}; setNoteIndex(state.notes, state.aliases); }).catch(() => {});
   api("/tags").then((t) => (state.allTags = t || [])).catch(() => {});
   const h = await api("/health");
   state.rev = h.rev;
@@ -60,20 +42,51 @@ async function pollRev() {
 }
 setInterval(pollRev, 5000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) pollRev(); });
+function noteRow(n, snippets) {
+  const row = document.createElement("div");
+  row.className = "note-row" + (n.path === state.path ? " active" : "");
+  row.dataset.path = n.path;
+  const memBadge = n.path.startsWith("memory/") ? '<span class="mem-badge" title="agent memory">🤖</span>' : "";
+  row.innerHTML = `<div class="t">${n.pinned ? '<span class="pin">📌</span>' : ""}${memBadge}${esc(n.title || n.path)}</div>` +
+    (snippets && n.snippet ? `<div class="snip">${n.snippet.replace(/\[(.*?)\]/g, "<b>$1</b>")}</div>`
+      : `<div class="m">${esc(n.path)}</div>`);
+  row.onclick = (e) => (e.ctrlKey || e.metaKey) ? openSplit(n.path) : openNote(n.path);
+  row.oncontextmenu = (e) => { e.preventDefault(); showContext(n.path, e.clientX, e.clientY); };
+  return row;
+}
+
+/* Folder collapse state persists per device. */
+const foldState = JSON.parse(localStorage.getItem("grimoire-folds") || "{}");
+
 function renderList(notes, snippets = false) {
   const el = $("#note-list");
   el.innerHTML = "";
   if (!notes.length) { el.innerHTML = '<div class="note-row m">No notes yet.</div>'; return; }
+  // group by top-level folder — a classic file-explorer tree, while
+  // search results and tag filters stay flat for scannability
+  const grouped = !snippets;
+  if (!grouped) {
+    for (const n of notes) el.appendChild(noteRow(n, snippets));
+    listSel = -1;
+    return;
+  }
+  const root = [], folders = new Map();
   for (const n of notes) {
-    const row = document.createElement("div");
-    row.className = "note-row" + (n.path === state.path ? " active" : "");
-    row.dataset.path = n.path;
-    row.innerHTML = `<div class="t">${n.pinned ? '<span class="pin">📌</span>' : ""}${esc(n.title || n.path)}</div>` +
-      (snippets && n.snippet ? `<div class="snip">${n.snippet.replace(/\[(.*?)\]/g, "<b>$1</b>")}</div>`
-        : `<div class="m">${esc(n.path)}</div>`);
-    row.onclick = (e) => (e.ctrlKey || e.metaKey) ? openSplit(n.path) : openNote(n.path);
-    row.oncontextmenu = (e) => { e.preventDefault(); showContext(n.path, e.clientX, e.clientY); };
-    el.appendChild(row);
+    const slash = n.path.indexOf("/");
+    if (slash === -1) { root.push(n); continue; }
+    const dir = n.path.slice(0, slash);
+    if (!folders.has(dir)) folders.set(dir, []);
+    folders.get(dir).push(n);
+  }
+  for (const n of root) el.appendChild(noteRow(n, snippets));
+  for (const [dir, items] of [...folders.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+    const det = document.createElement("details");
+    det.className = "folder";
+    det.open = foldState[dir] !== false;   // default open
+    det.innerHTML = `<summary class="folder-head">▸ ${esc(dir)}/ <span class="m">${items.length}</span></summary>`;
+    det.ontoggle = () => { foldState[dir] = det.open; localStorage.setItem("grimoire-folds", JSON.stringify(foldState)); };
+    for (const n of items) det.appendChild(noteRow(n, snippets));
+    el.appendChild(det);
   }
   listSel = -1;
 }
@@ -109,7 +122,6 @@ async function duplicateByPath(path) {
   try { const n = await api(`/notes/${encodeURI(path)}/duplicate`, { method: "POST" }); await loadList(); openNote(n.path); toast("Duplicated"); }
   catch (e) { toast(e.message, true); }
 }
-const slugify = (s) => (s.toLowerCase().replace(/[^\w\s-]/g, "").trim().replace(/[\s_-]+/g, "-") || "untitled");
 async function renameNote(path) {
   const n = await api(`/notes/${encodeURI(path)}`);
   const cur = n.title || path.replace(/\.md$/, "").split("/").pop();
@@ -180,9 +192,14 @@ async function openNote(path) {
       state.dirty = true; toast("Restored unsaved changes"); save();
     }
   }
+  Editor.sync();                       // push the loaded body into the live editor
+  Editor.setReadOnly(state.locked);
+  renderProvenance(n);
+  Plugins.emit("note-open", { path: n.path, title: n.title });
   updatePrivateToggle();
   updateWordCount();
   renderBacklinks(n.backlinks || []);
+  renderOutgoing(n.links || []);
   $("#unlinked").innerHTML = "";
   if (!state.locked) api(`/notes/${encodeURI(n.path)}/unlinked`).then(renderUnlinked).catch(() => {});
   state.filterTag = null;
@@ -199,11 +216,11 @@ function setSaveState(s) { $("#save-state").textContent = s; }
 function saveDraft() {
   // NEVER persist an encrypted note's decrypted plaintext to localStorage
   if (!state.path || state.locked || state.encrypted) return;
-  try { localStorage.setItem("mnemo-draft", JSON.stringify(
+  try { localStorage.setItem("grimoire-draft", JSON.stringify(
     { path: state.path, title: $("#title").value, content: $("#content").value })); } catch {}
 }
-function clearDraft() { try { localStorage.removeItem("mnemo-draft"); } catch {} }
-function getDraft() { try { return JSON.parse(localStorage.getItem("mnemo-draft") || "null"); } catch { return null; } }
+function clearDraft() { try { localStorage.removeItem("grimoire-draft"); } catch {} }
+function getDraft() { try { return JSON.parse(localStorage.getItem("grimoire-draft") || "null"); } catch { return null; } }
 function scheduleSave() {
   state.dirty = true; setSaveState("…"); saveDraft();
   clearTimeout(state.saveTimer);
@@ -219,9 +236,18 @@ async function save() {
     const n = await api(`/notes/${encodeURI(state.path)}`, {
       method: "PUT", body: { body: $("#content").value, frontmatter: fm } });
     state.dirty = false; setSaveState("saved"); clearDraft();
+    Plugins.emit("note-save", { path: state.path });
     delete hoverCache[state.path];   // preview cache may be stale now
     setTimeout(() => setSaveState(""), 1200);
-    renderBacklinks(n && (await api(`/notes/${encodeURI(state.path)}`)).backlinks || []);
+    // refresh both link panels — renderBacklinks REPLACES the container, so
+    // outgoing must be re-rendered too (it silently vanished after autosaves).
+    // Guard on the path: a save can land after the user switched notes.
+    const savedPath = state.path;
+    const fresh = n && await api(`/notes/${encodeURI(savedPath)}`);
+    if (fresh && state.path === savedPath) {
+      renderBacklinks(fresh.backlinks || []);
+      renderOutgoing(fresh.links || []);
+    }
     loadList();
   } catch (e) {
     // keep the draft + dirty flag; we'll retry when back online
@@ -248,6 +274,7 @@ async function deleteNote() {
   const r = await api(`/notes/${encodeURI(state.path)}`, { method: "DELETE" });
   state.path = null; state.dirty = false; state.locked = false;
   $("#title").value = ""; $("#content").value = ""; $("#content").readOnly = false;
+  Editor.sync(); Editor.setReadOnly(false);
   $("#backlinks").innerHTML = "";
   loadList();
   toastAction("Moved to trash", "Undo", async () => {
@@ -329,6 +356,8 @@ function renderPreview() {
   $("#preview").querySelectorAll("a.wikilink").forEach((a) => {
     a.onclick = (e) => { e.preventDefault(); resolveAndOpen(a.dataset.target); };
   });
+  hydrateDynamicBlocks($("#preview"));
+  Plugins.renderFences($("#preview"));
   wireHoverPreviews($("#preview"));
   $("#preview").querySelectorAll(".tag").forEach((t) => {
     t.style.cursor = "pointer";
@@ -346,6 +375,7 @@ function toggleTask(lineNo, done) {
   lines[lineNo] = lines[lineNo].replace(/^(\s*[-*]\s+)\[[ xX]\]/,
     (_, pre) => pre + (done ? "[x]" : "[ ]"));
   $("#content").value = lines.join("\n");
+  Editor.sync();
   renderPreview();
   scheduleSave();
 }
@@ -379,103 +409,6 @@ async function resolveAndOpen(target) {
     await loadList(); openNote(n.path);
   }
 }
-const isTableRow = (l) => { const s = l.trim(); return s.startsWith("|") && (s.match(/\|/g) || []).length >= 2; };
-const isTableSep = (l) => { const s = l.trim(); return /^\|?[\s:|-]*-[\s:|-]*\|?$/.test(s) && s.includes("-") && s.includes("|"); };
-const tableCells = (l) => l.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
-const _HL_KW = new Set(("const let var function func fn return if else elif for while class struct interface "
-  + "type enum import export from package use pub async await new def lambda try except catch finally throw with "
-  + "match case switch break continue in of is not and or public private protected static void int float double "
-  + "string str bool true false True False None null nil self this super impl trait yield do then end module "
-  + "namespace typedef extends implements").split(" "));
-const _HL_TOKEN = /(\/\/[^\n]*|#[^\n]*|\/\*[\s\S]*?\*\/)|("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`)|(\b\d[\d_.]*(?:[eE][+-]?\d+)?\b|\b0[xX][0-9a-fA-F]+\b)|([A-Za-z_$][\w$]*)/g;
-function highlightCode(code) {
-  let out = "", last = 0, m;
-  _HL_TOKEN.lastIndex = 0;
-  while ((m = _HL_TOKEN.exec(code))) {
-    out += esc(code.slice(last, m.index));
-    if (m[1]) out += `<span class="hl-com">${esc(m[1])}</span>`;
-    else if (m[2]) out += `<span class="hl-str">${esc(m[2])}</span>`;
-    else if (m[3]) out += `<span class="hl-num">${esc(m[3])}</span>`;
-    else out += _HL_KW.has(m[4]) ? `<span class="hl-kw">${esc(m[4])}</span>` : esc(m[4]);
-    last = m.index + m[0].length;
-  }
-  out += esc(code.slice(last));
-  return out;
-}
-function mdToHtml(src) {
-  // small, safe-ish markdown: escape first, then apply inline + block rules
-  let resolved = new Set(state.notes.flatMap((n) => [
-    (n.title || "").toLowerCase(), n.path.replace(/\.md$/, "").split("/").pop().toLowerCase()]));
-  Object.keys(state.aliases || {}).forEach((a) => resolved.add(a));
-  const lines = src.split("\n");
-  let html = "", listOpen = false;
-  const inline = (t) => esc(t)
-    .replace(/`([^`]+)`/g, "<code>$1</code>")
-    .replace(/!\[\[([^\[\]|]+?)\]\]/g, (_, src) =>
-      `<img class="embed" src="/api/file/${encodeURI(src.trim())}" alt="${esc(src.trim())}" loading="lazy">`)
-    .replace(/\[\[([^\]|]+?)(?:\|([^\]]+))?\]\]/g, (_, tgt, al) => {
-      const base = tgt.split("#")[0].trim();
-      const cls = resolved.has(base.toLowerCase()) ? "wikilink" : "wikilink unresolved";
-      return `<a class="${cls}" data-target="${esc(base)}">${esc(al || tgt)}</a>`;
-    })
-    .replace(/(^|\s)#([A-Za-z][\w/-]*)/g, '$1<span class="tag">#$2</span>')
-    .replace(/==([^=]+)==/g, "<mark>$1</mark>")
-    .replace(/~~([^~]+)~~/g, "<del>$1</del>")
-    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-    .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, "<em>$1</em>")
-    .replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-  const closeList = () => { if (listOpen) { html += "</ul>"; listOpen = false; } };
-  for (let lineNo = 0; lineNo < lines.length; lineNo++) {
-    const raw = lines[lineNo];
-    if (raw.trim().startsWith("```")) {
-      closeList();
-      const lang = raw.trim().slice(3).trim();
-      let j = lineNo + 1; const buf = [];
-      while (j < lines.length && !lines[j].trim().startsWith("```")) buf.push(lines[j++]);
-      const cls = lang ? ` class="lang-${esc(lang)}"` : "";
-      html += `<pre><code${cls}>${highlightCode(buf.join("\n"))}</code></pre>`;
-      lineNo = j; continue;
-    }
-    if (isTableRow(raw) && lineNo + 1 < lines.length && isTableSep(lines[lineNo + 1])) {
-      closeList();
-      let j = lineNo + 2; const rows = [];
-      while (j < lines.length && isTableRow(lines[j])) rows.push(lines[j++]);
-      const th = tableCells(raw).map((c) => `<th>${inline(c)}</th>`).join("");
-      const tb = rows.map((r) => `<tr>${tableCells(r).map((c) => `<td>${inline(c)}</td>`).join("")}</tr>`).join("");
-      html += `<div class="table-wrap"><table><thead><tr>${th}</tr></thead><tbody>${tb}</tbody></table></div>`;
-      lineNo = j - 1;   // the for-loop ++ lands on j
-      continue;
-    }
-    const h = raw.match(/^(#{1,3})\s+(.+)$/);
-    if (h) { closeList(); html += `<h${h[1].length}>${inline(h[2])}</h${h[1].length}>`; continue; }
-    const task = raw.match(/^\s*[-*]\s+\[([ xX])\]\s+(.*)$/);
-    if (task) {
-      if (!listOpen) { html += "<ul>"; listOpen = true; }
-      const done = task[1].toLowerCase() === "x";
-      html += `<li class="task${done ? " done" : ""}"><input type="checkbox" class="task-box" `
-        + `data-line="${lineNo}"${done ? " checked" : ""}>${inline(task[2])}</li>`;
-      continue;
-    }
-    if (/^\s*[-*]\s+/.test(raw)) { if (!listOpen) { html += "<ul>"; listOpen = true; } html += `<li>${inline(raw.replace(/^\s*[-*]\s+/, ""))}</li>`; continue; }
-    const cm = raw.match(/^\s*>\s*\[!(\w+)\]\s*(.*)$/);
-    if (cm) {
-      closeList();
-      let j = lineNo + 1; const body = [];
-      while (j < lines.length && /^\s*>/.test(lines[j])) { body.push(lines[j].replace(/^\s*>\s?/, "")); j++; }
-      const kind = cm[1].toLowerCase();
-      const title = cm[2].trim() || kind.charAt(0).toUpperCase() + kind.slice(1);
-      const inner = body.filter((l) => l.trim() !== "").map((l) => `<p>${inline(l)}</p>`).join("");
-      html += `<div class="callout callout-${esc(kind)}"><div class="callout-title">${inline(title)}</div><div class="callout-body">${inner}</div></div>`;
-      lineNo = j - 1; continue;
-    }
-    if (/^\s*>\s?/.test(raw)) { closeList(); html += `<blockquote>${inline(raw.replace(/^\s*>\s?/, ""))}</blockquote>`; continue; }
-    if (raw.trim() === "") { closeList(); continue; }
-    closeList(); html += `<p>${inline(raw)}</p>`;
-  }
-  closeList();
-  return html;
-}
-
 /* ---------- search ---------- */
 let searchTimer;
 $("#search").oninput = (e) => {
@@ -573,6 +506,7 @@ function updateWordCount() {
 }
 ta.addEventListener("input", updateWordCount);
 function surround(pre, post = pre, placeholder = "") {
+  if (Editor.surround(pre, post, placeholder)) return;   // live editor handled it
   const s = ta.selectionStart, e = ta.selectionEnd, v = ta.value;
   const sel = v.slice(s, e) || placeholder;
   ta.value = v.slice(0, s) + pre + sel + post + v.slice(e);
@@ -581,6 +515,7 @@ function surround(pre, post = pre, placeholder = "") {
   ta.focus(); scheduleSave();
 }
 function prefixLine(prefix) {
+  if (Editor.prefixLine(prefix)) return;                 // live editor handled it
   const s = ta.selectionStart, v = ta.value;
   const lineStart = v.lastIndexOf("\n", s - 1) + 1;
   ta.value = v.slice(0, lineStart) + prefix + v.slice(lineStart);
@@ -601,6 +536,7 @@ $("#ed-toolbar").querySelectorAll(".tb").forEach((b) =>
   (b.onmousedown = (e) => { e.preventDefault(); TB[b.dataset.md]?.(); }));
 
 function insertAtCursor(text) {
+  if (Editor.insert(text)) return;                       // live editor handled it
   const s = ta.selectionStart, e = ta.selectionEnd, v = ta.value;
   ta.value = v.slice(0, s) + text + v.slice(e);
   ta.selectionStart = ta.selectionEnd = s + text.length;
@@ -806,68 +742,168 @@ $("#audio-memo").onclick = async () => {
   } catch (e) { toast("Mic unavailable: " + e.message, true); }
 };
 
-/* ---------- secret vault ---------- */
-$("#vault-open").onclick = openVault;
-$("#vault-close").onclick = () => $("#vault-modal").classList.add("hidden");
-$("#vault-modal").onclick = (e) => { if (e.target.id === "vault-modal") $("#vault-modal").classList.add("hidden"); };
-async function openVault() {
-  $("#vault-modal").classList.remove("hidden");
-  const st = await api("/vault/status");
-  const b = $("#vault-body");
-  if (!st.initialized) {
-    b.innerHTML = `<p class="vault-note">Set a passphrase to create your encrypted secret vault. It's never stored — if you forget it, the secrets are gone.</p>
-      <div class="ask-input-row"><input id="v-pass" type="password" placeholder="new passphrase (8+ chars)">
-      <button id="v-init" class="btn">Create</button></div>`;
-    $("#v-init").onclick = async () => {
-      try { await api("/vault/init", { method: "POST", body: { passphrase: $("#v-pass").value } }); openVault(); }
-      catch (e) { toast(e.message, true); }
-    };
-  } else if (!st.unlocked) {
-    b.innerHTML = `<p class="vault-note">Vault is locked.</p>
-      <div class="ask-input-row"><input id="v-pass" type="password" placeholder="passphrase">
-      <button id="v-unlock" class="btn">Unlock</button></div>`;
-    $("#v-pass").onkeydown = (e) => { if (e.key === "Enter") $("#v-unlock").click(); };
-    $("#v-unlock").onclick = async () => {
-      try { await api("/vault/unlock", { method: "POST", body: { passphrase: $("#v-pass").value } }); openVault(); }
-      catch (e) { toast(e.message, true); }
-    };
-  } else {
-    const secrets = await api("/secrets");
-    const grants = await api("/grants").catch(() => []);
-    b.innerHTML = `<div class="vault-actions"><span class="vault-note">${secrets.length} secret(s) — values are never shown. Your AI can use them via scoped grants.</span>
-      <button id="v-lock" class="icon" title="lock">🔒 Lock</button></div>
-      <div id="v-list">${secrets.map((s) => `<div class="v-row"><span>🔑 ${esc(s.name)}</span>
-        <button class="icon danger v-del" data-n="${esc(s.name)}">🗑</button></div>`).join("") || '<div class="vault-note">No secrets yet.</div>'}</div>
-      <div class="ask-input-row"><input id="v-name" placeholder="name (e.g. github)">
-      <input id="v-val" type="password" placeholder="value / token"><button id="v-add" class="btn">Add</button></div>
-      ${grants.length ? `<div class="pr-clabel">Active grants</div>
-        <div id="v-grants">${grants.map((g) => `<div class="v-row"><span>🎟 ${esc(g.grantee)} → ${esc(g.secret)}
-          <span class="pm">${g.expired ? "expired" : g.expires_in + "s"}</span></span>
-          <button class="icon danger v-revoke" data-t="${esc(g.token)}" title="revoke">✕</button></div>`).join("")}</div>` : ""}
-      <div class="vault-actions" style="margin-top:10px"><button id="v-changepass" class="btn">Change passphrase…</button></div>`;
-    $("#v-lock").onclick = async () => { await api("/vault/lock", { method: "POST" }); openVault(); toast("Vault locked"); };
-    $("#v-add").onclick = async () => {
-      const name = $("#v-name").value.trim(), value = $("#v-val").value;
-      if (!name || !value) return toast("name and value required", true);
-      try { await api("/secrets", { method: "POST", body: { name, value } }); openVault(); toast("Secret added"); }
-      catch (e) { toast(e.message, true); }
-    };
-    b.querySelectorAll(".v-del").forEach((x) => (x.onclick = async () => {
-      await api(`/secrets/${encodeURIComponent(x.dataset.n)}`, { method: "DELETE" }); openVault();
-    }));
-    b.querySelectorAll(".v-revoke").forEach((x) => (x.onclick = async () => {
-      await api(`/grants/${encodeURIComponent(x.dataset.t)}`, { method: "DELETE" }); openVault(); toast("Grant revoked");
-    }));
-    $("#v-changepass").onclick = async () => {
-      const oldp = prompt("Current passphrase:"); if (!oldp) return;
-      const newp = prompt("New passphrase (8+ chars):"); if (!newp) return;
-      try {
-        const r = await api("/vault/change-passphrase", { method: "POST", body: { old: oldp, new: newp } });
-        toast(`Passphrase changed (re-sealed ${r.reencrypted_notes} encrypted note(s))`);
-      } catch (e) { toast(e.message, true); }
-    };
-  }
+/* Outgoing links — the counterpart of the backlinks panel. */
+function renderOutgoing(links) {
+  const el = $("#backlinks");
+  const resolved = links.filter((l) => l.resolved);
+  const dangling = links.filter((l) => !l.resolved);
+  if (!links.length) return;
+  const box = document.createElement("div");
+  box.className = "outgoing";
+  box.innerHTML = `<div class="bl-title">Links from this note</div>` +
+    resolved.map((l) => `<a class="wikilink" data-path="${esc(l.dst)}">→ ${esc(l.target)}</a> `).join("") +
+    dangling.map((l) => `<span class="unresolved" title="not created yet">→ ${esc(l.target)}</span> `).join("");
+  box.querySelectorAll("a.wikilink").forEach((a) => (a.onclick = () => openNote(a.dataset.path)));
+  el.appendChild(box);
 }
+
+/* ---------- version history (automatic file-recovery snapshots) ---------- */
+async function openHistory() {
+  if (!state.path) return toast("Open a note first", true);
+  if (state.dirty) await save();
+  $("#history-modal").classList.remove("hidden");
+  const b = $("#history-body");
+  const versions = await api(`/notes/${encodeURI(state.path)}/history`);
+  if (!versions.length) { b.innerHTML = '<p class="vault-note">No versions yet — history is written on every content-changing save.</p>'; return; }
+  b.innerHTML = versions.map((v) => `
+    <div class="v-row"><span>🕘 ${new Date(v.ts * 1000).toLocaleString()} <span class="pm">${v.size} B</span></span>
+      <span><button class="btn h-view" data-id="${esc(v.id)}">View</button>
+      <button class="btn h-restore" data-id="${esc(v.id)}">Restore</button></span></div>`).join("")
+    + '<pre id="history-preview" class="hidden"></pre>';
+  b.querySelectorAll(".h-view").forEach((x) => (x.onclick = async () => {
+    try {
+      const v = await api(`/notes/${encodeURI(state.path)}/history/${x.dataset.id}`);
+      const pre = $("#history-preview");
+      pre.classList.remove("hidden"); pre.textContent = v.body;
+    } catch (e) { toast(e.message, true); }
+  }));
+  b.querySelectorAll(".h-restore").forEach((x) => (x.onclick = async () => {
+    if (!confirm("Restore this version? The current text is kept in history.")) return;
+    await api(`/notes/${encodeURI(state.path)}/history/${x.dataset.id}/restore`, { method: "POST" });
+    $("#history-modal").classList.add("hidden");
+    toast("Restored — the replaced version stays in history");
+    openNote(state.path);
+  }));
+}
+$("#history-close").onclick = () => $("#history-modal").classList.add("hidden");
+
+/* ---------- note composer (extract / merge) ---------- */
+async function extractSelection() {
+  const sel = Editor.isLive ? Editor.live.getSelection().text
+    : ta.value.slice(ta.selectionStart, ta.selectionEnd);
+  if (!sel.trim()) return toast("Select some text to extract first", true);
+  const title = prompt("Title for the extracted note:");
+  if (!title) return;
+  try {
+    await api("/notes", { method: "POST", body: { title, body: sel.trim() + "\n" } });
+    if (Editor.isLive) Editor.live.replaceSelection(`[[${title}]]`);
+    else {
+      const s0 = ta.selectionStart, e0 = ta.selectionEnd;
+      ta.value = ta.value.slice(0, s0) + `[[${title}]]` + ta.value.slice(e0);
+    }
+    Editor.sync(); scheduleSave(); await loadList();
+    toast(`Extracted to "${title}" and linked`);
+  } catch (e) { toast(e.message, true); }
+}
+
+async function mergeIntoNote() {
+  if (!state.path) return toast("Open a note first", true);
+  const target = prompt("Merge this note INTO which note? (title)");
+  if (!target) return;
+  const hit = state.notes.find((n) => (n.title || "").toLowerCase() === target.toLowerCase());
+  if (!hit) return toast(`No note titled "${target}"`, true);
+  if (hit.path === state.path) return toast("Cannot merge a note into itself", true);
+  if (!confirm(`Append this note's content to "${hit.title}" and move this note to trash?`)) return;
+  try {
+    if (state.dirty) await save();
+    const me = await api(`/notes/${encodeURI(state.path)}`);
+    const them = await api(`/notes/${encodeURI(hit.path)}`);
+    await api(`/notes/${encodeURI(hit.path)}`, { method: "PUT",
+      body: { body: them.body.replace(/\n+$/, "") + `\n\n## ${me.title}\n\n` + me.body } });
+    await api(`/notes/${encodeURI(state.path)}`, { method: "DELETE" });
+    toast(`Merged into "${hit.title}" (original in trash)`);
+    await loadList(); openNote(hit.path);
+  } catch (e) { toast(e.message, true); }
+}
+
+/* ---------- unique (Zettelkasten timestamp) note ---------- */
+async function newUniqueNote() {
+  const stamp = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 12);
+  const title = prompt("Title (optional):") || "";
+  try {
+    const n = await api("/notes", { method: "POST",
+      body: { path: `zettel/${stamp}${title ? "-" + title.toLowerCase().replace(/[^a-z0-9]+/g, "-") : ""}.md`,
+              title: title || stamp, body: `# ${title || stamp}\n\n` } });
+    await loadList(); openNote(n.path);
+  } catch (e) { toast(e.message, true); }
+}
+
+/* ---------- slides (present the current note) ---------- */
+function presentNote() {
+  if (!state.path) return toast("Open a note first", true);
+  const src = $("#content").value;
+  // slides split on --- lines; fall back to one slide per H2 section
+  let parts = src.split(/\n---\n/);
+  if (parts.length === 1) parts = src.split(/\n(?=## )/);
+  const overlay = document.createElement("div");
+  overlay.id = "slides";
+  overlay.innerHTML = `<div class="slide md"></div>
+    <div class="slide-nav"><span id="slide-pos"></span> · ←/→ · Esc to exit</div>`;
+  document.body.appendChild(overlay);
+  let cur = 0;
+  const show = (i) => {
+    cur = Math.max(0, Math.min(parts.length - 1, i));
+    overlay.querySelector(".slide").innerHTML = mdToHtml(parts[cur]);
+    overlay.querySelector("#slide-pos").textContent = `${cur + 1} / ${parts.length}`;
+  };
+  const onKey = (e) => {
+    if (e.key === "Escape") { overlay.remove(); removeEventListener("keydown", onKey, true); }
+    else if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); show(cur + 1); }
+    else if (e.key === "ArrowLeft") { e.preventDefault(); show(cur - 1); }
+  };
+  addEventListener("keydown", onKey, true);
+  overlay.onclick = (e) => { if (e.target === overlay) show(cur + 1); };
+  show(0);
+}
+
+/* Agent-memory provenance — memories are ordinary notes, but the human
+   should always see at a glance that an agent wrote here, and be one click
+   from the version history that makes agent writes reviewable. */
+function renderProvenance(n) {
+  const el = $("#provenance");
+  const fm = n.frontmatter || {};
+  if (!fm.memory && !n.path.startsWith("memory/")) { el.classList.add("hidden"); return; }
+  el.classList.remove("hidden");
+  el.innerHTML = `🤖 <b>agent memory</b> — last written by <code>${esc(fm.agent || "unknown")}</code>`
+    + (fm.task ? ` (task <code>${esc(fm.task)}</code>)` : "")
+    + ` · every entry is editable — <a id="prov-history">history & rollback</a>`;
+  $("#prov-history").onclick = () => openHistory();
+}
+
+/* Retrieval inspection — show exactly which chunks the agent's ask/RAG layer
+   would receive for a query. Trust surface: no hidden context. */
+async function openInspect() {
+  const q = prompt("What would the agent see for…");
+  if (!q) return;
+  $("#inspect-modal").classList.remove("hidden");
+  const b = $("#inspect-body");
+  b.innerHTML = '<p class="vault-note">Retrieving…</p>';
+  try {
+    const chunks = await api(`/retrieve?q=${encodeURIComponent(q)}&k=8`);
+    if (!chunks.length) { b.innerHTML = '<p class="vault-note">Nothing retrieved — the agent would answer from nothing.</p>'; return; }
+    b.innerHTML = `<p class="vault-note">Top ${chunks.length} chunks for <b>${esc(q)}</b> — this is the agent's entire retrieved context (private notes excluded, exactly as the agent sees it):</p>`
+      + chunks.map((c) => `
+        <div class="inspect-chunk">
+          <div class="ic-head"><a class="wikilink" data-path="${esc(c.path)}">${esc(c.title || c.path)}</a>
+            <span class="ic-score">${(c.score * 100).toFixed(0)}%</span></div>
+          <div class="ic-text">${esc(c.chunk)}</div>
+        </div>`).join("");
+    b.querySelectorAll("a.wikilink").forEach((a) => (a.onclick = () => {
+      $("#inspect-modal").classList.add("hidden"); openNote(a.dataset.path);
+    }));
+  } catch (e) { b.innerHTML = `<p class="vault-note">${esc(e.message)}</p>`; }
+}
+$("#inspect-close").onclick = () => $("#inspect-modal").classList.add("hidden");
 
 /* ---------- command palette (Ctrl/Cmd-K quick switcher) ---------- */
 const COMMANDS = [
@@ -877,6 +913,13 @@ const COMMANDS = [
   { icon: "◉", name: "Open graph view", run: openGraph },
   { icon: "◐", name: "Toggle preview", run: () => $("#preview-toggle").click() },
   { icon: "🔐", name: "Open secret vault", run: openVault },
+  { icon: "⚖", name: "Agent grants & audit (credential console)", run: openVault },
+  { icon: "🔎", name: "What would the agent see… (retrieval inspection)", run: openInspect },
+  { icon: "🤖", name: "Agent memories (recent)", run: async () => {
+    const mems = await api("/memory");
+    if (!mems.length) return toast("No agent memories yet — agents write them via the MCP remember tool");
+    openNote(mems[0].path);
+  } },
   { icon: "🎙", name: "Record audio memo", run: () => $("#audio-memo").click() },
   { icon: "🗂", name: "Save current note as template", run: saveAsTemplate },
   { icon: "⇩", name: "Export note as HTML (print to PDF)", run: exportNote },
@@ -884,6 +927,21 @@ const COMMANDS = [
   { icon: "🔒", name: "Encrypt this note (at rest)", run: () => cryptNote("encrypt") },
   { icon: "🔓", name: "Decrypt this note", run: () => cryptNote("decrypt") },
   { icon: "🗑", name: "Open trash", run: openTrash },
+  { icon: "🕘", name: "Version history (this note)", run: openHistory },
+  { icon: "✂", name: "Extract selection to new note", run: extractSelection },
+  { icon: "🔀", name: "Merge this note into another", run: mergeIntoNote },
+  { icon: "🧩", name: "New unique (Zettel) note", run: newUniqueNote },
+  { icon: "🎞", name: "Present this note (slides)", run: presentNote },
+  { icon: "🗺", name: "Open canvas…", run: openCanvasPicker },
+  { icon: "🗺", name: "New canvas", run: createCanvas },
+  { icon: "🔌", name: "Create a plugin (skeleton in your vault)", run: async () => {
+    const name = prompt("Plugin name (lowercase, hyphens):");
+    if (!name) return;
+    try {
+      const r = await api("/plugins/scaffold", { method: "POST", body: { name } });
+      toast(`Created ${r.path} — enable it in Settings → Plugins`);
+    } catch (e) { toast(e.message, true); }
+  } },
   { icon: "📌", name: "Pin / unpin this note", run: togglePin },
   { icon: "📅", name: "Open calendar", run: () => openCalendar() },
   { icon: "◀", name: "Previous day (daily note)", run: () => shiftDaily(-1) },
@@ -893,7 +951,8 @@ const COMMANDS = [
   { icon: "🏷", name: "Browse tags", run: openTagBrowser },
   { icon: "⌨", name: "Keyboard shortcuts & help", run: openHelp },
   { icon: "ⓘ", name: "Edit note properties", run: openProps },
-  { icon: "🔍", name: "Find & replace in note", run: openFind },
+  { icon: "🔍", name: "Find & replace in note",
+    run: () => { Editor.isLive ? Editor.openSearch() : openFind(); } },
   { icon: "🎲", name: "Open random note", run: openRandom },
   { icon: "⧉", name: "Duplicate this note", run: duplicateNote },
   { icon: "⊞", name: "Split view: open current note on the right", run: () => openSplit(state.path) },
@@ -995,8 +1054,13 @@ async function cryptNote(which) {
   if (state.dirty) await save();
   try {
     await api(`/notes/${encodeURI(state.path)}/${which}`, { method: "POST" });
+    // reflect the new at-rest state *synchronously* — openNote below is async, and
+    // until it lands the editor still holds plaintext. Without this, a keystroke in
+    // that window would persist an encrypted note's plaintext to a localStorage draft.
+    state.encrypted = which === "encrypt";
+    if (state.encrypted) clearDraft();   // drop any pre-encryption plaintext draft
     toast(which === "encrypt" ? "Encrypted at rest 🔒" : "Decrypted 🔓");
-    openNote(state.path);
+    await openNote(state.path);
   } catch (e) {
     if (/423|lock/i.test(e.message)) { toast("Unlock the secret vault first", true); openVault(); }
     else toast(e.message, true);
@@ -1046,7 +1110,8 @@ function fuzzy(needle, hay) {
   return i === needle.length ? score : 0;
 }
 function renderPalette(q) {
-  const cmds = COMMANDS.map((c) => ({ ...c, kind: "cmd", label: c.name, s: fuzzy(q, c.name) }));
+  const cmds = [...COMMANDS, ...Plugins.registry.commands]
+    .map((c) => ({ ...c, kind: "cmd", label: c.name, s: fuzzy(q, c.name) }));
   const notes = state.notes.map((n) => ({
     kind: "note", label: n.title || n.path, path: n.path,
     s: fuzzy(q, (n.title || "") + " " + n.path) }));
@@ -1095,96 +1160,6 @@ addEventListener("keydown", (e) => {
   }
 });
 
-/* ---------- graph view (canvas force-directed, no deps) ---------- */
-let graphAnim = null;
-$("#graph-open").onclick = openGraph;
-$("#graph-close").onclick = closeGraph;
-$("#graph-modal").onclick = (e) => { if (e.target.id === "graph-modal") closeGraph(); };
-function closeGraph() {
-  $("#graph-modal").classList.add("hidden");
-  if (graphAnim) { cancelAnimationFrame(graphAnim); graphAnim = null; }
-}
-async function openGraph() {
-  const g = await api("/graph");
-  $("#graph-modal").classList.remove("hidden");
-  const cv = $("#graph-canvas"), ctx = cv.getContext("2d");
-  const dpr = devicePixelRatio || 1;
-  const fit = () => {
-    const r = cv.getBoundingClientRect();
-    cv.width = r.width * dpr; cv.height = r.height * dpr;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    return { w: r.width, h: r.height };
-  };
-  let { w, h } = fit();
-  const idx = new Map(g.nodes.map((n, i) => [n.id, i]));
-  const deg = new Map();
-  for (const e of g.edges) { deg.set(e.src, (deg.get(e.src) || 0) + 1); deg.set(e.dst, (deg.get(e.dst) || 0) + 1); }
-  // deterministic seed positions (no Math.random — spread on a phyllotaxis spiral)
-  const N = g.nodes.length || 1;
-  const nodes = g.nodes.map((n, i) => {
-    const a = i * 2.399963, rad = 10 + 16 * Math.sqrt(i);
-    return { ...n, x: w / 2 + rad * Math.cos(a), y: h / 2 + rad * Math.sin(a),
-             vx: 0, vy: 0, d: deg.get(n.id) || 0 };
-  });
-  const edges = g.edges.filter((e) => idx.has(e.src) && idx.has(e.dst))
-    .map((e) => [idx.get(e.src), idx.get(e.dst)]);
-  $("#graph-stat").textContent = `${nodes.length} notes · ${edges.length} links`;
-
-  let alpha = 1;
-  const step = () => {
-    alpha *= 0.985;
-    const k = 0.9;
-    // repulsion (O(n²) — fine for a personal vault)
-    for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
-      const a = nodes[i], b = nodes[j];
-      let dx = a.x - b.x, dy = a.y - b.y, d2 = dx * dx + dy * dy || 0.01;
-      const f = (2600 * alpha) / d2, d = Math.sqrt(d2);
-      dx /= d; dy /= d; a.vx += dx * f; a.vy += dy * f; b.vx -= dx * f; b.vy -= dy * f;
-    }
-    // spring attraction along links
-    for (const [i, j] of edges) {
-      const a = nodes[i], b = nodes[j];
-      let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 0.01;
-      const f = (d - 70) * 0.02 * alpha; dx /= d; dy /= d;
-      a.vx += dx * f; a.vy += dy * f; b.vx -= dx * f; b.vy -= dy * f;
-    }
-    // gravity to center + integrate
-    for (const n of nodes) {
-      n.vx += (w / 2 - n.x) * 0.002 * alpha; n.vy += (h / 2 - n.y) * 0.002 * alpha;
-      n.x += n.vx * k; n.y += n.vy * k; n.vx *= 0.85; n.vy *= 0.85;
-      n.x = Math.max(14, Math.min(w - 14, n.x)); n.y = Math.max(14, Math.min(h - 14, n.y));
-    }
-    draw();
-    if (alpha > 0.02) graphAnim = requestAnimationFrame(step);
-  };
-  const cssVar = (v) => getComputedStyle(document.body).getPropertyValue(v).trim();
-  function draw() {
-    ctx.clearRect(0, 0, w, h);
-    ctx.strokeStyle = cssVar("--line"); ctx.lineWidth = 1; ctx.globalAlpha = 0.7;
-    for (const [i, j] of edges) { ctx.beginPath(); ctx.moveTo(nodes[i].x, nodes[i].y); ctx.lineTo(nodes[j].x, nodes[j].y); ctx.stroke(); }
-    ctx.globalAlpha = 1;
-    for (const n of nodes) {
-      const r = 4 + Math.min(9, n.d * 1.6);
-      const active = n.id === state.path;
-      ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, 7);
-      ctx.fillStyle = active ? cssVar("--accent") : cssVar("--link"); ctx.fill();
-      if (r >= 7 || active) {
-        ctx.fillStyle = cssVar("--ink"); ctx.font = "12px var(--sans)"; ctx.textAlign = "center";
-        ctx.fillText((n.title || n.id).slice(0, 22), n.x, n.y - r - 4);
-      }
-    }
-  }
-  cv.onclick = (ev) => {
-    const r = cv.getBoundingClientRect(), mx = ev.clientX - r.left, my = ev.clientY - r.top;
-    let hit = null, best = 400;
-    for (const n of nodes) { const d = (n.x - mx) ** 2 + (n.y - my) ** 2; if (d < best) { best = d; hit = n; } }
-    if (hit) { closeGraph(); openNote(hit.id); }
-  };
-  addEventListener("resize", () => { if (!$("#graph-modal").classList.contains("hidden")) ({ w, h } = fit()); }, { once: true });
-  draw();   // paint an initial frame immediately (before the first rAF tick)
-  step();
-}
-
 /* ---------- inline AI actions ---------- */
 $("#ai-btn").onclick = (e) => {
   const m = $("#ai-menu"), r = e.target.getBoundingClientRect();
@@ -1212,7 +1187,7 @@ async function runAction(action) {
 }
 function insertAtEnd(s) {
   const ta = $("#content"); ta.value = ta.value.replace(/\n+$/, "") + s;
-  scheduleSave();
+  Editor.sync(); scheduleSave();
 }
 
 /* ---------- outline / table of contents ---------- */
@@ -1369,6 +1344,34 @@ function shiftDaily(delta) {
 /* ---------- settings ---------- */
 $("#settings-close").onclick = () => $("#settings-modal").classList.add("hidden");
 $("#settings-modal").onclick = (e) => { if (e.target.id === "settings-modal") $("#settings-modal").classList.add("hidden"); };
+/* Plugin enable/disable toggles inside the settings modal. Vault plugins carry
+   an explicit warning: enabling one runs third-party code in the app. */
+async function renderPluginSettings() {
+  const box = $("#set-plugins");
+  try {
+    const list = await api("/plugins");
+    if (!list.length) { box.innerHTML = '<p class="vault-note">No plugins installed. Drop one into <code>plugins/</code> in your vault.</p>'; return; }
+    box.innerHTML = "<p class=\"vault-note\"><b>Plugins</b> — changes apply after reload.</p>" + list.map((p) => `
+      <label class="set-row plugin-row">
+        <span>${esc(p.name)} <small>${esc(p.version)}${p.source === "vault" ? " · vault" : ""}</small>
+          <br><small class="dim">${esc(p.description)}</small></span>
+        <input type="checkbox" data-plugin="${esc(p.name)}" data-source="${esc(p.source)}"${p.enabled ? " checked" : ""}>
+      </label>`).join("");
+    box.querySelectorAll("input[data-plugin]").forEach((cb) => {
+      cb.onchange = async () => {
+        if (cb.checked && cb.dataset.source === "vault" &&
+            !confirm(`"${cb.dataset.plugin}" is a vault plugin — it runs third-party code inside Grimoire. Enable it?`)) {
+          cb.checked = false; return;
+        }
+        try {
+          await api(`/plugins/${cb.dataset.plugin}/enable`, { method: "POST", body: { enabled: cb.checked } });
+          toast(`${cb.dataset.plugin} ${cb.checked ? "enabled" : "disabled"} — reload to apply`);
+        } catch (e) { toast(e.message, true); cb.checked = !cb.checked; }
+      };
+    });
+  } catch { box.innerHTML = ""; }
+}
+
 async function openSettings() {
   $("#settings-modal").classList.remove("hidden");
   const st = await api("/settings");
@@ -1385,7 +1388,15 @@ async function openSettings() {
     <label class="set-row"><span>Whisper URL</span>
       <input id="set-whisper" value="${esc(s.whisper_url)}" placeholder="(optional) OpenAI-compatible"></label>
     <p class="vault-note">Embedding model: <code>${esc(s.embed_model)}</code> (fixed — changing it needs a reindex).</p>
+    <label class="set-row"><span>Editor (this device)</span>
+      <select id="set-editor">
+        <option value="live"${Editor.mode === "live" ? " selected" : ""}>live preview</option>
+        <option value="classic"${Editor.mode === "classic" ? " selected" : ""}>classic (plain text)</option>
+      </select></label>
+    <div id="set-plugins"><p class="vault-note">Loading plugins…</p></div>
     <div class="ask-input-row"><button id="set-save" class="btn full">Save</button></div>`;
+  renderPluginSettings();
+  $("#set-editor").onchange = (e) => Editor.setMode(e.target.value);
   $("#set-save").onclick = async () => {
     try {
       const r = await api("/settings", { method: "PUT", body: {
@@ -1471,12 +1482,12 @@ function applyTheme(t) {
   if (btn) { btn.textContent = THEME_ICON[t] || "◐"; btn.title = `theme: ${t}`; }
 }
 $("#theme-toggle").onclick = () => {
-  const cur = localStorage.getItem("mnemo-theme") || "auto";
+  const cur = localStorage.getItem("grimoire-theme") || "auto";
   const next = THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length];
-  localStorage.setItem("mnemo-theme", next);
+  localStorage.setItem("grimoire-theme", next);
   applyTheme(next); toast(`Theme: ${next}`);
 };
-applyTheme(localStorage.getItem("mnemo-theme") || "auto");
+applyTheme(localStorage.getItem("grimoire-theme") || "auto");
 
 /* ---------- focus / zen mode ---------- */
 function setZen(on) {
@@ -1493,7 +1504,7 @@ addEventListener("keydown", (e) => {
 /* ---------- collapsible sidebar (desktop) ---------- */
 function setSidebarCollapsed(on) {
   $("#app").classList.toggle("sidebar-collapsed", on);
-  localStorage.setItem("mnemo-side-collapsed", on ? "1" : "");
+  localStorage.setItem("grimoire-side-collapsed", on ? "1" : "");
   $("#sidebar-toggle").textContent = on ? "⇥" : "⇤";
   $("#sidebar-toggle").title = (on ? "show" : "hide") + " sidebar (Ctrl+\\)";
 }
@@ -1505,7 +1516,7 @@ $("#sidebar-toggle").onclick = toggleSidebar;
 addEventListener("keydown", (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key === "\\") { e.preventDefault(); toggleSidebar(); }
 });
-if (localStorage.getItem("mnemo-side-collapsed")) setSidebarCollapsed(true);
+if (localStorage.getItem("grimoire-side-collapsed")) setSidebarCollapsed(true);
 
 /* ---------- drag-to-resize (sidebar + split divider) ---------- */
 function makeResizer(handle, onDrag) {
@@ -1526,12 +1537,12 @@ function makeResizer(handle, onDrag) {
 }
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 // sidebar width — persisted
-const savedSide = localStorage.getItem("mnemo-side-w");
+const savedSide = localStorage.getItem("grimoire-side-w");
 if (savedSide) document.documentElement.style.setProperty("--side-w", savedSide + "px");
 makeResizer($("#sidebar-resize"), (x) => {
   const w = clamp(Math.round(x), 200, Math.min(560, innerWidth - 360));
   document.documentElement.style.setProperty("--side-w", w + "px");
-  localStorage.setItem("mnemo-side-w", w);
+  localStorage.setItem("grimoire-side-w", w);
 });
 // split divider — middle pane width (px); resets to 50/50 each split
 makeResizer($("#split-resize"), (x) => {
@@ -1585,7 +1596,7 @@ async function savePane2() {
     // if the same note is open in the main pane, pull the update in
     if (pane2.path === state.path && !state.locked) {
       const m = await api(`/notes/${encodeURI(state.path)}`);
-      if (!state.dirty) $("#content").value = m.body || "";
+      if (!state.dirty) { $("#content").value = m.body || ""; Editor.sync(); }
     }
     loadList();
   } catch (e) { $("#save-state2").textContent = "!"; toast(e.message, true); }
@@ -1594,6 +1605,8 @@ function renderPreview2() {
   $("#preview2").innerHTML = `<div class="md">${mdToHtml(ta2.value)}</div>`;
   $("#preview2").querySelectorAll("a.wikilink").forEach((a) =>
     (a.onclick = (e) => { e.preventDefault(); resolveIntoPane2(a.dataset.target); }));
+  hydrateDynamicBlocks($("#preview2"));
+  Plugins.renderFences($("#preview2"));
 }
 function resolveIntoPane2(target) {
   const hit = state.notes.find((n) => (n.title || "").toLowerCase() === target.toLowerCase()
@@ -1629,7 +1642,8 @@ addEventListener("beforeunload", () => { if (state.dirty) save(); });
 // deep-linkable notes: browser back/forward and shared #note URLs re-open the note
 addEventListener("hashchange", () => {
   const h = decodeURI(location.hash.slice(1));
-  if (h && h !== state.path && state.notes.some((n) => n.path === h)) openNote(h);
+  if (h && h !== state.path)
+    openNote(h).catch(() => toast(`"${h}" not found`, true));   // list may be stale
 });
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
 
@@ -1646,11 +1660,116 @@ async function handleShareTarget() {
   } catch { return false; }
 }
 
+/* Snippets offered by the in-editor slash menu (beyond commands + templates). */
+const SLASH_SNIPPETS = [
+  { name: "date", detail: "today's date", insert: () => new Date().toISOString().slice(0, 10) },
+  { name: "task", detail: "checkbox item", insert: () => "- [ ] " },
+  { name: "table", detail: "2×2 table", insert: () => "| A | B |\n|---|---|\n|  |  |\n" },
+  { name: "callout", detail: "note callout", insert: () => "> [!note] Title\n> body\n" },
+  { name: "query", detail: "live query block", insert: () => "```query\ntag: \n```\n" },
+  { name: "footnote", detail: "footnote pair", insert: () => "[^1]\n\n[^1]: " },
+  { name: "hr", detail: "divider", insert: () => "\n---\n" },
+];
+
+function slashCommandItems(q) {
+  const needle = q.toLowerCase();
+  const snippets = SLASH_SNIPPETS
+    .filter((s) => s.name.includes(needle))
+    .map((s) => ({ name: s.name, detail: s.detail, insert: s.insert() }));
+  const pluginSnips = Plugins.registry.slashSnippets
+    .filter((sn) => sn.name.includes(needle))
+    .map((sn) => ({ name: sn.name, detail: sn.detail || "",
+                    insert: typeof sn.insert === "function" ? sn.insert() : sn.insert }));
+  const commands = [...COMMANDS, ...Plugins.registry.commands]
+    .filter((c) => c.name.toLowerCase().includes(needle))
+    .slice(0, 8)
+    .map((c) => ({ name: c.name.toLowerCase().replace(/[^\w]+/g, "-").replace(/^-|-$/g, ""),
+                   detail: c.name, run: c.run }));
+  return [...snippets, ...pluginSnips, ...commands].slice(0, 12);
+}
+
+/* Sidebar sections contributed by plugins. */
+function renderPluginPanels() {
+  const hostEl = $("#plugin-panels");
+  if (!hostEl) return;
+  hostEl.innerHTML = "";
+  for (const p of Plugins.registry.panels) {
+    const sec = document.createElement("section");
+    sec.className = "plugin-panel";
+    sec.innerHTML = `<div class="pp-title">${esc(p.title)}</div><div class="pp-body"></div>`;
+    hostEl.appendChild(sec);
+    try { p.render(sec.querySelector(".pp-body")); }
+    catch (e) { sec.querySelector(".pp-body").textContent = `panel failed: ${e.message}`; }
+  }
+}
+
+/* Edge-swipe navigation on phones: swipe right from the left edge opens the
+   sidebar; swipe left anywhere on the open sidebar closes it. Pointer events
+   only — no library, no interference with text selection (edge-start only). */
+(function wireEdgeSwipe() {
+  let startX = null, startY = null, tracking = false;
+  addEventListener("touchstart", (e) => {
+    if (matchMedia("(min-width: 781px)").matches) return;
+    const t = e.touches[0];
+    const sidebarOpen = $("#sidebar").classList.contains("open");
+    // start tracking from the left screen edge (open) or on the sidebar (close)
+    if ((!sidebarOpen && t.clientX < 24) || (sidebarOpen && e.target.closest("#sidebar"))) {
+      startX = t.clientX; startY = t.clientY; tracking = true;
+    }
+  }, { passive: true });
+  addEventListener("touchend", (e) => {
+    if (!tracking) return;
+    tracking = false;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - startX, dy = t.clientY - startY;
+    if (Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx)) return;   // not a horizontal swipe
+    const sidebar = $("#sidebar");
+    if (dx > 0 && !sidebar.classList.contains("open")) {
+      sidebar.classList.add("open"); $("#app").classList.add("side-open");
+    } else if (dx < 0 && sidebar.classList.contains("open")) {
+      sidebar.classList.remove("open"); $("#app").classList.remove("side-open");
+    }
+  }, { passive: true });
+})();
+
 (async function boot() {
+  setNoteOpener(openNote);                          // wiki-link clicks in previews
+  initGraph({ openNote, currentPath: () => state.path });
   await loadList();
   refreshTemplates();
+  await Editor.init({
+    onInput: () => { scheduleSave(); updateWordCount();
+      if (!$("#preview").classList.contains("hidden")) renderPreview(); },
+    onSave: () => save(),
+    onOpenLink: (target, opts) => opts?.split ? resolveIntoPane2(target) : resolveAndOpen(target),
+    onTagClick: (tag) => filterByTag(tag),
+    getLinkCompletions: (q) => {
+      const needle = q.toLowerCase();
+      const titles = state.notes.map((n) => n.title || n.path.replace(/\.md$/, ""));
+      return titles.filter((t) => t.toLowerCase().includes(needle)).slice(0, 10);
+    },
+    getTagCompletions: (q) => (state.allTags || [])
+      .map((t) => t.tag).filter((t) => t.toLowerCase().startsWith(q.toLowerCase())).slice(0, 10),
+    getSlashCommands: slashCommandItems,
+    onFiles: (files) => { for (const f of files) uploadAttachment(f); },
+  });
+  initCanvas({ api, toast, openNote, esc });
+  await Plugins.init({
+    api,
+    toast,
+    openNote,
+    getCurrentNote: () => state.path
+      ? { path: state.path, title: $("#title").value, body: $("#content").value }
+      : null,
+    insertText: insertAtCursor,
+    renderPanels: renderPluginPanels,
+    onCommandsChanged: () => {},        // palette reads the registry lazily
+  });
+  renderPluginPanels();
   if (await handleShareTarget()) return;
   const hash = decodeURI(location.hash.slice(1));
-  if (hash && state.notes.some((n) => n.path === hash)) openNote(hash);
+  if (hash) await openNote(hash).catch(() => state.notes[0] && openNote(state.notes[0].path));
   else if (state.notes[0]) openNote(state.notes[0].path);
+  // readiness beacon: handlers are wired and the editor is mounted (e2e + probes)
+  document.body.dataset.ready = "1";
 })();

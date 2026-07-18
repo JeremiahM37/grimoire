@@ -1,4 +1,4 @@
-"""User settings — a small JSON store in .mnemo/settings.json. These override
+"""User settings — a small JSON store in .grimoire/settings.json. These override
 environment defaults so the AI backend/model can be changed from the UI without
 editing the systemd unit. Only non-secret operational settings live here.
 
@@ -12,16 +12,16 @@ from . import config
 
 # settings that may be set from the UI, with their env fallback + default
 FIELDS = {
-    "llm": ("MNEMO_LLM", ""),                     # '', 'ollama', 'claude' ('' = auto)
-    "llm_model": ("MNEMO_LLM_MODEL", "qwen3.5:4b"),
-    "ollama_url": ("MNEMO_OLLAMA_URL", ""),
-    "embed_model": ("MNEMO_EMBED_MODEL", "nomic-embed-text"),
-    "whisper_url": ("MNEMO_WHISPER_URL", ""),
+    "llm": ("GRIMOIRE_LLM", ""),                     # '', 'ollama', 'claude' ('' = auto)
+    "llm_model": ("GRIMOIRE_LLM_MODEL", "qwen3.5:4b"),
+    "ollama_url": ("GRIMOIRE_OLLAMA_URL", ""),
+    "embed_model": ("GRIMOIRE_EMBED_MODEL", "nomic-embed-text"),
+    "whisper_url": ("GRIMOIRE_WHISPER_URL", ""),
 }
 
 
 def _path():
-    return config.mnemo_dir() / "settings.json"
+    return config.grimoire_dir() / "settings.json"
 
 
 def _load() -> dict:
@@ -60,7 +60,7 @@ def update(patch: dict) -> dict:
             data.pop(k, None)
         else:
             data[k] = v
-    config.mnemo_dir().mkdir(parents=True, exist_ok=True)
+    config.grimoire_dir().mkdir(parents=True, exist_ok=True)
     _path().write_text(json.dumps(data, indent=2), encoding="utf-8")
     return all_effective()
 

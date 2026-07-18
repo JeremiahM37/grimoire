@@ -38,5 +38,5 @@ def test_rename_encrypted_note_frontmatter_tag_only(client, vaultdir):
     assert r.json()["notes"] == 1
     # still sealed, frontmatter tag updated
     disk = (vaultdir / "enc.md").read_text()
-    assert "secret" not in disk and "mnemo:enc:v1:" in disk
+    assert "secret" not in disk and "grimoire:enc:v1:" in disk
     assert "classified" in disk

@@ -10,7 +10,7 @@ from . import ai, db, vault
 
 def upsert(rel: str) -> dict:
     """Index a single note from its file, resolving its links. Returns the note.
-    Files under reserved dirs (templates/, .mnemo/) are never indexed."""
+    Files under reserved dirs (templates/, .grimoire/) are never indexed."""
     note = vault.read(rel)
     if vault.is_reserved(rel):
         return note
@@ -80,7 +80,7 @@ def _write_note_rows(note: dict) -> None:
     if note["links"]:
         db.executemany(
             "INSERT INTO links(src,target,alias,resolved) VALUES(?,?,?,0)",
-            [(rel, l["target"], l["alias"]) for l in note["links"]])
+            [(rel, l_["target"], l_["alias"]) for l_ in note["links"]])
     if note["tags"]:
         db.executemany("INSERT INTO tags(note,tag) VALUES(?,?)",
                        [(rel, t) for t in note["tags"]])
@@ -96,7 +96,7 @@ def _embed_note(note: dict) -> None:
     priv = 1 if note["private"] else 0
     db.executemany(
         "INSERT INTO vectors(note,chunk_idx,chunk,embedding,private) VALUES(?,?,?,?,?)",
-        [(note["path"], i, c, ai.pack(v), priv) for i, (c, v) in enumerate(zip(chunks, vecs))])
+        [(note["path"], i, c, ai.pack(v), priv) for i, (c, v) in enumerate(zip(chunks, vecs, strict=False))])
 
 
 def _resolve_all() -> None:

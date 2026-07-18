@@ -1,4 +1,4 @@
-"""Bidirectional sync client — pairs with routers/sync.py on a peer mnemo.
+"""Bidirectional sync client — pairs with routers/sync.py on a peer grimoire.
 
 Diffs the local manifest against a peer's, then pulls newer/missing notes down
 and pushes newer/missing notes up. Direction is decided by mtime (last-writer),
@@ -6,8 +6,8 @@ but data is NEVER lost: pushing conflicts are turned into conflict copies by the
 peer (base_hash check), and before a pull OVERWRITES a differing local note we
 first preserve the local version as a conflict copy.
 
-Runs on a timer from the app lifespan (MNEMO_SYNC_PEER + MNEMO_SYNC_INTERVAL),
-on demand via POST /api/sync/now, or from the CLI (`mnemo sync`).
+Runs on a timer from the app lifespan (GRIMOIRE_SYNC_PEER + GRIMOIRE_SYNC_INTERVAL),
+on demand via POST /api/sync/now, or from the CLI (`grimoire sync`).
 """
 import json
 import logging
@@ -18,7 +18,7 @@ from . import crdtstore, db, index, vault
 from .routers.sync import _conflict_name, _write_raw
 from .vault import _serialize
 
-log = logging.getLogger("mnemo.sync")
+log = logging.getLogger("grimoire.sync")
 
 
 def _req(url: str, method: str = "GET", body=None, token: str | None = None, timeout: int = 30):

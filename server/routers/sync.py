@@ -23,12 +23,12 @@ router = APIRouter(prefix="/api")
 def sync_now():
     """Trigger a bidirectional sync with the configured peer right now."""
     if not config.SYNC_PEER:
-        raise HTTPException(400, "no peer configured (set MNEMO_SYNC_PEER)")
+        raise HTTPException(400, "no peer configured (set GRIMOIRE_SYNC_PEER)")
     from .. import syncclient
     try:
         return syncclient.sync_with_peer(config.SYNC_PEER, "manual", config.SYNC_TOKEN)
     except Exception as e:  # noqa: BLE001
-        raise HTTPException(502, f"sync failed: {e}")
+        raise HTTPException(502, f"sync failed: {e}") from None
 
 
 @router.get("/sync/status")

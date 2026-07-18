@@ -1,4 +1,4 @@
-/* mnemo — warm paper / ink notes aesthetic, light + dark */
+/* grimoire — warm paper / ink notes aesthetic, light + dark */
 :root {
   --paper: #faf7f0; --paper2: #f2ede1; --ink: #2b2722; --ink-soft: #6b6152;
   --line: #e2dccd; --accent: #7c5cff; --link: #2f6f6a; --link-open: #b26b3a;
@@ -383,3 +383,149 @@ body.resizing { cursor: col-resize; user-select: none; }
 @media (min-width: 1100px) {
   #app:not(.split) #content { max-width: 64rem; margin: 0 auto; }
 }
+
+/* ---------- live queries, transclusion, footnotes ---------- */
+.query { border: 1px dashed var(--line); border-radius: 8px; padding: 8px 12px;
+  margin: 10px 0; background: color-mix(in srgb, var(--accent) 4%, transparent); }
+.query ul { margin: 4px 0; padding-left: 20px; }
+.query-pending { color: var(--ink-soft); font-style: italic; }
+.query-error { color: var(--danger); font-family: var(--mono); font-size: 13px; }
+.query-count { font: 700 24px var(--sans); }
+.embed { border-left: 3px solid var(--accent); border-radius: 6px; padding: 6px 14px;
+  margin: 10px 0; background: color-mix(in srgb, var(--accent) 5%, transparent); }
+.embed-title { font-weight: 600; font-size: 13px; margin-bottom: 4px; opacity: .8; }
+.embed-missing, .embed-cycle { color: var(--ink-soft); font-style: italic; }
+img.embed { border-left: none; padding: 0; background: none; }   /* image embeds stay plain */
+.footnotes { margin-top: 20px; font-size: 13px; color: var(--ink-soft); }
+.footnotes ol { padding-left: 22px; }
+.fn-ref a { text-decoration: none; color: var(--accent); font-weight: 600; }
+.fn-back { text-decoration: none; margin-left: 4px; }
+
+/* ---------- live editor (CM6) ---------- */
+#live-editor { display: none; }
+body.live-editor-on #live-editor { display: block; flex: 1; min-height: 0; overflow-y: auto; }
+body.live-editor-on #content { display: none; }   /* textarea becomes the hidden mirror */
+#live-editor .cm-editor { height: 100%; font: 16px/1.65 var(--serif); background: transparent; }
+#live-editor .cm-editor.cm-focused { outline: none; }
+#live-editor .cm-content { padding: 18px 22px 40vh; caret-color: var(--ink); max-width: 64rem; margin: 0 auto; }
+#live-editor .cm-line { padding: 0; }
+#live-editor .cm-scroller { font-family: var(--serif); line-height: 1.65; }
+#live-editor .cm-cursor { border-left-color: var(--ink); }
+#live-editor .cm-activeLine { background: color-mix(in srgb, var(--accent) 4%, transparent); }
+#live-editor .cm-selectionBackground { background: color-mix(in srgb, var(--accent) 22%, transparent) !important; }
+/* markdown element styling */
+.gr-h { font-weight: 700; line-height: 1.3; }
+.gr-h1 { font-size: 1.7em; margin-top: .4em; }
+.gr-h2 { font-size: 1.4em; }
+.gr-h3 { font-size: 1.2em; }
+.gr-h4, .gr-h5, .gr-h6 { font-size: 1.05em; }
+.gr-strong { font-weight: 700; }
+.gr-em { font-style: italic; }
+.gr-strike { text-decoration: line-through; color: var(--ink-soft); }
+.gr-mark { background: color-mix(in srgb, #f5d76e 45%, transparent); border-radius: 3px; padding: 0 2px; }
+.gr-code { font-family: var(--mono); font-size: .9em; background: var(--paper2); border-radius: 4px; padding: 0 3px; }
+.gr-codeblock { font-family: var(--mono); font-size: .85em; background: var(--paper2); }
+.gr-quote { border-left: 3px solid var(--line); padding-left: 10px; color: var(--ink-soft); }
+.gr-wikilink { color: var(--accent); cursor: pointer; border-bottom: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); }
+.gr-tag { color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); border-radius: 8px; padding: 0 4px; font-size: .92em; }
+.gr-url { color: var(--accent); text-decoration: underline; }
+.gr-task-box { margin-right: 6px; accent-color: var(--accent); cursor: pointer; }
+.gr-task-done { color: var(--ink-soft); text-decoration: line-through; }
+.gr-hr { border: none; border-top: 1px solid var(--line); margin: 4px 0; }
+/* completion popover — match the app's look */
+.cm-tooltip.cm-tooltip-autocomplete { background: var(--paper); border: 1px solid var(--line);
+  border-radius: 10px; box-shadow: var(--shadow); font-family: var(--sans); font-size: 13.5px; }
+.cm-tooltip-autocomplete ul li[aria-selected] { background: var(--accent); color: #fff; }
+.cm-panel.cm-search { background: var(--paper); border-top: 1px solid var(--line);
+  font-family: var(--sans); font-size: 13px; }
+
+/* ---------- plugin panels (sidebar) ---------- */
+.plugin-panel { border-top: 1px solid var(--line); padding: 10px 14px; font-size: 13px; }
+.pp-title { font-weight: 600; font-size: 11px; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--ink-soft); margin-bottom: 6px; }
+.fence-plugin { margin: 10px 0; }
+
+/* ---------- folder tree ---------- */
+details.folder { margin: 2px 0; }
+.folder-head { cursor: pointer; list-style: none; font: 600 12px var(--sans);
+  color: var(--ink-soft); padding: 5px 14px; user-select: none; }
+.folder-head::-webkit-details-marker { display: none; }
+details.folder[open] > .folder-head { color: var(--ink); }
+details.folder .note-row { padding-left: 26px; }
+
+/* ---------- outgoing links ---------- */
+.outgoing { padding: 6px 0 0; font-size: 13px; }
+.outgoing .bl-title { font: 600 11px var(--sans); text-transform: uppercase;
+  letter-spacing: .06em; color: var(--ink-soft); margin: 8px 0 4px; }
+.outgoing .wikilink { margin-right: 8px; cursor: pointer; }
+
+/* ---------- slides (present mode) ---------- */
+#slides { position: fixed; inset: 0; z-index: 100; background: var(--paper);
+  display: flex; align-items: center; justify-content: center; }
+#slides .slide { max-width: 46rem; width: 90%; font-size: 1.35em; line-height: 1.6; }
+#slides .slide h1, #slides .slide h2 { font-size: 1.8em; }
+.slide-nav { position: fixed; bottom: 14px; right: 18px; font: 12px var(--mono);
+  color: var(--ink-soft); }
+
+/* ---------- version history ---------- */
+#history-preview { max-height: 260px; overflow: auto; background: var(--paper2);
+  border: 1px solid var(--line); border-radius: 8px; padding: 10px; font-size: 12.5px;
+  white-space: pre-wrap; }
+
+/* ---------- canvas view ---------- */
+#canvas-view { position: fixed; inset: 0; z-index: 90; background: var(--paper);
+  display: flex; flex-direction: column; }
+.cv-head { display: flex; align-items: center; gap: 12px; padding: 8px 14px;
+  border-bottom: 1px solid var(--line); font-family: var(--sans); }
+.cv-hint { font-size: 11.5px; color: var(--ink-soft); flex: 1; }
+.cv-save { font-size: 12px; color: var(--ink-soft); }
+.cv-viewport { flex: 1; position: relative; overflow: hidden; cursor: grab;
+  background-image: radial-gradient(circle, var(--line) 1px, transparent 1px);
+  background-size: 22px 22px; touch-action: none; }
+.cv-edges { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.cv-edge { fill: none; stroke: var(--ink-soft); stroke-width: 1.6; opacity: .65; }
+.cv-layer { position: absolute; transform-origin: 0 0; }
+.cv-node { position: absolute; background: var(--paper2); border: 1px solid var(--line);
+  border-radius: 10px; padding: 10px 12px; font-size: 13.5px; line-height: 1.45;
+  box-shadow: var(--shadow); cursor: move; user-select: none; white-space: pre-wrap; }
+.cv-node.sel { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
+.cv-file { color: var(--accent); font-weight: 600; }
+
+/* fold gutter (live editor) */
+#live-editor .cm-foldGutter { width: 14px; color: var(--ink-soft); opacity: .5; cursor: pointer; }
+#live-editor .cm-gutters { background: transparent; border: none; }
+
+/* inline images in the live editor */
+#live-editor .gr-img { max-width: min(100%, 480px); max-height: 320px;
+  border-radius: 8px; display: inline-block; vertical-align: text-bottom;
+  box-shadow: var(--shadow); }
+
+/* ---------- touch ergonomics (phones) ---------- */
+@media (max-width: 780px) {
+  /* 16px+ inputs prevent iOS Safari's automatic focus-zoom */
+  input, select, textarea, #content { font-size: 16px !important; }
+  /* comfortable thumb targets */
+  .icon, .btn, .tb { min-height: 42px; min-width: 42px; }
+  #ed-toolbar { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .note-row { padding-top: 10px; padding-bottom: 10px; }
+}
+
+/* G6: on phones the header overflowed past the viewport, putting preview/delete
+   out of reach. Hide the buttons that are one palette command away instead. */
+@media (max-width: 480px) {
+  #props-btn, #outline-btn, #private-toggle { display: none; }
+  #title { min-width: 90px; }
+}
+
+/* ---------- substrate trust surfaces ---------- */
+#provenance { padding: 7px 22px; font-size: 12.5px; background: color-mix(in srgb, var(--accent) 7%, transparent);
+  border-bottom: 1px solid var(--line); color: var(--ink-soft); }
+#provenance code { font-family: var(--mono); color: var(--ink); }
+#provenance a { color: var(--accent); cursor: pointer; text-decoration: underline; }
+.mem-badge { margin-right: 4px; font-size: 12px; }
+details.folder .folder-head[data-dir="memory"] { color: var(--accent); }
+.inspect-chunk { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 8px 0; }
+.ic-head { display: flex; justify-content: space-between; font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+.ic-head a { cursor: pointer; }
+.ic-score { color: var(--ink-soft); font: 600 11px var(--mono); }
+.ic-text { font-size: 12.5px; color: var(--ink-soft); white-space: pre-wrap; max-height: 120px; overflow: hidden; }

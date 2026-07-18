@@ -4,14 +4,14 @@ body { font: 14px system-ui; padding: 14px; width: 280px; }
 input { width: 100%; padding: 8px; box-sizing: border-box; margin: 6px 0; }
 button { padding: 8px 14px; }
 </style></head><body>
-<label>mnemo server URL</label>
-<input id="url" placeholder="http://notes.homelab.internal">
+<label>grimoire server URL</label>
+<input id="url" placeholder="http://localhost:9111">
 <button id="save">Save</button>
 <span id="ok"></span>
 <script>
-chrome.storage.sync.get("mnemoUrl", ({ mnemoUrl }) => { document.getElementById("url").value = mnemoUrl || ""; });
+chrome.storage.sync.get("grimoireUrl", ({ grimoireUrl }) => { document.getElementById("url").value = grimoireUrl || ""; });
 document.getElementById("save").onclick = () => {
-  chrome.storage.sync.set({ mnemoUrl: document.getElementById("url").value }, () => {
+  chrome.storage.sync.set({ grimoireUrl: document.getElementById("url").value }, () => {
     document.getElementById("ok").textContent = "saved";
   });
 };

@@ -24,7 +24,7 @@ def vault_init(p: Passphrase):
     try:
         secrets.initialize(p.passphrase)
     except VaultError as e:
-        raise HTTPException(409, str(e))
+        raise HTTPException(409, str(e)) from None
     return {"ok": True}
 
 
@@ -33,9 +33,9 @@ def vault_unlock(p: Passphrase):
     try:
         secrets.unlock(p.passphrase)
     except ValueError:
-        raise HTTPException(401, "wrong passphrase")
+        raise HTTPException(401, "wrong passphrase") from None
     except VaultError as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from None
     return {"ok": True, "unlocked": True}
 
 
@@ -55,7 +55,7 @@ def change_pass(p: ChangePass):
     try:
         return {"ok": True, **secrets.change_passphrase(p.old, p.new)}
     except VaultError as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from None
 
 
 @router.get("/grants")
@@ -63,7 +63,7 @@ def get_grants():
     try:
         return secrets.list_grants()
     except VaultLocked:
-        raise HTTPException(423, "vault locked")
+        raise HTTPException(423, "vault locked") from None
 
 
 @router.delete("/grants/{token}")
@@ -81,7 +81,7 @@ def list_secrets():
     try:
         return secrets.list_names()   # names + meta ONLY, never values
     except VaultLocked:
-        raise HTTPException(423, "vault locked")
+        raise HTTPException(423, "vault locked") from None
 
 
 class SecretIn(BaseModel):
@@ -95,7 +95,7 @@ def add_secret(s: SecretIn):
     try:
         secrets.set_secret(s.name, s.value, s.meta)
     except VaultLocked:
-        raise HTTPException(423, "vault locked")
+        raise HTTPException(423, "vault locked") from None
     return {"name": s.name}
 
 
@@ -104,7 +104,7 @@ def del_secret(name: str):
     try:
         secrets.delete_secret(name)
     except VaultLocked:
-        raise HTTPException(423, "vault locked")
+        raise HTTPException(423, "vault locked") from None
 
 
 class GrantIn(BaseModel):
@@ -118,9 +118,9 @@ def make_grant(name: str, g: GrantIn):
     try:
         token = secrets.grant(name, g.grantee, g.scope, g.ttl_seconds)
     except VaultLocked:
-        raise HTTPException(423, "vault locked")
+        raise HTTPException(423, "vault locked") from None
     except VaultError as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from None
     return {"grant": token, "expires_in": g.ttl_seconds}
 
 
@@ -134,14 +134,14 @@ class BrokerIn(BaseModel):
 
 @router.post("/secrets/broker")
 def broker(b: BrokerIn):
-    """USE-not-READ: mnemo makes the call with the secret injected; the caller
+    """USE-not-READ: grimoire makes the call with the secret injected; the caller
     never sees the value."""
     try:
         return secrets.broker(b.grant, b.method, b.url, b.header, b.body)
     except VaultLocked:
-        raise HTTPException(423, "vault locked")
+        raise HTTPException(423, "vault locked") from None
     except VaultError as e:
-        raise HTTPException(403, str(e))
+        raise HTTPException(403, str(e)) from None
 
 
 @router.get("/audit")

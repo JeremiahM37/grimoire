@@ -17,7 +17,7 @@ def test_export_is_self_contained_html(client):
     assert "attachment" in client.get(
         "/notes/export-me/export.html?download=1").headers.get("content-disposition", "")
     html = r.text
-    assert "<h1>Export Me</h1>" in html and "<strong>bold</strong>" in html
+    assert '<h1 id="h-export-me">Export Me</h1>' in html and "<strong>bold</strong>" in html
     # image inlined as a data: URI — NOT a server URL (truly portable file)
     assert "data:image/png;base64," in html
     assert "/api/file/" not in html

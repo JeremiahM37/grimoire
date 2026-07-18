@@ -4,7 +4,7 @@ from server import render
 
 def test_headings_paragraphs_and_inline():
     h = render.render("# Title\n\nsome **bold** and *italic* and `code` here")
-    assert "<h1>Title</h1>" in h
+    assert '<h1 id="h-title">Title</h1>' in h
     assert "<strong>bold</strong>" in h and "<em>italic</em>" in h and "<code>code</code>" in h
 
 

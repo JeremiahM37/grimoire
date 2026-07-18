@@ -33,4 +33,4 @@ def test_duplicate_encrypted_stays_sealed(client, vaultdir):
     r = client.post("/api/notes/sealed-dup.md/duplicate")
     assert r.status_code == 201 and r.json()["encrypted"] is True
     disk = (vaultdir / r.json()["path"]).read_text()
-    assert "confidential" not in disk and "mnemo:enc:v1:" in disk
+    assert "confidential" not in disk and "grimoire:enc:v1:" in disk

@@ -46,6 +46,6 @@ def test_encrypted_note_stays_encrypted_in_trash(client, vaultdir):
     client.post("/api/notes/enc-trash.md/encrypt")
     client.delete("/api/notes/enc-trash.md")
     # the trashed file is still ciphertext — plaintext never exposed in trash
-    trashfiles = list((vaultdir / ".mnemo" / "trash").glob("*.md"))
+    trashfiles = list((vaultdir / ".grimoire" / "trash").glob("*.md"))
     assert trashfiles and "sealed secret" not in trashfiles[0].read_text()
-    assert "mnemo:enc:v1:" in trashfiles[0].read_text()
+    assert "grimoire:enc:v1:" in trashfiles[0].read_text()

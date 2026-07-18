@@ -1,8 +1,8 @@
 """Vault watcher — the "edit anywhere" guarantee.
 
-Watches the vault directory for `.md` changes made OUTSIDE mnemo (Obsidian, vim,
+Watches the vault directory for `.md` changes made OUTSIDE grimoire (another editor, vim,
 git pull, Syncthing, another device's sync) and reconciles the index. Debounced
-so a burst of saves collapses to one reindex pass. The `.mnemo/` dir is ignored.
+so a burst of saves collapses to one reindex pass. The `.grimoire/` dir is ignored.
 """
 import logging
 import threading
@@ -14,7 +14,7 @@ from watchdog.observers import Observer
 
 from . import config, index, vault
 
-log = logging.getLogger("mnemo.watcher")
+log = logging.getLogger("grimoire.watcher")
 
 
 class _Handler(FileSystemEventHandler):

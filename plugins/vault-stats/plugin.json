@@ -1,0 +1,6 @@
+{
+  "name": "vault-stats",
+  "version": "1.0.0",
+  "description": "Vault health at a glance — note/word counts and top tags in the sidebar",
+  "client": "client.js"
+}

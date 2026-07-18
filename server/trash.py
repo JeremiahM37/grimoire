@@ -1,4 +1,4 @@
-"""Soft-delete. Deleting a note moves it to `.mnemo/trash/` (internal, unsynced,
+"""Soft-delete. Deleting a note moves it to `.grimoire/trash/` (internal, unsynced,
 never indexed) with a manifest recording its original path — so an accidental
 delete is recoverable. Restore returns it to the vault (auto-suffixed if the
 original path is taken again)."""
@@ -10,7 +10,7 @@ from . import config, vault
 
 
 def _dir():
-    d = config.mnemo_dir() / "trash"
+    d = config.grimoire_dir() / "trash"
     d.mkdir(parents=True, exist_ok=True)
     return d
 

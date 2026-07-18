@@ -30,7 +30,7 @@ async def attach(file: UploadFile = File(...)):
     try:
         p = vault.safe_raw_path(rel)   # sandboxed, but keeps the real extension
     except VaultError as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from None
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_bytes(data)
     return {"path": rel, "is_image": ext in IMAGE_EXTS, "name": name, "bytes": len(data)}
@@ -42,7 +42,7 @@ def get_file(path: str):
     try:
         p = vault.safe_raw_path(path.strip("/"))
     except VaultError:
-        raise HTTPException(400, "bad path")
+        raise HTTPException(400, "bad path") from None
     if not p.exists() or not p.is_file():
         raise HTTPException(404, "no such file")
     return FileResponse(p)

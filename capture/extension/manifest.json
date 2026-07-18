@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "Clip to mnemo",
+  "name": "Clip to grimoire",
   "version": "0.1.0",
-  "description": "Clip selections and pages to your mnemo notes vault.",
+  "description": "Clip selections and pages to your grimoire notes vault.",
   "permissions": ["contextMenus", "activeTab", "scripting", "storage"],
   "host_permissions": ["<all_urls>"],
   "background": { "service_worker": "background.js" },
-  "action": { "default_title": "Clip to mnemo" },
+  "action": { "default_title": "Clip to grimoire" },
   "options_ui": { "page": "options.html", "open_in_tab": false }
 }

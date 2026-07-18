@@ -1,12 +1,15 @@
 {
-  "name": "Grimoire Notes",
+  "name": "Grimoire",
   "short_name": "Grimoire",
-  "description": "Local-first, AI-native notes",
+  "description": "Personal context server — knowledge, retrieval, credentials, agent memory",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#faf7f0",
   "theme_color": "#faf7f0",
-  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }],
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
+  ],
   "share_target": {
     "action": "/",
     "method": "GET",

@@ -1,4 +1,4 @@
-"""Real bidirectional sync between two mnemo instances over HTTP."""
+"""Real bidirectional sync between two grimoire instances over HTTP."""
 import socket
 import subprocess
 import sys
@@ -25,12 +25,12 @@ def _get(url):
 
 @pytest.fixture()
 def peer(tmp_path):
-    """A second mnemo server (the sync peer) with its own vault."""
+    """A second grimoire server (the sync peer) with its own vault."""
     port = _free_port()
     vault = tmp_path / "peer-vault"
     vault.mkdir()
-    env = {"MNEMO_VAULT": str(vault), "MNEMO_PORT": str(port),
-           "MNEMO_NO_WATCHER": "1", "PATH": __import__("os").environ["PATH"]}
+    env = {"GRIMOIRE_VAULT": str(vault), "GRIMOIRE_PORT": str(port),
+           "GRIMOIRE_NO_WATCHER": "1", "PATH": __import__("os").environ["PATH"]}
     proc = subprocess.Popen([sys.executable, "-m", "server"], cwd=ROOT, env=env,
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     base = f"http://127.0.0.1:{port}"

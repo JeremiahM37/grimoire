@@ -1,0 +1,29 @@
+# systemd unit for a bare-metal install.
+#   sudo cp deploy/grimoire.service /etc/systemd/system/
+#   sudo systemctl enable --now grimoire
+[Unit]
+Description=grimoire — local-first AI-native notes
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=grimoire
+WorkingDirectory=/opt/grimoire
+Environment=GRIMOIRE_VAULT=/var/lib/grimoire/vault
+Environment=GRIMOIRE_PORT=9111
+# point at a reachable Ollama to enable generative ask-your-notes
+#Environment=GRIMOIRE_OLLAMA_URL=http://ollama-host:11434
+Environment=GRIMOIRE_EMBED_MODEL=nomic-embed-text
+# a reachable Ollama auto-enables generative ask-your-notes; this picks the model
+# (an MoE: 3B active / 35B total — quality answers, fast inference)
+#Environment=GRIMOIRE_LLM_MODEL=qwen3:8b
+# uncomment to allow brokered calls to private-range hosts (LAN services);
+# cloud-metadata and link-local addresses stay blocked either way
+#Environment=GRIMOIRE_BROKER_ALLOW_PRIVATE=1
+ExecStart=/opt/grimoire/.venv/bin/python -m server
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

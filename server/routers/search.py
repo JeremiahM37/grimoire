@@ -6,10 +6,22 @@ import re
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from .. import db, index, vault
+from .. import db, index, queries, vault
 from ..vault import VaultError
 
 router = APIRouter(prefix="/api")
+
+
+class QueryIn(BaseModel):
+    block: str          # the raw text inside a ```query fence
+
+
+@router.post("/query")
+def run_query(q: QueryIn):
+    """Execute a live-query block for the PWA's preview renderer. The
+    authenticated app may see private notes; /read and export never call this —
+    they run queries server-side with include_private=False."""
+    return queries.run(q.block, include_private=True)
 
 
 def _fts_escape(q: str) -> str:

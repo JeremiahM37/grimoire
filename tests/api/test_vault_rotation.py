@@ -23,7 +23,7 @@ def test_change_passphrase_reseals_secrets_and_notes(client, vaultdir):
     assert note["encrypted"] and note["body"].strip() == "classified body"
     # disk still ciphertext, no plaintext leak
     disk = (vaultdir / "sealed.md").read_text()
-    assert "classified body" not in disk and "mnemo:enc:v1:" in disk
+    assert "classified body" not in disk and "grimoire:enc:v1:" in disk
 
 
 def test_change_passphrase_wrong_old_rejected(client):

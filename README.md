@@ -1,106 +1,188 @@
-# Grimoire Notes
+<div align="center">
 
-> *(working codename `mnemo` internally — env vars, service, and paths still use the `MNEMO_`/`mnemo` prefix.)*
+# ✦ Grimoire
 
-> Local-first, **AI-native** notes — Obsidian/SilverBullet class, plain-markdown,
-> wiki-linked — with an encrypted secret vault your AI can *use* but never *read*.
-> Working name; see `DESIGN.md` for the full design & threat model.
+**A personal context server.** Your knowledge base, retrieval, credentials, and
+your agents' memory — one self-hosted substrate, one trust boundary, mounted by
+your AI over MCP. With a first-class notes app as the human console.
 
-Your notes are just `.md` files in a folder you own. mnemo adds a fast, fully
-rebuildable index on top — wiki-links, backlinks, search, RAG, a graph — and is
-AI-native to the core (it's both an MCP **server** and **client**). Nothing is
-locked in: point Obsidian, vim, git, or Syncthing at the same folder and mnemo's
-live watcher keeps up.
+<!-- badges -->
+![status](https://img.shields.io/badge/status-stable-2ea44f)
+![license](https://img.shields.io/badge/license-MIT-blue)
+![python](https://img.shields.io/badge/python-3.12%2B-3776ab)
+![docker](https://img.shields.io/badge/docker-ready-2496ed)
+![MCP](https://img.shields.io/badge/MCP-first--class-5b4bff)
+![PWA](https://img.shields.io/badge/console-offline%20PWA-19c37d)
 
-## What makes it different
+![Grimoire console](docs/screenshots/hero.png)
 
-1. **AI-native, not bolted on.** Notes are searchable/writable over MCP; an
-   `ask-your-notes` RAG endpoint answers with citations. Uses a local Ollama when
-   reachable (generative), else a deterministic offline extractive fallback.
-2. **An encrypted secret vault your AI can USE, not READ.** Store agent tokens /
-   API keys / MCP creds sealed at rest; hand an agent a *scoped, time-boxed,
-   audited* grant and mnemo **brokers** the call — the secret value never reaches
-   the caller. No other notes app does this.
-3. **Truly local-first.** Plain `.md` is the source of truth; the SQLite index is
-   a cache you can delete and rebuild. Edit anywhere; the watcher reconciles.
+</div>
 
-## Features
+Your agents already need four things from you: what you know, a way to search
+it, credentials to act for you, and somewhere to keep what *they* learn. Today
+those live in four disconnected tools — or worse, pasted into prompts. Grimoire
+is the single self-hosted server an agent mounts to get all four:
 
-- **Editing (desktop + mobile equal)** — offline PWA, formatting toolbar, smart
-  list/task continuation, Tab indent, find & replace, live preview, `[[` and
-  `#tag` autocomplete, command palette (Ctrl/Cmd-K), keyboard list nav, outline,
-  word count, light/dark theme, **split view** with a draggable divider,
-  collapsible/resizable sidebar, right-click context menu, focus mode, **offline
-  draft protection** (unsaved work survives a crash / offline reload).
-- **Rich markdown** — tables, **callouts** (`> [!note]`), `==highlight==`,
-  `~~strike~~`, and dependency-free **code syntax highlighting**.
-- **Linking** — `[[wiki-links]]` + backlinks + **unlinked mentions** (one-click
-  link), **hover previews**, frontmatter **aliases**, `#tags` (click-to-filter +
-  a tag browser), an interactive **graph view**, create-on-click.
-- **Notes** — daily notes + a **calendar** (prev/next nav), **templates**
-  (`{{date}}`/`{{title}}`), clickable **task checkboxes** + a cross-note task
-  view, **pin/favorite**, image/file **attachments** (paste / drag-drop /
-  `![[embed]]`), rename/duplicate/random, capture inbox.
-- **AI** — ask-your-notes (RAG + citations), inline summarize/expand/tag/title,
-  audio memos (whisper), browser capture (extension + bookmarklet + share target).
-- **Security & safety** — the secret vault + broker (Argon2id, brute-force
-  lockout, idle auto-lock, passphrase rotation, grant revoke, SSRF-guarded);
-  **encryption-at-rest** for private notes; **soft-delete/trash + undo**; strict
-  CSP + security headers. See `SECURITY.md`.
-- **Sync & reach** — delta sync with conflict copies (never silent data loss) +
-  **background auto-sync** with a peer, live cross-device refresh, an
-  e-ink/Kindle `/read` surface, self-contained **HTML export** (print-to-PDF),
-  whole-vault **zip import/export**, a scriptable **CLI**, and an **MCP server**.
+```
+          ┌──────────────────── one trust boundary ────────────────────┐
+agent ──MCP──►  knowledge (your markdown)  retrieval (RAG + citations) │
+          │     credentials (USE, never READ)  agent memory (auditable)│
+          └────────────────────────────────────────────────────────────┘
+                   the same policy layer decides what an agent
+                   can READ and what it can DO
+```
 
-## Run
+- **Knowledge** — plain markdown files you own. **Mount your existing vault**
+  (any folder of `.md`, including one another notes app manages) — no migration;
+  the watcher reconciles external edits live.
+- **Retrieval** — `ask`/`search` over MCP with citations; fully local (Ollama or
+  a deterministic offline fallback). Always auditable: *"what would the agent
+  see for X?"* shows the exact retrieved chunks.
+- **Credentials** — an encrypted vault (Argon2id + Fernet) whose secrets your
+  agent can **use but never read**: you mint a scoped, time-boxed grant; the
+  server injects the value into the outbound call; every use is audited.
+- **Agent memory** — `remember`/`recall` tools writing to a `memory/` namespace
+  of ordinary notes with provenance (which agent, when, from what task). You
+  read, edit, diff, and **roll back** your agent's memory like any note.
+
+Nothing else puts these in one trust boundary: memory layers (Mem0, Letta, Zep)
+have no knowledge base or credentials; notes-RAG tools (Khoj, editor plugins)
+have no agent memory or secrets; token vaults (Auth0 GenAI, Arcade, Infisical)
+have no knowledge layer. Grimoire is the unified, self-hosted version.
+
+## Quick start
+
+```bash
+docker compose up -d        # → http://localhost:9111 · notes land in ./vault
+```
+
+Mount an **existing** markdown vault instead (editing through Grimoire preserves
+foreign frontmatter byte-for-byte — nested YAML and all):
+
+```yaml
+# docker-compose.yml
+volumes:
+  - /path/to/your/vault:/vault
+```
+
+<details>
+<summary>…or run from source (no Docker)</summary>
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-MNEMO_VAULT=~/notes .venv/bin/python -m server      # http://<host>:9111
+GRIMOIRE_VAULT=~/notes .venv/bin/python -m server      # → http://<host>:9111
+```
+</details>
+
+**Connect an agent (MCP):**
+
+```jsonc
+// e.g. Claude Code: .mcp.json
+{ "mcpServers": { "grimoire": {
+    "command": "/path/to/grimoire/.venv/bin/python",
+    "args": ["-m", "server.mcp_server"],
+    "env": { "GRIMOIRE_API": "http://localhost:9111",
+             "GRIMOIRE_AGENT_NAME": "claude-code" } } } }
 ```
 
-Optional AI: set `MNEMO_OLLAMA_URL` (auto-enables generative answers) — or
-configure it in-app under ⚙ Settings. Everything works fully offline without it.
+The agent gets: `search_notes` · `ask_notes` · `read_note` · `create_note` ·
+`update_note` · `append_daily` · `backlinks` · `list_tags` · **`remember`** ·
+**`recall`** · **`use_credential`** · **`list_grants`**.
 
-## CLI
+**The 60-second demo:** ask your agent to research something → it `ask`s your
+notes (you can inspect exactly what it retrieved) → it calls an API with
+`use_credential` (the key never enters its context) → it `remember`s what it
+learned → you open `memory/` in the console, read the note it wrote, edit one
+line, roll back another. That loop is the product.
 
-```bash
-python cli/mnemo.py new "Title" "body..."     # or pipe: echo hi | mnemo capture
-python cli/mnemo.py daily "a log line"
-python cli/mnemo.py search QUERY
-python cli/mnemo.py export note.md            # standalone HTML
-python cli/mnemo.py sync http://peer:9111 --watch   # bidirectional auto-sync
-python cli/mnemo.py mcp                        # run as an MCP server
-python cli/mnemo.py serve --port 9111
-```
+## The human console
 
-## MCP
+A substrate needs a place where the human reads, reviews, and decides — so
+Grimoire ships a full offline-PWA notes app on the same API:
 
-mnemo is an MCP server (`server/mcp_server.py`, FastMCP) exposing search / ask /
-read / list / create / update / append-daily / backlinks / tags — so any MCP
-client (Claude, etc.) can work with your notes directly.
+| Rendered markdown | Graph view |
+|---|---|
+| ![preview](docs/screenshots/preview.png) | ![graph](docs/screenshots/graph.png) |
+
+- **Trust surfaces** (the console's real job):
+
+| Agent-memory review | Retrieval inspection |
+|---|---|
+| ![agent memory](docs/screenshots/agent-memory.png) | ![retrieval inspection](docs/screenshots/retrieval-inspection.png) |
+| Memory notes badged 🤖 with provenance (which agent, which task) — edit or roll back any entry. | "What would the agent see for X?" — the exact ranked chunks, nothing hidden. |
+
+<div align="center">
+<img src="docs/screenshots/credential-console.png" width="640" alt="credential console">
+<br><sub>The credential console: secrets your agent can use but never read — scoped, time-boxed, revocable.</sub>
+</div>
+- **Editing** — CodeMirror 6 live preview (markup revealed only where you're
+  editing), slash commands, `[[` autocomplete, classic plain-text mode, offline
+  drafts. Wiki-links, backlinks + outgoing links, unlinked mentions, hover
+  previews, tags, graph, daily notes + calendar, live ```` ```query ```` blocks,
+  transclusion, footnotes, version history, folder tree, canvas, slides.
+- **Plugins** — seven first-party (KaTeX, Mermaid, kanban, pomodoro, vault
+  stats, journal heatmap, word goal) + an in-app scaffold. [docs/PLUGINS.md](docs/PLUGINS.md)
+- Encryption-at-rest for private notes, e-ink `/read` surface, HTML export,
+  CRDT-merged multi-device sync, trash + undo, CLI.
+
+## Config
+
+Everything is environment-driven (same variables bare-metal, systemd, Docker):
+
+| Variable | Default | What it does |
+|----------|---------|--------------|
+| `GRIMOIRE_VAULT` | `~/grimoire-vault` | The folder of `.md` files — your data |
+| `GRIMOIRE_PORT` / `GRIMOIRE_HOST` | `9111` / `0.0.0.0` | Bind address |
+| `GRIMOIRE_AUTH_TOKEN` | *(empty = open)* | Bearer token for the API/console |
+| `GRIMOIRE_AGENT_NAME` | `agent` | Memory attribution for an MCP client |
+| `GRIMOIRE_OLLAMA_URL` | *(empty)* | Reachable Ollama → generative ask/summarize |
+| `GRIMOIRE_LLM` / `GRIMOIRE_LLM_MODEL` | auto / `qwen3.5:4b` | Answer backend + model |
+| `GRIMOIRE_EMBED_MODEL` | `nomic-embed-text` | Embeddings (offline hashing fallback built in) |
+| `GRIMOIRE_WHISPER_URL` / `_MODEL` | *(empty)* | Audio-memo transcription |
+| `GRIMOIRE_DAILY_DIR` / `GRIMOIRE_INBOX_DIR` | `journal` / `inbox` | Vault sub-folders |
+| `GRIMOIRE_SYNC_PEER` / `_TOKEN` / `_INTERVAL` | *(off)* | Background sync with a peer |
+| `GRIMOIRE_VAULT_IDLE_LOCK` | `900` | Credential-vault auto-lock (seconds) |
+| `GRIMOIRE_BROKER_ALLOW_PRIVATE` | `0` | Allow brokered calls to private-range hosts |
+| `GRIMOIRE_FRAME_OPTIONS` | `SAMEORIGIN` | X-Frame-Options (reverse-proxy embedding) |
+| `GRIMOIRE_NO_WATCHER` | `0` | Disable the filesystem watcher (tests/CI) |
+
+AI/model settings can also be changed live in ⚙ Settings (persisted in the
+vault, no restart). Editor mode (live/classic) and theme are per-device.
+
+## Security posture (short version)
+
+Secrets sealed with Argon2id + Fernet, key in memory only, brute-force lockout,
+idle auto-lock, passphrase rotation. Broker: origin-exact + path-prefix scopes,
+SSRF-guarded, fully audited; secret values never appear in any response. Private
+notes excluded from retrieval, `/read`, export, transclusion, and queries on
+unauthenticated surfaces. Strict CSP. Full threat model: [SECURITY.md](SECURITY.md).
 
 ## Tests
 
 ```bash
-.venv/bin/pytest                 # 160 hermetic tests: unit + api + negative + e2e
-verify run .verify.yaml          # live api + browser smoke (isolated port 9119)
+.venv/bin/pytest              # hermetic: unit + api + negative + integration + e2e
+verify run .verify.yaml       # live api + headless-browser smoke (isolated port)
 ```
-
-Playwright e2e covers graph, palette, editor, templates, export, settings,
-encryption, trash/undo, aliases, pin, calendar — plus the core flows.
 
 ## Layout
 
 ```
-server/            FastAPI + SQLite index; vault ⇄ index reconciler; watcher
-server/render.py   server-side markdown → HTML (e-ink + export)
-server/crypto.py   secret-vault + note encryption (PBKDF2 + Fernet)
-server/routers/    notes · search · daily/capture · ask · secrets · media ·
-                   sync · read · templates · settings · misc
-server/mcp_server.py   MCP server (9 tools)
-web/               mobile-first PWA (no build step)
-cli/mnemo.py       scriptable CLI
-tests/             unit / api (+ negative) / integration / e2e
-DESIGN.md          vision, architecture, roadmap, threat model
+server/                    FastAPI substrate: SQLite(FTS5) index over plain markdown
+server/mcp_server.py       the agent interface (knowledge · memory · credentials)
+server/routers/memory.py   agent-memory namespace w/ provenance
+server/crypto.py           credential vault (Argon2id + Fernet) + broker
+server/crdt.py             sequence CRDT for concurrent-edit merges
+web/                       the human console (offline PWA, no build step)
+plugins/                   first-party console plugins
+cli/grimoire.py            scriptable CLI
+docs/                      ARCHITECTURE · PLUGINS
 ```
+
+**More docs:** [ARCHITECTURE](docs/ARCHITECTURE.md) ·
+[PLUGINS](docs/PLUGINS.md) · [SECURITY](SECURITY.md) · [CONTRIBUTING](CONTRIBUTING.md)
+
+---
+
+<div align="center">
+<sub>MIT licensed · self-hosted · one trust boundary for you and your agents.</sub>
+</div>

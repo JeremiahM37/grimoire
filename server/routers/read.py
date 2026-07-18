@@ -11,7 +11,7 @@ import mimetypes
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
 
-from .. import db, index, render, vault
+from .. import db, index, queries, render, vault
 
 router = APIRouter()
 
@@ -63,9 +63,30 @@ def _link_map() -> dict:
     return resolved
 
 
+def _public_body(rel: str):
+    """Transclusion source for the unauthenticated surfaces: only public,
+    non-encrypted note bodies may be embedded."""
+    row = db.one("SELECT body FROM notes WHERE path=? AND private=0", (rel,))
+    if not row:
+        return None
+    from .. import secrets
+    return None if secrets.is_encrypted(row["body"]) else row["body"]
+
+
+def _ctx(img_src=None) -> render.RenderContext:
+    """Full-capability context for the public surfaces (private always excluded)."""
+    ctx = render.RenderContext(
+        link_map=_link_map(),
+        note_body=_public_body,
+        run_query=lambda block: queries.run(block, include_private=False))
+    if img_src is not None:
+        ctx.img_src = img_src
+    return ctx
+
+
 def _render(body: str) -> str:
     """Full markdown → safe HTML with wiki-links + images, via the shared renderer."""
-    return render.render(body, _link_map())
+    return render.render(body, ctx=_ctx())
 
 
 def _data_uri(rel: str) -> str:
@@ -93,7 +114,7 @@ def export_note(path: str, download: bool = False):
     from .. import secrets
     if secrets.is_encrypted(row["body"]):
         raise HTTPException(404, "not found")
-    body = render.render(row["body"], _link_map(), img_src=_data_uri)
+    body = render.render(row["body"], ctx=_ctx(img_src=_data_uri))
     doc = _page(row["title"], f"<article>{body}</article>", export=True)
     headers = {}
     if download:

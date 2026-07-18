@@ -7,7 +7,7 @@ from server.vault import VaultError
 
 @pytest.mark.parametrize("bad", [
     "../../etc/passwd", "../outside",
-    "notes/../../escape", ".mnemo/index.db", "foo/../.mnemo/secrets",
+    "notes/../../escape", ".grimoire/index.db", "foo/../.grimoire/secrets",
 ])
 def test_path_traversal_blocked(vaultdir, bad):
     with pytest.raises(VaultError):

@@ -1,4 +1,4 @@
-"""mnemo app factory. Run: python -m server (or uvicorn server.app:create_app --factory)."""
+"""grimoire app factory. Run: python -m server (or uvicorn server.app:create_app --factory)."""
 import contextlib
 import hmac
 import os
@@ -8,21 +8,25 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import config, db, index
-from .routers import (ask, crdt as crdt_router, daily, media, misc, notes, read,
-                      search, secrets as secrets_router,
-                      settings as settings_router, sync, templates)
+from .routers import ask, daily, media, misc, notes, read, search, sync, templates
+from .routers import canvas as canvas_router
+from .routers import crdt as crdt_router
+from .routers import memory as memory_router
+from .routers import plugins as plugins_router
+from .routers import secrets as secrets_router
+from .routers import settings as settings_router
 
 
 def create_app() -> FastAPI:
     @contextlib.asynccontextmanager
     async def lifespan(app: FastAPI):
-        config.mnemo_dir().mkdir(parents=True, exist_ok=True)
+        config.grimoire_dir().mkdir(parents=True, exist_ok=True)
         db.init()
         index.reindex()   # rebuild the cache from the vault on boot
         watch = None
-        if not os.environ.get("MNEMO_NO_WATCHER"):
+        if not os.environ.get("GRIMOIRE_NO_WATCHER"):
             from .watcher import watcher as watch
-            watch.start()   # pick up external edits (Obsidian/vim/sync) live
+            watch.start()   # pick up external edits (other editors, sync) live
         sync_task = None
         if config.SYNC_PEER and config.SYNC_INTERVAL > 0:
             import asyncio
@@ -45,7 +49,7 @@ def create_app() -> FastAPI:
             watch.stop()
         db.close()
 
-    app = FastAPI(title="Grimoire Notes", version="1.0.0", lifespan=lifespan)
+    app = FastAPI(title="Grimoire", version="1.0.0", lifespan=lifespan)
 
     # Security headers on every response. Strict CSP (no inline/external scripts)
     # is defense-in-depth against XSS; the renderers already escape HTML. No
@@ -60,7 +64,7 @@ def create_app() -> FastAPI:
         resp = await call_next(request)
         resp.headers["X-Content-Type-Options"] = "nosniff"
         resp.headers["Referrer-Policy"] = "no-referrer"
-        resp.headers["X-Frame-Options"] = os.environ.get("MNEMO_FRAME_OPTIONS", "SAMEORIGIN")
+        resp.headers["X-Frame-Options"] = os.environ.get("GRIMOIRE_FRAME_OPTIONS", "SAMEORIGIN")
         resp.headers.setdefault("Content-Security-Policy", CSP)
         resp.headers["Cross-Origin-Opener-Policy"] = "same-origin"
         return resp
@@ -79,7 +83,8 @@ def create_app() -> FastAPI:
             return await call_next(request)
 
     for r in (notes, search, daily, misc, ask, secrets_router, media, sync, read,
-              templates, settings_router, crdt_router):
+              templates, settings_router, crdt_router, plugins_router, canvas_router,
+              memory_router):
         app.include_router(r.router)
 
     @app.get("/")
