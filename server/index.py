@@ -4,6 +4,8 @@
 changes (from the API or the watcher). Backlinks fall out of the links table.
 """
 import json
+import math
+import re
 
 from . import ai, db, vault
 
@@ -138,20 +140,44 @@ def alias_map() -> dict:
     return out
 
 
+_WORD_RE = re.compile(r"[a-z0-9]+")
+
+
 def retrieve(query: str, k: int = 6, include_private: bool = False) -> list[dict]:
-    """Top-k note chunks by cosine similarity to the query embedding.
-    Private notes are excluded unless include_private=True."""
+    """Top-k note chunks, hybrid-ranked: embedding cosine similarity fused
+    (reciprocal-rank) with an IDF-weighted lexical overlap score. The lexical
+    leg makes rare, discriminative query words (names, places, error codes)
+    count for more than filler — which pure cosine, especially the offline
+    hashing embedder, does not. Private notes are excluded unless
+    include_private=True."""
     qv = ai.embed([query])[0]
+    qtoks = set(_WORD_RE.findall(query.lower()))
     sql = "SELECT v.note, v.chunk, v.embedding, n.title FROM vectors v " \
           "JOIN notes n ON n.path=v.note"
     if not include_private:
         sql += " WHERE v.private=0"
+    rows = db.query(sql)
+    # document frequency of query terms over chunks, for IDF weighting
+    df, toksets = {}, []
+    for r in rows:
+        ts = set(_WORD_RE.findall(r["chunk"].lower()))
+        toksets.append(ts)
+        for t in ts & qtoks:
+            df[t] = df.get(t, 0) + 1
+    n_chunks = max(len(rows), 1)
     scored = []
-    for r in db.query(sql):
-        score = ai.cosine(qv, ai.unpack(r["embedding"]))
-        if score > 0:
+    for r, ts in zip(rows, toksets, strict=False):
+        cos = ai.cosine(qv, ai.unpack(r["embedding"]))
+        lex = sum(math.log(n_chunks / df[t]) for t in qtoks & ts if df.get(t))
+        if cos > 0 or lex > 0:
             scored.append({"path": r["note"], "title": r["title"],
-                           "chunk": r["chunk"], "score": round(score, 4)})
+                           "chunk": r["chunk"], "cos": cos, "lex": lex})
+    for key in ("cos", "lex"):
+        for rank, s in enumerate(sorted(scored, key=lambda x: -x[key])):
+            s["rrf"] = s.get("rrf", 0.0) + 1.0 / (60 + rank)
+    for s in scored:
+        s["score"] = round(s.pop("rrf", 0.0), 4)
+        del s["cos"], s["lex"]
     scored.sort(key=lambda x: -x["score"])
     # de-dupe so one note doesn't dominate: keep best chunk per note first, then fill
     seen, primary, extra = set(), [], []

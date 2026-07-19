@@ -1,0 +1,500 @@
+{"qid": "c2q28", "conv": 2, "category": 1, "question": "What causes does John feel passionate about supporting?", "gold": "Veterans, schools, infrastructure"}
+{"qid": "c0q37", "conv": 0, "category": 1, "question": "What did Melanie paint recently?", "gold": "sunset"}
+{"qid": "c4q62", "conv": 4, "category": 1, "question": "What does John do to share his knowledge?", "gold": "gives seminars, mentors younger players."}
+{"qid": "c4q29", "conv": 4, "category": 1, "question": "What schools did John play basketball in and how many years was he with his team during high school?", "gold": "Middle school, high school, and college and he was with his high school team for 4 years."}
+{"qid": "c4q4", "conv": 4, "category": 1, "question": "What books has Tim read?", "gold": "Harry Potter, Game of Thrones, the Name of the Wind, The Alchemist, The Hobbit, A Dance with Dragons, and the Wheel of Time."}
+{"qid": "c2q57", "conv": 2, "category": 1, "question": "What causes has John done events for?", "gold": "Toy drive, Community food drive, veterans, domestic violence"}
+{"qid": "c2q19", "conv": 2, "category": 1, "question": "What damages have happened to John's car?", "gold": "Broken windshield, Car broke down"}
+{"qid": "c2q3", "conv": 2, "category": 1, "question": "What type of volunteering have John and Maria both done?", "gold": "Volunteering at a homeless shelter"}
+{"qid": "c8q3", "conv": 8, "category": 1, "question": "How many Prius has Evan owned?", "gold": "two"}
+{"qid": "c0q43", "conv": 0, "category": 1, "question": "What kind of art does Caroline make?", "gold": "abstract art"}
+{"qid": "c0q40", "conv": 0, "category": 1, "question": "How many times has Melanie gone to the beach in 2023?", "gold": "2"}
+{"qid": "c2q9", "conv": 2, "category": 1, "question": "Who gave Maria's family money when she was younger and her family was going through tough times?", "gold": "Her aunt"}
+{"qid": "c4q0", "conv": 4, "category": 1, "question": "what are John's goals with regards to his basketball career?", "gold": "improve shooting percentage, win a championship"}
+{"qid": "c4q14", "conv": 4, "category": 1, "question": "What kind of writing does Tim do?", "gold": "comments on favorite books in a fantasy literature forum, articles on fantasy novels, studying characters, themes, and making book recommendations, writing a fantasy novel"}
+{"qid": "c9q20", "conv": 9, "category": 1, "question": "Who inspired Dave's passion for car engineering?", "gold": "His Dad"}
+{"qid": "c0q38", "conv": 0, "category": 1, "question": "What activities has Melanie done with her family?", "gold": "Pottery, painting, camping, museum, swimming, hiking"}
+{"qid": "c3q71", "conv": 3, "category": 1, "question": "What do both Joanna and Nate appreciate the beauty of?", "gold": "Nature"}
+{"qid": "c8q1", "conv": 8, "category": 1, "question": "What kinds of things did Evan have broken?", "gold": "His old Prius and his new Prius."}
+{"qid": "c4q1", "conv": 4, "category": 1, "question": "What are John's goals for his career that are not related to his basketball skills?", "gold": "get endorsements, build his brand, do charity work"}
+{"qid": "c8q32", "conv": 8, "category": 1, "question": "What recurring frustration does Evan experience?", "gold": "Evan consistently misplaces his keys every week."}
+{"qid": "c5q2", "conv": 5, "category": 1, "question": "What kind of indoor activities has Andrew pursued with his girlfriend?", "gold": "boardgames, volunteering at pet shelter, wine tasting, growing flowers"}
+{"qid": "c0q11", "conv": 0, "category": 1, "question": "Where did Caroline move from 4 years ago?", "gold": "Sweden"}
+{"qid": "c3q30", "conv": 3, "category": 1, "question": "What kind of writings does Joanna do?", "gold": "Screenplays,books, online blog posts, journal"}
+{"qid": "c9q53", "conv": 9, "category": 1, "question": "Who supports Calvin in tough times?", "gold": "friends and team"}
+{"qid": "c6q5", "conv": 6, "category": 1, "question": "What are John and James' favorite games?", "gold": "John's favorite game is CS:GO, and James's is Apex Legends."}
+{"qid": "c9q24", "conv": 9, "category": 1, "question": "Can Dave work with engines?", "gold": "yes"}
+{"qid": "c3q23", "conv": 3, "category": 1, "question": "Which of Joanna's screenplay were rejected from production companies?", "gold": "first screenplay on drama and romance, third screenplay on loss identity and connection"}
+{"qid": "c2q25", "conv": 2, "category": 1, "question": "What European countries has Maria been to?", "gold": "Spain, England"}
+{"qid": "c8q72", "conv": 8, "category": 1, "question": "Which activity did Sam resume in December 2023 after a long time?", "gold": "hiking"}
+{"qid": "c7q13", "conv": 7, "category": 1, "question": "What places give Deborah peace?", "gold": "sitting in a spot by the window in her Mom's house, sitting by the beach, Bali, forest trail in a nearby park"}
+{"qid": "c3q49", "conv": 3, "category": 1, "question": "How many times has Joanna's scripts been rejected?", "gold": "Twice"}
+{"qid": "c0q66", "conv": 0, "category": 1, "question": "What does Melanie do with her family on hikes?", "gold": "Roast marshmallows, tell stories"}
+{"qid": "c0q60", "conv": 0, "category": 1, "question": "What instruments does Melanie play?", "gold": "clarinet and violin"}
+{"qid": "c3q63", "conv": 3, "category": 1, "question": "What video games does Nate play?", "gold": "Valorant, Counter Strike:Global Offensive,Xenoblade Chronicles, StreetFighter, Cyberpunk 2077"}
+{"qid": "c0q61", "conv": 0, "category": 1, "question": "What musical artists/bands has Melanie seen?", "gold": "Summer Sounds, Matt Patterson"}
+{"qid": "c3q55", "conv": 3, "category": 1, "question": "What is Joanna inspired by?", "gold": "Personal experiences,her own journey ofself discovery, Nate,nature, validation,stories about findingcourage and takingrisks, people she knows, stuff she sees, imagination"}
+{"qid": "c9q40", "conv": 9, "category": 1, "question": "What was the artists Calvin used to listen to when he was a kid?", "gold": "Tupac and Dr. Dre"}
+{"qid": "c3q51", "conv": 3, "category": 1, "question": "When did Nate get Tilly for Joanna?", "gold": "25 May, 2022"}
+{"qid": "c5q27", "conv": 5, "category": 1, "question": "How does Andrew feel about his current work?", "gold": "Stressful"}
+{"qid": "c2q44", "conv": 2, "category": 1, "question": "What activities has Maria done with her church friends?", "gold": "Hiking, picnic, volunteer work"}
+{"qid": "c7q82", "conv": 7, "category": 1, "question": "Which locations does Deborah practice her yoga at?", "gold": "at her mother's old home, park, yoga studio, beach"}
+{"qid": "c0q34", "conv": 0, "category": 1, "question": "What events has Caroline participated in to help children?", "gold": "Mentoring program, school speech"}
+{"qid": "c6q45", "conv": 6, "category": 1, "question": "What kind of beer does McGee's bar serve?", "gold": "Stout, lager"}
+{"qid": "c4q11", "conv": 4, "category": 1, "question": "What sports does John like besides basketball?", "gold": "surfing"}
+{"qid": "c4q57", "conv": 4, "category": 1, "question": "What instruments does Tim play?", "gold": "piano, violin"}
+{"qid": "c0q78", "conv": 0, "category": 1, "question": "What items has Melanie bought?", "gold": "Figurines, shoes"}
+{"qid": "c3q62", "conv": 3, "category": 1, "question": "How many letters has Joanna recieved?", "gold": "Two"}
+{"qid": "c0q52", "conv": 0, "category": 1, "question": "What are Melanie's pets' names?", "gold": "Oliver, Luna, Bailey"}
+{"qid": "c4q65", "conv": 4, "category": 1, "question": "What fantasy movies does Tim like?", "gold": "Lord of the Rings, Harry Potter, and Star Wars."}
+{"qid": "c3q5", "conv": 3, "category": 1, "question": "What are Joanna's hobbies?", "gold": "Writing, watchingmovies, exploringnature, hanging withfriends."}
+{"qid": "c7q88", "conv": 7, "category": 1, "question": "What activities does Deborah pursue besides practicing and teaching yoga?", "gold": "biking, going to art shows, running, organizing workshops to practice mindfulness and self-care, surfing, gardening"}
+{"qid": "c5q36", "conv": 5, "category": 1, "question": "What are some foods that Audrey likes eating?", "gold": "chicken pot pie, chicken roast, blueberry muffins, sushi"}
+{"qid": "c5q32", "conv": 5, "category": 1, "question": "What kind of tattoo does Audrey have on her arm?", "gold": "Tattoos of her four dogs."}
+{"qid": "c8q26", "conv": 8, "category": 1, "question": "What motivates Evan to take care of his health?", "gold": "family, fitness tracker, thirst for adventure on interesting hikes"}
+{"qid": "c8q11", "conv": 8, "category": 1, "question": "What health issue did Sam face that motivated him to change his lifestyle?", "gold": "Weight problem"}
+{"qid": "c3q56", "conv": 3, "category": 1, "question": "What animal do both Nate and Joanna like?", "gold": "Turtles."}
+{"qid": "c5q15", "conv": 5, "category": 1, "question": "What is a shared frustration regarding dog ownership for Audrey and Andrew?", "gold": "Not being able to find pet friendly spots."}
+{"qid": "c2q12", "conv": 2, "category": 1, "question": "What test has John taken multiple times?", "gold": "The military aptitude test"}
+{"qid": "c6q24", "conv": 6, "category": 1, "question": "What kind of games has James tried to develop?", "gold": "football simulator, virtual world inspired by Witcher 3"}
+{"qid": "c0q47", "conv": 0, "category": 1, "question": "Who supports Caroline when she has a negative experience?", "gold": "Her mentors, family, and friends"}
+{"qid": "c8q55", "conv": 8, "category": 1, "question": "What recurring adventure does Evan have with strangers?", "gold": "Helping lost tourists and experiencing unexpected adventures in the city."}
+{"qid": "c5q54", "conv": 5, "category": 1, "question": "What activity do Audrey's dogs like to do in the dog park?", "gold": "Play fetch with ball and frisbee, run around and meet other dogs"}
+{"qid": "c2q29", "conv": 2, "category": 1, "question": "What events is Maria planning for the homeless shelter funraiser?", "gold": "Chili cook-off, ring-toss tournament"}
+{"qid": "c7q19", "conv": 7, "category": 1, "question": "How many times has Jolene been to France?", "gold": "two times"}
+{"qid": "c3q1", "conv": 3, "category": 1, "question": "What kind of interests do Joanna and Nate share?", "gold": "Watching movies, making desserts"}
+{"qid": "c8q42", "conv": 8, "category": 1, "question": "How did Evan get into painting?", "gold": "His friend got him into it by gifting him a painting and giving him some advice. The painting inspired Evan."}
+{"qid": "c2q30", "conv": 2, "category": 1, "question": "What shelters does Maria volunteer at?", "gold": "The homeless shelter, the dog shelter"}
+{"qid": "c0q65", "conv": 0, "category": 1, "question": "What are some changes Caroline has faced during her transition journey?", "gold": "Changes to her body, losing unsupportive friends"}
+{"qid": "c8q81", "conv": 8, "category": 1, "question": "What is a stress reliever for Evan?", "gold": "Drawing, traveling, places with a beautiful view, yoga, sunsets or something comfortable for Evan"}
+{"qid": "c9q58", "conv": 9, "category": 1, "question": "Which events in Dave's life inspired him to take up auto engineering?", "gold": "attending a car show with Dad, working on an old car in a neighbor's garage when he was young, spent a summer restoring an old car with Dad"}
+{"qid": "c4q9", "conv": 4, "category": 1, "question": "Which endorsement deals has John been offered?", "gold": "basketball shoes and gear deal with Nike, potential sponsorship with Gatorade, Moxie a popular beverage company, outdoor gear company"}
+{"qid": "c5q40", "conv": 5, "category": 1, "question": "What is a good place for dogs to run around freely and meet new friends?", "gold": "The dog park"}
+{"qid": "c3q58", "conv": 3, "category": 1, "question": "What things has Nate reccomended to Joanna?", "gold": "A pet,\"The Lord of the Rings\" movies,a dragon book series,coconut flavoring,\"Project Hail Mary\" book,Xenoblade Chronicles, dairy-free margarine, coconut oil"}
+{"qid": "c1q29", "conv": 1, "category": 1, "question": "Which cities has Jon visited?", "gold": "Paris, Rome"}
+{"qid": "c3q59", "conv": 3, "category": 1, "question": "What does Joanna do to remember happy memories?", "gold": "Hangs them on a corkboard, writes themin a notebook."}
+{"qid": "c3q53", "conv": 3, "category": 1, "question": "How many times has Nate taken his turtles on a walk?", "gold": "Twice."}
+{"qid": "c2q21", "conv": 2, "category": 1, "question": "What areas of the U.S. has John been to or is planning to go to?", "gold": "Pacific northwest, east coast"}
+{"qid": "c5q60", "conv": 5, "category": 1, "question": "How many dogs does Andrew have?", "gold": "3"}
+{"qid": "c2q47", "conv": 2, "category": 1, "question": "What exercises has John done?", "gold": "Weight training, Circuit training, Kickboxing, yoga"}
+{"qid": "c6q22", "conv": 6, "category": 1, "question": "Who or which organizations have been the beneficiaries of John's charity tournaments?", "gold": "animal shelter, homeless, children's hospital"}
+{"qid": "c9q19", "conv": 9, "category": 1, "question": "Which places or events has Calvin visited in Tokyo?", "gold": "music festival, car museum, Shibuya crossing, Shinjuku"}
+{"qid": "c5q48", "conv": 5, "category": 1, "question": "What does Andrew view his pets as?", "gold": "Family"}
+{"qid": "c0q48", "conv": 0, "category": 1, "question": "What types of pottery have Melanie and her kids made?", "gold": "bowls, cup"}
+{"qid": "c5q28", "conv": 5, "category": 1, "question": "What is something that Audrey often dresses up her dogs with?", "gold": "Hats"}
+{"qid": "c7q86", "conv": 7, "category": 1, "question": "What gifts has Deborah received?", "gold": "an appreciate letter from her community, a flower bouqet from her friend, a motivational quote from a friend"}
+{"qid": "c2q2", "conv": 2, "category": 1, "question": "What martial arts has John done?", "gold": "Kickboxing, Taekwondo"}
+{"qid": "c4q52", "conv": 4, "category": 1, "question": "What does John do to supplement his basketball training?", "gold": "Yoga, strength training"}
+{"qid": "c8q54", "conv": 8, "category": 1, "question": "What personal health incidents does Evan face in 2023?", "gold": "heart palpitations, twisted ankle, twisted ankle"}
+{"qid": "c2q35", "conv": 2, "category": 1, "question": "What states has Maria vacationed at?", "gold": "Oregon, Florida"}
+{"qid": "c7q84", "conv": 7, "category": 1, "question": "What kind of engineering projects has Jolene worked on?", "gold": "electrical engineering, robotics, sustainable water purifier, productive and affordable aerial surveillance system"}
+{"qid": "c4q13", "conv": 4, "category": 1, "question": "What does Tim do to escape reality?", "gold": "Read fantasy books."}
+{"qid": "c8q0", "conv": 8, "category": 1, "question": "What kind of car does Evan drive?", "gold": "Prius"}
+{"qid": "c4q31", "conv": 4, "category": 2, "question": "What month did Tim plan on going to Universal Studios?", "gold": "September, 2023"}
+{"qid": "c8q75", "conv": 8, "category": 2, "question": "When did Evan announce his marriage to his extended family?", "gold": "January 5, 2024"}
+{"qid": "c3q35", "conv": 3, "category": 2, "question": "When did Nate take time off to chill with his pets?", "gold": "The weekend of 22August, 2022."}
+{"qid": "c5q16", "conv": 5, "category": 2, "question": "When is Andrew going to go hiking with Audrey?", "gold": "August"}
+{"qid": "c0q62", "conv": 0, "category": 2, "question": "When did Melanie go to the park?", "gold": "27 August 2023"}
+{"qid": "c3q40", "conv": 3, "category": 2, "question": "When did Joanna's laptop crash?", "gold": "The week before 14September, 2022"}
+{"qid": "c0q31", "conv": 0, "category": 2, "question": "When did Melanie go camping in June?", "gold": "The week before 27 June 2023"}
+{"qid": "c5q7", "conv": 5, "category": 2, "question": "How many years passed between Audrey adopting Pixie and her other three dogs?", "gold": "three years"}
+{"qid": "c6q57", "conv": 6, "category": 2, "question": "When did James' mother and her friend visit him?", "gold": "October 19, 2022"}
+{"qid": "c4q24", "conv": 4, "category": 2, "question": "Where was John between August 11 and August 15 2023?", "gold": "Chicago"}
+{"qid": "c0q73", "conv": 0, "category": 2, "question": "When did Melanie get hurt?", "gold": "September 2023"}
+{"qid": "c3q29", "conv": 3, "category": 2, "question": "When is Joanna going to make Nate's ice cream for her family?", "gold": "The weekend of 24June, 2022."}
+{"qid": "c9q2", "conv": 9, "category": 2, "question": "When did Dave see Aerosmith perform live?", "gold": "on the weekend before March 26, 2023"}
+{"qid": "c9q57", "conv": 9, "category": 2, "question": "Which hobby did Dave pick up in October 2023?", "gold": "photography"}
+{"qid": "c9q50", "conv": 9, "category": 2, "question": "When did Calvin buy his second Ferrari?", "gold": "first week of October 2023"}
+{"qid": "c7q81", "conv": 7, "category": 2, "question": "When did the Deboran and Jolene agree to go surfing?", "gold": "in October 2023"}
+{"qid": "c6q52", "conv": 6, "category": 2, "question": "When did John start working on his 2D Adventure mobile game?", "gold": "approximately summer of 2022"}
+{"qid": "c7q38", "conv": 7, "category": 2, "question": "When did Deborah start the yoga class in the neighborhood?", "gold": "Friday before 13 March, 2023"}
+{"qid": "c2q27", "conv": 2, "category": 2, "question": "When did John have a party with veterans?", "gold": "The Friday before 20 May 2023"}
+{"qid": "c4q22", "conv": 4, "category": 2, "question": "When did John meet with his teammates after returning from Chicago?", "gold": "August 15, 2023"}
+{"qid": "c2q22", "conv": 2, "category": 2, "question": "When did John go to a convention with colleagues?", "gold": "March 2023"}
+{"qid": "c3q65", "conv": 3, "category": 2, "question": "Which torunament did Nate win in the beginning of November 2022?", "gold": "Valorant"}
+{"qid": "c8q79", "conv": 8, "category": 2, "question": "When will Evan and his partner have their honeymoon in Canada?", "gold": "February 2024"}
+{"qid": "c8q59", "conv": 8, "category": 2, "question": "When did Sam and his friend decide to try kayaking?", "gold": "October 14, 2023"}
+{"qid": "c4q20", "conv": 4, "category": 2, "question": "Which city was John in before traveling to Chicago?", "gold": "Seattle"}
+{"qid": "c7q9", "conv": 7, "category": 2, "question": "When did Deborah's father pass away?", "gold": "January 25, 2023"}
+{"qid": "c6q55", "conv": 6, "category": 2, "question": "When did John and his programming friends host an online programming competition?", "gold": "Last week before 13 October 2022."}
+{"qid": "c6q14", "conv": 6, "category": 2, "question": "When did James buy himself a new adventure book?", "gold": "April 26, 2022"}
+{"qid": "c9q68", "conv": 9, "category": 2, "question": "When did Dave find the car he repaired and started sharing in his blog?", "gold": "last week of October 2023"}
+{"qid": "c2q20", "conv": 2, "category": 2, "question": "When did John take a road trip to the Pacific Northwest?", "gold": "2022"}
+{"qid": "c8q17", "conv": 8, "category": 2, "question": "When did Sam's friends mock him for being overweight?", "gold": "Friday before 27 July 2023"}
+{"qid": "c7q71", "conv": 7, "category": 2, "question": "When did Deborah go to a community meetup?", "gold": "last week of August 2023"}
+{"qid": "c1q14", "conv": 1, "category": 2, "question": "When did Jon start expanding his studio's social media presence?", "gold": "April, 2023"}
+{"qid": "c0q53", "conv": 0, "category": 2, "question": "When did Caroline apply to adoption agencies?", "gold": "The week of 23 August 2023"}
+{"qid": "c1q32", "conv": 1, "category": 2, "question": "When did Gina design a limited collection of hoodies?", "gold": "June 2023"}
+{"qid": "c2q46", "conv": 2, "category": 2, "question": "When did Maria go hiking with her church friends?", "gold": "The weekend before 22 July 2023"}
+{"qid": "c2q53", "conv": 2, "category": 2, "question": "When did John help renovate his hometown community center?", "gold": "2022"}
+{"qid": "c7q3", "conv": 7, "category": 2, "question": "When did Jolene`s mother pass away?", "gold": "in 2022"}
+{"qid": "c0q72", "conv": 0, "category": 2, "question": "When did Melanie's friend adopt a child?", "gold": "2022"}
+{"qid": "c6q43", "conv": 6, "category": 2, "question": "When did John plan his next meeting with his siblings?", "gold": "In September, 2022"}
+{"qid": "c6q41", "conv": 6, "category": 2, "question": "When did James meet Samantha?", "gold": "August 9, 2022"}
+{"qid": "c7q47", "conv": 7, "category": 2, "question": "When did Jolene do yoga at Talkeetna?", "gold": "on 5 June, 2023"}
+{"qid": "c8q45", "conv": 8, "category": 2, "question": "Which places in Canada was Evan visiting in July 2023?", "gold": "Banff, Rocky Mountains"}
+{"qid": "c3q77", "conv": 3, "category": 2, "question": "When did Nate win his second tournament?", "gold": "The week before 2 May, 2022."}
+{"qid": "c0q9", "conv": 0, "category": 2, "question": "When did Caroline meet up with her friends, family, and mentors?", "gold": "The week before 9 June 2023"}
+{"qid": "c1q34", "conv": 1, "category": 2, "question": "When did Gina start being recognized by fashion editors?", "gold": "July 2023"}
+{"qid": "c8q58", "conv": 8, "category": 2, "question": "When did Evan start lifting weights?", "gold": "October 2022"}
+{"qid": "c4q23", "conv": 4, "category": 2, "question": "When is Tim attending a book conference?", "gold": "September 2023"}
+{"qid": "c5q46", "conv": 5, "category": 2, "question": "How many pets did Andrew have, as of September 2023?", "gold": "one"}
+{"qid": "c1q33", "conv": 1, "category": 2, "question": "When did Jon visit networking events for his store?", "gold": "20 June, 2023"}
+{"qid": "c4q58", "conv": 4, "category": 2, "question": "When did John attend the Harry Potter trivia?", "gold": "August 2023."}
+{"qid": "c7q17", "conv": 7, "category": 2, "question": "When did Jolene buy her pet Seraphim?", "gold": "in 2022"}
+{"qid": "c2q51", "conv": 2, "category": 2, "question": "When did Maria start volunteering at the homeless shelter?", "gold": "Around August 2022"}
+{"qid": "c7q35", "conv": 7, "category": 2, "question": "When did Deborah go for her first morning jog in a nearby park?", "gold": "24 February, 2023"}
+{"qid": "c0q1", "conv": 0, "category": 2, "question": "When did Melanie paint a sunrise?", "gold": "2022"}
+{"qid": "c9q16", "conv": 9, "category": 2, "question": "When did Dave take a trip to mountainous regions?", "gold": "July 2023"}
+{"qid": "c8q4", "conv": 8, "category": 2, "question": "Which hobby did Sam take up in May 2023?", "gold": "painting"}
+{"qid": "c3q3", "conv": 3, "category": 2, "question": "When did Nate win his first video game tournament?", "gold": "the week before 21Janury, 2022"}
+{"qid": "c8q13", "conv": 8, "category": 2, "question": "When did Evan have his sudden heart palpitation incident that really shocked him up?", "gold": "first week of June 2023"}
+{"qid": "c1q28", "conv": 1, "category": 2, "question": "When was Jon in Rome?", "gold": "June 2023"}
+{"qid": "c4q63", "conv": 4, "category": 2, "question": "When did John organize a basketball camp for kids?", "gold": "summer 2023"}
+{"qid": "c8q23", "conv": 8, "category": 2, "question": "When did Sam start working out at the gym?", "gold": "July 28, 2023"}
+{"qid": "c3q20", "conv": 3, "category": 2, "question": "When did Nate adopt Max?", "gold": "May 2022"}
+{"qid": "c9q69", "conv": 9, "category": 2, "question": "When did Dave buy a vintage camera?", "gold": "November 2023"}
+{"qid": "c6q31", "conv": 6, "category": 2, "question": "How many days did James plan to spend on his trip in Canada?", "gold": "19 days"}
+{"qid": "c2q54", "conv": 2, "category": 2, "question": "When did Maria take up community work with her church friends?", "gold": "August 4, 2023"}
+{"qid": "c9q70", "conv": 9, "category": 2, "question": "When did Calvin attend a gala in Boston?", "gold": "November 16, 2023"}
+{"qid": "c7q54", "conv": 7, "category": 2, "question": "Which pet did Jolene adopt first - Susie or Seraphim?", "gold": "Susie"}
+{"qid": "c6q47", "conv": 6, "category": 2, "question": "When did James ask Samantha to be his girlfriend?", "gold": "September 3, 2022"}
+{"qid": "c7q44", "conv": 7, "category": 2, "question": "When did Deborah go to an art show with Anna?", "gold": "on 9 April, 2023"}
+{"qid": "c9q31", "conv": 9, "category": 2, "question": "Where was Dave in the last two weeks of August 2023?", "gold": "San Francisco"}
+{"qid": "c7q43", "conv": 7, "category": 2, "question": "When did Deborah go for a bicycle ride with Anna?", "gold": "first week of April, 2023"}
+{"qid": "c0q0", "conv": 0, "category": 2, "question": "When did Caroline go to the LGBTQ support group?", "gold": "7 May 2023"}
+{"qid": "c4q64", "conv": 4, "category": 2, "question": "Which month was John in Italy?", "gold": "December, 2023"}
+{"qid": "c9q38", "conv": 9, "category": 2, "question": "When did Dave have a great jam session with his band?", "gold": "September 14, 2023"}
+{"qid": "c3q64", "conv": 3, "category": 2, "question": "When did Nate win a big Valorant tourney?", "gold": "The Saturday before 7November, 2022"}
+{"qid": "c0q8", "conv": 0, "category": 2, "question": "When did Caroline give a speech at a school?", "gold": "The week before 9 June 2023"}
+{"qid": "c9q65", "conv": 9, "category": 2, "question": "When did Dave take a photo of a Boston clock tower?", "gold": "September 2023"}
+{"qid": "c7q45", "conv": 7, "category": 2, "question": "When did Jolene finish her robotics project?", "gold": "May 2023"}
+{"qid": "c3q6", "conv": 3, "category": 2, "question": "How long has Nate had his first two turtles?", "gold": "three years"}
+{"qid": "c7q22", "conv": 7, "category": 2, "question": "When did Deborah meet Anna?", "gold": "31 January, 2023"}
+{"qid": "c6q65", "conv": 6, "category": 2, "question": "When did James and his family visit Mark and Josh?", "gold": "November 7, 2022"}
+{"qid": "c6q58", "conv": 6, "category": 2, "question": "When did James try Cyberpunk 2077 game?", "gold": "October 20, 2022"}
+{"qid": "c8q9", "conv": 8, "category": 2, "question": "When did Evan go to Jasper with his family?", "gold": "weekend before May 24, 2023"}
+{"qid": "c1q37", "conv": 1, "category": 2, "question": "When did Gina mention Shia Labeouf?", "gold": " 23 July, 2023"}
+{"qid": "c0q28", "conv": 0, "category": 2, "question": "When did Caroline go to the adoption meeting?", "gold": "The friday before 15 July 2023"}
+{"qid": "c7q68", "conv": 7, "category": 2, "question": "When did Deborah visit Brazil?", "gold": "2020"}
+{"qid": "c7q50", "conv": 7, "category": 2, "question": "Which year did Jolene start practicing yoga?", "gold": "2020"}
+{"qid": "c4q46", "conv": 4, "category": 2, "question": "Where was Tim in the week before 16 November 2023?", "gold": "UK"}
+{"qid": "c0q41", "conv": 0, "category": 2, "question": "When did Caroline join a new activist group?", "gold": "The Tuesday before 20 July 2023"}
+{"qid": "c0q44", "conv": 0, "category": 2, "question": "When is Melanie's daughter's birthday?", "gold": "13 August"}
+{"qid": "c6q21", "conv": 6, "category": 2, "question": "When did John first organize a charity tournament with his friends?", "gold": "May 7, 2022"}
+{"qid": "c3q57", "conv": 3, "category": 2, "question": "When did Joanna plan to go over to Nate's and share recipes?", "gold": "5 November, 2022."}
+{"qid": "c6q61", "conv": 6, "category": 2, "question": "What was James' big moment with Samantha in October 2023?", "gold": "They decided to live together and rented an apartment not far from McGee's bar."}
+{"qid": "c0q33", "conv": 0, "category": 2, "question": "When did Caroline go to a pride parade during the summer?", "gold": "The week before 3 July 2023"}
+{"qid": "c6q39", "conv": 6, "category": 2, "question": "When did John start his job in IT?", "gold": "2019"}
+{"qid": "c8q53", "conv": 8, "category": 2, "question": "When did Evan and Sam decide to paint together?", "gold": "Saturday after 11 September, 2023."}
+{"qid": "c6q42", "conv": 6, "category": 2, "question": "When did James take his 3 dogs to the beach?", "gold": "August 9, 2022"}
+{"qid": "c8q70", "conv": 8, "category": 2, "question": "How long did Evan and his partner date before getting married?", "gold": "four months"}
+{"qid": "c8q41", "conv": 8, "category": 2, "question": "Which classes did Evan join in mid-August 2023?", "gold": "painting classes"}
+{"qid": "c5q25", "conv": 5, "category": 2, "question": "When did Andrew and his girlfriend go fishing?", "gold": "weekend before August 24, 2023"}
+{"qid": "c3q45", "conv": 3, "category": 2, "question": "When did Joanna finish up the writing for her book?", "gold": "The week before 6October, 2022"}
+{"qid": "c4q37", "conv": 4, "category": 2, "question": "Which week did Tim visit the UK for the Harry Potter Conference?", "gold": "The week before October 13th, 2023."}
+{"qid": "c1q10", "conv": 1, "category": 2, "question": "When did Gina team up with a local artist for some cool designs?", "gold": "February, 2023"}
+{"qid": "c4q5", "conv": 4, "category": 3, "question": "Based on Tim's collections, what is a shop that he would enjoy visiting in New York city?", "gold": "House of MinaLima"}
+{"qid": "c7q11", "conv": 7, "category": 3, "question": "Is Deborah married?", "gold": "yes"}
+{"qid": "c8q10", "conv": 8, "category": 3, "question": "Which type of vacation would Evan prefer with his family, walking tours in metropolitan cities or camping trip in the outdoors?", "gold": "camping trip in the outdoors"}
+{"qid": "c6q6", "conv": 6, "category": 3, "question": "Does James live in Connecticut?", "gold": "Likely yes"}
+{"qid": "c3q68", "conv": 3, "category": 3, "question": "How many hikes has Joanna been on?", "gold": "Four"}
+{"qid": "c7q23", "conv": 7, "category": 3, "question": "Why did Jolene sometimes put off doing yoga?", "gold": "She's more interested in playing video games"}
+{"qid": "c8q71", "conv": 8, "category": 3, "question": "Which major holiday season conincides with Evan's wedding?", "gold": "Christmas"}
+{"qid": "c3q60", "conv": 3, "category": 3, "question": "What Console does Nate own?", "gold": "A Nintendo Switch; since the game \"Xenoblade 2\" is made for this console."}
+{"qid": "c4q32", "conv": 4, "category": 3, "question": "Which US states might Tim be in during September 2023 based on his plans of visiting Universal Studios?", "gold": "California or Florida"}
+{"qid": "c5q52", "conv": 5, "category": 3, "question": "What is something that Andrew could do to make birdwatching hobby to fit in his city schedule?", "gold": "Install a bird feeder outside where he can see the birds without going outdoors."}
+{"qid": "c8q51", "conv": 8, "category": 3, "question": "What challenges does Sam face in his quest for a healthier lifestyle, and how does he address them?", "gold": "Sam faces challenges like maintaining motivation and making dietary changes. He addresses them by enrolling in cooking classes and seeking support from friends like Evan."}
+{"qid": "c8q43", "conv": 8, "category": 3, "question": "How often does Sam get health checkups?", "gold": "every three months"}
+{"qid": "c5q20", "conv": 5, "category": 3, "question": "Which meat does Audrey prefer eating more than others?", "gold": "chicken"}
+{"qid": "c6q12", "conv": 6, "category": 3, "question": "Did James have a girlfriend during April 2022?", "gold": "Presumably not"}
+{"qid": "c7q5", "conv": 7, "category": 3, "question": "In what country did Jolene's mother buy her the pendant?", "gold": "In France"}
+{"qid": "c6q16", "conv": 6, "category": 3, "question": "What is the game with different colored cards that was John talking about with James?", "gold": "UNO"}
+{"qid": "c2q17", "conv": 2, "category": 3, "question": "What might John's degree be in?", "gold": "Political science, Public administration, Public affairs"}
+{"qid": "c3q87", "conv": 3, "category": 3, "question": "What state did Nate visit?", "gold": "Florida"}
+{"qid": "c3q73", "conv": 3, "category": 3, "question": "What state did Joanna visit in summer 2021?", "gold": "Indiana"}
+{"qid": "c0q59", "conv": 0, "category": 3, "question": "Would Caroline be considered religious?", "gold": "Somewhat, but not extremely religious"}
+{"qid": "c4q66", "conv": 4, "category": 3, "question": "What is a Star Wars book that Tim might enjoy?", "gold": "Star Wars: Jedi Apprentice by Judy Blundell and David Farland. It is a highly rated and immersive series about his favorite movies."}
+{"qid": "c0q22", "conv": 0, "category": 3, "question": "Would Caroline likely have Dr. Seuss books on her bookshelf?", "gold": "Yes, since she collects classic children's books"}
+{"qid": "c7q28", "conv": 7, "category": 3, "question": "In what country was Jolene during summer 2022?", "gold": "Colombia"}
+{"qid": "c3q84", "conv": 3, "category": 3, "question": "Was the first half of September 2022 a good month career-wise for Nate and Joanna? Answer yes or no.", "gold": "No; because both of them faced setbacks in their career"}
+{"qid": "c9q37", "conv": 9, "category": 3, "question": "Does Calvin love music tours?", "gold": "yes"}
+{"qid": "c0q2", "conv": 0, "category": 3, "question": "What fields would Caroline be likely to pursue in her educaton?", "gold": "Psychology, counseling certification"}
+{"qid": "c0q64", "conv": 0, "category": 3, "question": "Would Melanie likely enjoy the song \"The Four Seasons\" by Vivaldi?", "gold": "Yes; it's classical music"}
+{"qid": "c0q50", "conv": 0, "category": 3, "question": "What would Caroline's political leaning likely be?", "gold": "Liberal"}
+{"qid": "c7q40", "conv": 7, "category": 3, "question": "Does Deborah live close to the beach or the mountains?", "gold": "beach"}
+{"qid": "c8q5", "conv": 8, "category": 3, "question": "Which country was Evan visiting in May 2023?", "gold": "Canada"}
+{"qid": "c0q30", "conv": 0, "category": 3, "question": "Would Melanie be considered a member of the LGBTQ community?", "gold": "Likely no, she does not refer to herself as part of it"}
+{"qid": "c4q98", "conv": 4, "category": 4, "question": "Which movie does Tim mention they enjoy watching during Thanksgiving?", "gold": "\"Home Alone\""}
+{"qid": "c1q39", "conv": 1, "category": 4, "question": "What is Gina's favorite style of dance?", "gold": "Contemporary"}
+{"qid": "c6q113", "conv": 6, "category": 4, "question": "Whose phone number did James receive during the beach outing?", "gold": "Samantha"}
+{"qid": "c3q131", "conv": 3, "category": 4, "question": "What does the photo on Joanna's cork board remind her of?", "gold": "love and encouragement from her family"}
+{"qid": "c3q173", "conv": 3, "category": 4, "question": "What encouragement does Nate give to Joanna after her setback?", "gold": "rejections don't define her, keep grinding and she'll find the perfect opportunity"}
+{"qid": "c8q87", "conv": 8, "category": 4, "question": "Where did Evan take his family for a road trip on 24 May, 2023?", "gold": "Jasper"}
+{"qid": "c6q84", "conv": 6, "category": 4, "question": "What kind of assignment was giving John a hard time at work?", "gold": "Coding assignment"}
+{"qid": "c3q107", "conv": 3, "category": 4, "question": "Why does Nate like turtles as pets?", "gold": "Their slow pace and calming nature"}
+{"qid": "c6q139", "conv": 6, "category": 4, "question": "What sparked James' passion for gaming when he was a kid?", "gold": "Super Mario and The Legend of Zelda games"}
+{"qid": "c2q86", "conv": 2, "category": 4, "question": "What did John do that put a strain on his wallet?", "gold": "His car broke down"}
+{"qid": "c8q142", "conv": 8, "category": 4, "question": "How did Evan describe the process of creating the painting with the bird flying over it?", "gold": "embracing the creative process without restraint"}
+{"qid": "c7q94", "conv": 7, "category": 4, "question": "Where did Deborah get her cats?", "gold": "Luna is from the shelter and Max is her mother's cat"}
+{"qid": "c7q100", "conv": 7, "category": 4, "question": "What project did Jolene finish last week before 23 January, 2023?", "gold": "an electrical engineering project"}
+{"qid": "c6q71", "conv": 6, "category": 4, "question": "What did James offer to do for John regarding pets?", "gold": "help find the perfect pet"}
+{"qid": "c3q136", "conv": 3, "category": 4, "question": "How many video game tournaments has Nate won by July 10, 2022?", "gold": "Four"}
+{"qid": "c9q120", "conv": 9, "category": 4, "question": "What does Dave aim to do with his passion for cars?", "gold": "Take something broken and make it into something awesome"}
+{"qid": "c9q144", "conv": 9, "category": 4, "question": "What is Dave's way to share his passion with others?", "gold": "Through a blog on car mods"}
+{"qid": "c4q176", "conv": 4, "category": 4, "question": "What was Johns's reaction to sealing the deal with the beverage company?", "gold": "crazy feeling, sense of accomplishment"}
+{"qid": "c2q146", "conv": 2, "category": 4, "question": "Why does John say he feels stuck and questioning his decisions and goals?", "gold": "Not feeling like making much of an impact"}
+{"qid": "c1q63", "conv": 1, "category": 4, "question": "What kind of professional experience did Gina get accepted for on May 23, 2023?", "gold": "fashion internship"}
+{"qid": "c1q66", "conv": 1, "category": 4, "question": "What is Jon offering to the dancers at his dance studio?", "gold": "One-on-one mentoring and training"}
+{"qid": "c7q184", "conv": 7, "category": 4, "question": "What new activity did Deborah and her neighbor organize for the community on 16 September, 2023?", "gold": "Free gardening class"}
+{"qid": "c5q84", "conv": 5, "category": 4, "question": "What are some of the personalities of Audrey's four fur babies?", "gold": "oldest is relaxed, second is playful, third can be naughty but loves cuddles, youngest is full of life"}
+{"qid": "c4q122", "conv": 4, "category": 4, "question": "What has John been able to help the younger players achieve?", "gold": "reach their goals"}
+{"qid": "c5q76", "conv": 5, "category": 4, "question": "How long does Audrey typically walk her dogs for?", "gold": "about an hour"}
+{"qid": "c5q63", "conv": 5, "category": 4, "question": "What kind of pastries did Andrew and his girlfriend have at the cafe?", "gold": "croissants, muffins, and tarts"}
+{"qid": "c5q121", "conv": 5, "category": 4, "question": "What is Andrew planning to do with Scout, Toby, and Buddy?", "gold": "Take them to a nearby park"}
+{"qid": "c8q148", "conv": 8, "category": 4, "question": "What sports activity did Evan and his partner try in a recent weekend?", "gold": "Snowshoeing"}
+{"qid": "c0q137", "conv": 0, "category": 4, "question": "What painting did Melanie show to Caroline on October 13, 2023?", "gold": "A painting inspired by sunsets with a pink sky."}
+{"qid": "c8q91", "conv": 8, "category": 4, "question": "What did Sam agree to try instead of soda and candy?", "gold": "flavored seltzer water and dark chocolate with high cocoa content"}
+{"qid": "c7q179", "conv": 7, "category": 4, "question": "What did Jolene recently play that she described to Deb?", "gold": "a card game about cats"}
+{"qid": "c7q171", "conv": 7, "category": 4, "question": "What was the video game console that Jolene's parents got her at age 10?", "gold": "nintendo game console"}
+{"qid": "c1q67", "conv": 1, "category": 4, "question": "How does Jon use the clipboard with a notepad attached to it?", "gold": "To set goals, track achievements, and find areas for improvement"}
+{"qid": "c0q144", "conv": 0, "category": 4, "question": "How did Melanie's son handle the accident?", "gold": "He was scared but reassured by his family"}
+{"qid": "c4q172", "conv": 4, "category": 4, "question": "Where will Tim be going for a semester abroad?", "gold": "Ireland"}
+{"qid": "c8q147", "conv": 8, "category": 4, "question": "What was Evan limiting himself to on his new diet?", "gold": "just two ginger snaps a day"}
+{"qid": "c4q107", "conv": 4, "category": 4, "question": "What city did Tim suggest to John for the team trip next month?", "gold": "Edinburgh, Scotland"}
+{"qid": "c1q78", "conv": 1, "category": 4, "question": "According to Gina, what makes Jon a perfect mentor and guide?", "gold": "His positivity and determination"}
+{"qid": "c3q142", "conv": 3, "category": 4, "question": "What does Nate do that he loves and can make money from?", "gold": "Competing in video game tournaments"}
+{"qid": "c2q148", "conv": 2, "category": 4, "question": "How is Maria's new puppy adjusting to its new home?", "gold": "doing great - learning commands and house training"}
+{"qid": "c9q139", "conv": 9, "category": 4, "question": "What realization did the nightclub experience bring to Calvin?", "gold": "how much music means to him, it's like his passion and purpose"}
+{"qid": "c6q136", "conv": 6, "category": 4, "question": "What does John feel about starting the journey as a programming mentor for game developers?", "gold": "excited and inspired"}
+{"qid": "c5q102", "conv": 5, "category": 4, "question": "Why does Audrey make jewelry out of recycled objects?", "gold": "To show love for creativity and sustainability"}
+{"qid": "c2q95", "conv": 2, "category": 4, "question": "What activity did Maria and her mom do together in May 2023?", "gold": "Made dinner together"}
+{"qid": "c5q75", "conv": 5, "category": 4, "question": "What outdoor activities does Andrew plan on trying after the rock climbing class?", "gold": "kayaking and bungee jumping"}
+{"qid": "c2q139", "conv": 2, "category": 4, "question": "What did John do to help his community last year in his hometown?", "gold": "Helped renovate a rundown community center."}
+{"qid": "c9q153", "conv": 9, "category": 4, "question": "What type of photos does Dave like to capture with his new camera?", "gold": "Nature - sunsets, beaches, waves"}
+{"qid": "c5q116", "conv": 5, "category": 4, "question": "What aspect of autumn does Andrew find beautiful?", "gold": "The autumn colors"}
+{"qid": "c3q143", "conv": 3, "category": 4, "question": "How did Joanna feel when someone wrote her a letter after reading her blog post?", "gold": "Touched"}
+{"qid": "c1q44", "conv": 1, "category": 4, "question": "What does Gina say about the dancers in the photo?", "gold": "They look graceful"}
+{"qid": "c5q96", "conv": 5, "category": 4, "question": "What did Andrew learn from reading books about ecological systems?", "gold": "about animals, plants, and ecosystems and how they work together"}
+{"qid": "c7q15", "conv": 7, "category": 4, "question": "What pets does Jolene have?", "gold": "snakes"}
+{"qid": "c9q125", "conv": 9, "category": 4, "question": "Where did Calvin and Dave meet Frank Ocean to start collaborating?", "gold": "at a festival"}
+{"qid": "c0q133", "conv": 0, "category": 4, "question": "What precautionary sign did Melanie see at the caf\u00e9?", "gold": "A sign stating that someone is not being able to leave"}
+{"qid": "c7q177", "conv": 7, "category": 4, "question": "How did Jolene feel about her progress in practicing mindfulness and gratitude?", "gold": "experiencing a new level of joy and happiness"}
+{"qid": "c6q140", "conv": 6, "category": 4, "question": "What did James lose progress on due to a power outage?", "gold": "a game"}
+{"qid": "c0q97", "conv": 0, "category": 4, "question": "What workshop did Caroline attend recently?", "gold": "LGBTQ+ counseling workshop"}
+{"qid": "c1q62", "conv": 1, "category": 4, "question": "How does Gina stay confident in her business?", "gold": "By reminding herself of her successes and progress, having a support system, and focusing on why she started"}
+{"qid": "c9q88", "conv": 9, "category": 4, "question": "What did Calvin and his friends arrange for in the park?", "gold": "regular walks together"}
+{"qid": "c3q130", "conv": 3, "category": 4, "question": "What is displayed on Joanna's cork board for motivation and creativity?", "gold": "inspiring quotes, photos, and little keepsakes"}
+{"qid": "c2q122", "conv": 2, "category": 4, "question": "What motivated Maria and John to discuss potential solutions for their community on 7 July, 2023?", "gold": "Flood in John's old area"}
+{"qid": "c9q140", "conv": 9, "category": 4, "question": "What do Dave and Calvin agree on regarding their pursuits?", "gold": "It's fulfilling and motivating"}
+{"qid": "c9q151", "conv": 9, "category": 4, "question": "What hobby did Calvin take up recently?", "gold": "Photography"}
+{"qid": "c6q79", "conv": 6, "category": 4, "question": "What is the name of the pup that was adopted by James?", "gold": "Ned"}
+{"qid": "c3q106", "conv": 3, "category": 4, "question": "What inspired Joanna's new screenplay on 25 February, 2022?", "gold": "personal experiences and her own journey of self-discovery"}
+{"qid": "c4q170", "conv": 4, "category": 4, "question": "What is the painting of Aragorn a reminder for John to be in everything he does?", "gold": "be a leader"}
+{"qid": "c0q142", "conv": 0, "category": 4, "question": "How do Melanie and Caroline describe their journey through life together?", "gold": "An ongoing adventure of learning and growing."}
+{"qid": "c2q120", "conv": 2, "category": 4, "question": "What natural disaster affected John's old area on 7 July, 2023?", "gold": "Flood"}
+{"qid": "c4q148", "conv": 4, "category": 4, "question": "How long has Tim been playing the piano for, as of December 2023?", "gold": "about four months"}
+{"qid": "c0q84", "conv": 0, "category": 4, "question": "How does Melanie prioritize self-care?", "gold": "by carving out some me-time each day for activities like running, reading, or playing the violin"}
+{"qid": "c4q159", "conv": 4, "category": 4, "question": "What type of seminars is John conducting?", "gold": "Sports and marketing seminars"}
+{"qid": "c3q159", "conv": 3, "category": 4, "question": "What two main ingredients are part of the dessert Joanna shared a photo of with blueberries, coconut milk, and a gluten-free crust?", "gold": "blueberries and coconut milk"}
+{"qid": "c5q108", "conv": 5, "category": 4, "question": "How does Audrey describe her dogs' response to snow?", "gold": "They definitely prefer nice, sunny days in the grass."}
+{"qid": "c3q180", "conv": 3, "category": 4, "question": "What type of diet do Nate's turtles have?", "gold": "combination of vegetables, fruits, and insects"}
+{"qid": "c9q133", "conv": 9, "category": 4, "question": "Why did Dave start working on cars?", "gold": "Fascinated with how machines work"}
+{"qid": "c8q115", "conv": 8, "category": 4, "question": "What activity does Evan do to keep himself busy while healing his knee?", "gold": "Watercolor painting"}
+{"qid": "c8q150", "conv": 8, "category": 4, "question": "What suggestions did Evan give for low-impact exercises?", "gold": "swimming, yoga, walking"}
+{"qid": "c7q58", "conv": 7, "category": 4, "question": "What games does Jolene recommend for Deborah?", "gold": "Zelda BOTW for Switch , Animal Crossing: New Horizons, Overcooked 2"}
+{"qid": "c7q187", "conv": 7, "category": 4, "question": "What kind of cookies did Jolene used to bake with someone close to her?", "gold": "Chocolate chip cookies"}
+{"qid": "c8q137", "conv": 8, "category": 4, "question": "Who helped Evan get the painting published in the exhibition?", "gold": "a close friend"}
+{"qid": "c6q85", "conv": 6, "category": 4, "question": "What breed is Daisy, one of James' dogs?", "gold": "Labrador"}
+{"qid": "c2q110", "conv": 2, "category": 4, "question": "What exciting news did Maria share on 16 June, 2023?", "gold": "joined a gym"}
+{"qid": "c9q117", "conv": 9, "category": 4, "question": "What does Dave find satisfying about restoring old cars?", "gold": "Transforming something old and beat-up into something beautiful"}
+{"qid": "c3q191", "conv": 3, "category": 4, "question": "What advice does Joanna give to Nate about making YouTube videos?", "gold": "Watch other people's videos to understand what the audience likes"}
+{"qid": "c3q110", "conv": 3, "category": 4, "question": "Why did Nate choose the hair color he did?", "gold": "Bright and bold - like him"}
+{"qid": "c0q141", "conv": 0, "category": 4, "question": "What does Caroline's drawing symbolize for her?", "gold": "Freedom and being true to herself."}
+{"qid": "c7q103", "conv": 7, "category": 4, "question": "Where did Deborah meet her new neighbor Anna?", "gold": "yoga in the park"}
+{"qid": "c8q155", "conv": 8, "category": 4, "question": "How does Evan describe being out on the water while kayaking and watching the sunset?", "gold": "peaceful"}
+{"qid": "c6q142", "conv": 6, "category": 4, "question": "What was the purpose of the gaming tournament organized by John on 31 October, 2022?", "gold": "To raise money for a children's hospital"}
+{"qid": "c9q124", "conv": 9, "category": 4, "question": "What activity does Dave find fulfilling, similar to Calvin's passion for music festivals?", "gold": "fixing things"}
+{"qid": "c4q81", "conv": 4, "category": 4, "question": "How long has John been surfing?", "gold": "five years"}
+{"qid": "c0q140", "conv": 0, "category": 4, "question": "What did the posters at the poetry reading say?", "gold": "\"Trans Lives Matter\""}
+{"qid": "c9q104", "conv": 9, "category": 4, "question": "Why did Calvin get his guitar customized with a shiny finish?", "gold": "unique look"}
+{"qid": "c7q108", "conv": 7, "category": 4, "question": "What new outlook did Jolene gain after her mini retreat on 9 February, 2023?", "gold": "A confidence boost"}
+{"qid": "c6q75", "conv": 6, "category": 4, "question": "What game was James playing in the online gaming tournament in April 2022?", "gold": "Apex Legends"}
+{"qid": "c6q101", "conv": 6, "category": 4, "question": "How did John relax in his free time on 9 July, 2022?", "gold": "Reading"}
+{"qid": "c6q130", "conv": 6, "category": 4, "question": "What instrument did James used to play when he was younger?", "gold": "guitar"}
+{"qid": "c2q113", "conv": 2, "category": 4, "question": "What was one of the biggest challenges John faced in his journey to becoming assistant manager?", "gold": "self-doubt"}
+{"qid": "c8q151", "conv": 8, "category": 4, "question": "What movie did Sam watch that motivated him to keep up with his routine?", "gold": "The Godfather"}
+{"qid": "c6q107", "conv": 6, "category": 4, "question": "What made John leave his IT job?", "gold": "to focus on things that align with his values and passions"}
+{"qid": "c1q49", "conv": 1, "category": 4, "question": "What did Gina want her customers to feel in her store?", "gold": "cozy and comfortable"}
+{"qid": "c2q142", "conv": 2, "category": 4, "question": "What recognition did Maria receive at the homeless shelter in August 2023?", "gold": "a medal for volunteering"}
+{"qid": "c1q2", "conv": 1, "category": 4, "question": "How do Jon and Gina both like to destress?", "gold": "by dancing"}
+{"qid": "c7q119", "conv": 7, "category": 4, "question": "What picture did Jolene share related to feeling overwhelmed?", "gold": "a photo of a desk with a notebook and a computer monitor"}
+{"qid": "c0q151", "conv": 0, "category": 4, "question": "What did Melanie do after the road trip to relax?", "gold": "Went on a nature walk or hike"}
+{"qid": "c8q93", "conv": 8, "category": 4, "question": "What novel is Evan reading that he finds gripping?", "gold": "The Great Gatsby"}
+{"qid": "c3q128", "conv": 3, "category": 4, "question": "What superhero is Joanna a fan of?", "gold": "Spider-Man"}
+{"qid": "c4q173", "conv": 4, "category": 4, "question": "Which city in Ireland will Tim be staying in during his semester abroad?", "gold": "Galway"}
+{"qid": "c2q73", "conv": 2, "category": 4, "question": "Who inspired Maria to start volunteering?", "gold": "Her aunt"}
+{"qid": "c7q93", "conv": 7, "category": 4, "question": "What projects is Jolene planning for next year?", "gold": "developing renewable energy finding ways to supply clean water to those with limited access"}
+{"qid": "c3q140", "conv": 3, "category": 4, "question": "What inspired Joanna's new script in July 2022?", "gold": "Woodhaven's interesting past and people"}
+{"qid": "c7q102", "conv": 7, "category": 4, "question": "What project was Jolene working on as of 1 February, 2023?", "gold": "Robotics project"}
+{"qid": "c7q118", "conv": 7, "category": 4, "question": "What is one of Jolene's favorite dishes?", "gold": "lasagna"}
+{"qid": "c0q122", "conv": 0, "category": 4, "question": "Why did Melanie choose to use colors and patterns in her pottery project?", "gold": "She wanted to catch the eye and make people smile."}
+{"qid": "c7q144", "conv": 7, "category": 4, "question": "How did Jolene come to have her pet, Susie?", "gold": "She adopted her two years ago when feeling lonely."}
+{"qid": "c1q50", "conv": 1, "category": 4, "question": "What did Jon say about Gina's progress with her store?", "gold": "hard work's paying off"}
+{"qid": "c5q72", "conv": 5, "category": 4, "question": "Why did Audrey think positive reinforcement training is important for pets?", "gold": "To have pets learn how to behave in a positive way"}
+{"qid": "c7q183", "conv": 7, "category": 4, "question": "How does Jolene describe their home room?", "gold": "little haven for peace and rest"}
+{"qid": "c7q107", "conv": 7, "category": 4, "question": "What does Deborah bring with her whenever she comes to reflect on her mom?", "gold": "amulet"}
+{"qid": "c7q74", "conv": 7, "category": 4, "question": "What do Deborah and Jolene plan to try when they meet in a new cafe?", "gold": "coffee and fresh pastries"}
+{"qid": "c6q122", "conv": 6, "category": 4, "question": "How much does James pay per cooking class?", "gold": "$10"}
+{"qid": "c4q83", "conv": 4, "category": 4, "question": "What kind of articles has Tim been writing about for the online magazine?", "gold": "different fantasy novels, characters, themes, and book recommendations"}
+{"qid": "c3q155", "conv": 3, "category": 4, "question": "What is Nate's favorite dish from the cooking show he hosted?", "gold": "Coconut milk ice cream"}
+{"qid": "c3q97", "conv": 3, "category": 4, "question": "What did Joanna just finish last Friday on 23 January, 2022?", "gold": "screenplay"}
+{"qid": "c9q152", "conv": 9, "category": 4, "question": "What new item did Dave buy recently?", "gold": "A vintage camera"}
+{"qid": "c8q152", "conv": 8, "category": 4, "question": "What activity helped Evan with stress and flexibility?", "gold": "Yoga"}
+{"qid": "c3q132", "conv": 3, "category": 4, "question": "What did Nate make and share with his vegan diet group?", "gold": "vegan ice cream"}
+{"qid": "c9q86", "conv": 9, "category": 4, "question": "What sports activity is Calvin planning to try after the tour with Frank Ocean?", "gold": "Skiing"}
+{"qid": "c4q165", "conv": 4, "category": 4, "question": "What book did Tim get in Italy that inspired him to cook?", "gold": "a cooking book"}
+{"qid": "c2q85", "conv": 2, "category": 4, "question": "What event did John volunteer at last weekend?", "gold": "career fair at a local school"}
+{"qid": "c8q89", "conv": 8, "category": 4, "question": "What habit is Sam trying to change in terms of diet?", "gold": "consuming soda and candy"}
+{"qid": "c7q170", "conv": 7, "category": 4, "question": "How did Deborah's mom support her yoga practice when she first started?", "gold": "attended classes with her"}
+{"qid": "c3q195", "conv": 3, "category": 4, "question": "What does Nate want to do when he goes over to Joanna's place?", "gold": "Watch one of Joanna's movies together or go to the park"}
+{"qid": "c5q111", "conv": 5, "category": 4, "question": "What do Andrew and Buddy like doing on walks?", "gold": "Checking out new hiking trails"}
+{"qid": "c8q121", "conv": 8, "category": 4, "question": "Where did Sam and his mate plan to try kayaking?", "gold": "Lake Tahoe"}
+{"qid": "c1q41", "conv": 1, "category": 4, "question": "What was Gina's favorite dancing memory?", "gold": "Winning first place at a regionals dance competition"}
+{"qid": "c0q91", "conv": 0, "category": 4, "question": "What does Caroline's necklace symbolize?", "gold": "love, faith, and strength"}
+{"qid": "c5q112", "conv": 5, "category": 4, "question": "What cuisine did Andrew recently try at a new spot in town?", "gold": "sushi"}
+{"qid": "c7q146", "conv": 7, "category": 4, "question": "What kind of yoga routine does Deborah recommend to Jolene?", "gold": "A gentle flow routine focused on breathing and grounding"}
+{"qid": "c7q69", "conv": 7, "category": 4, "question": "Have Deborah and Jolene been to Rio de Janeiro?", "gold": "yes"}
+{"qid": "c1q69", "conv": 1, "category": 4, "question": "What did Jon take a trip to Rome for?", "gold": "To clear his mind"}
+{"qid": "c1q42", "conv": 1, "category": 4, "question": "What kind of dance piece did Gina's team perform to win first place?", "gold": "\"Finding Freedom\""}
+{"qid": "c6q137", "conv": 6, "category": 4, "question": "What kind of games is James excited to play with his new video card?", "gold": "RPGs"}
+{"qid": "c9q93", "conv": 9, "category": 4, "question": "What is Dave's advice to Calvin regarding his dreams?", "gold": "to never forget his dreams"}
+{"qid": "c6q105", "conv": 6, "category": 4, "question": "When did James plan to return from his trip to Toronto and Vancouver?", "gold": "July 20"}
+{"qid": "c9q82", "conv": 9, "category": 4, "question": "What did Dave open in May 2023?", "gold": "a car shop"}
+{"qid": "c9q148", "conv": 9, "category": 4, "question": "What type of content does Dave post on his blog that inspired others to start their own DIY projects?", "gold": "How he made his car look like a beast"}
+{"qid": "c4q117", "conv": 4, "category": 4, "question": "What motivates John's team to get better, according to John?", "gold": "facing tough opponents"}
+{"qid": "c8q140", "conv": 8, "category": 4, "question": "How did Evan feel when he painted the piece with the bird flying over it?", "gold": "a sense of joy and freedom"}
+{"qid": "c3q138", "conv": 3, "category": 4, "question": "What did Joanna discover at the library in Woodhaven?", "gold": "cool old book collection"}
+{"qid": "c4q138", "conv": 4, "category": 4, "question": "How did John overcome his ankle injury from last season?", "gold": "stayed focused on recovery and worked hard to strengthen his body"}
+{"qid": "c3q179", "conv": 3, "category": 4, "question": "How did Joanna feel on October 25, 2022 about seeing her characters come alive on the big screen?", "gold": "surreal and cool"}
+{"qid": "c8q145", "conv": 8, "category": 4, "question": "What did Evan offer to share with Sam after talking about healthy snacks?", "gold": "the recipes for cookies"}
+{"qid": "c5q91", "conv": 5, "category": 4, "question": "What did Audrey do to give her dogs extra comfort as the weather cooled down?", "gold": "Got new beds for them"}
+{"qid": "c6q143", "conv": 6, "category": 4, "question": "What decision did James and Samantha make on 31 October, 2022?", "gold": "To move in together"}
+{"qid": "c3q197", "conv": 3, "category": 4, "question": "What does Nate love most about having turtles?", "gold": "They make him feel calm and don't require much looking after"}
+{"qid": "c7q136", "conv": 7, "category": 4, "question": "Which new yoga pose did Deborah share a photo of?", "gold": "tree pose"}
+{"qid": "c9q127", "conv": 9, "category": 4, "question": "What specific location in Tokyo does Calvin mention being excited to explore?", "gold": "Shinjuku"}
+{"qid": "c6q128", "conv": 6, "category": 4, "question": "What kind of dream did James have recently?", "gold": "a dream with a medieval castle full of puzzles and traps"}
+{"qid": "c0q90", "conv": 0, "category": 4, "question": "How long have Mel and her husband been married?", "gold": "Mel and her husband have been married for 5 years."}
+{"qid": "c7q42", "conv": 7, "category": 4, "question": "What music pieces does Deborah listen to during her yoga practice?", "gold": "Savana, Sleep"}
+{"qid": "c3q194", "conv": 3, "category": 4, "question": "Why did Nate get a third turtle?", "gold": "He saw another one at a pet store and wanted to get it"}
+{"qid": "c1q73", "conv": 1, "category": 4, "question": "How does Gina describe the feeling that dance brings?", "gold": "magical"}
+{"qid": "c2q88", "conv": 2, "category": 4, "question": "What topic has John been blogging about recently?", "gold": "politics and the government"}
+{"qid": "c3q158", "conv": 3, "category": 4, "question": "What kind of cake did Joanna share a photo of that she likes making for birthdays and special days?", "gold": "chocolate cake with raspberries"}
+{"qid": "c2q69", "conv": 2, "category": 4, "question": "What did Maria donate to a homeless shelter in December 2023?", "gold": "old car"}
+{"qid": "c1q76", "conv": 1, "category": 4, "question": "What is the general sentiment about the upcoming grand opening?", "gold": "excitement"}
+{"qid": "c7q33", "conv": 7, "category": 4, "question": "How long have Jolene and her partner been together?", "gold": "for three years"}
+{"qid": "c2q111", "conv": 2, "category": 4, "question": "What yoga activity has Maria been trying to improve her strength and endurance?", "gold": "kundalini yoga"}
+{"qid": "c3q166", "conv": 3, "category": 4, "question": "How did Joanna describe the classic movie he watched?", "gold": "gripping with great actors"}
+{"qid": "c3q176", "conv": 3, "category": 4, "question": "What did Joanna contribute to that was shown on the big screen on the Sunday before October 25, 2022?", "gold": "movie script"}
+{"qid": "c7q129", "conv": 7, "category": 4, "question": "Which show did Deborah go to with a friend on 9 April, 2023?", "gold": "an art show"}
+{"qid": "c3q103", "conv": 3, "category": 4, "question": "What did Joanna recently watch and recommend to Nate on February 7, 2022?", "gold": "\"Little Women\""}
+{"qid": "c4q111", "conv": 4, "category": 4, "question": "What type of venue did John and his girlfriend choose for their wedding ceremony?", "gold": "Greenhouse"}
+{"qid": "c3q96", "conv": 3, "category": 4, "question": "What type of movies does Nate enjoy watching the most?", "gold": "action and sci-fi"}
+{"qid": "c7q159", "conv": 7, "category": 4, "question": "How did Jolene feel after receiving positive feedback at the virtual conference?", "gold": "thrilled and rewarded"}
+{"qid": "c7q186", "conv": 7, "category": 4, "question": "What food did Deborah's mom make for her on birthdays?", "gold": "Pineapple cakes"}
+{"qid": "c6q104", "conv": 6, "category": 4, "question": "Where did James plan to visit after Toronto?", "gold": "Vancouver"}
+{"qid": "c6q87", "conv": 6, "category": 4, "question": "What type of pizza is John's favorite?", "gold": "Hawaiian"}
+{"qid": "c3q145", "conv": 3, "category": 4, "question": "What kind of content did Joanna share that someone wrote her a letter about?", "gold": "A blog post about a hard moment in her life"}
+{"qid": "c0q134", "conv": 0, "category": 4, "question": "What advice does Caroline give for getting started with adoption?", "gold": "Do research, find an adoption agency or lawyer, gather necessary documents, and prepare emotionally."}
+{"qid": "c1q61", "conv": 1, "category": 4, "question": "What did Gina receive from a dance contest?", "gold": "a trophy"}
+{"qid": "c7q175", "conv": 7, "category": 4, "question": "Where did Jolene and her partner travel for a few weeks in September 2023?", "gold": "Phuket"}
+{"qid": "c9q83", "conv": 9, "category": 4, "question": "What gives Dave a sense of achievement and purpose?", "gold": "Fixing up things"}
+{"qid": "c3q171", "conv": 3, "category": 4, "question": "What does Joanna do after receiving a rejection from a production company?", "gold": "keep grinding and moving ahead"}
+{"qid": "c0q127", "conv": 0, "category": 4, "question": "What did Caroline make for a local church?", "gold": "a stained glass window"}
+{"qid": "c0q85", "conv": 0, "category": 4, "question": "What are Caroline's plans for the summer?", "gold": "researching adoption agencies"}
+{"qid": "c4q101", "conv": 4, "category": 4, "question": "How was John's experience in New York City?", "gold": "Amazing"}
+{"qid": "c2q84", "conv": 2, "category": 4, "question": "What did Maria participate in last weekend before April 10, 2023?", "gold": "a 5K charity run"}
+{"qid": "c3q156", "conv": 3, "category": 4, "question": "What is one of Nate's favorite dairy-free treats besides coconut milk ice cream?", "gold": "dairy-free chocolate mousse"}
+{"qid": "c2q117", "conv": 2, "category": 4, "question": "What event did John participate in to show support for veterans' rights?", "gold": "marching event"}
+{"qid": "c5q95", "conv": 5, "category": 4, "question": "What kind of flowers does Audrey take care of?", "gold": "Peruvian Lilies"}
+{"qid": "c7q16", "conv": 7, "category": 4, "question": "What are the names of Jolene's snakes?", "gold": "Susie, Seraphim"}
+{"qid": "c5q80", "conv": 5, "category": 4, "question": "What dish is one of Audrey's favorite dishes that includes garlic and is shared with Andrew on 3 July, 2023?", "gold": "Roasted Chicken"}
+{"qid": "c7q64", "conv": 7, "category": 4, "question": "Does Deborah like cats?", "gold": "Yes"}
+{"qid": "c8q106", "conv": 8, "category": 4, "question": "What did Evan start painting years ago due to being inspired by a friend's gift?", "gold": "forest scene"}
+{"qid": "c2q65", "conv": 2, "category": 4, "question": "What is John's main focus in local politics?", "gold": "Improving education and infrastructure"}
+{"qid": "c9q108", "conv": 9, "category": 4, "question": "What did Calvin book a flight ticket for on 1st September 2023?", "gold": "Boston"}
+{"qid": "c2q104", "conv": 2, "category": 4, "question": "How long was Max a part of John's family?", "gold": "10 years"}
+{"qid": "c6q145", "conv": 6, "category": 4, "question": "Why did James and Samantha choose an apartment near McGee's bar?", "gold": "They love spending time together at the bar"}
+{"qid": "c0q118", "conv": 0, "category": 4, "question": "What did Melanie and her family see during their camping trip last year?", "gold": "Perseid meteor shower"}
+{"qid": "c8q92", "conv": 8, "category": 4, "question": "What frustrating issue did Sam face at the supermarket?", "gold": "broken self-checkout machines"}
+{"qid": "c7q106", "conv": 7, "category": 4, "question": "What is Jolene's favorite book which she mentioned on 4 February, 2023?", "gold": "\"Sapiens\""}
+{"qid": "c7q25", "conv": 7, "category": 4, "question": "What are Jolene's favorite books?", "gold": "Sapiens, Avalanche by Neal Stephenson"}
+{"qid": "c2q103", "conv": 2, "category": 4, "question": "What was the name of the pet that John had to say goodbye to on 3 June, 2023?", "gold": "Max"}
+{"qid": "c5q83", "conv": 5, "category": 4, "question": "What special memories does Audrey have with her childhood dog, Max?", "gold": "Long walks in the neighborhood, exploring new paths, sharing worries and hopes"}
+{"qid": "c2q81", "conv": 2, "category": 4, "question": "Where did Maria get the idea for the castle shadow box in her home?", "gold": "England"}
+{"qid": "c0q124", "conv": 0, "category": 4, "question": "What pets does Melanie have?", "gold": "Two cats and a dog"}
+{"qid": "c4q75", "conv": 4, "category": 4, "question": "What forum did Tim join recently?", "gold": "fantasy literature forum"}
+{"qid": "c4q133", "conv": 4, "category": 4, "question": "How did John describe the views during their road trip out on the European coastline?", "gold": "Spectacular"}
+{"qid": "c8q129", "conv": 8, "category": 4, "question": "What was the main reason for Evan's frustration with his new Prius breaking down?", "gold": "He relied on it for his active lifestyle and road trips"}
+{"qid": "c4q126", "conv": 4, "category": 4, "question": "What does John write on the whiteboard to help him stay motivated?", "gold": "motivational quotes and strategies"}
+{"qid": "c7q178", "conv": 7, "category": 4, "question": "What positive change did Jolene experience during the retreat?", "gold": "finding inner peace"}
+{"qid": "c9q109", "conv": 9, "category": 4, "question": "What is Calvin excited about after the tour?", "gold": "exploring and growing his brand"}
+{"qid": "c1q72", "conv": 1, "category": 4, "question": "How does Jon feel about the opening night of his dance studio?", "gold": "excited"}
+{"qid": "c9q134", "conv": 9, "category": 4, "question": "What is the toughest part of car restoration according to Dave?", "gold": "Paying extra attention to detail"}
+{"qid": "c7q63", "conv": 7, "category": 4, "question": "How old are Deborah's cats?", "gold": "Max is 8 years old and Luna is 5 years old"}
+{"qid": "c9q96", "conv": 9, "category": 4, "question": "What type of car did Dave work on during the workshop?", "gold": "classic muscle car"}
+{"qid": "c9q76", "conv": 9, "category": 4, "question": "What type of cars does Dave work on at his shop?", "gold": "all kinds of cars, from regular maintenance to full restorations of classic cars"}
+{"qid": "c9q98", "conv": 9, "category": 4, "question": "How did the audience in Tokyo react when Calvin sang one of his songs?", "gold": "Everyone was so into it and sang along"}
+{"qid": "c2q118", "conv": 2, "category": 4, "question": "What inspired John to join the marching event for veterans' rights?", "gold": "Respect for the military and the desire to show support"}
+{"qid": "c2q133", "conv": 2, "category": 4, "question": "What did John do the week before August 3, 2023 involving his kids?", "gold": "Had a meaningful experience at a military memorial"}
+{"qid": "c5q65", "conv": 5, "category": 4, "question": "What does Audrey do during dog playdates in the park?", "gold": "chat with people while dogs make new friends"}
+{"qid": "c0q107", "conv": 0, "category": 4, "question": "What is Melanie's reason for getting into running?", "gold": "To de-stress and clear her mind"}
+{"qid": "c2q135", "conv": 2, "category": 4, "question": "Why does Maria think it's important for younger generations to visit military memorials?", "gold": "To remember and appreciate those who served"}
+{"qid": "c4q100", "conv": 4, "category": 4, "question": "How long did John and his high school basketball teammates play together?", "gold": "Four years"}
+{"qid": "c5q64", "conv": 5, "category": 4, "question": "What kind of flowers does Audrey have a tattoo of?", "gold": "sunflowers"}
+{"qid": "c9q119", "conv": 9, "category": 4, "question": "What does working on cars represent for Dave?", "gold": "Therapy and a way to get away from everyday stress"}
+{"qid": "c3q161", "conv": 3, "category": 4, "question": "What did Joanna make for one of the ladies at her writing club?", "gold": "a bookmark"}
+{"qid": "c2q115", "conv": 2, "category": 4, "question": "What kind of event did John and his family attend in June 2023?", "gold": "live music event"}
+{"qid": "c1q77", "conv": 1, "category": 4, "question": "What did Gina make a limited edition line of?", "gold": "Hoodies"}
+{"qid": "c4q151", "conv": 4, "category": 4, "question": "What is the topic of discussion between John and Tim on 11 December, 2023?", "gold": "Academic achievements and sports successes"}
+{"qid": "c0q121", "conv": 0, "category": 4, "question": "Who performed at the concert at Melanie's daughter's birthday?", "gold": "Matt Patterson"}
+{"qid": "c6q68", "conv": 6, "category": 4, "question": "What type of mobile application does James plan to build with John?", "gold": "An app for dog walking and pet care"}
+{"qid": "c3q115", "conv": 3, "category": 4, "question": "What kind of films does Joanna enjoy?", "gold": "Dramas and emotionally-driven films"}
+{"qid": "c3q92", "conv": 3, "category": 4, "question": "What kind of lighting does Nate's gaming room have?", "gold": "red and purple lighting"}
+{"qid": "c5q114", "conv": 5, "category": 4, "question": "What type of date is Andrew going on Sunday?", "gold": "picnic date"}
+{"qid": "c4q118", "conv": 4, "category": 4, "question": "What did John's team win at the end of the season?", "gold": "a trophy"}
+{"qid": "c4q72", "conv": 4, "category": 4, "question": "What is John's position on the team he signed with?", "gold": "shooting guard"}
+{"qid": "c3q121", "conv": 3, "category": 4, "question": "Who invited Nate to join her on the trails sometime?", "gold": "Joanna"}
+{"qid": "c3q116", "conv": 3, "category": 4, "question": "Which activity helps Nate escape and stimulates his imagination?", "gold": "watching fantasy and sci-fi movies"}
+{"qid": "c0q106", "conv": 0, "category": 4, "question": "What are the new shoes that Melanie got used for?", "gold": "Running"}
+{"qid": "c2q149", "conv": 2, "category": 4, "question": "What is John currently doing as a volunteer in August 2023?", "gold": "mentoring students at a local school"}
+{"qid": "c4q168", "conv": 4, "category": 4, "question": "Why does John like Aragorn from Lord of the Rings?", "gold": "brave, selfless, down-to-earth attitude"}
+{"qid": "c4q96", "conv": 4, "category": 4, "question": "Which movie's theme is Tim's favorite to play on the piano?", "gold": "\"Harry Potter and the Philosopher's Stone\""}
+{"qid": "c9q111", "conv": 9, "category": 4, "question": "Which Disney movie did Dave mention as one of his favorites?", "gold": "Ratatouille"}
+{"qid": "c1q4", "conv": 1, "category": 4, "question": "Why did Jon decide to start his dance studio?", "gold": "He lost his job and decided to start his own business to share his passion."}
+{"qid": "c7q105", "conv": 7, "category": 4, "question": "What milestone did Jolene achieve recently on 4 February, 2023?", "gold": "Design and build a sustainable water purifier for a rural community"}
+{"qid": "c4q119", "conv": 4, "category": 4, "question": "Where did Tim capture the photography of the sunset over the mountain range?", "gold": "Smoky Mountains"}
+{"qid": "c6q108", "conv": 6, "category": 4, "question": "Which game tournaments does John plan to organize besides CS:GO?", "gold": "Fortnite competitions"}
+{"qid": "c4q169", "conv": 4, "category": 4, "question": "What kind of painting does John have in his room as a reminder?", "gold": "a painting of Aragorn"}
+{"qid": "c9q116", "conv": 9, "category": 4, "question": "What car did Dave work on in the junkyard?", "gold": "Ford Mustang"}
+{"qid": "c4q99", "conv": 4, "category": 4, "question": "What tradition does Tim mention they love during Thanksgiving?", "gold": "Prepping the feast and talking about what they're thankful for"}
+{"qid": "c0q110", "conv": 0, "category": 4, "question": "What kind of pot did Mel and her kids make with clay?", "gold": "a cup with a dog face on it"}
+{"qid": "c7q185", "conv": 7, "category": 4, "question": "What was Deborah's mom passionate about?", "gold": "Cooking"}
+{"qid": "c8q120", "conv": 8, "category": 4, "question": "What advice did Evan give to Sam to avoid injuries while starting weightlifting?", "gold": "Find a trainer"}
+{"qid": "c2q134", "conv": 2, "category": 4, "question": "How did John describe his kids' reaction at the military memorial?", "gold": "awestruck and humbled"}
+{"qid": "c8q97", "conv": 8, "category": 4, "question": "Why did Evan decide to get the bonsai tree?", "gold": "motivates him to keep going through tough times"}
+{"qid": "c8q130", "conv": 8, "category": 4, "question": "How did Sam suggest Evan view the setback with his broken Prius?", "gold": "As a chance to explore other ways of staying active and traveling"}
+{"qid": "c9q142", "conv": 9, "category": 4, "question": "What did Calvin do recently at his Japanese house?", "gold": "Threw a small party for his new album"}
+{"qid": "c5q87", "conv": 5, "category": 4, "question": "How long did the trail hike that Audrey went on with her pups take?", "gold": "Two hours"}
+{"qid": "c4q113", "conv": 4, "category": 4, "question": "Which basketball team does Tim support?", "gold": "The Wolves"}
+{"qid": "c8q117", "conv": 8, "category": 4, "question": "What kind of writing does Sam enjoy as a form of expression?", "gold": "creative writing"}
+{"qid": "c5q89", "conv": 5, "category": 4, "question": "What is essential to keep the dogs looking good according to Audrey?", "gold": "Daily brushing, regular baths, nail trims, and lots of love"}
+{"qid": "c6q110", "conv": 6, "category": 4, "question": "What game genre did John start exploring instead of shooters?", "gold": "strategy and RPG games"}
+{"qid": "c7q96", "conv": 7, "category": 4, "question": "What was Jolene doing with her partner in Rio de Janeiro?", "gold": "they went on excursions, checked out some cool yoga classes, visited a lot of delicious cafes, visited an old temple"}
+{"qid": "c4q154", "conv": 4, "category": 4, "question": "How did John feel about the atmosphere during the big game against the rival team?", "gold": "electric and intense"}
+{"qid": "c9q75", "conv": 9, "category": 4, "question": "What is Dave's new business venture as of 1 May, 2023?", "gold": "Car maintenance shop"}
+{"qid": "c3q148", "conv": 3, "category": 4, "question": "How did Nate feel about sharing his love for dairy-free desserts with Joanna?", "gold": "Happy to share"}
+{"qid": "c7q165", "conv": 7, "category": 4, "question": "What type of classes did Jolene and her partner check out during their trip to Rio de Janeiro on 30 August, 2023?", "gold": "Yoga classes"}
+{"qid": "c7q72", "conv": 7, "category": 4, "question": "When did Jolene's parents give her first console?", "gold": "when she was 10"}
+{"qid": "c0q83", "conv": 0, "category": 4, "question": "What did Melanie realize after the charity race?", "gold": "self-care is important"}
+{"qid": "c6q119", "conv": 6, "category": 4, "question": "What kind of programs are John's siblings making?", "gold": "basic games and stories"}
