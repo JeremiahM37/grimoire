@@ -1265,3 +1265,24 @@ def test_mobile_header_core_buttons_fit_viewport(browser, server):
             assert right <= 390, f"{btn} overflows the phone viewport ({right}px)"
     finally:
         ctx.close()
+
+
+def test_live_sync_poll_does_not_clobber_active_search(page, server):
+    """regression (CI flake → real bug): the 5s rev poll re-rendered the full
+    note list during an active search, wiping results + keyboard selection."""
+    page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
+    page.once("dialog", lambda d: d.accept("Clobber Probe"))
+    page.click("#new-note")
+    expect(page.locator("#title")).to_have_value("Clobber Probe", timeout=8000)
+    page.fill("#search", "clobber")
+    expect(page.locator(".note-row .t", has_text="Clobber Probe")).to_have_count(1, timeout=8000)
+    # create a note out-of-band (rev changes), then force the poll to fire
+    page.evaluate(
+        "() => fetch('/api/notes', {method:'POST',"
+        "headers:{'Content-Type':'application/json'},"
+        "body: JSON.stringify({title:'Background Note', body:'x'})})")
+    page.wait_for_timeout(6500)          # > one poll interval
+    # the search view must still show ONLY the filtered result
+    expect(page.locator(".note-row .t", has_text="Clobber Probe")).to_have_count(1)
+    expect(page.locator(".note-row", has_text="Background Note")).to_have_count(0)

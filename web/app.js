@@ -33,7 +33,11 @@ async function pollRev() {
       state.rev = h.rev;
       const notes = await api("/notes");
       state.notes = notes;
-      if (!state.filterTag) renderList(notes);   // leave an active tag filter alone
+      setNoteIndex(state.notes, state.aliases);
+      // leave an active tag filter OR an active search alone — re-rendering the
+      // full list here wiped search results and keyboard selection mid-use
+      // (surfaced as a CI flake; it was a real clobber, not test timing)
+      if (!state.filterTag && !$("#search").value.trim()) renderList(notes);
       $("#stat").textContent = `${h.notes} notes · ${h.tags} tags · ${h.unresolved_links} unlinked`;
     } else {
       state.rev = h.rev;
