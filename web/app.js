@@ -14,7 +14,9 @@ const state = { path: null, notes: [], dirty: false, saveTimer: null, frontmatte
 async function loadList() {
   state.notes = await api("/notes");
   setNoteIndex(state.notes, state.aliases);        // markdown engine's link index
-  renderList(state.notes);
+  // same rule as the live-sync poll: never clobber an active tag filter or
+  // search — a refresh resolving late would wipe results + keyboard selection
+  if (!state.filterTag && !$("#search").value.trim()) renderList(state.notes);
   api("/aliases").then((a) => { state.aliases = a || {}; setNoteIndex(state.notes, state.aliases); }).catch(() => {});
   api("/tags").then((t) => (state.allTags = t || [])).catch(() => {});
   const h = await api("/health");
