@@ -221,7 +221,9 @@ async function openNote(path) {
   if (!state.locked) api(`/notes/${encodeURI(n.path)}/unlinked`).then(renderUnlinked).catch(() => {});
   state.filterTag = null;
   $("#tag-filter-bar")?.remove();
-  renderList(state.notes);
+  // keep an active search's result list on screen — opening a hit must not
+  // yank the user's remaining results out from under them
+  if (!$("#search").value.trim()) renderList(state.notes);
   setSaveState("");
   closeSidebarMobile();
   if (!$("#preview").classList.contains("hidden")) renderPreview();
