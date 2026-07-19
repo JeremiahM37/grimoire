@@ -3,6 +3,8 @@
 `reindex()` rebuilds everything; `upsert(rel)` / `remove(rel)` handle single-note
 changes (from the API or the watcher). Backlinks fall out of the links table.
 """
+import collections
+import functools
 import json
 import math
 import re
@@ -143,6 +145,36 @@ def alias_map() -> dict:
 _WORD_RE = re.compile(r"[a-z0-9]+")
 
 
+@functools.lru_cache(maxsize=65536)
+def _chunk_counts(chunk: str):
+    """Term counts for one chunk, cached — chunks are immutable strings, so
+    repeated queries never re-tokenize the vault."""
+    return collections.Counter(_WORD_RE.findall(chunk.lower()))
+
+
+def _df(counts, terms):
+    """Document frequency of `terms` over the chunk list."""
+    df = {}
+    for tc in counts:
+        for t in terms:
+            if t in tc:
+                df[t] = df.get(t, 0) + 1
+    return df
+
+
+def _bm25(terms, tc, df, n_chunks, avglen, k1=1.2, b=0.75):
+    """Okapi BM25 over one chunk: IDF-weighted with term-frequency saturation
+    and length normalization, so a term mentioned thrice beats once-mentioned
+    but thirty mentions don't drown everything else."""
+    norm = k1 * (1 - b + b * tc.total() / avglen)
+    score = 0.0
+    for t in terms:
+        tf = tc.get(t, 0)
+        if tf and df.get(t):
+            score += math.log(n_chunks / df[t]) * tf * (k1 + 1) / (tf + norm)
+    return score
+
+
 def retrieve(query: str, k: int = 6, include_private: bool = False) -> list[dict]:
     """Top-k note chunks, hybrid-ranked: embedding cosine similarity fused
     (reciprocal-rank) with an IDF-weighted lexical overlap score. The lexical
@@ -152,39 +184,55 @@ def retrieve(query: str, k: int = 6, include_private: bool = False) -> list[dict
     include_private=True."""
     qv = ai.embed([query])[0]
     qtoks = set(_WORD_RE.findall(query.lower()))
-    sql = "SELECT v.note, v.chunk, v.embedding, n.title FROM vectors v " \
-          "JOIN notes n ON n.path=v.note"
+    sql = "SELECT v.note, v.chunk, v.chunk_idx AS ci, v.embedding, n.title " \
+          "FROM vectors v JOIN notes n ON n.path=v.note"
     if not include_private:
         sql += " WHERE v.private=0"
     rows = db.query(sql)
-    # document frequency of query terms over chunks, for IDF weighting
-    df, toksets = {}, []
-    for r in rows:
-        ts = set(_WORD_RE.findall(r["chunk"].lower()))
-        toksets.append(ts)
-        for t in ts & qtoks:
-            df[t] = df.get(t, 0) + 1
+    counts = [_chunk_counts(r["chunk"]) for r in rows]
     n_chunks = max(len(rows), 1)
+    avglen = (sum(c.total() for c in counts) / n_chunks) or 1.0
+    df = _df(counts, qtoks)
     scored = []
-    for r, ts in zip(rows, toksets, strict=False):
+    for r, tc in zip(rows, counts, strict=False):
         cos = ai.cosine(qv, ai.unpack(r["embedding"]))
-        lex = sum(math.log(n_chunks / df[t]) for t in qtoks & ts if df.get(t))
+        lex = _bm25(qtoks, tc, df, n_chunks, avglen)
         if cos > 0 or lex > 0:
-            scored.append({"path": r["note"], "title": r["title"],
-                           "chunk": r["chunk"], "cos": cos, "lex": lex})
+            scored.append({"path": r["note"], "title": r["title"], "ci": r["ci"],
+                           "chunk": r["chunk"], "cos": cos, "lex": lex, "tc": tc})
+
     for key in ("cos", "lex"):
-        for rank, s in enumerate(sorted(scored, key=lambda x: -x[key])):
-            s["rrf"] = s.get("rrf", 0.0) + 1.0 / (60 + rank)
-    for s in scored:
-        s["score"] = round(s.pop("rrf", 0.0), 4)
-        del s["cos"], s["lex"]
+        for rank, st in enumerate(sorted(scored, key=lambda x: -x[key])):
+            st["rrf"] = st.get("rrf", 0.0) + 1.0 / (60 + rank)
+    for st in scored:
+        st["score"] = round(st.pop("rrf", 0.0), 4)
+        del st["cos"], st["lex"], st["tc"]
     scored.sort(key=lambda x: -x["score"])
     # de-dupe so one note doesn't dominate: keep best chunk per note first, then fill
     seen, primary, extra = set(), [], []
     for s in scored:
         (primary if s["path"] not in seen else extra).append(s)
         seen.add(s["path"])
-    return (primary + extra)[:k]
+    ranked = primary + extra
+    # small-to-big: rank on small chunks, but return the top hits with their
+    # neighbouring chunks merged in — answers often straddle a chunk boundary
+    out, covered = [], set()
+    for s in ranked:
+        if len(out) >= k:
+            break
+        if (s["path"], s["ci"]) in covered:
+            continue          # already inside an earlier hit's neighbourhood
+        if len(out) < 3:
+            near = db.query("SELECT chunk_idx, chunk FROM vectors WHERE note=? "
+                            "AND chunk_idx BETWEEN ? AND ? ORDER BY chunk_idx",
+                            (s["path"], s["ci"] - 1, s["ci"] + 1))
+            s["chunk"] = "\n".join(r["chunk"] for r in near)
+            covered.update((s["path"], r["chunk_idx"]) for r in near)
+        else:
+            covered.add((s["path"], s["ci"]))
+        del s["ci"]
+        out.append(s)
+    return out
 
 
 def backlinks(rel: str) -> list[dict]:

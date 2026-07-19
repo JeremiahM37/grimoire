@@ -57,7 +57,8 @@ on the 1,037 dev questions:
 | as shipped | 63.7% | — | 31.7k chars |
 | + chunker fix only | 45.4% | — | 7.3k chars |
 | + hybrid retrieval | 61.9% | 75.6% | 7.5k chars |
-| + OR fallback & excerpts (round 2) | **82.9%** | **87.8%** | ~19.7k chars |
+| + OR fallback & excerpts (round 2) | 82.9% | 87.8% | ~19.7k chars |
+| + BM25 & small-to-big (round 4) | **85.8%** | **90.0%** | ~23.0k chars |
 
 The as-shipped number is high only because broken chunking stuffed whole
 sessions into context; round 2 beats it with ~40% less context.
@@ -76,28 +77,55 @@ from the turns it applies to.
 | grimoire + nomic-embed | 64.1% | 76.0% | 67.7% | 89.7% | **80.8%** | ~5.4k |
 | full context | 71.7% | 72.1% | 58.1% | 92.3% | **82.2%** | ~24.0k |
 
+## Round 4 — BM25 lexical leg + small-to-big retrieval
+
+Product code only; ingestion identical to round 3. Two changes survived the
+dev gate: Okapi BM25 (term-frequency saturation + length normalization)
+replacing binary set-overlap in the lexical leg, and small-to-big retrieval
+(chunks are ranked small, but the top hits return with their neighbouring
+chunks merged, so answers straddling a chunk boundary stay whole). Chunk
+token counts are also LRU-cached, so repeated queries no longer re-tokenize
+the vault. Three candidates failed the dev gate and were reverted:
+pseudo-relevance feedback, a bigram/sublinear-tf hashing embedder, and
+cosine-leg query expansion.
+
+| condition | multi-hop | temporal | open-domain | single-hop | **overall** | context tokens* |
+|---|---|---|---|---|---|---|
+| none | 1.1% | 0.0% | 6.5% | 1.1% | **1.2%** | 0 |
+| grimoire (offline default) | 53.3% | 71.2% | 54.8% | 89.4% | **76.8%** | ~6.2k |
+| grimoire + nomic-embed | 60.9% | 78.8% | 61.3% | 91.9% | **81.6%** | ~6.2k |
+| full context | 71.7% | 72.1% | 58.1% | 92.3% | **82.2%** | ~24.0k |
+
 ## Reading the numbers
 
-- **Round 3 grimoire + nomic-embed (80.8%) is statistically
-  indistinguishable from the full-context ceiling (82.2%)**: among the 85
-  questions where exactly one of the two was correct, retrieval won 39 and
-  full context won 46 (exact McNemar p = 0.52, n = 500) — while using
-  ~4.4x fewer context tokens per question (~5.4k vs ~24k).
+- **Round 4 grimoire + nomic-embed (81.6%) is statistically
+  indistinguishable from the full-context ceiling (82.2%)**: among the 79
+  questions where exactly one of the two was correct, retrieval won 38 and
+  full context won 41 (exact McNemar p = 0.82, n = 500) — while using
+  ~3.9x fewer context tokens per question (~6.2k vs ~24k). The offline
+  default (76.8%) remains measurably below ceiling (p = 0.009): the gap
+  that's left is the hashing embedder's paraphrase blindness.
+- The scored round 3→4 delta (+1.8 offline / +0.8 nomic) is individually
+  inside sampling noise (paired p = 0.69); the evidence that round 4's
+  changes help is the dev split, where recall rose 82.9→85.8 (hashing) and
+  87.8→90.0 (nomic) on n = 1,037 — the scored movement is directionally
+  consistent with that.
 - The `none` floor (1.2%) shows the questions are not guessable; the reader
   only knows what the condition supplies.
-- The round 1→2 jump (+19.6 offline / +22.8 with nomic) is attributable
-  entirely to the four generic retrieval fixes; the round 2→3 jump (+2.6 /
-  +4.0, concentrated in temporal) to date-carrying titles.
-- Temporal and open-domain retrieval now *beat* full context — focused
-  context beats a 24k-token transcript on those categories; multi-hop
-  remains the hardest for retrieval (64.1% vs 71.7%), consistent with its
-  lower dev-split evidence recall (~70%).
-- **Tried and rejected**: neighbor-chunk expansion ("small-to-big"
-  retrieval) raised dev recall of the semantic leg from 61.9% to 73.6% but
-  cost 2.4x the context — worse recall-per-token than the existing hybrid,
-  so it did not ship.
-- Iteration stopped here: the remaining gap to ceiling is inside sampling
-  noise for n = 500, so further tuning would be fitting noise.
+- Attribution by round: 1→2 (+19.6 / +22.8) the four generic retrieval
+  fixes; 2→3 (+2.6 / +4.0, concentrated in temporal) date-carrying titles;
+  3→4 (+1.8 / +0.8) BM25 + small-to-big.
+- Temporal retrieval (78.8%) now clearly *beats* full context (72.1%) —
+  focused context outperforms a 24k-token transcript there; multi-hop
+  remains retrieval's hardest category (60.9% vs 71.7%), consistent with
+  its lower dev-split evidence recall (~72%).
+- **Tried and rejected across rounds** (dev-gated, reverted):
+  unrestricted neighbor expansion (2.4x context for the recall it bought),
+  pseudo-relevance feedback (±0.2), bigram/sublinear-tf hashing embedder
+  (−0.1), cosine-leg query expansion (0.0). Small-to-big only shipped once
+  capped to the top-3 hits, where it cost +16% context for +2.4 recall.
+- Iteration stopped here: retrieval is a coin flip with the ceiling on the
+  scored set, so further tuning would be fitting noise.
 
 Caveats: one dataset, one reader model, one judge model; category-5
 (adversarial) questions excluded, following published practice. Numbers

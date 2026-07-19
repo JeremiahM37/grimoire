@@ -182,15 +182,15 @@ LLM judge (`claude-sonnet-5`).
 | context given to the reader | accuracy | context tokens / question |
 |---|---|---|
 | nothing | 1.2% | 0 |
-| grimoire retrieval, offline default | 75.0% | ~5.4k |
-| grimoire retrieval + nomic-embed | **80.8%** | ~5.4k |
+| grimoire retrieval, offline default | 76.8% | ~6.2k |
+| grimoire retrieval + nomic-embed | **81.6%** | ~6.2k |
 | entire conversation in context | 82.2% | ~24k |
 
 Retrieval with local embeddings is statistically indistinguishable from
-stuffing the whole conversation into context (exact McNemar p = 0.52,
-n = 500) at ~4.4× fewer context tokens — and it beats full context on the
-temporal and open-domain categories. Full method, per-category tables,
-per-question raw data, and the honest failure notes:
+stuffing the whole conversation into context (exact McNemar p = 0.82,
+n = 500) at ~3.9× fewer context tokens — and it clearly beats full context
+on temporal questions. Full method, per-category tables, per-question raw
+data, and the honest failure notes:
 [benchmarks/locomo/](benchmarks/locomo/).
 
 ## Tests

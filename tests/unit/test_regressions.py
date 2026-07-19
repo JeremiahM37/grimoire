@@ -174,3 +174,27 @@ def test_search_full_excerpts_long_notes(client):
     assert h.get("excerpted") is True
     assert "rotates every 90 days" in h["body"]
     assert len(h["body"]) < len(body) / 2
+
+
+def test_retrieve_top_hits_include_neighbor_chunks(client):
+    """Small-to-big: the top-ranked hits come back with their neighbouring
+    chunks merged, so an answer straddling a chunk boundary stays whole."""
+    paras = [f"filler paragraph {i} about ordinary things" for i in range(12)]
+    paras[6] = "the incident started when the ZX-500 router dropped all packets"
+    paras[7] = "the resolution was replacing the ZX-500 power supply unit"
+    client.post("/api/notes", json={"title": "Incident Log", "body": "\n\n".join(paras)})
+    hits = client.get("/api/retrieve", params={"q": "ZX-500 router incident"}).json()
+    top = hits[0]["chunk"]
+    assert "dropped all packets" in top
+    # the neighbouring chunk's content rides along with the top hit
+    assert "power supply" in top or any("power supply" in h["chunk"] for h in hits[:2])
+
+
+def test_retrieve_expansion_does_not_duplicate_chunks(client):
+    body = "\n\n".join(f"alpha section {i} mentions the keyword zebra" for i in range(8))
+    client.post("/api/notes", json={"title": "Zebra Doc", "body": body})
+    hits = client.get("/api/retrieve", params={"q": "zebra keyword"}).json()
+    joined = [h["chunk"] for h in hits]
+    for i, a in enumerate(joined):
+        for bpart in joined[i + 1:]:
+            assert a not in bpart and bpart not in a

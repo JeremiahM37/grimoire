@@ -48,6 +48,13 @@ person titles a meeting log — in rounds 1–2 the date appeared only in the
 note body. This is an experiment-design variable, not product code; it is
 reported as its own round so its effect is attributable.
 
+*Round 4* changes product code only (ingestion identical to round 3):
+BM25 term-frequency saturation in the lexical leg, and small-to-big
+retrieval (top hits return their neighbouring chunks merged). Candidate
+changes that failed the dev gate — pseudo-relevance feedback, a
+bigram/sublinear-tf hashing embedder, cosine-leg query expansion — were
+reverted and are reported as rejected, per the tuning rule.
+
 ## Reader and judge
 
 - **Reader**: `claude-haiku-4-5`, one prompt template shared verbatim by all
