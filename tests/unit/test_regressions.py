@@ -102,3 +102,14 @@ def test_agent_setup_emits_discoverability_snippet(capsys):
     out = capsys.readouterr().out
     assert "mcpServers" in out and "http://example-host:9111" in out
     assert "get_briefing" in out and "CLAUDE.md" in out
+
+
+def test_agent_setup_ships_the_reflection_hook(capsys):
+    """regression (episode benchmark): agents solved tasks and wrote ZERO
+    memories — reflection is not in their natural stop path. agent-setup must
+    ship the Stop-hook that asks once before a session ends."""
+    from cli.grimoire import cmd_agent_setup
+    cmd_agent_setup([])
+    out = capsys.readouterr().out
+    assert "stop_hook_active" in out and "remember" in out
+    assert "grimoire-reflect.py" in out
