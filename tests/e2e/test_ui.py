@@ -854,7 +854,10 @@ def test_note_list_keyboard_navigation(page, server):
         expect(page.locator("#title")).to_have_value(t, timeout=8000)
     # search to narrow to the two, then arrow-navigate + Enter
     page.fill("#search", "kbdnav")
-    expect(page.locator(".note-row .t", has_text="KbdNav")).to_have_count(2, timeout=8000)
+    # wait for the FILTERED render (2 rows total), not merely 2 matching rows —
+    # the full list can also contain exactly two KbdNav rows plus others, so a
+    # has_text count passes early and the arrows then navigate the wrong list
+    expect(page.locator(".note-row[data-path]")).to_have_count(2, timeout=8000)
     page.locator("#search").press("ArrowDown")
     expect(page.locator(".note-row.kbd-sel")).to_have_count(1)
     page.locator("#search").press("ArrowDown")
