@@ -181,6 +181,36 @@ decisions, and agent memory, exposed through the `grimoire` MCP tools.
 """
 
 
+REFLECT_HOOK = """\
+#!/usr/bin/env python3
+# Grimoire reflection hook (Claude Code Stop hook): before an agent session
+# ends, ask ONCE whether anything durable was learned — and if so, persist it
+# via the grimoire `remember` tool. Idempotent: allows the stop on the second
+# pass so agents are never trapped.
+import json, sys
+data = json.load(sys.stdin)
+if data.get("stop_hook_active"):
+    sys.exit(0)   # already reflected once — allow the stop
+print(json.dumps({
+    "decision": "block",
+    "reason": ("Before finishing: did this session teach you anything a future "
+               "agent would need — root causes, gotchas, decisions, environment "
+               "rules? If yes, record it with the grimoire `remember` tool "
+               "(topic it well). If nothing is worth keeping, just finish.")}))
+"""
+
+HOOK_SETTINGS = """\
+{
+  "hooks": {
+    "Stop": [
+      { "hooks": [ { "type": "command",
+                     "command": "python3 .claude/grimoire-reflect.py" } ] }
+    ]
+  }
+}
+"""
+
+
 def cmd_agent_setup(args):
     """Print everything needed to make agents discover the knowledge base:
     an MCP config block and a snippet for the repo's agent context file
@@ -197,6 +227,12 @@ def cmd_agent_setup(args):
     print()
     print("# 2. Add to the repo's CLAUDE.md / AGENTS.md so agents consult the KB:")
     print(AGENT_SNIPPET)
+    print("# 3. Optional but measured to matter: a reflection hook so agents")
+    print("#    RECORD what they learn before finishing (benchmarked: without it,")
+    print("#    agents solve tasks and write nothing). Save as")
+    print("#    .claude/grimoire-reflect.py + merge into .claude/settings.json:")
+    print(REFLECT_HOOK)
+    print(HOOK_SETTINGS)
 
 
 COMMANDS = {"new": cmd_new, "daily": cmd_daily, "capture": cmd_capture,
