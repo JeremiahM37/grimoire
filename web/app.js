@@ -66,6 +66,7 @@ const foldState = JSON.parse(localStorage.getItem("grimoire-folds") || "{}");
 
 function renderList(notes, snippets = false) {
   const el = $("#note-list");
+  const selPath = el.querySelector(".note-row.kbd-sel")?.dataset.path;
   el.innerHTML = "";
   if (!notes.length) { el.innerHTML = '<div class="note-row m">No notes yet.</div>'; return; }
   // group by top-level folder — a classic file-explorer tree, while
@@ -73,7 +74,7 @@ function renderList(notes, snippets = false) {
   const grouped = !snippets;
   if (!grouped) {
     for (const n of notes) el.appendChild(noteRow(n, snippets));
-    listSel = -1;
+    restoreListSel(selPath);
     return;
   }
   const root = [], folders = new Map();
@@ -94,11 +95,18 @@ function renderList(notes, snippets = false) {
     for (const n of items) det.appendChild(noteRow(n, snippets));
     el.appendChild(det);
   }
-  listSel = -1;
+  restoreListSel(selPath);
 }
 
 /* keyboard navigation of the note list (↑/↓ move, Enter opens) */
 let listSel = -1;
+function restoreListSel(selPath) {
+  // keep the user's arrow-key position across re-renders (late search
+  // results, live-sync refreshes) — losing it made Enter silently no-op
+  const rows = [...$("#note-list").querySelectorAll(".note-row[data-path]")];
+  listSel = selPath ? rows.findIndex((r) => r.dataset.path === selPath) : -1;
+  if (listSel >= 0) rows[listSel].classList.add("kbd-sel");
+}
 function moveListSel(delta) {
   const rows = [...$("#note-list").querySelectorAll(".note-row[data-path]")];
   if (!rows.length) return;
@@ -178,9 +186,12 @@ function showContext(path, x, y) {
 addEventListener("click", (e) => { if (!e.target.closest("#ctx-menu")) ctxMenu.classList.add("hidden"); });
 
 /* ---------- open / save ---------- */
+let openSeq = 0;
 async function openNote(path) {
+  const seq = ++openSeq;
   if (state.dirty) await save();
   const n = await api(`/notes/${encodeURI(path)}`);
+  if (seq !== openSeq) return;   // a newer open started while we awaited — this one lost
   state.path = n.path; state.dirty = false; state.frontmatter = n.frontmatter || {};
   state.locked = !!n.locked; state.encrypted = !!n.encrypted;
   $("#title").value = n.title || "";
