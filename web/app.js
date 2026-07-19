@@ -242,7 +242,6 @@ async function save() {
     state.dirty = false; setSaveState("saved"); clearDraft();
     Plugins.emit("note-save", { path: state.path });
     delete hoverCache[state.path];   // preview cache may be stale now
-    setTimeout(() => setSaveState(""), 1200);
     // refresh both link panels — renderBacklinks REPLACES the container, so
     // outgoing must be re-rendered too (it silently vanished after autosaves).
     // Guard on the path: a save can land after the user switched notes.
@@ -1625,7 +1624,6 @@ async function savePane2() {
     if (title) fm.title = title; else delete fm.title;
     await api(`/notes/${encodeURI(pane2.path)}`, { method: "PUT", body: { body: ta2.value, frontmatter: fm } });
     pane2.dirty = false; $("#save-state2").textContent = "saved";
-    setTimeout(() => $("#save-state2").textContent = "", 1200);
     // if the same note is open in the main pane, pull the update in
     if (pane2.path === state.path && !state.locked) {
       const m = await api(`/notes/${encodeURI(state.path)}`);
