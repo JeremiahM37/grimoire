@@ -46,9 +46,32 @@ def _llm_model() -> str:
 
 # ---- chunking ---------------------------------------------------------------
 
+def _split_long_para(p: str, target: int) -> list[str]:
+    """A paragraph without blank lines (a transcript, a log, hard-wrapped
+    prose) must not become one giant chunk — split it on line boundaries,
+    falling back to sentence boundaries for a single enormous line."""
+    if len(p) <= target * 1.5:
+        return [p]
+    units = p.splitlines()
+    if len(units) == 1:
+        units = re.split(r"(?<=[.!?])\s+", p)
+    out, cur = [], ""
+    for u in units:
+        if len(cur) + len(u) + 1 > target and cur:
+            out.append(cur)
+            cur = u
+        else:
+            cur = (cur + "\n" + u) if cur else u
+    if cur:
+        out.append(cur)
+    return out
+
+
 def chunk_text(text: str, target: int = 800) -> list[str]:
-    """Split on blank lines, then greedily pack paragraphs to ~target chars."""
-    paras = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
+    """Split on blank lines (long paragraphs split further on lines/sentences),
+    then greedily pack pieces to ~target chars."""
+    paras = [q for p in re.split(r"\n\s*\n", text) if p.strip()
+             for q in _split_long_para(p.strip(), target)]
     chunks, cur = [], ""
     for p in paras:
         if len(cur) + len(p) + 2 > target and cur:

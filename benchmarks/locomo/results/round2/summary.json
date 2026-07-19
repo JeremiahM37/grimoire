@@ -1,0 +1,106 @@
+{
+  "none": {
+    "overall": {
+      "correct": 6,
+      "n": 500,
+      "pct": 1.2
+    },
+    "by_category": {
+      "multi-hop": {
+        "correct": 1,
+        "n": 92
+      },
+      "temporal": {
+        "correct": 0,
+        "n": 104
+      },
+      "open-domain": {
+        "correct": 2,
+        "n": 31
+      },
+      "single-hop": {
+        "correct": 3,
+        "n": 273
+      }
+    },
+    "median_input_tokens": 24015
+  },
+  "grimoire": {
+    "overall": {
+      "correct": 362,
+      "n": 500,
+      "pct": 72.4
+    },
+    "by_category": {
+      "multi-hop": {
+        "correct": 47,
+        "n": 92
+      },
+      "temporal": {
+        "correct": 62,
+        "n": 104
+      },
+      "open-domain": {
+        "correct": 18,
+        "n": 31
+      },
+      "single-hop": {
+        "correct": 235,
+        "n": 273
+      }
+    },
+    "median_input_tokens": 29177
+  },
+  "grimoire-ollama": {
+    "overall": {
+      "correct": 384,
+      "n": 500,
+      "pct": 76.8
+    },
+    "by_category": {
+      "multi-hop": {
+        "correct": 55,
+        "n": 92
+      },
+      "temporal": {
+        "correct": 63,
+        "n": 104
+      },
+      "open-domain": {
+        "correct": 18,
+        "n": 31
+      },
+      "single-hop": {
+        "correct": 248,
+        "n": 273
+      }
+    },
+    "median_input_tokens": 29134
+  },
+  "full": {
+    "overall": {
+      "correct": 411,
+      "n": 500,
+      "pct": 82.2
+    },
+    "by_category": {
+      "multi-hop": {
+        "correct": 66,
+        "n": 92
+      },
+      "temporal": {
+        "correct": 75,
+        "n": 104
+      },
+      "open-domain": {
+        "correct": 18,
+        "n": 31
+      },
+      "single-hop": {
+        "correct": 252,
+        "n": 273
+      }
+    },
+    "median_input_tokens": 48063
+  }
+}

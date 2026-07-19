@@ -24,10 +24,10 @@ def run_query(q: QueryIn):
     return queries.run(q.block, include_private=True)
 
 
-def _fts_escape(q: str) -> str:
+def _fts_escape(q: str, op: str = " ") -> str:
     # wrap each term as a quoted prefix so user input can't break FTS syntax
     terms = [t for t in q.replace('"', " ").split() if t]
-    return " ".join(f'"{t}"*' for t in terms) if terms else '""'
+    return op.join(f'"{t}"*' for t in terms) if terms else '""'
 
 
 def _is_pinned(path: str) -> bool:
@@ -55,11 +55,14 @@ def search(q: str = "", tag: str | None = None, limit: int = 50, full: bool = Fa
     text = " ".join(terms).strip()
 
     if text:
+        sql = ("SELECT f.path, f.title, snippet(fts, 2, '[', ']', ' … ', 12) AS snippet, "
+               "bm25(fts) AS score FROM fts f WHERE fts MATCH ? ORDER BY score LIMIT 500")
         try:
-            rows = db.query(
-                "SELECT f.path, f.title, snippet(fts, 2, '[', ']', ' … ', 12) AS snippet, "
-                "bm25(fts) AS score FROM fts f WHERE fts MATCH ? ORDER BY score LIMIT 500",
-                (_fts_escape(text),))
+            rows = db.query(sql, (_fts_escape(text),))
+            if not rows and len(text.split()) > 1:
+                # natural-language queries rarely match EVERY term — fall back
+                # to any-term so a question still surfaces its best notes
+                rows = db.query(sql, (_fts_escape(text, op=" OR "),))
         except Exception:
             return []
     elif op_tag or want_pinned or path_like:
@@ -77,17 +80,45 @@ def search(q: str = "", tag: str | None = None, limit: int = 50, full: bool = Fa
             continue
         hit = {"path": r["path"], "title": r["title"], "snippet": r["snippet"]}
         if full:
-            # agents opt in to whole bodies to avoid a search→read round-trip
-            # per hit; encrypted notes stay sealed (their body is ciphertext,
-            # so return nothing rather than noise)
+            # agents opt in to bodies to avoid a search→read round-trip per
+            # hit; encrypted notes stay sealed (their body is ciphertext, so
+            # return nothing rather than noise). Long notes come back as the
+            # query-relevant excerpt, not the whole body — read the note for
+            # the rest.
             row = db.one("SELECT body FROM notes WHERE path=?", (r["path"],))
             from .. import secrets as _secrets
             body = (row or {}).get("body") or ""
-            hit["body"] = "" if _secrets.is_encrypted(body) else body
+            if _secrets.is_encrypted(body):
+                body = ""
+            elif len(body) > 2400:
+                body = _excerpt(body, terms)
+                hit["excerpted"] = True
+            hit["body"] = body
         out.append(hit)
         if len(out) >= limit:
             break
     return out
+
+
+
+
+def _excerpt(body: str, terms: list[str], budget: int = 2400) -> str:
+    """The most query-relevant ~budget chars of a long body: score its chunks
+    by how many query terms they contain, keep the best ones in document
+    order. With no scoring signal, fall back to the head of the note."""
+    from .. import ai
+    chunks = ai.chunk_text(body)
+    toks = [t.lower() for t in terms]
+    scored = sorted(range(len(chunks)),
+                    key=lambda i: -sum(1 for t in toks if t in chunks[i].lower()))
+    keep, used = set(), 0
+    for i in scored:
+        if used >= budget:
+            break
+        keep.add(i)
+        used += len(chunks[i])
+    return "\n[…]\n".join(chunks[i] for i in sorted(keep))
+
 
 
 @router.get("/tags")

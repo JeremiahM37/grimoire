@@ -113,3 +113,64 @@ def test_agent_setup_ships_the_reflection_hook(capsys):
     out = capsys.readouterr().out
     assert "stop_hook_active" in out and "remember" in out
     assert "grimoire-reflect.py" in out
+
+
+def test_chunk_text_splits_blank_line_free_transcripts():
+    """A transcript/log with only single newlines must not become one giant
+    chunk — that made retrieval return whole documents instead of passages."""
+    from server.ai import chunk_text
+    lines = "\n".join(f"Speaker {i % 2}: utterance number {i} with some words"
+                      for i in range(200))
+    chunks = chunk_text(lines, target=800)
+    assert len(chunks) > 5
+    assert all(len(c) <= 800 * 1.6 for c in chunks)
+    # nothing lost
+    assert "".join(c.replace("\n", "") for c in chunks) == lines.replace("\n", "")
+
+
+def test_chunk_text_splits_single_enormous_line_on_sentences():
+    from server.ai import chunk_text
+    text = " ".join(f"Sentence number {i} is here." for i in range(300))
+    chunks = chunk_text(text, target=800)
+    assert len(chunks) > 3
+    assert all(len(c) <= 800 * 1.6 for c in chunks)
+
+
+def test_chunk_text_normal_prose_unchanged():
+    from server.ai import chunk_text
+    text = "Para one.\n\nPara two.\n\nPara three."
+    assert chunk_text(text) == [text]
+
+
+def test_retrieve_ranks_rare_term_chunk_first(client):
+    """Hybrid retrieval: a chunk holding the rare, discriminative query word
+    must outrank chunks that share only filler words with the query."""
+    client.post("/api/notes", json={"title": "Ops Log", "body": (
+        "the deploy went fine and the team was happy about the deploy\n\n"
+        "the team met about the roadmap and the team talked a lot\n\n"
+        "kubernetes ingress crashed with error INV-9931 during the deploy")})
+    hits = client.get("/api/retrieve", params={"q": "what was the INV-9931 error"}).json()
+    assert hits and "INV-9931" in hits[0]["chunk"]
+
+
+def test_search_natural_language_or_fallback(client):
+    """A question that doesn't match every term still surfaces the best note."""
+    client.post("/api/notes", json={"title": "Backup Runbook",
+                                    "body": "restic prune runs on sundays"})
+    hits = client.get("/api/search",
+                      params={"q": "when exactly does the restic prune job run"}).json()
+    assert any(h["title"] == "Backup Runbook" for h in hits)
+
+
+def test_search_full_excerpts_long_notes(client):
+    """full=True on a long note returns the query-relevant excerpt, flagged,
+    not the whole body."""
+    filler = "\n\n".join(f"paragraph {i} about nothing in particular" for i in range(80))
+    body = filler + "\n\nthe vault passphrase rotates every 90 days\n\n" + filler
+    client.post("/api/notes", json={"title": "Big Note", "body": body})
+    hits = client.get("/api/search",
+                      params={"q": "passphrase rotates", "full": True}).json()
+    h = next(x for x in hits if x["title"] == "Big Note")
+    assert h.get("excerpted") is True
+    assert "rotates every 90 days" in h["body"]
+    assert len(h["body"]) < len(body) / 2

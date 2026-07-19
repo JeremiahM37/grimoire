@@ -169,6 +169,30 @@ SSRF-guarded, fully audited; secret values never appear in any response. Private
 notes excluded from retrieval, `/read`, export, transclusion, and queries on
 unauthenticated surfaces. Strict CSP. Full threat model: [SECURITY.md](SECURITY.md).
 
+## Benchmark: LoCoMo
+
+Grimoire's retrieval is measured on [LoCoMo](https://github.com/snap-research/locomo)
+(ACL 2024), the public long-conversation memory benchmark used by the major
+agent-memory systems. Protocol (pre-registered, with baselines run under
+identical conditions): 500 stratified questions, conversations ingested as
+plain session notes, questions asked verbatim against the same retrieval
+code the MCP tools serve, fixed reader (`claude-haiku-4-5`), strict blind
+LLM judge (`claude-sonnet-5`).
+
+| context given to the reader | accuracy | context tokens / question |
+|---|---|---|
+| nothing | 1.2% | 0 |
+| grimoire retrieval, offline default | 75.0% | ~5.4k |
+| grimoire retrieval + nomic-embed | **80.8%** | ~5.4k |
+| entire conversation in context | 82.2% | ~24k |
+
+Retrieval with local embeddings is statistically indistinguishable from
+stuffing the whole conversation into context (exact McNemar p = 0.52,
+n = 500) at ~4.4× fewer context tokens — and it beats full context on the
+temporal and open-domain categories. Full method, per-category tables,
+per-question raw data, and the honest failure notes:
+[benchmarks/locomo/](benchmarks/locomo/).
+
 ## Tests
 
 ```bash
