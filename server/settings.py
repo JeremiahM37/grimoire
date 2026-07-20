@@ -16,6 +16,8 @@ FIELDS = {
     "llm_model": ("GRIMOIRE_LLM_MODEL", "qwen3.5:4b"),
     "ollama_url": ("GRIMOIRE_OLLAMA_URL", ""),
     "embed_model": ("GRIMOIRE_EMBED_MODEL", "nomic-embed-text"),
+    "local_embed": ("GRIMOIRE_LOCAL_EMBED", "auto"),   # auto|off — model2vec if installed
+    "local_embed_model": ("GRIMOIRE_LOCAL_EMBED_MODEL", "minishlab/potion-base-8M"),
     "whisper_url": ("GRIMOIRE_WHISPER_URL", ""),
 }
 

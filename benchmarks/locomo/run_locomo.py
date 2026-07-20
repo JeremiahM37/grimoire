@@ -34,7 +34,7 @@ DATA_URL = "https://raw.githubusercontent.com/snap-research/locomo/main/data/loc
 
 SEED = 42
 SAMPLE_N = 500
-CONDITIONS = ["none", "grimoire", "grimoire-ollama", "full"]
+CONDITIONS = ["none", "grimoire", "grimoire-local", "grimoire-ollama", "full"]
 READER_MODEL = "claude-haiku-4-5"
 JUDGE_MODEL = "claude-sonnet-5"
 PARALLEL = int(os.environ.get("LOCOMO_PARALLEL", "12"))
@@ -174,12 +174,14 @@ def phase_retrieve():
     done = {(r["qid"], r["condition"])
             for r in map(json.loads, cfile.open())} if cfile.exists() else set()
     out = cfile.open("a")
-    for cond in ["grimoire", "grimoire-ollama", "full", "none"]:
+    for cond in ["grimoire", "grimoire-local", "grimoire-ollama", "full", "none"]:
+        os.environ.pop("GRIMOIRE_OLLAMA_URL", None)
+        os.environ["GRIMOIRE_LOCAL_EMBED"] = "off"     # hashing = as-shipped floor
         if cond == "grimoire-ollama":
             os.environ["GRIMOIRE_OLLAMA_URL"] = OLLAMA_URL
             os.environ["GRIMOIRE_EMBED_MODEL"] = "nomic-embed-text"
-        else:
-            os.environ.pop("GRIMOIRE_OLLAMA_URL", None)
+        elif cond == "grimoire-local":
+            os.environ["GRIMOIRE_LOCAL_EMBED"] = "auto"    # model2vec (pip extra)
         for ci, c in enumerate(data):
             todo = [q for q in qs if q["conv"] == ci and (q["qid"], cond) not in done]
             if not todo:

@@ -198,3 +198,19 @@ def test_retrieve_expansion_does_not_duplicate_chunks(client):
     for i, a in enumerate(joined):
         for bpart in joined[i + 1:]:
             assert a not in bpart and bpart not in a
+
+
+def test_embed_signature_change_triggers_reembed(client, monkeypatch):
+    """Switching embedding backends must re-embed the vault — cosine over
+    mixed-backend vectors is meaningless."""
+    from server import ai, db, index
+    client.post("/api/notes", json={"title": "Sig Note", "body": "hello world"})
+    assert index.ensure_embed_signature() is False        # first run just records
+    before = db.one("SELECT embedding FROM vectors LIMIT 1")["embedding"]
+    monkeypatch.setattr(ai, "embed_signature", lambda: "other:backend")
+    monkeypatch.setattr(ai, "embed",
+                        lambda texts: [[1.0] + [0.0] * (ai.EMBED_DIM - 1) for _ in texts])
+    assert index.ensure_embed_signature() is True         # change → re-embed
+    after = db.one("SELECT embedding FROM vectors LIMIT 1")["embedding"]
+    assert after != before
+    assert index.ensure_embed_signature() is False        # new sig recorded, stable now

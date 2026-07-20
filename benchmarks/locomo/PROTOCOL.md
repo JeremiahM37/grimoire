@@ -33,6 +33,7 @@ text (speaker-labelled turns; image turns rendered as
 |---|---|
 | `none` | nothing (guessability floor) |
 | `grimoire` | what Grimoire retrieval returns, as shipped zero-config (hashing embedder): top-10 chunks from `/api/retrieve` + top-5 `/api/search` FTS hits for the raw question |
+| `grimoire-local` | same, with the optional local model2vec embedder (`pip install model2vec`; added in round 5) |
 | `grimoire-ollama` | same, with the one-env-var supported config `GRIMOIRE_OLLAMA_URL` + `nomic-embed-text` embeddings |
 | `full` | the entire conversation transcript (upper bound) |
 
@@ -47,6 +48,11 @@ session date (`Conversation session 3 (1:56 pm on 8 May, 2023)`), the way a
 person titles a meeting log — in rounds 1–2 the date appeared only in the
 note body. This is an experiment-design variable, not product code; it is
 reported as its own round so its effect is attributable.
+
+*Round 5* adds the `grimoire-local` condition (optional `model2vec`
+static-embedding backend, auto-detected when installed; the index re-embeds
+on backend change). No other condition re-ran — no code affecting them
+changed since round 4.
 
 *Round 4* changes product code only (ingestion identical to round 3):
 BM25 term-frequency saturation in the lexical leg, and small-to-big

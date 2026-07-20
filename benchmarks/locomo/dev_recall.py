@@ -70,17 +70,19 @@ def turn_texts(conv):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--ollama", action="store_true")
+    ap.add_argument("--embedder", choices=["hash", "local", "ollama"], default="hash")
     a = ap.parse_args()
-    if a.ollama:
+    os.environ.pop("GRIMOIRE_OLLAMA_URL", None)
+    os.environ["GRIMOIRE_LOCAL_EMBED"] = "off"
+    if a.embedder == "ollama":
         os.environ["GRIMOIRE_OLLAMA_URL"] = OLLAMA_URL
         os.environ["GRIMOIRE_EMBED_MODEL"] = "nomic-embed-text"
-    else:
-        os.environ.pop("GRIMOIRE_OLLAMA_URL", None)
+    elif a.embedder == "local":
+        os.environ["GRIMOIRE_LOCAL_EMBED"] = "auto"
 
     data = load_data()
     qs = dev_questions(data)
-    print(f"dev questions: {len(qs)}  embedder: {'ollama' if a.ollama else 'hashing'}")
+    print(f"dev questions: {len(qs)}  embedder: {a.embedder}")
 
     from server import db
     rec = collections.defaultdict(list)     # category -> per-question recall

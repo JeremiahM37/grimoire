@@ -150,6 +150,7 @@ Everything is environment-driven (same variables bare-metal, systemd, Docker):
 | `GRIMOIRE_OLLAMA_URL` | *(empty)* | Reachable Ollama → generative ask/summarize |
 | `GRIMOIRE_LLM` / `GRIMOIRE_LLM_MODEL` | auto / `qwen3.5:4b` | Answer backend + model |
 | `GRIMOIRE_EMBED_MODEL` | `nomic-embed-text` | Embeddings (offline hashing fallback built in) |
+| `GRIMOIRE_LOCAL_EMBED` / `_MODEL` | `auto` / `potion-base-8M` | `pip install model2vec` → local semantic embeddings, no service |
 | `GRIMOIRE_WHISPER_URL` / `_MODEL` | *(empty)* | Audio-memo transcription |
 | `GRIMOIRE_DAILY_DIR` / `GRIMOIRE_INBOX_DIR` | `journal` / `inbox` | Vault sub-folders |
 | `GRIMOIRE_SYNC_PEER` / `_TOKEN` / `_INTERVAL` | *(off)* | Background sync with a peer |
@@ -182,15 +183,16 @@ LLM judge (`claude-sonnet-5`).
 | context given to the reader | accuracy | context tokens / question |
 |---|---|---|
 | nothing | 1.2% | 0 |
-| grimoire retrieval, offline default | 76.8% | ~6.2k |
-| grimoire retrieval + nomic-embed | **81.6%** | ~6.2k |
+| grimoire retrieval, zero-dependency default | 76.8% | ~6.2k |
+| grimoire retrieval + `pip install model2vec` | 80.8% | ~6.1k |
+| grimoire retrieval + nomic-embed (Ollama) | **81.6%** | ~6.2k |
 | entire conversation in context | 82.2% | ~24k |
 
-Retrieval with local embeddings is statistically indistinguishable from
-stuffing the whole conversation into context (exact McNemar p = 0.82,
-n = 500) at ~3.9× fewer context tokens — and it clearly beats full context
-on temporal questions. Full method, per-category tables, per-question raw
-data, and the honest failure notes:
+Retrieval is statistically indistinguishable from stuffing the whole
+conversation into context (exact McNemar p = 0.82 for nomic, p = 0.51 for
+the fully-local model2vec config; n = 500) at ~3.9× fewer context tokens —
+and it clearly beats full context on temporal questions. Full method,
+per-category tables, per-question raw data, and the honest failure notes:
 [benchmarks/locomo/](benchmarks/locomo/).
 
 ## Tests

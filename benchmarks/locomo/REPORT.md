@@ -59,6 +59,7 @@ on the 1,037 dev questions:
 | + hybrid retrieval | 61.9% | 75.6% | 7.5k chars |
 | + OR fallback & excerpts (round 2) | 82.9% | 87.8% | ~19.7k chars |
 | + BM25 & small-to-big (round 4) | **85.8%** | **90.0%** | ~23.0k chars |
+| round-4 code, model2vec embedder | 89.5% | — | ~23.1k chars |
 
 The as-shipped number is high only because broken chunking stuffed whole
 sessions into context; round 2 beats it with ~40% less context.
@@ -95,6 +96,27 @@ cosine-leg query expansion.
 | grimoire (offline default) | 53.3% | 71.2% | 54.8% | 89.4% | **76.8%** | ~6.2k |
 | grimoire + nomic-embed | 60.9% | 78.8% | 61.3% | 91.9% | **81.6%** | ~6.2k |
 | full context | 71.7% | 72.1% | 58.1% | 92.3% | **82.2%** | ~24.0k |
+
+## Round 5 — optional local embedding model (`pip install model2vec`)
+
+Round 4 left one measurable gap: the zero-dependency hashing embedder is
+paraphrase-blind (offline vs full-context p = 0.009). Round 5 adds an
+**optional** local semantic embedder — install `model2vec` and Grimoire
+auto-detects it (static embeddings, numpy-only, ~30 MB model, no external
+service; the index re-embeds automatically when the backend changes). New
+condition `grimoire-local`; every other condition carried forward unchanged.
+
+| condition | multi-hop | temporal | open-domain | single-hop | **overall** | context tokens* |
+|---|---|---|---|---|---|---|
+| grimoire (offline default) | 53.3% | 71.2% | 54.8% | 89.4% | **76.8%** | ~6.2k |
+| grimoire + model2vec (pip extra) | 56.5% | 79.8% | 61.3% | 91.6% | **80.8%** | ~6.1k |
+| grimoire + nomic-embed | 60.9% | 78.8% | 61.3% | 91.9% | **81.6%** | ~6.2k |
+| full context | 71.7% | 72.1% | 58.1% | 92.3% | **82.2%** | ~24.0k |
+
+`grimoire-local` is significantly better than the hashing default
+(48 wins / 28 losses, McNemar p = 0.029) and statistically
+indistinguishable from full context (37/44, p = 0.51) — the fully-local,
+no-external-service config now sits at the ceiling too.
 
 ## Reading the numbers
 

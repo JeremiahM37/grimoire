@@ -100,15 +100,61 @@ def _hash_embed(text: str) -> list[float]:
     return [v / norm for v in vec]
 
 
+# optional local semantic embeddings: `pip install model2vec` and grimoire
+# picks them up automatically (static embeddings — numpy-only, ~30MB model,
+# instant encode). Ollama still wins when configured; hashing remains the
+# zero-dependency floor. Disable with GRIMOIRE_LOCAL_EMBED=off.
+_m2v_model = None
+_m2v_failed = False
+
+
+def _local_enabled() -> bool:
+    return str(_cfg("local_embed") or "auto").lower() not in ("off", "0", "false", "no")
+
+
+def _local_model_name() -> str:
+    return _cfg("local_embed_model") or "minishlab/potion-base-8M"
+
+
+def _m2v():
+    global _m2v_model, _m2v_failed
+    if _m2v_model is not None or _m2v_failed:
+        return _m2v_model
+    try:
+        from model2vec import StaticModel
+        _m2v_model = StaticModel.from_pretrained(_local_model_name())
+    except Exception:
+        _m2v_failed = True   # not installed / model not cached offline — fine
+    return _m2v_model
+
+
 def embed(texts: list[str]) -> list[list[float]]:
-    """Embed a batch. Ollama when configured, else the deterministic hasher."""
+    """Embed a batch: Ollama when configured, else the local model2vec model
+    when installed, else the deterministic hasher."""
     url = _ollama_url()
     if url:
         try:
             return [_ollama_embed(url, t) for t in texts]
         except Exception:
             pass   # graceful offline fallback — never break indexing on AI outage
+    if _local_enabled():
+        m = _m2v()
+        if m is not None:
+            try:
+                return [[float(x) for x in v] for v in m.encode(texts)]
+            except Exception:
+                pass
     return [_hash_embed(t) for t in texts]
+
+
+def embed_signature() -> str:
+    """Identifies the active embedding backend. Vectors from different
+    backends are not comparable — the index re-embeds when this changes."""
+    if _ollama_url():
+        return f"ollama:{_embed_model()}"
+    if _local_enabled() and _m2v() is not None:
+        return f"model2vec:{_local_model_name()}"
+    return "hash:v1"
 
 
 def _ollama_embed(url: str, text: str) -> list[float]:
