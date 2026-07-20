@@ -1,0 +1,134 @@
+{
+  "none": {
+    "overall": {
+      "correct": 13,
+      "n": 200
+    },
+    "by_type": {
+      "knowledge-update": {
+        "correct": 1,
+        "n": 31
+      },
+      "multi-session": {
+        "correct": 0,
+        "n": 51
+      },
+      "single-session-assistant": {
+        "correct": 5,
+        "n": 24
+      },
+      "single-session-preference": {
+        "correct": 1,
+        "n": 13
+      },
+      "single-session-user": {
+        "correct": 2,
+        "n": 27
+      },
+      "temporal-reasoning": {
+        "correct": 4,
+        "n": 54
+      }
+    },
+    "median_input_tokens": 24044
+  },
+  "grimoire-local": {
+    "overall": {
+      "correct": 150,
+      "n": 200
+    },
+    "by_type": {
+      "knowledge-update": {
+        "correct": 26,
+        "n": 31
+      },
+      "multi-session": {
+        "correct": 31,
+        "n": 51
+      },
+      "single-session-assistant": {
+        "correct": 21,
+        "n": 24
+      },
+      "single-session-preference": {
+        "correct": 4,
+        "n": 13
+      },
+      "single-session-user": {
+        "correct": 24,
+        "n": 27
+      },
+      "temporal-reasoning": {
+        "correct": 44,
+        "n": 54
+      }
+    },
+    "median_input_tokens": 29939
+  },
+  "grimoire-ollama": {
+    "overall": {
+      "correct": 146,
+      "n": 200
+    },
+    "by_type": {
+      "knowledge-update": {
+        "correct": 24,
+        "n": 31
+      },
+      "multi-session": {
+        "correct": 31,
+        "n": 51
+      },
+      "single-session-assistant": {
+        "correct": 23,
+        "n": 24
+      },
+      "single-session-preference": {
+        "correct": 2,
+        "n": 13
+      },
+      "single-session-user": {
+        "correct": 23,
+        "n": 27
+      },
+      "temporal-reasoning": {
+        "correct": 43,
+        "n": 54
+      }
+    },
+    "median_input_tokens": 29802
+  },
+  "full": {
+    "overall": {
+      "correct": 141,
+      "n": 200
+    },
+    "by_type": {
+      "knowledge-update": {
+        "correct": 25,
+        "n": 31
+      },
+      "multi-session": {
+        "correct": 28,
+        "n": 51
+      },
+      "single-session-assistant": {
+        "correct": 24,
+        "n": 24
+      },
+      "single-session-preference": {
+        "correct": 4,
+        "n": 13
+      },
+      "single-session-user": {
+        "correct": 23,
+        "n": 27
+      },
+      "temporal-reasoning": {
+        "correct": 37,
+        "n": 54
+      }
+    },
+    "median_input_tokens": 141053
+  }
+}

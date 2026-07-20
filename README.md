@@ -170,15 +170,18 @@ SSRF-guarded, fully audited; secret values never appear in any response. Private
 notes excluded from retrieval, `/read`, export, transclusion, and queries on
 unauthenticated surfaces. Strict CSP. Full threat model: [SECURITY.md](SECURITY.md).
 
-## Benchmark: LoCoMo
+## Benchmarks
 
-Grimoire's retrieval is measured on [LoCoMo](https://github.com/snap-research/locomo)
-(ACL 2024), the public long-conversation memory benchmark used by the major
-agent-memory systems. Protocol (pre-registered, with baselines run under
-identical conditions): 500 stratified questions, conversations ingested as
+Grimoire's retrieval is measured on the two public long-conversation memory
+benchmarks the agent-memory field uses — [LoCoMo](https://github.com/snap-research/locomo)
+(ACL 2024) and [LongMemEval](https://github.com/xiaowu0162/LongMemEval)
+(ICLR 2025) — under pre-registered protocols with all baselines run under
+identical conditions: stratified question samples, conversations ingested as
 plain session notes, questions asked verbatim against the same retrieval
 code the MCP tools serve, fixed reader (`claude-haiku-4-5`), strict blind
 LLM judge (`claude-sonnet-5`).
+
+**LoCoMo** (500 questions, ~24k-token conversations):
 
 | context given to the reader | accuracy | context tokens / question |
 |---|---|---|
@@ -188,12 +191,24 @@ LLM judge (`claude-sonnet-5`).
 | grimoire retrieval + nomic-embed (Ollama) | **81.6%** | ~6.2k |
 | entire conversation in context | 82.2% | ~24k |
 
-Retrieval is statistically indistinguishable from stuffing the whole
-conversation into context (exact McNemar p = 0.82 for nomic, p = 0.51 for
-the fully-local model2vec config; n = 500) at ~3.9× fewer context tokens —
-and it clearly beats full context on temporal questions. Full method,
-per-category tables, per-question raw data, and the honest failure notes:
-[benchmarks/locomo/](benchmarks/locomo/).
+**LongMemEval** (200 questions, ~117k-token haystacks of ~50 chat sessions):
+
+| context given to the reader | accuracy | context tokens / question |
+|---|---|---|
+| nothing | 6.5% | 0 |
+| grimoire retrieval + `pip install model2vec` | **75.0%** | ~5.9k |
+| grimoire retrieval + nomic-embed (Ollama) | 73.0% | ~5.8k |
+| entire haystack in context | 70.5% | ~117k |
+
+On LoCoMo, retrieval is statistically indistinguishable from stuffing the
+whole conversation into context (McNemar p = 0.82 nomic / p = 0.51
+model2vec, n = 500) at ~4× fewer tokens. On LongMemEval's much larger
+haystacks, retrieval **matches and directionally beats** full context
+(p = 0.26) at ~20× fewer tokens — long-context needle-finding degrades
+where focused retrieval doesn't, especially on temporal reasoning (81.5%
+vs 68.5%). Full methods, per-category tables, per-question raw data, and
+the honest failure notes: [benchmarks/locomo/](benchmarks/locomo/) ·
+[benchmarks/longmemeval/](benchmarks/longmemeval/).
 
 ## Tests
 

@@ -218,10 +218,12 @@ def claude_call(prompt, model, timeout=240):
     """One CLI call from an empty cwd; returns (text, input_tokens)."""
     empty = Path(tempfile.gettempdir()) / "locomo-empty-cwd"
     empty.mkdir(exist_ok=True)
+    # prompt goes via stdin: huge contexts (500k+ chars) exceed the kernel's
+    # per-argv-string limit (MAX_ARG_STRLEN, 128 KiB) when passed as an arg
     p = subprocess.run(
-        ["claude", "-p", prompt, "--model", model, "--output-format", "json",
+        ["claude", "-p", "--model", model, "--output-format", "json",
          "--strict-mcp-config", "--max-turns", "1"],
-        capture_output=True, text=True, timeout=timeout, cwd=empty)
+        input=prompt, capture_output=True, text=True, timeout=timeout, cwd=empty)
     if p.returncode != 0:
         raise RuntimeError(f"claude exit {p.returncode}: {p.stderr[:300]}")
     j = json.loads(p.stdout)
