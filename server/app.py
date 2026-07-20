@@ -23,6 +23,7 @@ def create_app() -> FastAPI:
         config.grimoire_dir().mkdir(parents=True, exist_ok=True)
         db.init()
         index.reindex()   # rebuild the cache from the vault on boot
+        index.ensure_embed_signature()   # re-embed if the backend changed
         watch = None
         if not os.environ.get("GRIMOIRE_NO_WATCHER"):
             from .watcher import watcher as watch

@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS vectors(
   private INTEGER DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_vectors_note ON vectors(note);
+CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE IF NOT EXISTS grants(
   token TEXT PRIMARY KEY, secret TEXT, grantee TEXT, scope TEXT,
   expires_at REAL, created TEXT

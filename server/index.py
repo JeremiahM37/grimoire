@@ -45,6 +45,21 @@ def remove(rel: str) -> None:
     _resolve_all()
 
 
+def ensure_embed_signature() -> bool:
+    """Re-embed the vault when the embedding backend changed (Ollama added or
+    removed, local model installed…) — cosine over mixed-backend vectors is
+    meaningless. Returns True when a re-embed ran."""
+    sig = ai.embed_signature()
+    row = db.one("SELECT value FROM meta WHERE key='embed_sig'")
+    changed = bool(row) and row["value"] != sig
+    if changed:
+        reindex()
+    if not row or changed:
+        db.execute("INSERT INTO meta(key,value) VALUES('embed_sig',?) "
+                   "ON CONFLICT(key) DO UPDATE SET value=excluded.value", (sig,))
+    return changed
+
+
 def reindex() -> int:
     """Full rebuild from the vault. Returns note count."""
     for tbl in ("notes", "links", "tags", "fts"):

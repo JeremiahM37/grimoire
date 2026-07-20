@@ -15,6 +15,8 @@ def _offline_ai(monkeypatch):
     # intermittent notes.path IntegrityError). The watcher has its own
     # dedicated integration test with a private VaultWatcher instance.
     monkeypatch.setenv("GRIMOIRE_NO_WATCHER", "1")
+    # model2vec may be installed in the dev venv — tests need the hasher
+    monkeypatch.setenv("GRIMOIRE_LOCAL_EMBED", "off")
 
 
 @pytest.fixture()
