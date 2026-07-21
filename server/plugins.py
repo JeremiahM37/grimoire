@@ -2,8 +2,9 @@
 
 Two plugin sources, with different trust levels:
 
-* **Built-in** — `<repo>/plugins/<name>/`, shipped with Grimoire. Trusted code,
-  enabled by default (each can still be disabled).
+* **Built-in** — `<repo>/plugins/<name>/`, shipped with Grimoire. Trusted code;
+  the on-topic ones (see `DEFAULT_ENABLED_BUILTINS`) are enabled by default, the
+  rest ship one toggle away. Each can be enabled/disabled from Settings.
 * **Vault** — `<vault>/plugins/<name>/`, user-installed and synced with the
   vault like any other content. Because a vault plugin is arbitrary JavaScript
   executed in the app's origin, vault plugins are **disabled by default** and
@@ -34,6 +35,15 @@ from . import config
 
 BUILTIN_DIR = config.ROOT / "plugins"
 _NAME_RE = re.compile(r"^[a-z][a-z0-9-]{0,40}$")
+
+# Which built-ins are ON out of the box. The bar: does it make the *notes /
+# knowledge* richer? Content renderers (math, diagrams, boards) are invisible
+# until you use their syntax, and vault-stats reports on the vault itself — all
+# on-topic. The productivity widgets (pomodoro timer, writing-streak heatmap,
+# daily word goal) are genuinely useful but off-topic sidebar furniture; they
+# ship enabled-able, not enabled, so a fresh vault looks like a focused tool
+# rather than a kitchen sink. Everything here is still one toggle away.
+DEFAULT_ENABLED_BUILTINS = {"katex", "mermaid", "kanban", "vault-stats"}
 
 
 def _state_path() -> Path:
@@ -97,7 +107,7 @@ def discover() -> list[dict]:
             m = _read_manifest(pdir, source)
             if not m:
                 continue
-            default_on = source == "builtin"
+            default_on = source == "builtin" and m["name"] in DEFAULT_ENABLED_BUILTINS
             m["enabled"] = bool(state.get(m["name"], {}).get("enabled", default_on))
             out.append(m)
             seen.add(pdir.name)

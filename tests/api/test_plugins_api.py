@@ -2,12 +2,18 @@
 asset serving + path confinement."""
 
 
-def test_builtin_plugins_discovered_and_enabled_by_default(client):
-    plugins = client.get("/api/plugins").json()
-    names = {p["name"] for p in plugins}
+def test_builtin_plugins_discovered_with_curated_defaults(client):
+    plugins = {p["name"]: p for p in client.get("/api/plugins").json()}
+    # all seven ship...
     assert {"katex", "mermaid", "kanban", "pomodoro", "vault-stats",
-            "journal-heatmap", "word-goal"} <= names
-    assert all(p["enabled"] for p in plugins if p["source"] == "builtin")
+            "journal-heatmap", "word-goal"} <= set(plugins)
+    # ...but only the on-topic ones (renderers + vault-stats) are ON by default;
+    # the productivity widgets are one toggle away, not sidebar furniture
+    assert plugins["katex"]["enabled"] and plugins["mermaid"]["enabled"]
+    assert plugins["kanban"]["enabled"] and plugins["vault-stats"]["enabled"]
+    for off in ("pomodoro", "journal-heatmap", "word-goal"):
+        assert plugins[off]["enabled"] is False, off
+        assert plugins[off]["source"] == "builtin"      # shipped, just not default
 
 
 def test_vault_plugin_disabled_by_default(client, vaultdir):
