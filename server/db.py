@@ -34,6 +34,12 @@ CREATE INDEX IF NOT EXISTS idx_facts_note ON facts(note);
 CREATE VIRTUAL TABLE IF NOT EXISTS fts USING fts5(
   path UNINDEXED, title, body, tokenize='porter unicode61'
 );
+-- chunk-level inverted index: lets hybrid retrieval pull lexical candidates in
+-- O(log n) instead of scoring BM25 over every chunk in Python (the scale win).
+CREATE VIRTUAL TABLE IF NOT EXISTS fts_chunks USING fts5(
+  note UNINDEXED, chunk_idx UNINDEXED, chunk, private UNINDEXED,
+  tokenize='porter unicode61'
+);
 CREATE TABLE IF NOT EXISTS vectors(
   note TEXT NOT NULL, chunk_idx INTEGER, chunk TEXT, embedding BLOB,
   private INTEGER DEFAULT 0
