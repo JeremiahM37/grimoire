@@ -315,3 +315,40 @@ def test_embed_backend_falls_back_when_remote_down(monkeypatch):
     monkeypatch.setattr(ai.urllib.request, "urlopen", boom)
     v = ai.embed(["hello world"])                          # falls to hashing, no crash
     assert len(v) == 1 and len(v[0]) == ai.EMBED_DIM
+
+
+def test_retrieve_vectorized_matches_scalar(client, monkeypatch):
+    """The numpy fast path and the pure-Python fallback must return the same
+    ranking — the optimization changes speed, never results."""
+    from server import index
+    for i in range(8):
+        client.post("/api/notes", json={"title": f"Filler {i}",
+                    "body": f"topic alpha beta gamma passage number {i} " * 4})
+    client.post("/api/notes", json={"title": "Bullseye",
+                "body": "the rollback runbook uses force-recreate for a bad deploy"})
+    q = {"q": "rollback bad deploy force-recreate", "k": 5}
+    hits_fast = [h["path"] for h in client.get("/api/retrieve", params=q).json()]
+    monkeypatch.setattr(index, "_np", None)     # force scalar path
+    index._vec_cache.clear()
+    hits_slow = [h["path"] for h in client.get("/api/retrieve", params=q).json()]
+    assert hits_fast == hits_slow and hits_fast
+
+
+def test_retrieve_corpus_cache_invalidates_on_write(client):
+    """A new note must be retrievable immediately — the corpus cache can't
+    serve a stale matrix after an index write."""
+    client.post("/api/notes", json={"title": "A", "body": "alpha content about widgets"})
+    client.get("/api/retrieve", params={"q": "zeppelin airship", "k": 5}).json()   # warm cache
+    client.post("/api/notes", json={"title": "Zep",
+                "body": "the zeppelin airship history described in great detail"})
+    r2 = client.get("/api/retrieve", params={"q": "zeppelin airship", "k": 5}).json()
+    assert any(h["title"] == "Zep" for h in r2)
+
+
+def test_retrieve_corpus_cache_invalidates_on_delete(client):
+    client.post("/api/notes", json={"title": "Deletable",
+                "body": "the quokka is a small marsupial from rottnest island"})
+    assert client.get("/api/retrieve", params={"q": "quokka marsupial"}).json()
+    client.delete("/api/notes/deletable.md")
+    r = client.get("/api/retrieve", params={"q": "quokka marsupial"}).json()
+    assert not any(h["title"] == "Deletable" for h in r)
