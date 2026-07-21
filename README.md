@@ -139,8 +139,9 @@ Grimoire ships a full offline-PWA notes app on the same API:
   drafts. Wiki-links, backlinks + outgoing links, unlinked mentions, hover
   previews, tags, graph, daily notes + calendar, live ```` ```query ```` blocks,
   transclusion, footnotes, version history, folder tree, canvas, slides.
-- **Plugins** — seven first-party (KaTeX, Mermaid, kanban, pomodoro, vault
-  stats, journal heatmap, word goal) + an in-app scaffold. [docs/PLUGINS.md](docs/PLUGINS.md)
+- **Plugins** — seven first-party: on-topic ones on by default (KaTeX, Mermaid,
+  kanban, vault stats); optional widgets one toggle away (pomodoro, journal
+  heatmap, word goal) + an in-app scaffold. [docs/PLUGINS.md](docs/PLUGINS.md)
 - Encryption-at-rest for private notes, e-ink `/read` surface, HTML export,
   CRDT-merged multi-device sync, trash + undo, CLI.
 
