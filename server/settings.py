@@ -12,8 +12,12 @@ from . import config
 
 # settings that may be set from the UI, with their env fallback + default
 FIELDS = {
-    "llm": ("GRIMOIRE_LLM", ""),                     # '', 'ollama', 'claude' ('' = auto)
+    "llm": ("GRIMOIRE_LLM", ""),           # '', 'ollama', 'claude', 'openai' ('' = auto)
     "llm_model": ("GRIMOIRE_LLM_MODEL", "qwen3.5:4b"),
+    # any OpenAI-compatible endpoint: OpenAI, OpenRouter, Together, Groq, Azure,
+    # vLLM, LM Studio, llama.cpp, LiteLLM… one protocol, no proxy service.
+    "llm_base_url": ("GRIMOIRE_LLM_BASE_URL", ""),
+    "llm_api_key": ("GRIMOIRE_LLM_API_KEY", ""),
     "ollama_url": ("GRIMOIRE_OLLAMA_URL", ""),
     "embed_model": ("GRIMOIRE_EMBED_MODEL", "nomic-embed-text"),
     "local_embed": ("GRIMOIRE_LOCAL_EMBED", "auto"),   # auto|off — model2vec if installed
