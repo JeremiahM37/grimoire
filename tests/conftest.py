@@ -7,7 +7,8 @@ def _offline_ai(monkeypatch):
     """Strip AI backend env so unit/api tests are deterministic regardless of the
     developer's/deploy box's ambient env (which may point at a live Ollama)."""
     for var in ("GRIMOIRE_OLLAMA_URL", "GRIMOIRE_LLM", "GRIMOIRE_LLM_MODEL", "GRIMOIRE_WHISPER_URL",
-                "GRIMOIRE_BROKER_ALLOW_PRIVATE", "GRIMOIRE_VAULT_IDLE_LOCK"):
+                "GRIMOIRE_LLM_BASE_URL", "GRIMOIRE_LLM_API_KEY", "GRIMOIRE_EMBED_BASE_URL",
+                "GRIMOIRE_EMBED_API_KEY", "GRIMOIRE_BROKER_ALLOW_PRIVATE", "GRIMOIRE_VAULT_IDLE_LOCK"):
         monkeypatch.delenv(var, raising=False)
     # The module-level watcher singleton must NOT run in unit/api tests: every
     # TestClient app shares it, and a late debounced reindex from a previous

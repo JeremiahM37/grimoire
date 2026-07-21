@@ -145,15 +145,30 @@ def _m2v():
     return _m2v_model
 
 
+def _embed_base_url() -> str:
+    return _cfg("embed_base_url").rstrip("/")
+
+
+def _embed_api_key() -> str:
+    return _cfg("embed_api_key") or _cfg("llm_api_key")
+
+
 def embed(texts: list[str]) -> list[list[float]]:
-    """Embed a batch: Ollama when configured, else the local model2vec model
-    when installed, else the deterministic hasher."""
+    """Embed a batch. Backend precedence: an explicit OpenAI-compatible
+    endpoint, else Ollama, else the local model2vec model when installed, else
+    the deterministic hasher. Any remote failure falls back down the ladder —
+    indexing never breaks on an AI outage."""
+    if _embed_base_url():
+        try:
+            return _openai_embed(texts)
+        except Exception:
+            pass
     url = _ollama_url()
     if url:
         try:
             return [_ollama_embed(url, t) for t in texts]
         except Exception:
-            pass   # graceful offline fallback — never break indexing on AI outage
+            pass
     if _local_enabled():
         m = _m2v()
         if m is not None:
@@ -167,6 +182,8 @@ def embed(texts: list[str]) -> list[list[float]]:
 def embed_signature() -> str:
     """Identifies the active embedding backend. Vectors from different
     backends are not comparable — the index re-embeds when this changes."""
+    if _embed_base_url():
+        return f"openai:{_embed_base_url()}:{_embed_model()}"
     if _ollama_url():
         return f"ollama:{_embed_model()}"
     if _local_enabled() and _m2v() is not None:
@@ -181,6 +198,19 @@ def _ollama_embed(url: str, text: str) -> list[float]:
         data=json.dumps({"model": _embed_model(), "prompt": text}).encode())
     with urllib.request.urlopen(req, timeout=30) as r:
         return json.load(r)["embedding"]
+
+
+def _openai_embed(texts: list[str]) -> list[list[float]]:
+    headers = {"Content-Type": "application/json"}
+    key = _embed_api_key()
+    if key:
+        headers["Authorization"] = f"Bearer {key}"
+    req = urllib.request.Request(
+        f"{_embed_base_url()}/embeddings", method="POST", headers=headers,
+        data=json.dumps({"model": _embed_model(), "input": texts}).encode())
+    with urllib.request.urlopen(req, timeout=60) as r:
+        data = json.load(r)
+    return [row["embedding"] for row in data["data"]]
 
 
 def pack(vec: list[float]) -> bytes:
