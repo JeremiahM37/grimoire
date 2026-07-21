@@ -13,6 +13,8 @@ your AI over MCP. With a first-class notes app as the human console.
 ![docker](https://img.shields.io/badge/docker-ready-2496ed)
 ![MCP](https://img.shields.io/badge/MCP-first--class-5b4bff)
 ![PWA](https://img.shields.io/badge/console-offline%20PWA-19c37d)
+[![LoCoMo](https://img.shields.io/badge/LoCoMo-81.6%25%20vs%20full--context%2082.2%25-2ea44f)](benchmarks/locomo/)
+[![LongMemEval](https://img.shields.io/badge/LongMemEval-75.0%25%20%40%2020×%20fewer%20tokens-2ea44f)](benchmarks/longmemeval/)
 
 ![Grimoire console](docs/screenshots/hero.png)
 
