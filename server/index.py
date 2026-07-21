@@ -42,6 +42,7 @@ def remove(rel: str) -> None:
     db.execute("DELETE FROM links WHERE src=?", (rel,))
     db.execute("DELETE FROM tags WHERE note=?", (rel,))
     remove_crdt(rel)
+    _bump_rev()               # the retrieval corpus (notes⋈vectors) changed
     _resolve_all()
 
 
@@ -78,6 +79,7 @@ def reindex() -> int:
 
 
 def _write_note_rows(note: dict) -> None:
+    _bump_rev()               # this note's vectors/rows change on every write
     rel = note["path"]
     db.execute("DELETE FROM notes WHERE path=?", (rel,))
     db.execute("DELETE FROM fts WHERE path=?", (rel,))
@@ -190,6 +192,44 @@ def _bm25(terms, tc, df, n_chunks, avglen, k1=1.2, b=0.75):
     return score
 
 
+try:
+    import numpy as _np
+except Exception:                          # numpy optional — zero-dep still works
+    _np = None
+
+_rev = 0
+_vec_cache: dict = {}
+
+
+def _bump_rev() -> None:
+    """Monotonic index-mutation counter — invalidates the retrieval corpus
+    cache. A counter (not a table checksum) because SQLite can reuse freed
+    rowids, so an edit-in-place could otherwise look unchanged."""
+    global _rev
+    _rev += 1
+
+
+def _corpus(include_private: bool):
+    """Aligned (rows, matrix) for the vector store, cached until the index
+    mutates. With numpy the matrix lets cosine be one matmul instead of a
+    Python loop over every chunk — the difference between ~1s and ~20ms on a
+    50k-chunk vault. Without numpy, matrix is None and callers loop."""
+    key = (include_private, _rev)
+    hit = _vec_cache.get("data")
+    if hit and hit["key"] == key:
+        return hit["rows"], hit["mat"]
+    sql = "SELECT v.note, v.chunk, v.chunk_idx AS ci, v.embedding, n.title " \
+          "FROM vectors v JOIN notes n ON n.path=v.note"
+    if not include_private:
+        sql += " WHERE v.private=0"
+    rows = db.query(sql)
+    mat = None
+    if _np is not None and rows:
+        mat = _np.stack([_np.frombuffer(r["embedding"], dtype="<f4") for r in rows])
+    _vec_cache["data"] = {"key": key, "rows": rows, "mat": mat}
+    return rows, mat
+
+
 def retrieve(query: str, k: int = 6, include_private: bool = False) -> list[dict]:
     """Top-k note chunks, hybrid-ranked: embedding cosine similarity fused
     (reciprocal-rank) with an IDF-weighted lexical overlap score. The lexical
@@ -199,18 +239,18 @@ def retrieve(query: str, k: int = 6, include_private: bool = False) -> list[dict
     include_private=True."""
     qv = ai.embed([query])[0]
     qtoks = set(_WORD_RE.findall(query.lower()))
-    sql = "SELECT v.note, v.chunk, v.chunk_idx AS ci, v.embedding, n.title " \
-          "FROM vectors v JOIN notes n ON n.path=v.note"
-    if not include_private:
-        sql += " WHERE v.private=0"
-    rows = db.query(sql)
+    rows, mat = _corpus(include_private)
     counts = [_chunk_counts(r["chunk"]) for r in rows]
     n_chunks = max(len(rows), 1)
     avglen = (sum(c.total() for c in counts) / n_chunks) or 1.0
     df = _df(counts, qtoks)
+    if mat is not None:                    # vectorized cosine (one matmul)
+        cosines = mat @ _np.asarray(qv, dtype="<f4")
+    else:
+        cosines = [ai.cosine(qv, ai.unpack(r["embedding"])) for r in rows]
     scored = []
-    for r, tc in zip(rows, counts, strict=False):
-        cos = ai.cosine(qv, ai.unpack(r["embedding"]))
+    for r, tc, cos in zip(rows, counts, cosines, strict=False):
+        cos = float(cos)
         lex = _bm25(qtoks, tc, df, n_chunks, avglen)
         if cos > 0 or lex > 0:
             scored.append({"path": r["note"], "title": r["title"], "ci": r["ci"],
