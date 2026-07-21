@@ -52,6 +52,11 @@ have no knowledge base or credentials; notes-RAG tools (Khoj, editor plugins)
 have no agent memory or secrets; token vaults (Auth0 GenAI, Arcade, Infisical)
 have no knowledge layer. Grimoire is the unified, self-hosted version.
 
+**Not wiring up agents yet?** Grimoire is also a full offline notes app in its
+own right — CodeMirror live preview, wiki-links, backlinks, graph, daily notes,
+transclusion, canvas. Mount your existing markdown vault with no migration and
+daily-drive it; the agent substrate is there when you want it.
+
 ## Quick start
 
 ```bash
