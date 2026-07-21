@@ -214,3 +214,18 @@ def test_embed_signature_change_triggers_reembed(client, monkeypatch):
     after = db.one("SELECT embedding FROM vectors LIMIT 1")["embedding"]
     assert after != before
     assert index.ensure_embed_signature() is False        # new sig recorded, stable now
+
+
+def test_retrieve_scores_are_rankable_not_uniform(client):
+    """Regression: RRF fusion made every /retrieve score ~0.03, so the UI's
+    score*100 showed a uniform '3%'. The scores must still strictly rank
+    (distinct, descending) so the UI can normalize them to a relevance %."""
+    for i in range(6):
+        client.post("/api/notes", json={"title": f"Doc {i}",
+                    "body": f"paragraph about topic alpha and detail number {i} " * 3})
+    client.post("/api/notes", json={"title": "Bullseye",
+                "body": "the rollback procedure for a bad alpha deploy is force-recreate"})
+    hits = client.get("/api/retrieve", params={"q": "alpha rollback deploy", "k": 5}).json()
+    scores = [h["score"] for h in hits]
+    assert scores == sorted(scores, reverse=True)          # descending
+    assert scores[0] > scores[-1]                          # genuinely spread, not flat
