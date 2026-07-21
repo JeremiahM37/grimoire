@@ -352,3 +352,16 @@ def test_retrieve_corpus_cache_invalidates_on_delete(client):
     client.delete("/api/notes/deletable.md")
     r = client.get("/api/retrieve", params={"q": "quokka marsupial"}).json()
     assert not any(h["title"] == "Deletable" for h in r)
+
+
+def test_mcp_transport_env_mapping(monkeypatch):
+    """GRIMOIRE_MCP_TRANSPORT selects the MCP transport; anything unknown or
+    unset stays on stdio (the safe local default)."""
+    from server import mcp_server
+    for val, expect in [("stdio", "stdio"), ("http", "streamable-http"),
+                        ("streamable-http", "streamable-http"), ("sse", "sse"),
+                        ("HTTP", "streamable-http"), ("nonsense", "stdio")]:
+        monkeypatch.setenv("GRIMOIRE_MCP_TRANSPORT", val)
+        assert mcp_server._transport() == expect, val
+    monkeypatch.delenv("GRIMOIRE_MCP_TRANSPORT", raising=False)
+    assert mcp_server._transport() == "stdio"
