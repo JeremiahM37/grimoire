@@ -11,7 +11,15 @@ first-class tools:
               USES a secret but never sees its value (scoped, time-boxed, audited)
   links       backlinks / list_tags — the knowledge graph
 
-Run (stdio): .venv/bin/python -m server.mcp_server
+Transports:
+  stdio (default) — for local desktop agents (Claude Desktop/Code):
+      .venv/bin/python -m server.mcp_server
+  streamable-HTTP — for web/remote clients (Open WebUI, hosted), no proxy:
+      GRIMOIRE_MCP_TRANSPORT=http .venv/bin/python -m server.mcp_server
+      → serves at http://127.0.0.1:9112/mcp (host/port/path via
+        GRIMOIRE_MCP_HOST / _PORT / _PATH). Binds to localhost by default;
+        put a reverse proxy + auth in front before exposing it remotely.
+
 Talks to a running Grimoire server (GRIMOIRE_API, default http://127.0.0.1:9111).
 Set GRIMOIRE_AGENT_NAME to attribute memories to this agent. Private notes are
 never returned by search/ask unless include_private is set.
@@ -30,6 +38,12 @@ API = os.environ.get("GRIMOIRE_API", "http://127.0.0.1:9111").rstrip("/")
 TOKEN = os.environ.get("GRIMOIRE_AUTH_TOKEN", "")
 mcp = FastMCP(
     "grimoire",
+    # HTTP-transport settings (ignored under stdio). Localhost by default —
+    # an HTTP MCP endpoint exposes every tool, so it must be fronted by a
+    # reverse proxy + auth before it leaves the box.
+    host=os.environ.get("GRIMOIRE_MCP_HOST", "127.0.0.1"),
+    port=int(os.environ.get("GRIMOIRE_MCP_PORT", "9112")),
+    streamable_http_path=os.environ.get("GRIMOIRE_MCP_PATH", "/mcp"),
     instructions=(
         "This server is the team's knowledge base and memory: runbooks, "
         "conventions, ticket decisions, and what previous agents learned. "
@@ -168,5 +182,11 @@ def list_grants() -> list:
     return api("GET", "/grants")
 
 
+def _transport() -> str:
+    t = os.environ.get("GRIMOIRE_MCP_TRANSPORT", "stdio").lower()
+    return {"http": "streamable-http", "streamable-http": "streamable-http",
+            "sse": "sse", "stdio": "stdio"}.get(t, "stdio")
+
+
 if __name__ == "__main__":
-    mcp.run()
+    mcp.run(transport=_transport())

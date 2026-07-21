@@ -97,6 +97,12 @@ The agent gets: `search_notes` · `ask_notes` · `read_note` · `create_note` ·
 `update_note` · `append_daily` · `backlinks` · `list_tags` · **`remember`** ·
 **`recall`** · **`use_credential`** · **`list_grants`**.
 
+The MCP server speaks **stdio** by default (local desktop agents). For web or
+remote clients (Open WebUI, hosted), run it over **streamable-HTTP** with no
+proxy — `GRIMOIRE_MCP_TRANSPORT=http python -m server.mcp_server` serves at
+`http://127.0.0.1:9112/mcp` (localhost-bound; front it with your reverse proxy
++ auth before exposing it).
+
 > **Headless agents:** non-interactive runs often skip untrusted project-level
 > MCP configs silently — register the server at user scope (or pass your CLI's
 > explicit MCP-config flag) and have the agent call `kb_info` once to verify the
