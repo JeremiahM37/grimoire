@@ -95,7 +95,14 @@ desktop assistants, custom agents. Example config:
 
 The agent gets: `search_notes` · `ask_notes` · `read_note` · `create_note` ·
 `update_note` · `append_daily` · `backlinks` · `list_tags` · **`remember`** ·
-**`recall`** · **`use_credential`** · **`list_grants`**.
+**`recall`** · **`use_credential`** · **`list_grants`** · **`get_fact`** ·
+**`set_fact`**.
+
+**Structured facts** — for values that must be *exact* (a port, a version, an
+owner, a decision), prose RAG is the wrong tool. Write `key:: value` inline in
+any note and agents can look it up deterministically via `get_fact` — no
+paraphrase, no hallucination. It's still plain markdown you read and edit; the
+facts table is just a projection of it, exactly like tags and backlinks.
 
 The MCP server speaks **stdio** by default (local desktop agents). For web or
 remote clients (Open WebUI, hosted), run it over **streamable-HTTP** with no

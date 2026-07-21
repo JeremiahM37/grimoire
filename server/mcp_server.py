@@ -182,6 +182,29 @@ def list_grants() -> list:
     return api("GET", "/grants")
 
 
+@mcp.tool()
+def get_fact(key: str) -> list:
+    """Deterministic structured lookup of a `key:: value` fact across the KB —
+    use this instead of semantic search when you need an EXACT value (a port,
+    version, config setting, owner, decision). Returns [{note, key, value}].
+    Prefer this over ask_notes for facts: no paraphrase, no hallucination."""
+    return api("GET", f"/facts?key={urllib.parse.quote(key)}")
+
+
+@mcp.tool()
+def note_facts(path: str) -> list:
+    """All structured `key:: value` facts declared in one note."""
+    return api("GET", f"/facts?note={urllib.parse.quote(path)}")
+
+
+@mcp.tool()
+def set_fact(note: str, key: str, value: str) -> dict:
+    """Record a structured fact as `key:: value` in a note (updates the line if
+    the key exists, else appends). Stays plain markdown the human can see and
+    edit — use for durable, exact values future agents will look up."""
+    return api("POST", "/facts", {"note": note, "key": key, "value": value})
+
+
 def _transport() -> str:
     t = os.environ.get("GRIMOIRE_MCP_TRANSPORT", "stdio").lower()
     return {"http": "streamable-http", "streamable-http": "streamable-http",
