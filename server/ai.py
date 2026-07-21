@@ -166,9 +166,12 @@ def embed(texts: list[str]) -> list[list[float]]:
     url = _ollama_url()
     if url:
         try:
-            return [_ollama_embed(url, t) for t in texts]
+            return _ollama_embed_batch(url, texts)      # one round-trip for the batch
         except Exception:
-            pass
+            try:
+                return [_ollama_embed(url, t) for t in texts]   # older Ollama fallback
+            except Exception:
+                pass
     if _local_enabled():
         m = _m2v()
         if m is not None:
@@ -189,6 +192,20 @@ def embed_signature() -> str:
     if _local_enabled() and _m2v() is not None:
         return f"model2vec:{_local_model_name()}"
     return "hash:v1"
+
+
+def _ollama_embed_batch(url: str, texts: list[str]) -> list[list[float]]:
+    """Embed the whole batch in one call via Ollama's /api/embed — bulk
+    ingestion was one HTTP round-trip per chunk, which crawls on a large vault."""
+    req = urllib.request.Request(
+        f"{url}/api/embed", method="POST",
+        headers={"Content-Type": "application/json"},
+        data=json.dumps({"model": _embed_model(), "input": texts}).encode())
+    with urllib.request.urlopen(req, timeout=120) as r:
+        embs = json.load(r).get("embeddings")
+    if not embs or len(embs) != len(texts):
+        raise ValueError("ollama /api/embed returned an unexpected shape")
+    return embs
 
 
 def _ollama_embed(url: str, text: str) -> list[float]:

@@ -365,3 +365,37 @@ def test_mcp_transport_env_mapping(monkeypatch):
         assert mcp_server._transport() == expect, val
     monkeypatch.delenv("GRIMOIRE_MCP_TRANSPORT", raising=False)
     assert mcp_server._transport() == "stdio"
+
+
+def test_candidate_generation_path_matches_full_topk(client, monkeypatch):
+    """Above the threshold, retrieval switches to indexed candidate generation.
+    On a small vault the candidate pool covers everything, so the top result
+    must match the full-fusion path — same recipe, just index-sourced."""
+    from server import index
+    for i in range(12):
+        client.post("/api/notes", json={"title": f"Filler {i}",
+                    "body": f"generic passage {i} about assorted unrelated topics " * 3})
+    client.post("/api/notes", json={"title": "Target",
+                "body": "the incident was caused by a stale kubernetes ingress namespace"})
+    q = {"q": "stale kubernetes ingress namespace incident", "k": 5}
+    monkeypatch.setattr(index, "_CAND_THRESHOLD", 10**9)      # force full path
+    index._vec_cache.clear()
+    full = [h["path"] for h in client.get("/api/retrieve", params=q).json()]
+    monkeypatch.setattr(index, "_CAND_THRESHOLD", 0)          # force candidate path
+    index._vec_cache.clear()
+    cand = [h["path"] for h in client.get("/api/retrieve", params=q).json()]
+    assert full and cand and full[0] == cand[0] == "target.md"
+
+
+def test_fts_chunks_index_stays_in_sync(client, monkeypatch):
+    """The chunk-level FTS index must track writes and deletes, or the
+    candidate path would surface stale/ghost chunks."""
+    from server import db, index
+    monkeypatch.setattr(index, "_CAND_THRESHOLD", 0)          # exercise the FTS leg
+    client.post("/api/notes", json={"title": "Doc", "body": "quokka marsupial rottnest island"})
+    assert db.one("SELECT COUNT(*) c FROM fts_chunks WHERE chunk LIKE '%quokka%'")["c"] >= 1
+    index._vec_cache.clear()
+    assert any(h["title"] == "Doc"
+               for h in client.get("/api/retrieve", params={"q": "quokka marsupial"}).json())
+    client.delete("/api/notes/doc.md")
+    assert db.one("SELECT COUNT(*) c FROM fts_chunks WHERE note='doc.md'")["c"] == 0

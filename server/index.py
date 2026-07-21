@@ -7,6 +7,7 @@ import collections
 import functools
 import json
 import math
+import os
 import re
 
 from . import ai, db, vault
@@ -42,6 +43,7 @@ def remove(rel: str) -> None:
     db.execute("DELETE FROM links WHERE src=?", (rel,))
     db.execute("DELETE FROM tags WHERE note=?", (rel,))
     db.execute("DELETE FROM vectors WHERE note=?", (rel,))
+    db.execute("DELETE FROM fts_chunks WHERE note=?", (rel,))
     db.execute("DELETE FROM facts WHERE note=?", (rel,))   # queried without a JOIN
     remove_crdt(rel)
     _bump_rev()               # the retrieval corpus (notes⋈vectors) changed
@@ -88,6 +90,7 @@ def _write_note_rows(note: dict) -> None:
     db.execute("DELETE FROM links WHERE src=?", (rel,))
     db.execute("DELETE FROM tags WHERE note=?", (rel,))
     db.execute("DELETE FROM vectors WHERE note=?", (rel,))
+    db.execute("DELETE FROM fts_chunks WHERE note=?", (rel,))
     encrypted = note.get("encrypted")
     if not encrypted:
         _embed_note(note)   # NEVER embed ciphertext — encrypted notes stay out of RAG
@@ -124,9 +127,13 @@ def _embed_note(note: dict) -> None:
         return
     vecs = ai.embed(chunks)
     priv = 1 if note["private"] else 0
+    rel = note["path"]
     db.executemany(
         "INSERT INTO vectors(note,chunk_idx,chunk,embedding,private) VALUES(?,?,?,?,?)",
-        [(note["path"], i, c, ai.pack(v), priv) for i, (c, v) in enumerate(zip(chunks, vecs, strict=False))])
+        [(rel, i, c, ai.pack(v), priv) for i, (c, v) in enumerate(zip(chunks, vecs, strict=False))])
+    db.executemany(
+        "INSERT INTO fts_chunks(note,chunk_idx,chunk,private) VALUES(?,?,?,?)",
+        [(rel, i, c, priv) for i, c in enumerate(chunks)])
 
 
 def _resolve_all() -> None:
@@ -263,21 +270,27 @@ def _corpus(include_private: bool):
     return rows, mat
 
 
-def retrieve(query: str, k: int = 6, include_private: bool = False) -> list[dict]:
-    """Top-k note chunks, hybrid-ranked: embedding cosine similarity fused
-    (reciprocal-rank) with an IDF-weighted lexical overlap score. The lexical
-    leg makes rare, discriminative query words (names, places, error codes)
-    count for more than filler — which pure cosine, especially the offline
-    hashing embedder, does not. Private notes are excluded unless
-    include_private=True."""
-    qv = ai.embed([query])[0]
+# Above this many chunks, retrieval stops fusing over the whole corpus (BM25
+# per chunk is the scale bottleneck) and switches to indexed candidate
+# generation. Below it, the exact full-fusion path the LoCoMo/LongMemEval
+# numbers were measured on is used unchanged.
+_CAND_THRESHOLD = int(os.environ.get("GRIMOIRE_CAND_THRESHOLD", "8000"))
+
+
+def _fts_or(query: str) -> str:
+    terms = [t for t in query.replace('"', " ").split() if t]
+    return " OR ".join(f'"{t}"*' for t in terms) if terms else ""
+
+
+def _rank_full(qv, query, rows, mat):
+    """Exact hybrid fusion over every chunk — the benchmarked path (small
+    vaults). RRF of embedding cosine with IDF-weighted BM25."""
     qtoks = set(_WORD_RE.findall(query.lower()))
-    rows, mat = _corpus(include_private)
     counts = [_chunk_counts(r["chunk"]) for r in rows]
     n_chunks = max(len(rows), 1)
     avglen = (sum(c.total() for c in counts) / n_chunks) or 1.0
     df = _df(counts, qtoks)
-    if mat is not None:                    # vectorized cosine (one matmul)
+    if mat is not None:
         cosines = mat @ _np.asarray(qv, dtype="<f4")
     else:
         cosines = [ai.cosine(qv, ai.unpack(r["embedding"])) for r in rows]
@@ -287,29 +300,83 @@ def retrieve(query: str, k: int = 6, include_private: bool = False) -> list[dict
         lex = _bm25(qtoks, tc, df, n_chunks, avglen)
         if cos > 0 or lex > 0:
             scored.append({"path": r["note"], "title": r["title"], "ci": r["ci"],
-                           "chunk": r["chunk"], "cos": cos, "lex": lex, "tc": tc})
-
+                           "chunk": r["chunk"], "cos": cos, "lex": lex})
     for key in ("cos", "lex"):
         for rank, st in enumerate(sorted(scored, key=lambda x: -x[key])):
             st["rrf"] = st.get("rrf", 0.0) + 1.0 / (60 + rank)
     for st in scored:
         st["score"] = round(st.pop("rrf", 0.0), 4)
-        del st["cos"], st["lex"], st["tc"]
+        del st["cos"], st["lex"]
     scored.sort(key=lambda x: -x["score"])
-    # de-dupe so one note doesn't dominate: keep best chunk per note first, then fill
+    return scored
+
+
+def _rank_candidates(qv, query, rows, mat, include_private, pool=250):
+    """Scalable hybrid: fuse the vector top-K with the FTS-indexed lexical
+    top-K, ranking only the candidate union instead of every chunk — same RRF
+    recipe, O(pool) fusion instead of O(n). Lexical candidates come from the
+    chunk-level FTS5 index (porter-stemmed BM25) in log-time."""
+    n = len(rows)
+    if mat is not None:
+        cos_all = mat @ _np.asarray(qv, dtype="<f4")
+        kv = min(pool, n)
+        top = _np.argpartition(-cos_all, kv - 1)[:kv]
+        top = sorted((int(i) for i in top), key=lambda i: -float(cos_all[i]))
+    else:
+        cos_all = [ai.cosine(qv, ai.unpack(r["embedding"])) for r in rows]
+        top = sorted(range(n), key=lambda i: -cos_all[i])[:pool]
+    cand = {}
+    for rank, i in enumerate(top):
+        r = rows[i]
+        cand[(r["note"], r["ci"])] = {"path": r["note"], "title": r["title"],
+                                      "ci": r["ci"], "chunk": r["chunk"],
+                                      "vrank": rank, "lrank": None}
+    fts = _fts_or(query)
+    if fts:
+        sql = ("SELECT note, chunk_idx AS ci, chunk FROM fts_chunks "
+               "WHERE fts_chunks MATCH ?"
+               + ("" if include_private else " AND private=0")
+               + " ORDER BY bm25(fts_chunks) LIMIT ?")
+        try:
+            lex_rows = db.query(sql, (fts, pool))
+        except Exception:
+            lex_rows = []
+        for rank, r in enumerate(lex_rows):
+            key = (r["note"], r["ci"])
+            if key in cand:
+                cand[key]["lrank"] = rank
+            else:
+                cand[key] = {"path": r["note"], "title": None, "ci": r["ci"],
+                             "chunk": r["chunk"], "vrank": None, "lrank": rank}
+    missing = [c for c in cand.values() if c["title"] is None]
+    if missing:
+        paths = list({c["path"] for c in missing})
+        qmarks = ",".join("?" * len(paths))
+        tmap = {row["path"]: row["title"] for row in
+                db.query(f"SELECT path, title FROM notes WHERE path IN ({qmarks})", tuple(paths))}
+        for c in missing:
+            c["title"] = tmap.get(c["path"], c["path"])
+    for c in cand.values():
+        c["score"] = round((1.0 / (60 + c["vrank"]) if c["vrank"] is not None else 0.0)
+                           + (1.0 / (60 + c["lrank"]) if c["lrank"] is not None else 0.0), 6)
+        del c["vrank"], c["lrank"]
+    return sorted(cand.values(), key=lambda x: -x["score"])
+
+
+def _finalize(ranked: list, k: int) -> list[dict]:
+    # de-dupe so one note doesn't dominate: best chunk per note first, then fill
     seen, primary, extra = set(), [], []
-    for s in scored:
+    for s in ranked:
         (primary if s["path"] not in seen else extra).append(s)
         seen.add(s["path"])
     ranked = primary + extra
-    # small-to-big: rank on small chunks, but return the top hits with their
-    # neighbouring chunks merged in — answers often straddle a chunk boundary
+    # small-to-big: return the top hits with their neighbouring chunks merged in
     out, covered = [], set()
     for s in ranked:
         if len(out) >= k:
             break
         if (s["path"], s["ci"]) in covered:
-            continue          # already inside an earlier hit's neighbourhood
+            continue
         if len(out) < 3:
             near = db.query("SELECT chunk_idx, chunk FROM vectors WHERE note=? "
                             "AND chunk_idx BETWEEN ? AND ? ORDER BY chunk_idx",
@@ -318,9 +385,25 @@ def retrieve(query: str, k: int = 6, include_private: bool = False) -> list[dict
             covered.update((s["path"], r["chunk_idx"]) for r in near)
         else:
             covered.add((s["path"], s["ci"]))
-        del s["ci"]
-        out.append(s)
+        out.append({"path": s["path"], "title": s["title"],
+                    "chunk": s["chunk"], "score": s["score"]})
     return out
+
+
+def retrieve(query: str, k: int = 6, include_private: bool = False) -> list[dict]:
+    """Top-k note chunks, hybrid-ranked: embedding cosine fused (reciprocal
+    rank) with an IDF-weighted lexical score. Small vaults fuse over every
+    chunk (the benchmarked path); large ones use indexed candidate generation
+    so a huge corpus stays fast. Private notes excluded unless include_private."""
+    qv = ai.embed([query])[0]
+    rows, mat = _corpus(include_private)
+    if not rows:
+        return []
+    if len(rows) <= _CAND_THRESHOLD:
+        ranked = _rank_full(qv, query, rows, mat)
+    else:
+        ranked = _rank_candidates(qv, query, rows, mat, include_private)
+    return _finalize(ranked, k)
 
 
 def backlinks(rel: str) -> list[dict]:
