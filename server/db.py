@@ -23,6 +23,14 @@ CREATE INDEX IF NOT EXISTS idx_links_target ON links(target);
 CREATE TABLE IF NOT EXISTS tags(note TEXT NOT NULL, tag TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_tags_tag ON tags(tag);
 CREATE INDEX IF NOT EXISTS idx_tags_note ON tags(note);
+-- structured facts projected from `key:: value` inline fields in note bodies.
+-- A view over markdown (like tags/links), not a separate store: the note is
+-- truth, this table is a rebuildable index agents can query deterministically.
+CREATE TABLE IF NOT EXISTS facts(
+  note TEXT NOT NULL, key TEXT NOT NULL, value TEXT, private INTEGER DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_facts_key ON facts(key);
+CREATE INDEX IF NOT EXISTS idx_facts_note ON facts(note);
 CREATE VIRTUAL TABLE IF NOT EXISTS fts USING fts5(
   path UNINDEXED, title, body, tokenize='porter unicode61'
 );

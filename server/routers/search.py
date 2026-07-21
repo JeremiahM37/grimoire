@@ -126,6 +126,56 @@ def tags():
     return db.query("SELECT tag, COUNT(*) c FROM tags GROUP BY tag ORDER BY c DESC")
 
 
+@router.get("/facts")
+def facts(key: str = "", note: str = "", include_private: bool = False):
+    """Structured `key:: value` facts projected from note bodies — a
+    deterministic lookup layer over the same markdown. Filter by key and/or
+    note. Private notes' facts are excluded unless include_private."""
+    conds, params = [], []
+    if key:
+        conds.append("key=?")
+        params.append(key.strip().lower())
+    if note:
+        conds.append("note=?")
+        params.append(note.strip())
+    if not include_private:
+        conds.append("private=0")
+    where = (" WHERE " + " AND ".join(conds)) if conds else ""
+    return db.query(f"SELECT note, key, value FROM facts{where} ORDER BY key, note",
+                    tuple(params))
+
+
+class FactIn(BaseModel):
+    note: str
+    key: str
+    value: str
+
+
+@router.post("/facts", status_code=201)
+def set_fact(f: FactIn):
+    """Write a `key:: value` fact into a note (markdown stays the source of
+    truth): update the existing line for that key, else append it."""
+    rel, key, val = f.note.strip(), f.key.strip(), f.value.strip()
+    if not rel or not key or not val:
+        raise HTTPException(400, "note, key and value are required")
+    try:
+        n = vault.read(rel)
+    except VaultError:
+        raise HTTPException(404, "no such note") from None
+    if n.get("encrypted"):
+        raise HTTPException(400, "cannot set a fact on an encrypted note")
+    pat = re.compile(rf"^(\s*(?:[-*]\s+)?){re.escape(key)}\s*::\s+.*$",
+                     re.IGNORECASE | re.MULTILINE)
+    body = n["body"]
+    if pat.search(body):
+        body = pat.sub(lambda m: f"{m.group(1)}{key}:: {val}", body, count=1)
+    else:
+        body = body.rstrip() + f"\n\n{key}:: {val}\n"
+    vault.write(rel, body, n["frontmatter"])
+    index.upsert(rel)
+    return {"note": rel, "key": key.lower(), "value": val}
+
+
 class TagRename(BaseModel):
     old: str
     new: str

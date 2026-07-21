@@ -41,6 +41,8 @@ def remove(rel: str) -> None:
         db.execute(f"DELETE FROM {tbl} WHERE path=?", (rel,))
     db.execute("DELETE FROM links WHERE src=?", (rel,))
     db.execute("DELETE FROM tags WHERE note=?", (rel,))
+    db.execute("DELETE FROM vectors WHERE note=?", (rel,))
+    db.execute("DELETE FROM facts WHERE note=?", (rel,))   # queried without a JOIN
     remove_crdt(rel)
     _bump_rev()               # the retrieval corpus (notes⋈vectors) changed
     _resolve_all()
@@ -105,6 +107,13 @@ def _write_note_rows(note: dict) -> None:
     if note["tags"]:
         db.executemany("INSERT INTO tags(note,tag) VALUES(?,?)",
                        [(rel, t) for t in note["tags"]])
+    db.execute("DELETE FROM facts WHERE note=?", (rel,))
+    if not encrypted:      # never mine facts out of ciphertext
+        facts = extract_facts(note["body"])
+        if facts:
+            priv = int(note["private"])
+            db.executemany("INSERT INTO facts(note,key,value,private) VALUES(?,?,?,?)",
+                           [(rel, k, v, priv) for k, v in facts])
 
 
 def _embed_note(note: dict) -> None:
@@ -160,6 +169,30 @@ def alias_map() -> dict:
 
 
 _WORD_RE = re.compile(r"[a-z0-9]+")
+
+# Dataview-style inline field: `key:: value` (optionally a list item). `::`
+# must directly follow the key (no space) — otherwise ordinary prose with a
+# stray " :: " reads as a fact. Keys are single tokens (letters, digits, -, _,
+# /). Fenced code is skipped so `foo:: bar` in a snippet isn't mistaken for one.
+_FACT_RE = re.compile(r"^\s*(?:[-*]\s+)?([A-Za-z][\w/-]{0,48})::\s+(\S.*?)\s*$")
+
+
+def extract_facts(body: str) -> list[tuple[str, str]]:
+    """[(key, value)] structured facts declared in a note body as `key:: value`.
+    Keys are lowercased/trimmed; values kept verbatim. A projection of the
+    markdown — agents can look these up deterministically instead of hoping RAG
+    surfaces the right sentence."""
+    out, in_fence = [], False
+    for line in body.splitlines():
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        m = _FACT_RE.match(line)
+        if m:
+            out.append((m.group(1).strip().lower(), m.group(2).strip()))
+    return out
 
 
 @functools.lru_cache(maxsize=65536)
