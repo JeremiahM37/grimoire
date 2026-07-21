@@ -20,6 +20,9 @@ FIELDS = {
     "llm_api_key": ("GRIMOIRE_LLM_API_KEY", ""),
     "ollama_url": ("GRIMOIRE_OLLAMA_URL", ""),
     "embed_model": ("GRIMOIRE_EMBED_MODEL", "nomic-embed-text"),
+    # any OpenAI-compatible /embeddings endpoint (OpenAI, Together, vLLM, …)
+    "embed_base_url": ("GRIMOIRE_EMBED_BASE_URL", ""),
+    "embed_api_key": ("GRIMOIRE_EMBED_API_KEY", ""),
     "local_embed": ("GRIMOIRE_LOCAL_EMBED", "auto"),   # auto|off — model2vec if installed
     "local_embed_model": ("GRIMOIRE_LOCAL_EMBED_MODEL", "minishlab/potion-base-8M"),
     "whisper_url": ("GRIMOIRE_WHISPER_URL", ""),

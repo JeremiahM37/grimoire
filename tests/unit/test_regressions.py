@@ -273,3 +273,45 @@ def test_openai_backend_falls_back_on_outage(monkeypatch):
     monkeypatch.setattr(ai.urllib.request, "urlopen", boom)
     out = ai.answer("q", [{"path": "a.md", "title": "T", "chunk": "the answer text"}])
     assert "the answer text" in out       # extractive fallback, not an error
+
+
+def test_openai_compatible_embeddings_backend(monkeypatch):
+    """GRIMOIRE_EMBED_BASE_URL routes embeddings to any OpenAI-compatible
+    /embeddings endpoint, batched, and switches the embed signature so the
+    index re-embeds on backend change."""
+    import io
+    import json as _json
+
+    from server import ai
+    monkeypatch.setenv("GRIMOIRE_EMBED_BASE_URL", "http://fake.local/v1")
+    monkeypatch.setenv("GRIMOIRE_EMBED_API_KEY", "sk-emb")
+    monkeypatch.setenv("GRIMOIRE_EMBED_MODEL", "text-embedding-3-small")
+    seen = {}
+
+    def fake_urlopen(req, timeout=0):
+        seen["url"] = req.full_url
+        seen["auth"] = req.headers.get("Authorization")
+        seen["body"] = _json.loads(req.data)
+        n = len(seen["body"]["input"])
+        payload = {"data": [{"embedding": [0.1, 0.2, 0.3]} for _ in range(n)]}
+        return io.BytesIO(_json.dumps(payload).encode())
+
+    monkeypatch.setattr(ai.urllib.request, "urlopen", fake_urlopen)
+    out = ai.embed(["one", "two"])
+    assert out == [[0.1, 0.2, 0.3], [0.1, 0.2, 0.3]]        # batched, both returned
+    assert seen["url"] == "http://fake.local/v1/embeddings"
+    assert seen["auth"] == "Bearer sk-emb"
+    assert seen["body"]["input"] == ["one", "two"]
+    assert ai.embed_signature().startswith("openai:")
+
+
+def test_embed_backend_falls_back_when_remote_down(monkeypatch):
+    from server import ai
+    monkeypatch.setenv("GRIMOIRE_EMBED_BASE_URL", "http://down.local/v1")
+
+    def boom(req, timeout=0):
+        raise OSError("refused")
+
+    monkeypatch.setattr(ai.urllib.request, "urlopen", boom)
+    v = ai.embed(["hello world"])                          # falls to hashing, no crash
+    assert len(v) == 1 and len(v[0]) == ai.EMBED_DIM
