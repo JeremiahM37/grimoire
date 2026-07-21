@@ -727,8 +727,9 @@ async function doAsk() {
     const r = await api("/ask", { method: "POST",
       body: { q, include_private: $("#ask-priv").checked } });
     $("#ask-answer").textContent = r.answer;
+    const relc = relevance(r.citations);
     $("#ask-cites").innerHTML = r.citations.map((c) =>
-      `<a class="cite" data-p="${esc(c.path)}">↳ ${esc(c.title)} <span class="sc">${(c.score * 100 | 0)}%</span></a>`).join("");
+      `<a class="cite" data-p="${esc(c.path)}">↳ ${esc(c.title)} <span class="sc">${relc(c.score)}%</span></a>`).join("");
     $("#ask-cites").querySelectorAll(".cite").forEach((a) =>
       (a.onclick = () => { $("#ask-modal").classList.add("hidden"); openNote(a.dataset.p); }));
   } catch (e) { $("#ask-answer").textContent = "Error: " + e.message; }
@@ -898,6 +899,14 @@ function renderProvenance(n) {
   $("#prov-history").onclick = () => openHistory();
 }
 
+/* Ranking scores are reciprocal-rank-fusion values (small absolute numbers);
+   present them normalized to the top hit, so the list reads as relevance
+   ("100% = best match, rest relative") instead of a meaningless raw 2–3%. */
+function relevance(items) {
+  const max = Math.max(...items.map((c) => c.score || 0), 1e-9);
+  return (s) => Math.max(1, Math.round(((s || 0) / max) * 100));
+}
+
 /* Retrieval inspection — show exactly which chunks the agent's ask/RAG layer
    would receive for a query. Trust surface: no hidden context. */
 async function openInspect() {
@@ -910,11 +919,12 @@ async function openInspect() {
   try {
     const chunks = await api(`/retrieve?q=${encodeURIComponent(q)}&k=8`);
     if (!chunks.length) { b.innerHTML = '<p class="vault-note">Nothing retrieved — the agent would answer from nothing.</p>'; return; }
+    const rel = relevance(chunks);
     b.innerHTML = `<p class="vault-note">Top ${chunks.length} chunks for <b>${esc(q)}</b> — this is the agent's entire retrieved context (private notes excluded, exactly as the agent sees it):</p>`
       + chunks.map((c) => `
         <div class="inspect-chunk">
           <div class="ic-head"><a class="wikilink" data-path="${esc(c.path)}">${esc(c.title || c.path)}</a>
-            <span class="ic-score">${(c.score * 100).toFixed(0)}%</span></div>
+            <span class="ic-score">${rel(c.score)}%</span></div>
           <div class="ic-text">${esc(c.chunk)}</div>
         </div>`).join("");
     b.querySelectorAll("a.wikilink").forEach((a) => (a.onclick = () => {
