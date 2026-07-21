@@ -229,3 +229,47 @@ def test_retrieve_scores_are_rankable_not_uniform(client):
     scores = [h["score"] for h in hits]
     assert scores == sorted(scores, reverse=True)          # descending
     assert scores[0] > scores[-1]                          # genuinely spread, not flat
+
+
+def test_openai_compatible_generation_backend(monkeypatch):
+    """GRIMOIRE_LLM=openai routes answer synthesis to any OpenAI-compatible
+    /chat/completions endpoint (OpenAI, vLLM, LM Studio, OpenRouter, …)."""
+    import io
+    import json as _json
+
+    from server import ai
+    monkeypatch.setenv("GRIMOIRE_LLM", "openai")
+    monkeypatch.setenv("GRIMOIRE_LLM_BASE_URL", "http://fake.local/v1")
+    monkeypatch.setenv("GRIMOIRE_LLM_API_KEY", "sk-test")
+    monkeypatch.setenv("GRIMOIRE_LLM_MODEL", "gpt-test")
+    seen = {}
+
+    def fake_urlopen(req, timeout=0):
+        seen["url"] = req.full_url
+        seen["auth"] = req.headers.get("Authorization")
+        seen["body"] = _json.loads(req.data)
+        payload = {"choices": [{"message": {"content": "Force-recreate the deploy [1]."}}]}
+        return io.BytesIO(_json.dumps(payload).encode())
+
+    monkeypatch.setattr(ai.urllib.request, "urlopen", fake_urlopen)
+    out = ai.answer("how do I roll back?",
+                    [{"path": "a.md", "title": "Runbook", "chunk": "force-recreate"}])
+    assert out == "Force-recreate the deploy [1]."
+    assert seen["url"] == "http://fake.local/v1/chat/completions"
+    assert seen["auth"] == "Bearer sk-test"
+    assert seen["body"]["model"] == "gpt-test"
+    assert seen["body"]["messages"][0]["role"] == "user"
+
+
+def test_openai_backend_falls_back_on_outage(monkeypatch):
+    """A backend error must never fail the request — fall back to extractive."""
+    from server import ai
+    monkeypatch.setenv("GRIMOIRE_LLM", "openai")
+    monkeypatch.setenv("GRIMOIRE_LLM_BASE_URL", "http://unreachable.local/v1")
+
+    def boom(req, timeout=0):
+        raise OSError("connection refused")
+
+    monkeypatch.setattr(ai.urllib.request, "urlopen", boom)
+    out = ai.answer("q", [{"path": "a.md", "title": "T", "chunk": "the answer text"}])
+    assert "the answer text" in out       # extractive fallback, not an error

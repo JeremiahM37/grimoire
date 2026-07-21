@@ -38,10 +38,27 @@ def _embed_model() -> str:
     return _cfg("embed_model") or "nomic-embed-text"
 
 def _llm() -> str:
-    return _cfg("llm").lower()   # '', 'ollama', 'claude'
+    return _cfg("llm").lower()   # '', 'ollama', 'claude', 'openai'
 
 def _llm_model() -> str:
     return _cfg("llm_model") or "qwen3.5:4b"
+
+def _llm_base_url() -> str:
+    return _cfg("llm_base_url").rstrip("/")
+
+def _llm_api_key() -> str:
+    """Key for the OpenAI-compatible backend. Explicit setting/env wins; else
+    dogfood the credential vault (an unlocked secret named 'llm-api-key'), so
+    the key is stored the same audited way agents' secrets are. Local servers
+    (vLLM, LM Studio, Ollama's OpenAI shim) usually need no key at all."""
+    key = _cfg("llm_api_key")
+    if key:
+        return key
+    try:
+        from . import secrets
+        return secrets._get_value("llm-api-key") or ""
+    except Exception:
+        return ""
 
 
 # ---- chunking ---------------------------------------------------------------
@@ -191,7 +208,7 @@ def _answer_backend() -> str:
     deployment sets only GRIMOIRE_OLLAMA_URL). Falls back to extractive when neither
     is present — keeping the offline default and hermetic tests deterministic."""
     b = _llm()
-    if b in ("ollama", "claude"):
+    if b in ("ollama", "claude", "openai"):
         return b
     if _ollama_url():
         return "ollama"
@@ -238,6 +255,22 @@ def _llm_answer(question: str, contexts: list[dict], backend: str) -> str:
                              "stream": False, "think": False}).encode())
         with urllib.request.urlopen(req, timeout=120) as r:
             return json.load(r).get("response", "").strip() or _extractive_answer(question, contexts)
+    if backend == "openai":
+        # any OpenAI-compatible /chat/completions endpoint
+        base = _llm_base_url() or "https://api.openai.com/v1"
+        headers = {"Content-Type": "application/json"}
+        key = _llm_api_key()
+        if key:
+            headers["Authorization"] = f"Bearer {key}"
+        req = urllib.request.Request(
+            f"{base}/chat/completions", method="POST", headers=headers,
+            data=json.dumps({"model": _llm_model(),
+                             "messages": [{"role": "user", "content": prompt}],
+                             "stream": False, "temperature": 0.2}).encode())
+        with urllib.request.urlopen(req, timeout=120) as r:
+            data = json.load(r)
+        text = (data["choices"][0]["message"]["content"] or "").strip()
+        return text or _extractive_answer(question, contexts)
     # claude via ANTHROPIC_API_KEY (or vault secret in v0.3+)
     key = os.environ.get("ANTHROPIC_API_KEY", "")
     if not key:
