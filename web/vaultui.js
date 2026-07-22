@@ -34,6 +34,9 @@ export async function openVault() {
   } else {
     const secrets = await api("/secrets");
     const grants = await api("/grants").catch(() => []);
+    const audit = await api("/audit").catch(() => []);
+    const aicon = { broker: "📤", grant: "🎟", revoke: "✕", revoke_all: "✕",
+                    set: "➕", delete: "🗑", change_passphrase: "🔑" };
     b.innerHTML = `<div class="vault-actions"><span class="vault-note">${secrets.length} secret(s) — values are never shown. Your AI can use them via scoped grants.</span>
       <button id="v-lock" class="icon" title="lock">🔒 Lock</button></div>
       <div id="v-list">${secrets.map((s) => `<div class="v-row"><span>🔑 ${esc(s.name)}</span>
@@ -44,6 +47,11 @@ export async function openVault() {
         <div id="v-grants">${grants.map((g) => `<div class="v-row"><span>🎟 ${esc(g.grantee)} → ${esc(g.secret)}
           <span class="pm">${g.expired ? "expired" : g.expires_in + "s"}</span></span>
           <button class="icon danger v-revoke" data-t="${esc(g.token)}" title="revoke">✕</button></div>`).join("")}</div>` : ""}
+      <details id="v-audit"><summary>Audit log · every secret use, granted, revoked (${audit.length})</summary>
+        ${audit.length ? audit.map((a) => `<div class="v-arow"><span class="pm">${esc((a.ts || "").replace("T", " "))}</span>
+          <span class="a-act">${aicon[a.action] || "•"} ${esc(a.action)}</span>${a.secret ? " <code>" + esc(a.secret) + "</code>" : ""}
+          ${a.detail ? `<span class="pm">${esc(a.detail)}</span>` : ""}</div>`).join("")
+          : '<div class="vault-note">Nothing yet — brokered calls, grants and revocations all land here.</div>'}</details>
       <div class="vault-actions" style="margin-top:10px"><button id="v-changepass" class="btn">Change passphrase…</button></div>`;
     $("#v-lock").onclick = async () => { await api("/vault/lock", { method: "POST" }); openVault(); toast("Vault locked"); };
     $("#v-add").onclick = async () => {

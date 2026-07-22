@@ -86,3 +86,31 @@ def test_agent_briefing_surface(page, server):
     expect(page.locator("#inspect-body", )).to_contain_text("Onboarding", timeout=6000)
     expect(page.locator(".inspect-chunk", has_text="Env Rules")).to_be_visible()
     expect(page.locator(".inspect-chunk", has_text="ops-briefing")).to_be_visible()
+
+
+def test_credential_audit_log_visible(page, server):
+    """The vault modal shows the audit trail — every secret set / granted /
+    used — reinforcing the trust boundary in the human console."""
+    page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
+    # session-scoped vault is shared with other e2e tests: use the same
+    # passphrase and tolerate init-or-unlock so order doesn't matter
+    pw = "mypassphrase123"
+    for ep in ("init", "unlock"):
+        page.evaluate(
+            f"() => fetch('/api/vault/{ep}', {{method:'POST',"
+            "headers:{'Content-Type':'application/json'},"
+            f"body: JSON.stringify({{passphrase: '{pw}'}})}})")
+        page.wait_for_timeout(200)
+    page.evaluate(
+        "() => fetch('/api/secrets', {method:'POST',"
+        "headers:{'Content-Type':'application/json'},"
+        "body: JSON.stringify({name:'ci-token', value:'ghp_demo'})})")
+    page.wait_for_timeout(300)
+    page.locator("#vault-open").click()
+    audit = page.locator("#v-audit")
+    expect(audit).to_be_visible(timeout=6000)
+    audit.locator("summary").click()
+    row = page.locator(".v-arow", has_text="set")
+    expect(row.first).to_be_visible(timeout=4000)
+    expect(row.first).to_contain_text("ci-token")
