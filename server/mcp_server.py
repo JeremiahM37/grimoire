@@ -183,6 +183,15 @@ def list_grants() -> list:
 
 
 @mcp.tool()
+def consolidate_memory(topic: str = "") -> dict:
+    """Compact agent memory so recall stays sharp as it grows: merge redundant
+    entries and supersede stale/contradicted ones. `topic` targets one memory
+    note; empty consolidates all of them. Rewrites are snapshotted, so the
+    human can review and roll back — memory stays auditable."""
+    return api("POST", "/memory/consolidate", {"topic": topic})
+
+
+@mcp.tool()
 def get_fact(key: str) -> list:
     """Deterministic structured lookup of a `key:: value` fact across the KB —
     use this instead of semantic search when you need an EXACT value (a port,
