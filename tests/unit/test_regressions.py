@@ -399,3 +399,46 @@ def test_fts_chunks_index_stays_in_sync(client, monkeypatch):
                for h in client.get("/api/retrieve", params={"q": "quokka marsupial"}).json())
     client.delete("/api/notes/doc.md")
     assert db.one("SELECT COUNT(*) c FROM fts_chunks WHERE note='doc.md'")["c"] == 0
+
+
+def test_decompose_and_rerank_noop_without_llm(monkeypatch):
+    """With no LLM, decompose returns the question unchanged and rerank is a
+    plain top-k — so /ask behaviour is identical to before (no regression)."""
+    from server import ai
+    assert ai._answer_backend() == ""                    # conftest strips LLM env
+    assert ai.decompose("a genuinely long multi part question about several things") \
+        == ["a genuinely long multi part question about several things"]
+    cands = [{"chunk": f"c{i}", "title": "T"} for i in range(5)]
+    assert ai.rerank("q", cands, keep=3) == cands[:3]
+
+
+def test_decompose_and_rerank_use_llm(monkeypatch):
+    from server import ai
+    monkeypatch.setenv("GRIMOIRE_LLM", "openai")
+    monkeypatch.setenv("GRIMOIRE_LLM_BASE_URL", "http://x/v1")
+    replies = iter(["what is the port?\nwho owns it?", "2,0,1"])
+
+    def fake_complete(prompt, backend=""):
+        return next(replies)
+
+    monkeypatch.setattr(ai, "_complete", fake_complete)
+    subs = ai.decompose("how does the deploy service authenticate against the api gateway")
+    assert subs == ["what is the port?", "who owns it?"]
+    cands = [{"chunk": "alpha", "title": "A"}, {"chunk": "beta", "title": "B"},
+             {"chunk": "gamma", "title": "C"}]
+    ranked = ai.rerank("q", cands, keep=3)
+    assert [c["chunk"] for c in ranked] == ["gamma", "alpha", "beta"]   # order 2,0,1
+
+
+def test_ask_smart_decomposes_and_merges(client, monkeypatch):
+    """/ask with smart retrieval decomposes a multi-hop question and merges
+    evidence from each sub-question's retrieval."""
+    from server import ai
+    client.post("/api/notes", json={"title": "Ports", "body": "the api gateway listens on port 8443"})
+    client.post("/api/notes", json={"title": "Owner", "body": "the deploy service is owned by the platform team"})
+    monkeypatch.setattr(ai, "decompose",
+                        lambda q: ["what port is the api gateway", "who owns the deploy service"])
+    monkeypatch.setattr(ai, "rerank", lambda q, c, keep: c[:keep])
+    r = client.post("/api/ask", json={"q": "how does the deploy service reach the api gateway", "k": 4}).json()
+    titles = {c["title"] for c in r["citations"]}
+    assert "Ports" in titles and "Owner" in titles    # evidence from both sub-questions
