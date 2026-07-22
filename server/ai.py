@@ -391,6 +391,43 @@ def rerank(question: str, candidates: list[dict], keep: int) -> list[dict]:
     return ranked[:keep]
 
 
+def _dedup_lines(body: str) -> str:
+    """Drop exact-duplicate memory entries — the zero-LLM consolidation floor."""
+    seen, out = set(), []
+    for ln in body.splitlines():
+        s = ln.strip()
+        if s.startswith("- "):
+            if s in seen:
+                continue
+            seen.add(s)
+        out.append(ln)
+    return "\n".join(out) + ("\n" if body.endswith("\n") else "")
+
+
+def consolidate_memory(body: str) -> str:
+    """Rewrite a memory note so recall stays sharp as it grows: merge redundant
+    entries, and when two conflict keep the most recent (noting the old is
+    superseded), while preserving each entry's provenance prefix and losing
+    nothing important. LLM-driven; falls back to exact-duplicate removal with no
+    LLM. The caller snapshots first, so a bad rewrite is one rollback away."""
+    backend = _answer_backend()
+    if not backend:
+        return _dedup_lines(body)
+    prompt = (
+        "Consolidate this agent memory note. Merge redundant entries; when two "
+        "entries conflict, keep the most recent and mark the older superseded; "
+        "keep every entry's provenance prefix (the **date · agent · task** "
+        "part); lose nothing important. Keep the format: a '# ' heading, then "
+        "attributed '- **…** — …' bullet entries. Return ONLY the rewritten "
+        f"note.\n\nNOTE:\n{body}\n\nCONSOLIDATED:")
+    try:
+        out = _complete(prompt, backend).strip()
+    except Exception:
+        return _dedup_lines(body)
+    # guard: never let a degenerate rewrite destroy the memory
+    return (out + "\n") if out and len(out) >= len(body) * 0.3 else _dedup_lines(body)
+
+
 def _stem(path: str) -> str:
     return path.rsplit("/", 1)[-1][:-3]
 

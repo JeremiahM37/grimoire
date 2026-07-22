@@ -18,7 +18,7 @@ import time
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from .. import db, history, index, vault
+from .. import ai, db, history, index, vault
 from ..vault import VaultError
 
 router = APIRouter(prefix="/api")
@@ -70,6 +70,44 @@ def remember(m: MemoryIn):
         raise HTTPException(400, str(e)) from None
     index.upsert(rel)
     return {"path": rel, "created": not existing, "entry": entry.strip()}
+
+
+class ConsolidateIn(BaseModel):
+    path: str = ""          # a specific memory note…
+    topic: str = ""         # …or its topic; empty for both = every memory note
+
+
+@router.post("/memory/consolidate")
+def consolidate(c: ConsolidateIn):
+    """Compact agent memory so recall stays sharp as it grows: merge redundant
+    entries, supersede stale ones. Each rewrite is snapshotted first, so the
+    human reviews and rolls back like any note — memory stays auditable."""
+    if c.path.strip():
+        rels = [c.path.strip()]
+    elif c.topic.strip():
+        rels = [_memory_rel(c.topic)]
+    else:
+        rels = [r["path"] for r in db.query(
+            "SELECT path FROM notes WHERE path LIKE ? ORDER BY updated DESC",
+            (f"{MEMORY_DIR}/%",))]
+    out = []
+    for rel in rels:
+        try:
+            note = vault.read(rel)
+        except VaultError:
+            continue
+        if note.get("encrypted"):
+            continue
+        before = note["body"]
+        after = ai.consolidate_memory(before)
+        if after and after.strip() != before.strip():
+            history.snapshot(rel, before)          # rollback-able
+            vault.write(rel, after, note["frontmatter"])
+            index.upsert(rel)
+            out.append({"path": rel,
+                        "before_entries": before.count("- **"),
+                        "after_entries": after.count("- **")})
+    return {"consolidated": out, "notes_changed": len(out)}
 
 
 @router.get("/memory")
