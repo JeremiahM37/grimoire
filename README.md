@@ -63,6 +63,13 @@ daily-drive it; the agent substrate is there when you want it.
 docker compose up -d        # → http://localhost:9111 · notes land in ./vault
 ```
 
+Already have a pile of markdown? Skip the empty-vault cold start:
+
+```bash
+grimoire ingest ~/obsidian-vault    # bulk-import a folder of markdown/text
+grimoire seed-demo                  # …or write a small sample vault to explore
+```
+
 Mount an **existing** markdown vault instead (editing through Grimoire preserves
 foreign frontmatter byte-for-byte — nested YAML and all):
 
@@ -95,8 +102,13 @@ desktop assistants, custom agents. Example config:
 
 The agent gets: `search_notes` · `ask_notes` · `read_note` · `create_note` ·
 `update_note` · `append_daily` · `backlinks` · `list_tags` · **`remember`** ·
-**`recall`** · **`use_credential`** · **`list_grants`** · **`get_fact`** ·
-**`set_fact`**.
+**`recall`** · **`consolidate_memory`** · **`use_credential`** ·
+**`list_grants`** · **`get_fact`** · **`set_fact`**.
+
+`ask_notes` decomposes multi-hop questions and LLM-reranks the evidence when a
+model is configured. `consolidate_memory` compacts the `memory/` namespace
+(merge redundant entries, supersede stale ones) so recall stays sharp as it
+grows — snapshotted first, so every rewrite is reviewable and roll-back-able.
 
 **Structured facts** — for values that must be *exact* (a port, a version, an
 owner, a decision), prose RAG is the wrong tool. Write `key:: value` inline in
