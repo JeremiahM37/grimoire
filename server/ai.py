@@ -286,24 +286,19 @@ def _extractive_answer(question: str, contexts: list[dict]) -> str:
     return lead + "\n".join(parts)
 
 
-def _llm_answer(question: str, contexts: list[dict], backend: str) -> str:
-    ctx = "\n\n".join(f"[{i+1}] ({c['title']})\n{c['chunk']}"
-                      for i, c in enumerate(contexts[:6]))
-    prompt = (
-        "Answer the question using ONLY the notes below. Cite sources as [n]. If the "
-        "notes don't contain the answer, say so.\n\n"
-        f"NOTES:\n{ctx}\n\nQUESTION: {question}\n\nANSWER:")
+def _complete(prompt: str, backend: str = "") -> str:
+    """One raw LLM completion on the active backend. Raises on missing
+    backend/key so callers can fall back."""
+    backend = backend or _answer_backend()
     if backend == "ollama":
-        url = _ollama_url()
         req = urllib.request.Request(
-            f"{url}/api/generate", method="POST",
+            f"{_ollama_url()}/api/generate", method="POST",
             headers={"Content-Type": "application/json"},
             data=json.dumps({"model": _llm_model(), "prompt": prompt,
                              "stream": False, "think": False}).encode())
         with urllib.request.urlopen(req, timeout=120) as r:
-            return json.load(r).get("response", "").strip() or _extractive_answer(question, contexts)
+            return json.load(r).get("response", "").strip()
     if backend == "openai":
-        # any OpenAI-compatible /chat/completions endpoint
         base = _llm_base_url() or "https://api.openai.com/v1"
         headers = {"Content-Type": "application/json"}
         key = _llm_api_key()
@@ -316,22 +311,84 @@ def _llm_answer(question: str, contexts: list[dict], backend: str) -> str:
                              "stream": False, "temperature": 0.2}).encode())
         with urllib.request.urlopen(req, timeout=120) as r:
             data = json.load(r)
-        text = (data["choices"][0]["message"]["content"] or "").strip()
-        return text or _extractive_answer(question, contexts)
-    # claude via ANTHROPIC_API_KEY (or vault secret in v0.3+)
-    key = os.environ.get("ANTHROPIC_API_KEY", "")
-    if not key:
-        return _extractive_answer(question, contexts)
-    req = urllib.request.Request(
-        "https://api.anthropic.com/v1/messages", method="POST",
-        headers={"content-type": "application/json", "x-api-key": key,
-                 "anthropic-version": "2023-06-01"},
-        data=json.dumps({"model": os.environ.get("GRIMOIRE_LLM_MODEL", "claude-sonnet-5"),
-                         "max_tokens": 1024,
-                         "messages": [{"role": "user", "content": prompt}]}).encode())
-    with urllib.request.urlopen(req, timeout=120) as r:
-        data = json.load(r)
-    return "".join(b.get("text", "") for b in data.get("content", [])).strip()
+        return (data["choices"][0]["message"]["content"] or "").strip()
+    if backend == "claude":
+        key = os.environ.get("ANTHROPIC_API_KEY", "") or _llm_api_key()
+        if not key:
+            raise ValueError("no anthropic key")
+        model = _llm_model()
+        req = urllib.request.Request(
+            "https://api.anthropic.com/v1/messages", method="POST",
+            headers={"content-type": "application/json", "x-api-key": key,
+                     "anthropic-version": "2023-06-01"},
+            data=json.dumps({"model": "claude-sonnet-5" if model == "qwen3.5:4b" else model,
+                             "max_tokens": 1024,
+                             "messages": [{"role": "user", "content": prompt}]}).encode())
+        with urllib.request.urlopen(req, timeout=120) as r:
+            data = json.load(r)
+        return "".join(b.get("text", "") for b in data.get("content", [])).strip()
+    raise ValueError("no llm backend configured")
+
+
+def _llm_answer(question: str, contexts: list[dict], backend: str) -> str:
+    ctx = "\n\n".join(f"[{i+1}] ({c['title']})\n{c['chunk']}"
+                      for i, c in enumerate(contexts[:6]))
+    prompt = (
+        "Answer the question using ONLY the notes below. Cite sources as [n]. If the "
+        "notes don't contain the answer, say so.\n\n"
+        f"NOTES:\n{ctx}\n\nQUESTION: {question}\n\nANSWER:")
+    return _complete(prompt, backend) or _extractive_answer(question, contexts)
+
+
+def decompose(question: str) -> list[str]:
+    """Split a complex question into the 1-3 focused sub-questions whose answers
+    are needed to answer it — this is what lifts multi-hop retrieval (the one
+    category where retrieval lagged full-context on the benchmarks). Returns
+    [question] unchanged with no LLM or for a simple question."""
+    backend = _answer_backend()
+    q = question.strip()
+    if not backend or len(q.split()) < 6:
+        return [q]
+    prompt = ("Decompose the question into the 1-3 focused sub-questions whose "
+              "answers you would need to answer it. If it needs no decomposition, "
+              "return it unchanged. One per line, no numbering, no other text.\n\n"
+              f"Question: {q}\n\nSub-questions:")
+    try:
+        out = _complete(prompt, backend)
+    except Exception:
+        return [q]
+    subs = [re.sub(r"^[\d.)\-•*\s]+", "", ln).strip() for ln in out.splitlines()]
+    subs = [s for s in subs if len(s) > 4][:3]
+    return subs or [q]
+
+
+def rerank(question: str, candidates: list[dict], keep: int) -> list[dict]:
+    """LLM reranks retrieved passages by how well each helps answer the
+    question, returning the top `keep`. No-op (candidates[:keep]) without an
+    LLM or for a trivial pool."""
+    backend = _answer_backend()
+    if not backend or len(candidates) <= 1:
+        return candidates[:keep]
+    listing = "\n".join(f"[{i}] {c.get('title', '')}: {c['chunk'][:220]}"
+                        for i, c in enumerate(candidates[:20]))
+    prompt = ("Rank the passages by how well they help answer the question. "
+              "Reply with the most relevant passage numbers in order, "
+              "comma-separated (e.g. 3,1,5). Nothing else.\n\n"
+              f"Question: {question}\n\nPassages:\n{listing}\n\nOrder:")
+    try:
+        out = _complete(prompt, backend)
+    except Exception:
+        return candidates[:keep]
+    order = [int(x) for x in re.findall(r"\d+", out)]
+    seen, ranked = set(), []
+    for i in order:
+        if 0 <= i < len(candidates) and i not in seen:
+            ranked.append(candidates[i])
+            seen.add(i)
+    for i, c in enumerate(candidates):
+        if i not in seen:
+            ranked.append(c)
+    return ranked[:keep]
 
 
 def _stem(path: str) -> str:

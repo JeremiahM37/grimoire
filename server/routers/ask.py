@@ -11,6 +11,21 @@ class AskIn(BaseModel):
     q: str
     k: int = 6
     include_private: bool = False
+    smart: bool = True     # decompose multi-hop questions + LLM-rerank (needs an LLM)
+
+
+def smart_retrieve(q: str, k: int, include_private: bool, smart: bool) -> list[dict]:
+    """Retrieval for answering: when an LLM is available and `smart`, decompose
+    a multi-hop question into sub-questions, retrieve each, then LLM-rerank the
+    merged pool. Falls back to plain retrieval (identical behaviour) otherwise."""
+    subs = ai.decompose(q) if smart else [q]
+    if len(subs) == 1:
+        return index.retrieve(subs[0], k=k, include_private=include_private)
+    pool: dict = {}
+    for sub in subs:
+        for c in index.retrieve(sub, k=k, include_private=include_private):
+            pool.setdefault((c["path"], c["chunk"][:80]), c)
+    return ai.rerank(q, list(pool.values()), keep=max(k, 6))
 
 
 @router.post("/ask")
@@ -19,7 +34,7 @@ def ask(a: AskIn):
     unless explicitly opted in."""
     if not a.q.strip():
         return {"answer": "", "citations": []}
-    ctx = index.retrieve(a.q, k=a.k, include_private=a.include_private)
+    ctx = smart_retrieve(a.q, a.k, a.include_private, a.smart)
     ans = ai.answer(a.q, ctx)
     return {"answer": ans,
             "citations": [{"path": c["path"], "title": c["title"], "score": c["score"]}
