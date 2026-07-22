@@ -12,6 +12,8 @@ Usage:
   grimoire ls [--tag TAG]             list notes
   grimoire open PATH                  print a note
   grimoire reindex                    rebuild the search index
+  grimoire ingest PATH [--into DIR]   bulk-import a folder of markdown/text
+  grimoire seed-demo                  write a small sample vault (first-run demo)
   grimoire serve [--port N]           run the web app + API
 Env: GRIMOIRE_VAULT (default ~/grimoire-vault)
 """
@@ -104,6 +106,68 @@ def cmd_open(args):
 
 def cmd_reindex(args):
     print(f"indexed {index.reindex()} notes")
+
+
+def cmd_ingest(args):
+    """Bulk-import an existing folder of markdown/text into the vault — the
+    cold-start fix, so a new user's agent has something to retrieve on day one.
+    usage: grimoire ingest PATH [--into SUBDIR]"""
+    if not args:
+        print("usage: grimoire ingest PATH [--into SUBDIR]", file=sys.stderr); return 2
+    src = Path(args[0]).expanduser()
+    into = args[args.index("--into") + 1].strip("/") if "--into" in args else ""
+    if not src.exists():
+        print(f"no such path: {src}", file=sys.stderr); return 2
+    exts = {".md", ".markdown", ".mdown", ".txt"}
+    files = [src] if src.is_file() else sorted(p for p in src.rglob("*") if p.is_file())
+    n = 0
+    for p in files:
+        if p.suffix.lower() not in exts or any(seg.startswith(".") for seg in p.parts):
+            continue
+        try:
+            text = p.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        base = Path(p.name if src.is_file() else str(p.relative_to(src)))
+        rel = "/".join(vault.slugify(seg) for seg in base.with_suffix("").parts) + ".md"
+        if into:
+            rel = f"{into}/{rel}"
+        note = vault.note_from_text(rel, text, 0.0)
+        fm = dict(note["frontmatter"])
+        fm.setdefault("title", base.stem.replace("-", " ").replace("_", " ").strip())
+        vault.write(rel, note["body"], fm)
+        index.upsert(rel)
+        n += 1
+    print(f"ingested {n} file(s) into {config.VAULT}")
+
+
+_DEMO = {
+    "deployment-runbook.md": ("Deployment Runbook",
+        "# Deployment Runbook\n\nport:: 8443\nowner:: platform-team\n\n"
+        "## Rolling back a bad deploy\n1. `docker compose rollback` pins the previous image.\n"
+        "2. If the proxy still 502s, the namespaces are stale — do a full "
+        "`--force-recreate`, not a plain restart.\n3. Confirm on [[Monitoring]].\n",
+        {"pinned": True, "tags": ["ops"]}),
+    "monitoring.md": ("Monitoring",
+        "# Monitoring\n\nGrafana fronts Prometheus. Alerts page on error rate "
+        "> 2% for 5 minutes. The VPN tunnel MTU is pinned to 1280.\n", {"tags": ["ops"]}),
+    "team-onboarding.md": ("Team Onboarding",
+        "# Team Onboarding\n\nCopy `.env.example` to `.env`, add the CA cert, and "
+        "ask the knowledge base before pinging the team.\n", {"tags": ["onboarding"]}),
+    "memory/deploy-quirks.md": ("Memory: deploy quirks",
+        "The staging deploy needs `--force-recreate` after any VPN change — a "
+        "plain restart leaves stale namespaces and outbound calls black-hole.\n",
+        {"memory": True, "agent": "claude-code", "task": "debug-session", "tags": ["ops"]}),
+}
+
+
+def cmd_seed_demo(args):
+    """Write a small sample vault so a fresh install shows the agent loop
+    (retrieval, a fact, a provenance-stamped memory) with zero setup."""
+    for rel, (title, body, extra) in _DEMO.items():
+        vault.write(rel, body, {"title": title, **extra})
+        index.upsert(rel)
+    print(f"seeded {len(_DEMO)} demo notes into {config.VAULT} — try: grimoire search deploy")
 
 
 def cmd_serve(args):
@@ -237,7 +301,8 @@ def cmd_agent_setup(args):
 
 COMMANDS = {"new": cmd_new, "daily": cmd_daily, "capture": cmd_capture,
             "search": cmd_search, "ls": cmd_ls, "open": cmd_open,
-            "reindex": cmd_reindex, "serve": cmd_serve, "export": cmd_export,
+            "reindex": cmd_reindex, "ingest": cmd_ingest, "seed-demo": cmd_seed_demo,
+            "serve": cmd_serve, "export": cmd_export,
             "mcp": cmd_mcp, "sync": cmd_sync, "agent-setup": cmd_agent_setup}
 
 
