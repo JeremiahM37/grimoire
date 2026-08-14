@@ -58,7 +58,9 @@ export function headingId(text) {
 export function mdToHtml(src) {
   // small, safe-ish markdown: escape first, then apply inline + block rules
   let resolved = new Set(noteIndex.notes.flatMap((n) => [
-    (n.title || "").toLowerCase(), n.path.replace(/\.md$/, "").split("/").pop().toLowerCase()]));
+    (n.title || "").toLowerCase(), n.path.toLowerCase(),
+    n.path.replace(/\.md$/, "").toLowerCase(),          // [[Folder/Note]]
+    n.path.replace(/\.md$/, "").split("/").pop().toLowerCase()]));
   Object.keys(noteIndex.aliases).forEach((a) => resolved.add(a));
   const lines = src.split("\n");
   let html = "", listOpen = false;
@@ -68,8 +70,14 @@ export function mdToHtml(src) {
     const m = l.match(/^\[\^([\w-]+)\]:\s+(.*)$/);
     if (m) footnotes.push([m[1], m[2]]);
   }
-  const inline = (t) => esc(t)
-    .replace(/`([^`]+)`/g, "<code>$1</code>")
+  const inline = (t) => {
+    // Inline code is literal: stash each span behind a sentinel so the rules
+    // below can't reach inside it (a `[[wikilinks]]` syntax example was being
+    // rendered as a real, dead link; same for tags, emphasis and urls).
+    // \x00 cannot occur in escaped text, so the sentinel never collides.
+    const spans = [];
+    return esc(t)
+    .replace(/`([^`]+)`/g, (_, code) => `\x00c${spans.push(code) - 1}\x00`)
     .replace(/!\[\[([^\[\]|]+?)\]\]/g, (_, src) =>
       `<img class="embed" src="/api/file/${encodeURI(src.trim())}" alt="${esc(src.trim())}" loading="lazy">`)
     .replace(/\[\[([^\]|]+?)(?:\|([^\]]+))?\]\]/g, (_, tgt, al) => {
@@ -84,7 +92,9 @@ export function mdToHtml(src) {
     .replace(/~~([^~]+)~~/g, "<del>$1</del>")
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, "<em>$1</em>")
-    .replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    .replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+    .replace(/\x00c(\d+)\x00/g, (_, i) => `<code>${spans[Number(i)]}</code>`);
+  };
   const closeList = () => { if (listOpen) { html += "</ul>"; listOpen = false; } };
   for (let lineNo = 0; lineNo < lines.length; lineNo++) {
     const raw = lines[lineNo];
@@ -204,10 +214,14 @@ export function queryResultHtml(res) {
     `<li><a class="wikilink" data-path="${esc(r.path)}">${esc(r.title || r.path)}</a></li>`).join("") + "</ul>";
 }
 
-/** Resolve a wiki-link target (title / stem / alias) to a vault path. */
+/** Resolve a wiki-link target (title / path / stem / alias) to a vault path. */
 export async function resolvePath(target) {
   const low = target.toLowerCase();
+  // path forms come first among the file-based matches: [[Folder/Note]] names
+  // exactly one note, while a bare stem can be ambiguous across folders
   const hit = noteIndex.notes.find((n) => (n.title || "").toLowerCase() === low
+    || n.path.toLowerCase() === low
+    || n.path.replace(/\.md$/, "").toLowerCase() === low
     || n.path.replace(/\.md$/, "").split("/").pop().toLowerCase() === low);
   if (hit) return hit.path;
   return noteIndex.aliases[low] || null;

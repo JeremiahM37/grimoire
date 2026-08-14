@@ -174,7 +174,17 @@ def render(body: str, link_map: dict | None = None,
 
 def _inline(text: str, ctx: RenderContext) -> str:
     out = html.escape(text)
-    out = re.sub(r"`([^`]+)`", lambda m: f"<code>{m.group(1)}</code>", out)
+    # Inline code is literal: stash each span behind a sentinel so the rules
+    # below can't reach inside it. Rendering `[[wikilinks]]` in a syntax example
+    # as a real (dead) link is the visible symptom; the same applied to tags,
+    # emphasis and urls. \x00 can't occur in escaped text, so it never collides.
+    spans: list[str] = []
+
+    def _stash(m: re.Match) -> str:
+        spans.append(m.group(1))
+        return f"\x00c{len(spans) - 1}\x00"
+
+    out = re.sub(r"`([^`]+)`", _stash, out)
     out = _EMBED.sub(lambda m: _embed_inline(m.group(1).strip(), ctx), out)
     out = _WIKILINK.sub(lambda m: _wl(m, ctx), out)
     out = _FOOTNOTE_REF.sub(
@@ -187,7 +197,8 @@ def _inline(text: str, ctx: RenderContext) -> str:
     out = re.sub(r"\[([^\]]+)\]\((https?:[^)]+)\)",
                  r'<a href="\2" target="_blank" rel="noopener">\1</a>', out)
     out = re.sub(r"(^|\s)#([A-Za-z][\w/-]*)", r'\1<span class="tag">#\2</span>', out)
-    return out
+    return re.sub(r"\x00c(\d+)\x00",
+                  lambda m: f"<code>{spans[int(m.group(1))]}</code>", out)
 
 
 def _embed_inline(target: str, ctx: RenderContext) -> str:
