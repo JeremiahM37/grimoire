@@ -1,7 +1,7 @@
 # Grimoire Notes — Design Document
 
 > **Name:** **Grimoire Notes** (product name). The codebase still uses the original `grimoire` codename internally (the `server` package, the `GRIMOIRE_` env prefix, the systemd service, and the `/home/admin/projects/grimoire` path) — user-facing surfaces all say Grimoire.
-> **One-liner:** A **personal context server** — your knowledge base, retrieval, credentials, and your agents' memory in one self-hosted trust boundary, mounted over MCP — with a first-class notes app as the human console.
+> **One-liner:** A **self-hosted personal context server** — one knowledge and trust boundary shared by you and your AI agents: your knowledge base, retrieval, credentials, and your agents' memory, mounted over MCP — with a first-class notes app as the human console.
 > *(Direction settled 2026-07: the substrate is the product; the editor is its human console. Agents get `remember`/`recall` (auditable memory-as-notes) and `use_credential` (USE-not-READ brokering); humans get the trust surfaces — memory review, grant console, retrieval inspection.)*
 
 Status: v0.1–v0.9 shipped · Started 2026-07-16 · Lives at `/home/admin/projects/grimoire/`
