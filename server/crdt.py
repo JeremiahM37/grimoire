@@ -110,10 +110,24 @@ class Doc:
 
     # ---- serialization ------------------------------------------------------
     def to_json(self) -> str:
+        """Serialize in CANONICAL order: identical document state must produce
+        identical bytes.
+
+        `tombs` is a set and `atoms` a dict, so their natural iteration order is
+        insertion/hash order — and atom ids contain the site *string*, whose hash
+        is randomized per process. Without sorting, the same document
+        re-serializes differently on every restart: the on-disk file churns,
+        anything content-hashing it (sync, backups) sees phantom changes, two
+        replicas in identical states can't be compared byte-wise, and no other
+        implementation can reproduce the output. Ordering is not semantic —
+        from_json() rebuilds the same dict/set either way — so this stays
+        compatible with files written before the sort.
+        """
         return json.dumps({
             "site": self.site, "clock": self.clock,
-            "atoms": [[list(k), s, c, ch] for (k, s, c), ch in self.atoms.items()],
-            "tombs": [[list(k), s, c] for (k, s, c) in self.tombs],
+            "atoms": [[list(k), s, c, self.atoms[(k, s, c)]]
+                      for (k, s, c) in sorted(self.atoms, key=self._sortkey)],
+            "tombs": [[list(k), s, c] for (k, s, c) in sorted(self.tombs, key=self._sortkey)],
         }, separators=(",", ":"))
 
     @classmethod
