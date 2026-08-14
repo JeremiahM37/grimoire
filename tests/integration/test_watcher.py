@@ -61,3 +61,26 @@ def test_external_delete_removes_from_index(vaultdir):
             "watcher did not remove a deleted note from the index"
     finally:
         w.stop()
+
+
+def test_reading_a_note_does_not_requeue_it(vaultdir):
+    """REGRESSION: indexing a note reads its file, and inotify reports the read as
+    OPENED/CLOSED_NO_WRITE. Handling those re-queued the note that was just
+    indexed, which read it again — a self-feeding loop that pinned a core and
+    left readers seeing notes mid-rewrite (rows are DELETEd then re-INSERTed).
+    Only writes may reconcile; reads must be inert."""
+    p = vaultdir / "readme-loop.md"
+    p.write_text("# Read Me\n\nbody")
+    index.reindex()
+    seen: list[str] = []
+    w = VaultWatcher(debounce=0.2)
+    w._queue = lambda path: seen.append(path)   # observe queueing, skip indexing
+    w.start()
+    time.sleep(0.3)   # let the observer establish its watch before reading
+    try:
+        for _ in range(5):
+            p.read_text()          # exactly what upsert() does to the file
+        time.sleep(0.6)            # well past the debounce window
+        assert not seen, f"reads re-queued the note: {seen}"
+    finally:
+        w.stop()
