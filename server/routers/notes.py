@@ -40,9 +40,9 @@ def list_notes(tag: str | None = None, limit: int = 500):
     if tag:
         rows = db.query(
             "SELECT n.* FROM notes n JOIN tags t ON t.note=n.path WHERE t.tag=? "
-            "ORDER BY n.updated DESC LIMIT ?", (tag, limit))
+            "ORDER BY n.updated DESC, n.path LIMIT ?", (tag, limit))
     else:
-        rows = db.query("SELECT * FROM notes ORDER BY updated DESC LIMIT ?", (limit,))
+        rows = db.query("SELECT * FROM notes ORDER BY updated DESC, path LIMIT ?", (limit,))
     items = [{"path": r["path"], "title": r["title"], "updated": r["updated"],
               "private": bool(r["private"]), "pinned": _pinned(r["frontmatter_json"])}
              for r in rows]
