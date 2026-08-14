@@ -59,6 +59,9 @@ def _link_map() -> dict:
     resolved = {}
     for n in db.query("SELECT path, title FROM notes WHERE private=0"):
         resolved[n["title"].lower()] = n["path"]
+        # folder-qualified targets — [[Job Search/Strategy]] — as well as bare stems
+        resolved[n["path"].lower()] = n["path"]
+        resolved[n["path"][:-3].lower()] = n["path"]
         resolved[n["path"].rsplit("/", 1)[-1][:-3].lower()] = n["path"]
     return resolved
 
