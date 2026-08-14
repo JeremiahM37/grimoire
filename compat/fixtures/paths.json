@@ -1,0 +1,141 @@
+{
+  "description": "safe_path() confinement (traversal + absolute + reserved dirs) and slugify(). A security boundary, not a nicety.",
+  "cases": [
+    {
+      "rel": "ok.md",
+      "ok": true,
+      "resolved_rel": "ok.md",
+      "is_reserved": false
+    },
+    {
+      "rel": "Folder/ok.md",
+      "ok": true,
+      "resolved_rel": "Folder/ok.md",
+      "is_reserved": false
+    },
+    {
+      "rel": "Folder/Sub/ok.md",
+      "ok": true,
+      "resolved_rel": "Folder/Sub/ok.md",
+      "is_reserved": false
+    },
+    {
+      "rel": "with space.md",
+      "ok": true,
+      "resolved_rel": "with space.md",
+      "is_reserved": false
+    },
+    {
+      "rel": "Ünïcodé.md",
+      "ok": true,
+      "resolved_rel": "Ünïcodé.md",
+      "is_reserved": false
+    },
+    {
+      "rel": "../escape.md",
+      "ok": false,
+      "error": "VaultError",
+      "is_reserved": false
+    },
+    {
+      "rel": "/absolute.md",
+      "ok": true,
+      "resolved_rel": "absolute.md",
+      "is_reserved": false
+    },
+    {
+      "rel": "Folder/../../escape.md",
+      "ok": false,
+      "error": "VaultError",
+      "is_reserved": false
+    },
+    {
+      "rel": "..\\windows.md",
+      "ok": true,
+      "resolved_rel": "..\\windows.md",
+      "is_reserved": false
+    },
+    {
+      "rel": "",
+      "ok": false,
+      "error": "VaultError",
+      "is_reserved": false
+    },
+    {
+      "rel": ".",
+      "ok": true,
+      "resolved_rel": "..md",
+      "is_reserved": false
+    },
+    {
+      "rel": "..",
+      "ok": true,
+      "resolved_rel": "...md",
+      "is_reserved": false
+    },
+    {
+      "rel": "./ok.md",
+      "ok": true,
+      "resolved_rel": "ok.md",
+      "is_reserved": false
+    },
+    {
+      "rel": "Folder//double.md",
+      "ok": true,
+      "resolved_rel": "Folder/double.md",
+      "is_reserved": false
+    },
+    {
+      "rel": ".grimoire/internal.md",
+      "ok": false,
+      "error": "VaultError",
+      "is_reserved": true
+    },
+    {
+      "rel": "templates/t.md",
+      "ok": true,
+      "resolved_rel": "templates/t.md",
+      "is_reserved": true
+    },
+    {
+      "rel": "a/../b.md",
+      "ok": true,
+      "resolved_rel": "b.md",
+      "is_reserved": false
+    }
+  ],
+  "slugify_cases": [
+    {
+      "title": "A Simple Title",
+      "slug": "a-simple-title"
+    },
+    {
+      "title": "With — Dashes & Symbols!",
+      "slug": "with-dashes-symbols"
+    },
+    {
+      "title": "Ünïcodé 日本語",
+      "slug": "ünïcodé-日本語"
+    },
+    {
+      "title": "  spaces  everywhere  ",
+      "slug": "spaces-everywhere"
+    },
+    {
+      "title": "ALLCAPS",
+      "slug": "allcaps"
+    },
+    {
+      "title": "123",
+      "slug": "123"
+    },
+    {
+      "title": "",
+      "slug": "untitled"
+    },
+    {
+      "title": "a/b/c",
+      "slug": "abc"
+    }
+  ]
+}
