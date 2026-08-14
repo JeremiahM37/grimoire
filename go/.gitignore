@@ -1,0 +1,3 @@
+# build artifacts — the binary is produced by `go build ./cmd/grimoire`
+/grimoire
+/grimoire-mcp
