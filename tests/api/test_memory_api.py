@@ -58,11 +58,23 @@ def test_recall_by_query_and_recency(client):
 
 
 def test_recall_only_sees_the_memory_namespace(client):
-    client.post("/api/notes", json={"title": "Normal Note", "body": "database things"})
+    """Recall is namespace-scoped: an ordinary note must never come back from it,
+    however well it matches.
+
+    Asserted as "no note outside memory/" rather than "no results at all". When
+    the exact-term search misses, recall falls back to semantic retrieval, and
+    whether that surfaces a weakly-related memory depends on the active embedder
+    and on whether numpy is installed (the matmul and pure-Python cosine paths
+    round differently). Demanding an empty list tested those float details; the
+    guarantee is the namespace boundary."""
+    normal = client.post("/api/notes",
+                         json={"title": "Normal Note", "body": "database things"})
+    normal_path = normal.json()["path"]
     client.post("/api/memory", json={"text": "unrelated", "topic": "other"})
     hits = client.get("/api/memory", params={"q": "database"}).json()
-    assert all(h["path"].startswith("memory/") for h in hits)
-    assert hits == []          # the normal note must not leak into recall
+    paths = [h["path"] for h in hits]
+    assert all(p.startswith("memory/") for p in paths), paths
+    assert normal_path not in paths, f"an ordinary note leaked into recall: {paths}"
 
 
 def test_recall_matches_non_adjacent_terms(client):
