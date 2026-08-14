@@ -9,8 +9,15 @@ import json
 import math
 import os
 import re
+import threading
 
 from . import ai, db, vault
+
+# Serializes whole index writes. db's lock only spans one statement, but a write
+# is many: a full rebuild DELETEs every row then re-INSERTs them one note at a
+# time, so a watcher upsert landing mid-rebuild hit `UNIQUE constraint failed:
+# notes.path` and aborted the rebuild, leaving the index half-populated.
+_write_lock = threading.RLock()
 
 
 def upsert(rel: str) -> dict:
@@ -19,8 +26,9 @@ def upsert(rel: str) -> dict:
     note = vault.read(rel)
     if vault.is_reserved(rel):
         return note
-    _write_note_rows(note)
-    _resolve_all()   # a new/edited note can resolve others' dangling links
+    with _write_lock:
+        _write_note_rows(note)
+        _resolve_all()   # a new/edited note can resolve others' dangling links
     try:
         from . import crdtstore
         crdtstore.update_from_body(rel, note["body"])   # track for CRDT sync
@@ -38,16 +46,17 @@ def remove_crdt(rel: str) -> None:
 
 
 def remove(rel: str) -> None:
-    for tbl in ("notes", "fts"):
-        db.execute(f"DELETE FROM {tbl} WHERE path=?", (rel,))
-    db.execute("DELETE FROM links WHERE src=?", (rel,))
-    db.execute("DELETE FROM tags WHERE note=?", (rel,))
-    db.execute("DELETE FROM vectors WHERE note=?", (rel,))
-    db.execute("DELETE FROM fts_chunks WHERE note=?", (rel,))
-    db.execute("DELETE FROM facts WHERE note=?", (rel,))   # queried without a JOIN
-    remove_crdt(rel)
-    _bump_rev()               # the retrieval corpus (notes⋈vectors) changed
-    _resolve_all()
+    with _write_lock:
+        for tbl in ("notes", "fts"):
+            db.execute(f"DELETE FROM {tbl} WHERE path=?", (rel,))
+        db.execute("DELETE FROM links WHERE src=?", (rel,))
+        db.execute("DELETE FROM tags WHERE note=?", (rel,))
+        db.execute("DELETE FROM vectors WHERE note=?", (rel,))
+        db.execute("DELETE FROM fts_chunks WHERE note=?", (rel,))
+        db.execute("DELETE FROM facts WHERE note=?", (rel,))   # queried without a JOIN
+        remove_crdt(rel)
+        _bump_rev()               # the retrieval corpus (notes⋈vectors) changed
+        _resolve_all()
 
 
 def ensure_embed_signature() -> bool:
@@ -66,20 +75,25 @@ def ensure_embed_signature() -> bool:
 
 
 def reindex() -> int:
-    """Full rebuild from the vault. Returns note count."""
-    for tbl in ("notes", "links", "tags", "fts"):
-        db.execute(f"DELETE FROM {tbl}")
-    n = 0
-    for p in vault.walk():
-        try:
-            note = vault.note_from_text(vault.rel_of(p), p.read_text(encoding="utf-8"),
-                                        p.stat().st_mtime)
-        except Exception:
-            continue
-        _write_note_rows(note)
-        n += 1
-    _resolve_all()
-    return n
+    """Full rebuild from the vault. Returns note count.
+
+    Holds the write lock for the whole rebuild so single-note upserts can't
+    interleave with the DELETE-then-INSERT sweep.
+    """
+    with _write_lock:
+        for tbl in ("notes", "links", "tags", "fts"):
+            db.execute(f"DELETE FROM {tbl}")
+        n = 0
+        for p in vault.walk():
+            try:
+                note = vault.note_from_text(vault.rel_of(p), p.read_text(encoding="utf-8"),
+                                            p.stat().st_mtime)
+            except Exception:
+                continue
+            _write_note_rows(note)
+            n += 1
+        _resolve_all()
+        return n
 
 
 def _write_note_rows(note: dict) -> None:
@@ -137,19 +151,24 @@ def _embed_note(note: dict) -> None:
 
 
 def _resolve_all() -> None:
-    """Resolve every link's target → a note path (by title, filename stem, or a
-    frontmatter alias)."""
+    """Resolve every link's target → a note path (by title, vault-relative path,
+    filename stem, or a frontmatter alias)."""
     notes = db.query("SELECT path, title, frontmatter_json FROM notes")
-    by_title, by_stem, by_alias = {}, {}, {}
+    by_title, by_path, by_stem, by_alias = {}, {}, {}, {}
     for n in notes:
         by_title[n["title"].lower()] = n["path"]
+        # folder-qualified links — `[[Job Search/Strategy]]` — are how notes in
+        # subfolders get linked; without this only root-level notes resolve
+        by_path.setdefault(n["path"].lower(), n["path"])
+        by_path.setdefault(n["path"][:-3].lower(), n["path"])   # path without .md
         stem = n["path"].rsplit("/", 1)[-1][:-3].lower()   # filename without .md
         by_stem.setdefault(stem, n["path"])
         for a in _aliases(n["frontmatter_json"]):
             by_alias.setdefault(a.lower(), n["path"])
     for link in db.query("SELECT rowid, target FROM links"):
         key = link["target"].lower()
-        dst = by_title.get(key) or by_stem.get(key) or by_alias.get(key)
+        dst = (by_title.get(key) or by_path.get(key) or by_stem.get(key)
+               or by_alias.get(key))
         db.execute("UPDATE links SET dst=?, resolved=? WHERE rowid=?",
                    (dst, 1 if dst else 0, link["rowid"]))
 
@@ -262,6 +281,12 @@ def _corpus(include_private: bool):
           "FROM vectors v JOIN notes n ON n.path=v.note"
     if not include_private:
         sql += " WHERE v.private=0"
+    # Deterministic corpus order. RRF turns each chunk's RANK into its score, and
+    # many chunks tie on the lexical leg (score 0), so the order the rows arrive
+    # in decides how ties break — and therefore the final scores. Without an
+    # ORDER BY that order is unspecified, so retrieval results could shift after
+    # an unrelated index rebuild.
+    sql += " ORDER BY v.note, v.chunk_idx"
     rows = db.query(sql)
     mat = None
     if _np is not None and rows:
@@ -410,4 +435,4 @@ def backlinks(rel: str) -> list[dict]:
     """Notes that link TO this one (resolved), with the source title."""
     return db.query(
         "SELECT DISTINCT l.src AS path, n.title, l.alias FROM links l "
-        "JOIN notes n ON n.path=l.src WHERE l.dst=? ORDER BY n.title", (rel,))
+        "JOIN notes n ON n.path=l.src WHERE l.dst=? ORDER BY n.title, l.src", (rel,))
