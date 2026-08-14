@@ -1,0 +1,90 @@
+{
+  "description": "_patch_frontmatter() must preserve nested/multiline/foreign YAML byte-for-byte while replacing managed flat keys; _serialize() guarantees a trailing newline.",
+  "cases": [
+    {
+      "name": "simple",
+      "raw_inner": "title: Old Title\ntags: [a, b]\n",
+      "frontmatter": {
+        "title": "New Title"
+      },
+      "patched": "---\ntitle: New Title\n---\n"
+    },
+    {
+      "name": "nested-preserved",
+      "raw_inner": "title: Old\nobsidian:\n  cssclass: wide\n  nested:\n    deep: true\naliases:\n  - one\n  - two\n",
+      "frontmatter": {
+        "title": "New",
+        "updated": "2026-08-13T00:00:00"
+      },
+      "patched": "---\ntitle: New\nobsidian:\n  cssclass: wide\n  nested:\n    deep: true\nupdated: 2026-08-13T00:00:00\n---\n"
+    },
+    {
+      "name": "foreign-multiline",
+      "raw_inner": "title: Old\ndescription: |\n  a multiline\n  block scalar\ncustom_key: kept\n",
+      "frontmatter": {
+        "title": "New"
+      },
+      "patched": "---\ntitle: New\ndescription: |\n  a multiline\n  block scalar\n---\n"
+    },
+    {
+      "name": "adds-missing-key",
+      "raw_inner": "title: Only Title\n",
+      "frontmatter": {
+        "private": true
+      },
+      "patched": "---\nprivate: true\n---\n"
+    },
+    {
+      "name": "empty-block",
+      "raw_inner": "",
+      "frontmatter": {
+        "title": "Added"
+      },
+      "patched": "---\ntitle: Added\n---\n"
+    },
+    {
+      "name": "list-value-replaced",
+      "raw_inner": "tags:\n  - old1\n  - old2\n",
+      "frontmatter": {
+        "tags": [
+          "new1",
+          "new2"
+        ]
+      },
+      "patched": "---\ntags: [new1, new2]\n---\n"
+    }
+  ],
+  "serialize_cases": [
+    {
+      "frontmatter": {
+        "title": "T"
+      },
+      "body": "body text",
+      "serialized": "---\ntitle: T\n---\n\nbody text\n"
+    },
+    {
+      "frontmatter": {},
+      "body": "no frontmatter body",
+      "serialized": "no frontmatter body\n"
+    },
+    {
+      "frontmatter": {
+        "title": "T",
+        "tags": [
+          "x",
+          "y"
+        ],
+        "private": true
+      },
+      "body": "with tags",
+      "serialized": "---\ntitle: T\ntags: [x, y]\nprivate: true\n---\n\nwith tags\n"
+    },
+    {
+      "frontmatter": {
+        "title": "Trailing"
+      },
+      "body": "body without trailing newline",
+      "serialized": "---\ntitle: Trailing\n---\n\nbody without trailing newline\n"
+    }
+  ]
+}

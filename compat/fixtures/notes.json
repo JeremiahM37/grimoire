@@ -1,0 +1,179 @@
+{
+  "description": "note_from_text() + extract_facts(): parsing markdown into the fields the whole index is built from. mtime is fixed at 1700000000.0 so `hash` is reproducible.",
+  "mtime": 1700000000.0,
+  "cases": [
+    {
+      "path": "plain.md",
+      "text": "# Plain Note\n\nJust a body.\n",
+      "title": "Plain Note",
+      "body": "# Plain Note\n\nJust a body.\n",
+      "tags": [],
+      "links": [],
+      "private": false,
+      "encrypted": false,
+      "frontmatter": {},
+      "hash": "f5a5389e17fe3045",
+      "facts": []
+    },
+    {
+      "path": "frontmatter.md",
+      "text": "---\ntitle: From Frontmatter\ntags: [alpha, beta]\ncreated: 2026-01-02T03:04:05\n---\nBody under frontmatter with a #inline-tag.\n",
+      "title": "From Frontmatter",
+      "body": "Body under frontmatter with a #inline-tag.\n",
+      "tags": [
+        "inline-tag",
+        "alpha",
+        "beta"
+      ],
+      "links": [],
+      "private": false,
+      "encrypted": false,
+      "frontmatter": {
+        "title": "From Frontmatter",
+        "tags": [
+          "alpha",
+          "beta"
+        ],
+        "created": "2026-01-02T03:04:05"
+      },
+      "hash": "355de3404dc82e62",
+      "facts": []
+    },
+    {
+      "path": "links.md",
+      "text": "# Links\n\nSee [[Other Note]], [[Folder/Deep Note]], [[Target|an alias]] and [[note#Some Heading]].\n",
+      "title": "Links",
+      "body": "# Links\n\nSee [[Other Note]], [[Folder/Deep Note]], [[Target|an alias]] and [[note#Some Heading]].\n",
+      "tags": [],
+      "links": [
+        {
+          "target": "Other Note",
+          "alias": ""
+        },
+        {
+          "target": "Folder/Deep Note",
+          "alias": ""
+        },
+        {
+          "target": "Target",
+          "alias": "an alias"
+        },
+        {
+          "target": "note",
+          "alias": ""
+        }
+      ],
+      "private": false,
+      "encrypted": false,
+      "frontmatter": {},
+      "hash": "4dfdba3fe6478f6d",
+      "facts": []
+    },
+    {
+      "path": "facts.md",
+      "text": "# Facts\n\nport:: 8443\nowner:: platform team\n\n- role:: primary\n\n```\nnot-a-fact:: in a fence\n```\n",
+      "title": "Facts",
+      "body": "# Facts\n\nport:: 8443\nowner:: platform team\n\n- role:: primary\n\n```\nnot-a-fact:: in a fence\n```\n",
+      "tags": [],
+      "links": [],
+      "private": false,
+      "encrypted": false,
+      "frontmatter": {},
+      "hash": "0020aab283c5d156",
+      "facts": [
+        [
+          "port",
+          "8443"
+        ],
+        [
+          "owner",
+          "platform team"
+        ],
+        [
+          "role",
+          "primary"
+        ]
+      ]
+    },
+    {
+      "path": "tags.md",
+      "text": "---\ntags:\n  - from-fm\n---\n# Tags\n\n#body-tag and #nested/tag here.\n",
+      "title": "Tags",
+      "body": "# Tags\n\n#body-tag and #nested/tag here.\n",
+      "tags": [
+        "body-tag",
+        "nested/tag",
+        "from-fm"
+      ],
+      "links": [],
+      "private": false,
+      "encrypted": false,
+      "frontmatter": {
+        "tags": [
+          "from-fm"
+        ]
+      },
+      "hash": "c2ffcaa0fe423b8e",
+      "facts": []
+    },
+    {
+      "path": "unicode.md",
+      "text": "# Ünïcodé — 日本語\n\nBody with emoji 🔐 and a [[Ünïcodé]] link.\n",
+      "title": "Ünïcodé — 日本語",
+      "body": "# Ünïcodé — 日本語\n\nBody with emoji 🔐 and a [[Ünïcodé]] link.\n",
+      "tags": [],
+      "links": [
+        {
+          "target": "Ünïcodé",
+          "alias": ""
+        }
+      ],
+      "private": false,
+      "encrypted": false,
+      "frontmatter": {},
+      "hash": "e468d82a9be6087f",
+      "facts": []
+    },
+    {
+      "path": "empty.md",
+      "text": "",
+      "title": "empty",
+      "body": "",
+      "tags": [],
+      "links": [],
+      "private": false,
+      "encrypted": false,
+      "frontmatter": {},
+      "hash": "e3b0c44298fc1c14",
+      "facts": []
+    },
+    {
+      "path": "no-heading.md",
+      "text": "just text, no heading at all\n",
+      "title": "no-heading",
+      "body": "just text, no heading at all\n",
+      "tags": [],
+      "links": [],
+      "private": false,
+      "encrypted": false,
+      "frontmatter": {},
+      "hash": "c0a33bb75b7b16ed",
+      "facts": []
+    },
+    {
+      "path": "private.md",
+      "text": "---\nprivate: true\n---\n# Private\n\nsecret-ish body\n",
+      "title": "Private",
+      "body": "# Private\n\nsecret-ish body\n",
+      "tags": [],
+      "links": [],
+      "private": true,
+      "encrypted": false,
+      "frontmatter": {
+        "private": true
+      },
+      "hash": "8d3ccdcdd9388f9f",
+      "facts": []
+    }
+  ]
+}

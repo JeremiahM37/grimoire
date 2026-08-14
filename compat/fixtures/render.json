@@ -1,0 +1,215 @@
+{
+  "description": "render() output is byte-contract: the client renderer and the vision-checked /read pages both depend on it.",
+  "cases": [
+    {
+      "name": "headings",
+      "markdown": "# H1\n\n## H2 with *emphasis*\n\n### H3 — dashes & ünïcode\n",
+      "link_map": {
+        "known note": "Known Note.md",
+        "folder/deep note": "Folder/Deep Note.md",
+        "a heading": "Known Note.md"
+      },
+      "html": "<h1 id=\"h-h1\">H1</h1>\n<h2 id=\"h-h2-with-emphasis\">H2 with <em>emphasis</em></h2>\n<h3 id=\"h-h3-dashes-ünïcode\">H3 — dashes &amp; ünïcode</h3>"
+    },
+    {
+      "name": "inline-code-is-literal",
+      "markdown": "use `[[wikilinks]]` and `#tags` and `**bold**` and `[x](https://e.com)` inline\n",
+      "link_map": {
+        "known note": "Known Note.md",
+        "folder/deep note": "Folder/Deep Note.md",
+        "a heading": "Known Note.md"
+      },
+      "html": "<p>use <code>[[wikilinks]]</code> and <code>#tags</code> and <code>**bold**</code> and <code>[x](https://e.com)</code> inline</p>"
+    },
+    {
+      "name": "wikilinks",
+      "markdown": "see [[Known Note]] and [[Folder/Deep Note]] and [[Missing Note]] and [[Known Note|aliased]] and [[Known Note#A Heading]]\n",
+      "link_map": {
+        "known note": "Known Note.md",
+        "folder/deep note": "Folder/Deep Note.md",
+        "a heading": "Known Note.md"
+      },
+      "html": "<p>see <a class=\"wikilink\" href=\"/read/Known Note\">Known Note</a> and <a class=\"wikilink\" href=\"/read/Folder/Deep Note\">Folder/Deep Note</a> and <span class=\"unresolved\">Missing Note</span> and <a class=\"wikilink\" href=\"/read/Known Note\">aliased</a> and <a class=\"wikilink\" href=\"/read/Known Note#h-a-heading\">Known Note#A Heading</a></p>"
+    },
+    {
+      "name": "emphasis",
+      "markdown": "**bold** and *italic* and ~~strike~~ and ==mark== mixed **in *one* line**\n",
+      "link_map": {
+        "known note": "Known Note.md",
+        "folder/deep note": "Folder/Deep Note.md",
+        "a heading": "Known Note.md"
+      },
+      "html": "<p><strong>bold</strong> and <em>italic</em> and <del>strike</del> and <mark>mark</mark> mixed **in <em>one</em> line**</p>"
+    },
+    {
+      "name": "lists",
+      "markdown": "- one\n- two\n  - nested\n\n1. first\n2. second\n",
+      "link_map": {
+        "known note": "Known Note.md",
+        "folder/deep note": "Folder/Deep Note.md",
+        "a heading": "Known Note.md"
+      },
+      "html": "<ul>\n<li>one</li>\n<li>two</li>\n<li>nested</li>\n</ul>\n<ol>\n<li>first</li>\n<li>second</li>\n</ol>"
+    },
+    {
+      "name": "tasks",
+      "markdown": "- [ ] todo item\n- [x] done item\n",
+      "link_map": {
+        "known note": "Known Note.md",
+        "folder/deep note": "Folder/Deep Note.md",
+        "a heading": "Known Note.md"
+      },
+      "html": "<ul>\n<li><input type='checkbox' disabled> todo item</li>\n<li class='done'><input type='checkbox' checked disabled> done item</li>\n</ul>"
+    },
+    {
+      "name": "table",
+      "markdown": "| a | b |\n|---|---|\n| 1 | 2 |\n| [[Known Note]] | x |\n",
+      "link_map": {
+        "known note": "Known Note.md",
+        "folder/deep note": "Folder/Deep Note.md",
+        "a heading": "Known Note.md"
+      },
+      "html": "<div class=\"table-wrap\"><table><thead><tr><th>a</th><th>b</th></tr></thead><tbody><tr><td>1</td><td>2</td></tr><tr><td><a class=\"wikilink\" href=\"/read/Known Note\">Known Note</a></td><td>x</td></tr></tbody></table></div>"
+    },
+    {
+      "name": "fenced-code",
+      "markdown": "```python\ndef f(x):\n    return [[not_a_link]]\n```\n",
+      "link_map": {
+        "known note": "Known Note.md",
+        "folder/deep note": "Folder/Deep Note.md",
+        "a heading": "Known Note.md"
+      },
+      "html": "<pre><code class=\"lang-python\"><span class=\"hl-kw\">def</span> f(x):\n    <span class=\"hl-kw\">return</span> [[not_a_link]]</code></pre>"
+    },
+    {
+      "name": "fenced-no-lang",
+      "markdown": "```\nplain <script>alert(1)</script> block\n```\n",
+      "link_map": {
+        "known note": "Known Note.md",
+        "folder/deep note": "Folder/Deep Note.md",
+        "a heading": "Known Note.md"
+      },
+      "html": "<pre><code>plain &lt;script&gt;alert(<span class=\"hl-num\">1</span>)&lt;/script&gt; block</code></pre>"
+    },
+    {
+      "name": "blockquote",
+      "markdown": "> quoted **text** with [[Known Note]]\n",
+      "link_map": {
+        "known note": "Known Note.md",
+        "folder/deep note": "Folder/Deep Note.md",
+        "a heading": "Known Note.md"
+      },
+      "html": "<blockquote>quoted <strong>text</strong> with <a class=\"wikilink\" href=\"/read/Known Note\">Known Note</a></blockquote>"
+    },
+    {
+      "name": "hr",
+      "markdown": "text\n\n---\n\nmore\n",
+      "link_map": {
+        "known note": "Known Note.md",
+        "folder/deep note": "Folder/Deep Note.md",
+        "a heading": "Known Note.md"
+      },
+      "html": "<p>text</p>\n<hr>\n<p>more</p>"
+    },
+    {
+      "name": "footnotes",
+      "markdown": "a claim[^1] and another[^note]\n\n[^1]: first footnote\n[^note]: second\n",
+      "link_map": {
+        "known note": "Known Note.md",
+        "folder/deep note": "Folder/Deep Note.md",
+        "a heading": "Known Note.md"
+      },
+      "html": "<p>a claim<sup class=\"fn-ref\" id=\"fnref-1\"><a href=\"#fn-1\">1</a></sup> and another<sup class=\"fn-ref\" id=\"fnref-note\"><a href=\"#fn-note\">note</a></sup></p>\n<div class=\"footnotes\"><hr><ol><li id=\"fn-1\">first footnote <a class=\"fn-back\" href=\"#fnref-1\">↩</a></li><li id=\"fn-note\">second <a class=\"fn-back\" href=\"#fnref-note\">↩</a></li></ol></div>"
+    },
+    {
+      "name": "html-escaping",
+      "markdown": "<script>alert('xss')</script> & <b>raw</b> \"quotes\"\n",
+      "link_map": {
+        "known note": "Known Note.md",
+        "folder/deep note": "Folder/Deep Note.md",
+        "a heading": "Known Note.md"
+      },
+      "html": "<p>&lt;script&gt;alert(&#x27;xss&#x27;)&lt;/script&gt; &amp; &lt;b&gt;raw&lt;/b&gt; &quot;quotes&quot;</p>"
+    },
+    {
+      "name": "tags",
+      "markdown": "a #tag and #nested/tag and not#a-tag here\n",
+      "link_map": {
+        "known note": "Known Note.md",
+        "folder/deep note": "Folder/Deep Note.md",
+        "a heading": "Known Note.md"
+      },
+      "html": "<p>a <span class=\"tag\">#tag</span> and <span class=\"tag\">#nested/tag</span> and not#a-tag here</p>"
+    },
+    {
+      "name": "links",
+      "markdown": "[text](https://example.com) and bare https://example.com\n",
+      "link_map": {
+        "known note": "Known Note.md",
+        "folder/deep note": "Folder/Deep Note.md",
+        "a heading": "Known Note.md"
+      },
+      "html": "<p><a href=\"https://example.com\" target=\"_blank\" rel=\"noopener\">text</a> and bare https://example.com</p>"
+    },
+    {
+      "name": "image-embed",
+      "markdown": "![[picture.png]] inline and on its own line:\n\n![[diagram.jpg]]\n",
+      "link_map": {
+        "known note": "Known Note.md",
+        "folder/deep note": "Folder/Deep Note.md",
+        "a heading": "Known Note.md"
+      },
+      "html": "<p><img src=\"/api/file/picture.png\" alt=\"picture.png\"> inline and on its own line:</p>\n<p><img src=\"/api/file/diagram.jpg\" alt=\"diagram.jpg\"></p>"
+    },
+    {
+      "name": "unicode",
+      "markdown": "Ünïcodé — 日本語 — emoji 🔐 in **bold**\n",
+      "link_map": {
+        "known note": "Known Note.md",
+        "folder/deep note": "Folder/Deep Note.md",
+        "a heading": "Known Note.md"
+      },
+      "html": "<p>Ünïcodé — 日本語 — emoji 🔐 in <strong>bold</strong></p>"
+    },
+    {
+      "name": "empty",
+      "markdown": "",
+      "link_map": {
+        "known note": "Known Note.md",
+        "folder/deep note": "Folder/Deep Note.md",
+        "a heading": "Known Note.md"
+      },
+      "html": ""
+    }
+  ],
+  "heading_id_cases": [
+    {
+      "text": "Simple Heading",
+      "id": "h-simple-heading"
+    },
+    {
+      "text": "With — Dashes & Symbols!",
+      "id": "h-with-dashes-symbols"
+    },
+    {
+      "text": "  leading and trailing  ",
+      "id": "h-leading-and-trailing"
+    },
+    {
+      "text": "Ünïcodé 日本語",
+      "id": "h-ünïcodé-日本語"
+    },
+    {
+      "text": "duplicate",
+      "id": "h-duplicate"
+    },
+    {
+      "text": "123 numeric start",
+      "id": "h-123-numeric-start"
+    },
+    {
+      "text": "",
+      "id": "h-heading"
+    }
+  ]
+}
