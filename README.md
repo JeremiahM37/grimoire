@@ -2,9 +2,10 @@
 
 # ✦ Grimoire
 
-**A personal context server.** Your knowledge base, retrieval, credentials, and
-your agents' memory — one self-hosted substrate, one trust boundary, mounted by
-your AI over MCP. With a first-class notes app as the human console.
+**A self-hosted personal context server** — one knowledge and trust boundary
+shared by you and your AI agents. Your knowledge base, retrieval, credentials,
+and your agents' memory, mounted over MCP. With a first-class notes app as the
+human console.
 
 <!-- badges -->
 ![status](https://img.shields.io/badge/status-stable-2ea44f)

@@ -1,7 +1,7 @@
 {
   "name": "Grimoire",
   "short_name": "Grimoire",
-  "description": "Personal context server — knowledge, retrieval, credentials, agent memory",
+  "description": "Self-hosted personal context server — one knowledge and trust boundary shared by you and your AI agents",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#faf7f0",
