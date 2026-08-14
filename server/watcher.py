@@ -9,12 +9,23 @@ import threading
 import time
 from pathlib import Path
 
-from watchdog.events import FileSystemEventHandler
+from watchdog.events import (
+    EVENT_TYPE_CLOSED_NO_WRITE,
+    EVENT_TYPE_OPENED,
+    FileSystemEventHandler,
+)
 from watchdog.observers import Observer
 
 from . import config, index, vault
 
 log = logging.getLogger("grimoire.watcher")
+
+# Read-only events. Indexing a note READS its file, so inotify reports
+# OPENED/CLOSED_NO_WRITE for the very note we just indexed — reacting to those
+# re-queues it, which reads it again, forever (a self-feeding index loop that
+# pins a core and leaves readers seeing notes mid-rewrite). Only real
+# writes/renames/deletes may reconcile the index.
+IGNORED_EVENT_TYPES = frozenset({EVENT_TYPE_OPENED, EVENT_TYPE_CLOSED_NO_WRITE})
 
 
 class _Handler(FileSystemEventHandler):
@@ -27,7 +38,7 @@ class _Handler(FileSystemEventHandler):
                 and not any(d in p.parts for d in vault.RESERVED_DIRS))
 
     def on_any_event(self, event):
-        if event.is_directory:
+        if event.is_directory or event.event_type in IGNORED_EVENT_TYPES:
             return
         for path in (getattr(event, "dest_path", "") or "", event.src_path):
             if path and self._relevant(path):
