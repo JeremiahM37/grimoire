@@ -442,3 +442,84 @@ def test_ask_smart_decomposes_and_merges(client, monkeypatch):
     r = client.post("/api/ask", json={"q": "how does the deploy service reach the api gateway", "k": 4}).json()
     titles = {c["title"] for c in r["citations"]}
     assert "Ports" in titles and "Owner" in titles    # evidence from both sub-questions
+
+
+def test_folder_qualified_wikilinks_resolve(client):
+    """REGRESSION: links written as [[Folder/Note]] — the form every editor uses
+    for notes in subfolders — resolved only by title/stem/alias, so every
+    cross-folder link in an imported vault stayed dangling."""
+    from server import db, index
+    client.post("/api/notes", json={"path": "Job Search/Strategy.md",
+                                    "title": "Strategy", "body": "the plan"})
+    client.post("/api/notes", json={"path": "index.md", "title": "Index",
+                                    "body": "see [[Job Search/Strategy]] and [[Job Search/Strategy.md]]"})
+    index.reindex()
+    rows = db.query("SELECT target, dst, resolved FROM links WHERE src='index.md'")
+    assert rows, "no links indexed for index.md"
+    for r in rows:
+        assert r["resolved"] == 1, f"{r['target']} did not resolve"
+        assert r["dst"] == "Job Search/Strategy.md"
+
+
+def test_read_surface_renders_folder_qualified_wikilink(client):
+    """The public /read renderer builds its own link map — it must resolve
+    folder-qualified targets too, or the rendered page shows dead text."""
+    client.post("/api/notes", json={"path": "Projects/Deep Note.md",
+                                    "title": "Deep Note", "body": "content"})
+    client.post("/api/notes", json={"path": "hub.md", "title": "Hub",
+                                    "body": "go to [[Projects/Deep Note]]"})
+    html = client.get("/read/hub").text
+    assert 'class="wikilink"' in html and "Projects/Deep Note" in html
+    assert 'class="unresolved"' not in html
+
+
+def test_inline_code_is_literal(client):
+    """REGRESSION: inline code was turned into <code> first and every later rule
+    then ran over its contents, so a `[[wikilinks]]` syntax example rendered as a
+    real (dead) link — and #tags/**bold** inside code were mangled too."""
+    client.post("/api/notes", json={
+        "path": "syntax.md", "title": "Syntax",
+        "body": "use `[[wikilinks]]` and `#tags` and `**bold**` in your notes"})
+    html = client.get("/read/syntax").text
+    assert "<code>[[wikilinks]]</code>" in html
+    assert "<code>#tags</code>" in html
+    assert "<code>**bold**</code>" in html
+    assert 'class="unresolved"' not in html
+    assert "<strong>" not in html
+
+
+def test_reindex_is_atomic_against_concurrent_upserts(vaultdir):
+    """REGRESSION: a full rebuild DELETEs every row then re-INSERTs one note at a
+    time; a concurrent single-note upsert landing mid-sweep raised
+    `UNIQUE constraint failed: notes.path`, aborting the rebuild and leaving the
+    index half-populated (the note list visibly dropped notes)."""
+    import threading
+
+    from server import db, index
+    for i in range(12):
+        (vaultdir / f"n{i}.md").write_text(f"# Note {i}\n\nbody {i}")
+    index.reindex()
+    errors: list[Exception] = []
+
+    def hammer_upserts():
+        try:
+            for _ in range(15):
+                for i in range(12):
+                    index.upsert(f"n{i}.md")
+        except Exception as exc:   # noqa: BLE001 — recorded, asserted below
+            errors.append(exc)
+
+    def hammer_reindex():
+        try:
+            for _ in range(8):
+                index.reindex()
+        except Exception as exc:   # noqa: BLE001
+            errors.append(exc)
+
+    ts = [threading.Thread(target=hammer_upserts), threading.Thread(target=hammer_reindex)]
+    for t in ts:
+        t.start()
+    for t in ts:
+        t.join(timeout=120)
+    assert not errors, f"concurrent index writes raced: {errors[:3]}"
+    assert db.one("SELECT COUNT(*) c FROM notes")["c"] == 12
