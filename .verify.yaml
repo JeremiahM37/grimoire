@@ -38,7 +38,10 @@ steps:
       - navigate: http://127.0.0.1:9119/
       - wait: 2
     expect:
+      # NOTE: viewport is 414x896 (phone), where the sidebar is correctly collapsed
+      # behind the ☰ drawer — assert the mobile layout, not a desktop two-pane one.
       vision: >
-        a note-taking application titled "grimoire" with a left sidebar and an editor
-        area; warm paper-colored background; it is a working app UI, not a blank
-        white page, not an error message, not a stack trace
+        a mobile note-taking app screen: a top bar with a ☰ menu button and a note
+        title, a markdown formatting toolbar (B / I / H / list / link), and an editor
+        showing note text; warm paper-colored background; it is a working app UI, not
+        a blank white page, not an error message, not a stack trace
