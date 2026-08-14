@@ -45,7 +45,19 @@ def server(tmp_path_factory):
     # IMPORTANT: discard server output. A PIPE that nobody drains fills the ~64KB
     # OS buffer after enough uvicorn access-log lines, blocking the server on
     # write — it silently stops serving late in a large run.
-    proc = subprocess.Popen([sys.executable, "-m", "server"], cwd=ROOT, env=env,
+    # GRIMOIRE_E2E_SERVER points this suite at a different implementation (the
+    # Go binary) without touching a single test: the tests drive the browser and
+    # the HTTP API, neither of which knows what is answering. That makes this
+    # suite the acceptance gate for the port rather than a Python-only check.
+    alt = os.environ.get("GRIMOIRE_E2E_SERVER")
+    if alt:
+        cmd = [alt]
+        # the Go server serves the console from an explicit directory; the
+        # Python app has it packaged, so only the alternative needs telling
+        env.setdefault("GRIMOIRE_WEB_DIR", str(ROOT / "web"))
+    else:
+        cmd = [sys.executable, "-m", "server"]
+    proc = subprocess.Popen(cmd, cwd=ROOT, env=env,
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     for _ in range(100):
         with socket.socket() as s:
