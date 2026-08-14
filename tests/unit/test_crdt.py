@@ -129,3 +129,35 @@ def test_fuzz_convergence():
         for r in order2[1:]:
             m2.merge(_clone(r, r.site))
         assert m1.text() == m2.text(), f"diverged on trial {trial}"
+
+
+def test_serialization_is_canonical_across_processes():
+    """REGRESSION: tombs is a set and atom ids embed the site *string*, whose
+    hash is randomized per process — so identical state used to serialize to
+    different bytes on every restart. That churned the on-disk file, produced
+    phantom diffs for anything content-hashing it, and made the format
+    impossible to reproduce from another implementation."""
+    import json
+    import subprocess
+    import sys
+
+    script = (
+        "import json,sys;sys.path.insert(0,'.');from server import crdt;"
+        "d=crdt.Doc(site='site-with-a-string');"
+        "d.local_edit('hello world');d.local_edit('hello brave world');"
+        "d.local_edit('hello brave');print(d.to_json())"
+    )
+    outs = set()
+    for seed in ("0", "1", "12345", "98765"):
+        env = {"PYTHONHASHSEED": seed, "PATH": "/usr/bin:/bin"}
+        r = subprocess.run([sys.executable, "-c", script], capture_output=True,
+                           text=True, env=env, timeout=60)
+        assert r.returncode == 0, r.stderr
+        outs.add(r.stdout.strip())
+    assert len(outs) == 1, f"serialization varies with hash seed: {len(outs)} distinct outputs"
+
+    # and the canonical bytes must still load back to the same text
+    doc = Doc.from_json(outs.pop(), site="reader")
+    assert doc.text() == "hello brave"
+    assert json.loads(doc.to_json())["tombs"] == sorted(
+        json.loads(doc.to_json())["tombs"]), "tombs not in sorted order"
