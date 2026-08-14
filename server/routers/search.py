@@ -66,7 +66,7 @@ def search(q: str = "", tag: str | None = None, limit: int = 50, full: bool = Fa
         except Exception:
             return []
     elif op_tag or want_pinned or path_like:
-        rows = db.query("SELECT path, title, '' AS snippet FROM notes ORDER BY updated DESC LIMIT 500")
+        rows = db.query("SELECT path, title, '' AS snippet FROM notes ORDER BY updated DESC, path LIMIT 500")
     else:
         return []
 
