@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/JeremiahM37/grimoire/go/internal/embed"
+	"github.com/JeremiahM37/grimoire/go/internal/fts"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
 )
 
@@ -37,19 +38,6 @@ type searchHit struct {
 	Snippet   string `json:"snippet"`
 	Body      string `json:"body,omitempty"`
 	Excerpted bool   `json:"excerpted,omitempty"`
-}
-
-// ftsQuery wraps each term as a quoted prefix so user input cannot break FTS
-// syntax (an unquoted NEAR/OR would otherwise change the query shape).
-func ftsQuery(terms []string, op string) string {
-	if len(terms) == 0 {
-		return `""`
-	}
-	quoted := make([]string, len(terms))
-	for i, t := range terms {
-		quoted[i] = `"` + strings.ReplaceAll(t, `"`, "") + `"*`
-	}
-	return strings.Join(quoted, op)
 }
 
 func (s *Server) search(w http.ResponseWriter, r *http.Request) {
@@ -102,11 +90,11 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 			}
 			return out
 		}
-		rows = scan(ftsQuery(terms, " "))
+		rows = scan(fts.PrefixTerms(terms, fts.And))
 		if len(rows) == 0 && len(terms) > 1 {
 			// natural-language queries rarely match EVERY term — fall back to
 			// any-term so a question still surfaces its best notes
-			rows = scan(ftsQuery(terms, " OR "))
+			rows = scan(fts.PrefixTerms(terms, fts.Or))
 		}
 	} else if opTag != "" || wantPinned || pathLike != "" {
 		rs, err := s.Index.DB.Query(

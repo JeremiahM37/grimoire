@@ -18,6 +18,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/JeremiahM37/grimoire/go/internal/fts"
+
 	"github.com/JeremiahM37/grimoire/go/internal/db"
 )
 
@@ -187,10 +189,8 @@ func Execute(database *db.DB, spec *Spec, includePrivate bool) ([]map[string]any
 		params = append(params, asMDPath(*spec.LinkedTo), *spec.LinkedTo)
 	}
 	if spec.Text != nil {
-		// a single quoted phrase: user input cannot inject MATCH syntax
-		phrase := `"` + strings.ReplaceAll(*spec.Text, `"`, `""`) + `"`
 		where = append(where, "n.path IN (SELECT path FROM fts WHERE fts MATCH ?)")
-		params = append(params, phrase)
+		params = append(params, fts.Phrase(*spec.Text))
 	}
 
 	dir := "DESC"
