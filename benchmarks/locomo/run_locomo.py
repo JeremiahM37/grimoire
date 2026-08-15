@@ -335,7 +335,11 @@ def phase_report():
         if t:
             tk[r["condition"]].append(t)
 
+    # extras are conditions judged but never declared — e.g. one produced by
+    # an external retriever (retrieve_go.py). Scoring them and then dropping
+    # them from the table is the worst of both worlds.
     conds = [c for c in CONDITIONS if tot[c][1]]
+    conds += sorted(c for c in tot if c not in CONDITIONS and tot[c][1])
     hdr = f"{'condition':18} " + " ".join(f"{CATS[c]:>12}" for c in sorted(CATS)) \
         + f" {'overall':>12} {'med tokens':>10}"
     print(hdr)
