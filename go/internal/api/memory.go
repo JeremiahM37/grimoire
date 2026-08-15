@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/JeremiahM37/grimoire/go/internal/fts"
 	"github.com/JeremiahM37/grimoire/go/internal/markdown"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
 )
@@ -140,19 +141,11 @@ func (s *Server) recall(w http.ResponseWriter, r *http.Request) {
 
 	var out []memoryOut
 	if q != "" {
-		// Each term quoted individually → implicit AND, terms may appear
-		// anywhere in the note. A single quoted phrase was too strict: it
-		// missed any query whose words weren't adjacent. Quoting also keeps
-		// user text from ever acting as MATCH syntax.
-		var terms []string
-		for _, t := range strings.Fields(q) {
-			terms = append(terms, `"`+strings.ReplaceAll(t, `"`, `""`)+`"`)
-		}
 		rows, err := s.Index.DB.Query(
 			"SELECT n.path, n.title, n.body, n.updated FROM notes n "+
 				"WHERE n.path LIKE ? AND n.path IN (SELECT path FROM fts WHERE fts MATCH ?) "+
 				"ORDER BY n.updated DESC, n.path LIMIT ?",
-			like, strings.Join(terms, " "), limit)
+			like, fts.Terms(q), limit)
 		if err != nil {
 			writeErr(w, http.StatusInternalServerError, err.Error())
 			return
