@@ -1,8 +1,12 @@
 // Package render turns markdown into safe HTML, mirroring the PWA's client
-// renderer so the read surface and HTML export look the same.
+// renderer (web/markdown.js) so the read surface and HTML export look the same.
+// The two are kept in lockstep — a rule added here must land there too, and
+// vice versa. Neither can be deleted: this renders /read and the export, that
+// one renders previews with no network.
 //
-// Port of server/render.py. The HTML is a byte-level contract: the vision-checked
-// /read pages and the client renderer both depend on this exact output, so the
+// Port of the original server/render.py (see ../../README.md). The HTML is a
+// byte-level contract: the vision-checked /read pages and the client renderer
+// both depend on this exact output, so the
 // goal here is fidelity, not improvement. Where Python does something surprising
 // (double-escaping a wiki-link label, for instance) this reproduces it rather
 // than quietly correcting it — a "fix" here is a behaviour change nobody asked

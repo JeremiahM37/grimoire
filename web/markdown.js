@@ -1,8 +1,12 @@
 /**
  * Client markdown engine — the offline renderer behind the preview panes,
- * slides, and hover cards. Mirrors the server renderer (server/render.py):
+ * slides, and hover cards. Mirrors the server renderer (go/internal/render):
  * escape first, then apply block + inline rules. Kept in lockstep — any rule
- * added here must land there too (and vice versa).
+ * added here must land there too, and vice versa.
+ *
+ * Neither side can be deleted: the server renders /read and the HTML export,
+ * this renders with no network. It is the only place in the project where the
+ * same logic is deliberately written twice.
  *
  * The engine is deliberately decoupled from the app shell: link resolution
  * comes from an injected note index (`setNoteIndex`), navigation from an
