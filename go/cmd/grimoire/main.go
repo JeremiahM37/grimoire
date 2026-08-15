@@ -14,10 +14,12 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
+	"github.com/JeremiahM37/grimoire/go/internal/ai"
 	"github.com/JeremiahM37/grimoire/go/internal/api"
 	"github.com/JeremiahM37/grimoire/go/internal/crdtstore"
 	"github.com/JeremiahM37/grimoire/go/internal/db"
@@ -26,64 +28,136 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/index"
 	"github.com/JeremiahM37/grimoire/go/internal/secrets"
 	"github.com/JeremiahM37/grimoire/go/internal/settings"
+	gsync "github.com/JeremiahM37/grimoire/go/internal/sync"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
 	"github.com/JeremiahM37/grimoire/go/internal/watcher"
 )
 
 func main() {
-	if err := run(); err != nil {
+	args := os.Args[1:]
+	if handled, code := runCLI(args); handled {
+		os.Exit(code)
+	}
+	if err := run(args); err != nil {
 		fmt.Fprintln(os.Stderr, "grimoire:", err)
 		os.Exit(1)
 	}
 }
 
-func run() error {
-	vaultPath := envOr("GRIMOIRE_VAULT", filepath.Join(os.Getenv("HOME"), "notes"))
-	port := envOr("GRIMOIRE_PORT", "9111")
-	webDir := envOr("GRIMOIRE_WEB_DIR", "")
+// env is everything a command needs: the vault, its index, and the same HTTP
+// handler the server exposes. Built once, by serve and by every CLI command, so
+// the two can never be configured differently.
+type env struct {
+	vault    *vault.Vault
+	index    *index.Index
+	db       *db.DB
+	settings *settings.Store
+	sync     *gsync.Client
+	server   *api.Server
+	handler  http.Handler
+	embedder index.Embedder
+	dailyDir string
+	inboxDir string
+}
 
+func (e *env) close() {
+	if e.db != nil {
+		e.db.Close()
+	}
+}
+
+func newEnv() (*env, error) {
+	vaultPath := envOr("GRIMOIRE_VAULT", filepath.Join(os.Getenv("HOME"), "notes"))
 	v, err := vault.New(vaultPath)
 	if err != nil {
-		return fmt.Errorf("opening vault: %w", err)
+		return nil, fmt.Errorf("opening vault: %w", err)
 	}
 	if err := os.MkdirAll(v.Root, 0o755); err != nil {
-		return err
+		return nil, err
 	}
 	grimoireDir := filepath.Join(v.Root, ".grimoire")
 	database, err := db.Open(filepath.Join(grimoireDir, "index.db"))
 	if err != nil {
-		return fmt.Errorf("opening index: %w", err)
+		return nil, fmt.Errorf("opening index: %w", err)
 	}
-	defer database.Close()
 
 	vaultSecrets := secrets.New(grimoireDir)
 	store := settings.New(grimoireDir)
 	emb := newEmbedder(store)
 	ix := index.New(database, v, emb)
+	crdt := crdtstore.New(grimoireDir)
+	syncer := gsync.New(ix, v, crdt)
 
-	log.Printf("indexing vault %s with %s", v.Root, emb.Signature())
-	n, err := ix.Reindex()
+	srv := &api.Server{
+		Index:        ix,
+		Vault:        v,
+		Settings:     store,
+		History:      history.New(grimoireDir),
+		Secrets:      vaultSecrets,
+		Broker:       secrets.NewBroker(vaultSecrets, database),
+		CRDT:         crdt,
+		AI:           ai.New(store, vaultSecrets.Get),
+		Sync:         syncer,
+		SyncPeer:     os.Getenv("GRIMOIRE_SYNC_PEER"),
+		SyncToken:    os.Getenv("GRIMOIRE_SYNC_TOKEN"),
+		SyncInterval: atoiOr(os.Getenv("GRIMOIRE_SYNC_INTERVAL"), 0),
+		WebDir:       envOr("GRIMOIRE_WEB_DIR", ""),
+		PluginDir:    envOr("GRIMOIRE_PLUGIN_DIR", "plugins"),
+		DailyDir:     envOr("GRIMOIRE_DAILY_DIR", "journal"),
+		InboxDir:     envOr("GRIMOIRE_INBOX_DIR", "inbox"),
+	}
+	return &env{vault: v, index: ix, db: database, settings: store, sync: syncer,
+		server: srv, handler: srv.Routes(), embedder: emb,
+		dailyDir: srv.DailyDir, inboxDir: srv.InboxDir}, nil
+}
+
+// openEnv is newEnv for CLI commands: it also makes sure the index exists, so
+// `grimoire search` works on a vault that has never been served.
+func openEnv() (*env, error) {
+	e, err := newEnv()
+	if err != nil {
+		return nil, err
+	}
+	n, err := e.index.DB.Count("SELECT COUNT(*) FROM notes")
+	if err != nil {
+		e.close()
+		return nil, err
+	}
+	if n == 0 {
+		if _, err := e.index.Reindex(); err != nil {
+			e.close()
+			return nil, err
+		}
+	}
+	return e, nil
+}
+
+func run(args []string) error {
+	e, err := newEnv()
+	if err != nil {
+		return err
+	}
+	defer e.close()
+
+	port := envOr("GRIMOIRE_PORT", "9111")
+	if v, ok := flagValue(args, "--port"); ok {
+		port = v
+	}
+
+	log.Printf("indexing vault %s with %s", e.vault.Root, e.embedder.Signature())
+	n, err := e.index.Reindex()
 	if err != nil {
 		return fmt.Errorf("reindexing: %w", err)
 	}
 	log.Printf("indexed %d notes", n)
 
+	v, ix, syncer := e.vault, e.index, e.sync
+	syncPeer, syncToken, syncInterval := e.server.SyncPeer, e.server.SyncToken, e.server.SyncInterval
+	_ = ix
+
 	srv := &http.Server{
-		Addr: ":" + port,
-		Handler: (&api.Server{
-			Index:     ix,
-			Vault:     v,
-			Settings:  settings.New(grimoireDir),
-			History:   history.New(grimoireDir),
-			Secrets:   vaultSecrets,
-			Broker:    secrets.NewBroker(vaultSecrets, database),
-			CRDT:      crdtstore.New(grimoireDir),
-			SyncPeer:  os.Getenv("GRIMOIRE_SYNC_PEER"),
-			WebDir:    webDir,
-			PluginDir: envOr("GRIMOIRE_PLUGIN_DIR", "plugins"),
-			DailyDir:  envOr("GRIMOIRE_DAILY_DIR", "journal"),
-			InboxDir:  envOr("GRIMOIRE_INBOX_DIR", "inbox"),
-		}).Routes(),
+		Addr:              ":" + port,
+		Handler:           e.handler,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
@@ -101,6 +175,13 @@ func run() error {
 		}
 		close(done)
 	}()
+
+	// periodic sync with a peer, when one is configured
+	if syncPeer != "" && syncInterval > 0 {
+		log.Printf("syncing with %s every %ds", syncPeer, syncInterval)
+		go syncer.Loop(syncPeer, syncToken,
+			time.Duration(syncInterval)*time.Second, done)
+	}
 
 	// watch for edits made outside grimoire (another editor, a sync client)
 	watch := watcher.New(v, ix, 0)
@@ -193,6 +274,15 @@ func modelDir(name string) string {
 		}
 	}
 	return ""
+}
+
+// atoiOr parses an integer setting, falling back rather than failing startup on
+// a typo in a unit file.
+func atoiOr(s string, def int) int {
+	if n, err := strconv.Atoi(strings.TrimSpace(s)); err == nil {
+		return n
+	}
+	return def
 }
 
 func envOr(key, def string) string {
