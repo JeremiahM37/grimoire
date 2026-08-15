@@ -12,9 +12,7 @@ import collections
 import json
 import os
 import random
-import shutil
 import sys
-import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).parent
@@ -82,63 +80,44 @@ def _session_note(turns):
                      for t in turns)
 
 
-def _build_vault(inst, vdir):
-    from server import config, db, index, vault
-    config.VAULT = vdir
-    config.grimoire_dir().mkdir(parents=True, exist_ok=True)
-    db.init(config.db_path())
-    for i, (sess, when) in enumerate(zip(inst["haystack_sessions"],
-                                         inst["haystack_dates"], strict=False)):
-        rel = f"session-{i:03d}.md"
-        vault.write(rel, f"Date: {when}\n\n{_session_note(sess)}",
-                    {"title": f"Chat session {i + 1} ({when})"})
-        index.upsert(rel)
+RETRIEVED_BY_SERVER = """\
+The grimoire conditions are retrieved by driving a running server:
+
+    python retrieve_go.py --binary ../../go/grimoire --vault /tmp/lme-vault \\
+        --embed auto --condition grimoire-local
+
+Retrieval moved out of this harness because an in-process phase can only ever
+measure one implementation; every other phase here is implementation-agnostic
+and unchanged.
+"""
 
 
 def phase_retrieve():
-    os.environ["GRIMOIRE_NO_WATCHER"] = "1"
+    """Only the conditions that need no implementation: `full` (every session)
+    and `none` (nothing). See RETRIEVED_BY_SERVER for the rest."""
     data = load_data()
     qs = [json.loads(x) for x in (RESULTS / "questions.jsonl").open()]
     cfile = RESULTS / "contexts.jsonl"
     done = {(r["qid"], r["condition"])
             for r in map(json.loads, cfile.open())} if cfile.exists() else set()
-    out = cfile.open("a")
-    from server import db
-    for cond in CONDITIONS:
-        os.environ.pop("GRIMOIRE_OLLAMA_URL", None)
-        os.environ["GRIMOIRE_LOCAL_EMBED"] = "off"
-        if cond == "grimoire-ollama":
-            os.environ["GRIMOIRE_OLLAMA_URL"] = R.OLLAMA_URL
-            os.environ["GRIMOIRE_EMBED_MODEL"] = "nomic-embed-text"
-        elif cond == "grimoire-local":
-            os.environ["GRIMOIRE_LOCAL_EMBED"] = "auto"
-        n_done = 0
-        for q in qs:
-            if (q["qid"], cond) in done:
-                continue
-            inst = data[q["idx"]]
-            if cond.startswith("grimoire"):
-                tmp = Path(tempfile.mkdtemp(prefix="lme-"))
-                _build_vault(inst, tmp / "vault")
-                ctx = R._grimoire_context(q["question"])
-                db.close()
-                shutil.rmtree(tmp, ignore_errors=True)
-            elif cond == "full":
-                ctx = "\n\n".join(
+    with cfile.open("a") as out:
+        for cond in ("full", "none"):
+            n_done = 0
+            for q in qs:
+                if (q["qid"], cond) in done:
+                    continue
+                inst = data[q["idx"]]
+                ctx = "" if cond == "none" else "\n\n".join(
                     f"## Session {i + 1} — {when}\n{_session_note(sess)}"
                     for i, (sess, when) in enumerate(
                         zip(inst["haystack_sessions"], inst["haystack_dates"],
                             strict=False)))
-            else:
-                ctx = ""
-            out.write(json.dumps({"qid": q["qid"], "condition": cond,
-                                  "context": ctx}) + "\n")
-            out.flush()
-            n_done += 1
-            if n_done % 25 == 0:
-                print(f"  {cond}: {n_done}")
-        print(f"retrieve {cond}: {n_done} new")
-    out.close()
+                out.write(json.dumps({"qid": q["qid"], "condition": cond,
+                                      "context": ctx}) + "\n")
+                out.flush()
+                n_done += 1
+            print(f"retrieve {cond}: {n_done} new")
+    print(RETRIEVED_BY_SERVER)
 
 
 def phase_read(limit=None):

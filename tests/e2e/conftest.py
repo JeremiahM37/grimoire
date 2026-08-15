@@ -6,7 +6,6 @@ the CM6 live-preview editor (the default mode for real users).
 import os
 import socket
 import subprocess
-import sys
 import time
 from pathlib import Path
 
@@ -45,19 +44,16 @@ def server(tmp_path_factory):
     # IMPORTANT: discard server output. A PIPE that nobody drains fills the ~64KB
     # OS buffer after enough uvicorn access-log lines, blocking the server on
     # write — it silently stops serving late in a large run.
-    # GRIMOIRE_E2E_SERVER points this suite at a different implementation (the
-    # Go binary) without touching a single test: the tests drive the browser and
-    # the HTTP API, neither of which knows what is answering. That makes this
-    # suite the acceptance gate for the port rather than a Python-only check.
-    alt = os.environ.get("GRIMOIRE_E2E_SERVER")
-    if alt:
-        cmd = [alt]
-        # the Go server serves the console from an explicit directory; the
-        # Python app has it packaged, so only the alternative needs telling
-        env.setdefault("GRIMOIRE_WEB_DIR", str(ROOT / "web"))
-    else:
-        cmd = [sys.executable, "-m", "server"]
-    proc = subprocess.Popen(cmd, cwd=ROOT, env=env,
+    # These tests drive a browser and the HTTP API — neither knows what is
+    # answering — so GRIMOIRE_E2E_SERVER can point them at any build. That is
+    # what let this suite act as the acceptance gate for the Go port.
+    binary = os.environ.get("GRIMOIRE_E2E_SERVER") or str(ROOT / "go" / "grimoire")
+    if not Path(binary).exists():
+        pytest.skip(f"no grimoire binary at {binary} — build it with "
+                    "`cd go && go build -o grimoire ./cmd/grimoire`",
+                    allow_module_level=True)
+    env.setdefault("GRIMOIRE_WEB_DIR", str(ROOT / "web"))
+    proc = subprocess.Popen([binary], cwd=ROOT, env=env,
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     for _ in range(100):
         with socket.socket() as s:

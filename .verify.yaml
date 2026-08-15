@@ -1,16 +1,20 @@
 # Verify grimoire is actually in a working state. Run: verify run .verify.yaml
-# (Run `.venv/bin/pytest` separately for the unit/api/e2e suite — running it here
-# would launch a second Chromium inside verify's own browser session and crash.)
+# (Run `cd go && go test ./...` and `.venv/bin/pytest tests/e2e` separately —
+# the e2e suite launches its own Chromium, which would crash inside verify's.)
+#
+# Build the binary first: cd go && go build -o grimoire ./cmd/grimoire
 backend: web
 
 launch:
   # port 9119, NOT 9111 — the production service runs on 9111; using it here
   # would fail to bind, silently test against production, and pollute the live vault.
-  command: .venv/bin/python -m server
+  command: ./go/grimoire
   url: http://127.0.0.1:9119
   env:
     GRIMOIRE_VAULT: /tmp/grimoire-verify-vault
     GRIMOIRE_PORT: "9119"
+    # the binary serves the console from an explicit directory
+    GRIMOIRE_WEB_DIR: ./web
   ready_when: { url: http://127.0.0.1:9119/api/health }
   wait_after: 1
 

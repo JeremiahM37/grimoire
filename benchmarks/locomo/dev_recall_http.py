@@ -2,7 +2,8 @@
 """Evidence-turn recall over HTTP, so the SAME measurement runs against either
 implementation.
 
-dev_recall.py imports server.index in-process, which makes it Python-only. This
+The original dev_recall.py retrieved in-process, which tied it to one
+implementation and is gone with it. This
 drives a running server through its HTTP API instead, so the Go build can be
 measured with the identical corpus, questions and scoring.
 

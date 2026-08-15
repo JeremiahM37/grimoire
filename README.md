@@ -10,7 +10,7 @@ human console.
 <!-- badges -->
 ![status](https://img.shields.io/badge/status-stable-2ea44f)
 ![license](https://img.shields.io/badge/license-MIT-blue)
-![python](https://img.shields.io/badge/python-3.12%2B-3776ab)
+![go](https://img.shields.io/badge/go-1.24%2B-00add8)
 ![docker](https://img.shields.io/badge/docker-ready-2496ed)
 ![MCP](https://img.shields.io/badge/MCP-first--class-5b4bff)
 ![PWA](https://img.shields.io/badge/console-offline%20PWA-19c37d)
@@ -84,9 +84,13 @@ volumes:
 <summary>…or run from source (no Docker)</summary>
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-GRIMOIRE_VAULT=~/notes .venv/bin/python -m server      # → http://<host>:9111
+cd go && go build -o grimoire ./cmd/grimoire && go build -o grimoire-mcp ./cmd/grimoire-mcp
+GRIMOIRE_VAULT=~/notes GRIMOIRE_WEB_DIR=../web ./grimoire   # → http://<host>:9111
 ```
+
+One static binary, no runtime, no virtualenv. The same binary is the CLI:
+`grimoire capture "a thought"`, `grimoire search deploy`, `grimoire ingest
+~/old-notes`, `grimoire export --out site/` — run `grimoire help` for the list.
 </details>
 
 **Connect an agent (MCP):** any MCP client can mount Grimoire — Claude Code,
@@ -95,8 +99,7 @@ desktop assistants, custom agents. Example config:
 ```jsonc
 // Claude Code's .mcp.json shown; adapt to your client
 { "mcpServers": { "grimoire": {
-    "command": "/path/to/grimoire/.venv/bin/python",
-    "args": ["-m", "server.mcp_server"],
+    "command": "/path/to/grimoire/go/grimoire-mcp",
     "env": { "GRIMOIRE_API": "http://localhost:9111",
              "GRIMOIRE_AGENT_NAME": "my-agent" } } } }
 ```
@@ -119,7 +122,7 @@ facts table is just a projection of it, exactly like tags and backlinks.
 
 The MCP server speaks **stdio** by default (local desktop agents). For web or
 remote clients (Open WebUI, hosted), run it over **streamable-HTTP** with no
-proxy — `GRIMOIRE_MCP_TRANSPORT=http python -m server.mcp_server` serves at
+proxy — `GRIMOIRE_MCP_TRANSPORT=http ./grimoire-mcp` serves at
 `http://127.0.0.1:9112/mcp` (localhost-bound; front it with your reverse proxy
 + auth before exposing it).
 
@@ -185,7 +188,7 @@ Everything is environment-driven (same variables bare-metal, systemd, Docker):
 | `GRIMOIRE_LLM` / `GRIMOIRE_LLM_MODEL` | auto / `qwen3.5:4b` | Answer backend (`ollama` · `claude` · `openai`) + model |
 | `GRIMOIRE_LLM_BASE_URL` / `_API_KEY` | *(empty)* | Any OpenAI-compatible endpoint (OpenAI, OpenRouter, Together, Groq, vLLM, LM Studio, LiteLLM…); key can also live in the vault as `llm-api-key` |
 | `GRIMOIRE_EMBED_MODEL` | `nomic-embed-text` | Embeddings (offline hashing fallback built in) |
-| `GRIMOIRE_LOCAL_EMBED` / `_MODEL` | `auto` / `potion-base-8M` | `pip install model2vec` → local semantic embeddings, no service |
+| `GRIMOIRE_LOCAL_EMBED` / `_MODEL` | `auto` / `potion-base-8M` | Local semantic embeddings, built in, no service |
 | `GRIMOIRE_WHISPER_URL` / `_MODEL` | *(empty)* | Audio-memo transcription |
 | `GRIMOIRE_DAILY_DIR` / `GRIMOIRE_INBOX_DIR` | `journal` / `inbox` | Vault sub-folders |
 | `GRIMOIRE_SYNC_PEER` / `_TOKEN` / `_INTERVAL` | *(off)* | Background sync with a peer |
@@ -222,7 +225,7 @@ LLM judge (`claude-sonnet-5`).
 |---|---|---|
 | nothing | 1.2% | 0 |
 | grimoire retrieval, zero-dependency default | 76.8% | ~6.2k |
-| grimoire retrieval + `pip install model2vec` | 80.8% | ~6.1k |
+| grimoire retrieval + built-in local model | 81.6% | ~7.0k |
 | grimoire retrieval + nomic-embed (Ollama) | **81.6%** | ~6.2k |
 | entire conversation in context | 82.2% | ~24k |
 
@@ -231,7 +234,7 @@ LLM judge (`claude-sonnet-5`).
 | context given to the reader | accuracy | context tokens / question |
 |---|---|---|
 | nothing | 6.5% | 0 |
-| grimoire retrieval + `pip install model2vec` | **75.0%** | ~5.9k |
+| grimoire retrieval + built-in local model | **74.5%** | ~6.8k |
 | grimoire retrieval + nomic-embed (Ollama) | 73.0% | ~5.8k |
 | entire haystack in context | 70.5% | ~117k |
 
@@ -248,21 +251,23 @@ the honest failure notes: [benchmarks/locomo/](benchmarks/locomo/) ·
 ## Tests
 
 ```bash
-.venv/bin/pytest              # hermetic: unit + api + negative + integration + e2e
+cd go && go test ./...        # hermetic: 146 unit + api + sync + CLI tests
+.venv/bin/pytest tests/e2e    # 100 real-browser flows against the built binary
 verify run .verify.yaml       # live api + headless-browser smoke (isolated port)
 ```
 
 ## Layout
 
 ```
-server/                    FastAPI substrate: SQLite(FTS5) index over plain markdown
-server/mcp_server.py       the agent interface (knowledge · memory · credentials)
-server/routers/memory.py   agent-memory namespace w/ provenance
-server/crypto.py           credential vault (Argon2id + Fernet) + broker
-server/crdt.py             sequence CRDT for concurrent-edit merges
+go/cmd/grimoire            the server AND the CLI — one static binary
+go/cmd/grimoire-mcp        the agent interface (knowledge · memory · credentials)
+go/internal/index          SQLite(FTS5) + vectors over plain markdown
+go/internal/secrets        credential vault (Argon2id + Fernet) + broker
+go/internal/crdt           sequence CRDT for concurrent-edit merges
+go/internal/embed          embedders, incl. the built-in local model2vec
 web/                       the human console (offline PWA, no build step)
 plugins/                   first-party console plugins
-cli/grimoire.py            scriptable CLI
+tests/e2e/                 real-browser flows (implementation-agnostic)
 docs/                      ARCHITECTURE · PLUGINS
 ```
 

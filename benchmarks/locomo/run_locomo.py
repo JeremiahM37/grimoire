@@ -18,9 +18,7 @@ import json
 import os
 import random
 import re
-import shutil
 import subprocess
-import sys
 import tempfile
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -130,83 +128,44 @@ def phase_sample():
 
 # ---- phase: retrieve --------------------------------------------------------
 
-def _grimoire_context(q, use_search=True):
-    """Context exactly as the product retrieves it: top-10 semantic chunks +
-    top-5 FTS hits for the raw question."""
-    from server import index
-    from server.routers.search import search as fts_search
-    parts, seen = [], set()
-    for c in index.retrieve(q, k=10):
-        key = (c["path"], c["chunk"][:64])
-        if key not in seen:
-            seen.add(key)
-            parts.append(f"### {c['title']}\n{c['chunk']}")
-    if use_search:
-        for h in fts_search(q=q, limit=5, full=True):
-            key = (h["path"], (h.get("body") or h["snippet"])[:64])
-            if key not in seen:
-                seen.add(key)
-                parts.append(f"### {h['title']} (text search)\n"
-                             f"{h.get('body') or h['snippet']}")
-    return "\n\n".join(parts)
+RETRIEVED_BY_SERVER = """\
+The grimoire conditions are retrieved by driving a running server:
 
+    python retrieve_go.py --binary ../../go/grimoire --vault /tmp/locomo-vault \\
+        --embed auto --condition grimoire-local
 
-def _build_vault(conv, vdir):
-    from server import config, db, index, vault
-    config.VAULT = vdir
-    config.grimoire_dir().mkdir(parents=True, exist_ok=True)
-    db.init(config.db_path())
-    for n, when, text in session_docs(conv):
-        rel = f"session-{n:02d}.md"
-        # round 3+: the session date lives in the note TITLE (as a person
-        # titles a meeting log), so every retrieval hit carries its date
-        vault.write(rel, f"Date: {when}\n\n{text}",
-                    {"title": f"Conversation session {n} ({when})"})
-        index.upsert(rel)
+That script assembles context exactly as this harness used to in-process
+(top-10 semantic chunks + top-5 full-text bodies), and writes the same
+contexts.jsonl records. Retrieval moved out because an in-process phase can
+only ever measure one implementation; every other phase here is
+implementation-agnostic and unchanged.
+"""
 
 
 def phase_retrieve():
-    os.environ["GRIMOIRE_NO_WATCHER"] = "1"
-    sys.path.insert(0, str(REPO))
+    """Only the conditions that need no implementation: `full` (whole
+    transcript) and `none` (nothing). See RETRIEVED_BY_SERVER for the rest."""
     data = load_data()
     qs = [json.loads(x) for x in (RESULTS / "questions.jsonl").open()]
     cfile = RESULTS / "contexts.jsonl"
     done = {(r["qid"], r["condition"])
             for r in map(json.loads, cfile.open())} if cfile.exists() else set()
-    out = cfile.open("a")
-    for cond in ["grimoire", "grimoire-local", "grimoire-ollama", "full", "none"]:
-        os.environ.pop("GRIMOIRE_OLLAMA_URL", None)
-        os.environ["GRIMOIRE_LOCAL_EMBED"] = "off"     # hashing = as-shipped floor
-        if cond == "grimoire-ollama":
-            os.environ["GRIMOIRE_OLLAMA_URL"] = OLLAMA_URL
-            os.environ["GRIMOIRE_EMBED_MODEL"] = "nomic-embed-text"
-        elif cond == "grimoire-local":
-            os.environ["GRIMOIRE_LOCAL_EMBED"] = "auto"    # model2vec (pip extra)
-        for ci, c in enumerate(data):
-            todo = [q for q in qs if q["conv"] == ci and (q["qid"], cond) not in done]
-            if not todo:
-                continue
-            if cond.startswith("grimoire"):
-                from server import db
-                tmp = Path(tempfile.mkdtemp(prefix=f"locomo-{cond}-"))
-                _build_vault(c["conversation"], tmp / "vault")
-                for q in todo:
-                    ctx = _grimoire_context(q["question"])
-                    out.write(json.dumps({"qid": q["qid"], "condition": cond,
-                                          "context": ctx}) + "\n")
-                db.close()
-                shutil.rmtree(tmp, ignore_errors=True)
-            else:
-                full = "\n\n".join(
+    with cfile.open("a") as out:
+        for cond in ("full", "none"):
+            for ci, c in enumerate(data):
+                todo = [q for q in qs
+                        if q["conv"] == ci and (q["qid"], cond) not in done]
+                if not todo:
+                    continue
+                ctx = "" if cond == "none" else "\n\n".join(
                     f"## Session {n} — {when}\n{text}"
                     for n, when, text in session_docs(c["conversation"]))
                 for q in todo:
-                    ctx = full if cond == "full" else ""
                     out.write(json.dumps({"qid": q["qid"], "condition": cond,
                                           "context": ctx}) + "\n")
-            out.flush()
-            print(f"retrieve {cond} conv{ci}: {len(todo)} contexts")
-    out.close()
+                out.flush()
+                print(f"retrieve {cond} conv{ci}: {len(todo)} contexts")
+    print(RETRIEVED_BY_SERVER)
 
 
 # ---- claude CLI -------------------------------------------------------------

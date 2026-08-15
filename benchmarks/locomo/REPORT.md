@@ -37,7 +37,7 @@ Changes (all product code, none benchmark-aware; each has a unit test):
    notes, not whole bodies.
 
 Fixes were tuned only against the 1,037 held-out dev questions
-(`dev_recall.py`, evidence-turn recall — zero LLM calls), never against
+(`dev_recall_http.py`, evidence-turn recall — zero LLM calls), never against
 the scored sample.
 
 | condition | multi-hop | temporal | open-domain | single-hop | **overall** | context tokens* |

@@ -64,7 +64,7 @@ Not a cloud SaaS. Not a proprietary format (everything is markdown + a rebuildab
 └───────────────┬───────────────────────────────────────────────────┘
         HTTPS · MCP (stdio/SSE) · sync protocol
 ┌───────────────┴───────────────────────────────────────────────────┐
-│  grimoire server (FastAPI, self-hosted)                               │
+│  grimoire server (one static Go binary, self-hosted)                               │
 │  ┌ notes API ┐ ┌ search/RAG ┐ ┌ secret vault ┐ ┌ sync ┐ ┌ MCP ┐   │
 │  │ CRUD·links│ │ FTS5+vector│ │ sealed store │ │deltas│ │in/out│   │
 │  └─────┬─────┘ └─────┬──────┘ └──────┬───────┘ └──┬───┘ └──┬───┘   │
@@ -151,7 +151,7 @@ CRUD /api/secrets        # names + meta only; ciphertext never returned
 POST /api/secrets/{name}/grant   {grantee, scope, ttl}
 POST /api/sync/manifest  ·  POST /api/sync/pull  ·  POST /api/sync/push
 GET  /api/audit
-# MCP served separately (stdio + SSE) via server/mcp_server.py
+# MCP served separately (stdio + streamable-HTTP) via cmd/grimoire-mcp
 ```
 
 ## 7. Test strategy (the user asked for depth — this is a first-class column)
@@ -167,7 +167,7 @@ Four kinds, all hermetic by default (temp vault, no network, local stub embedder
 `.verify.yaml` wires unit+API+e2e + a real headless UI flow (create→link→search→ask), per the homelab house rule.
 
 ## 8. Tech stack
-- **Backend:** Python 3.12+, FastAPI + uvicorn, SQLite (FTS5 + optional sqlite-vec), watchdog (vault watcher), libsodium/`age` or `cryptography` (Fernet+Argon2) for the vault, httpx.
+- **Backend:** Go 1.24+, standard library HTTP, SQLite (FTS5) via modernc.org/sqlite — pure Go, so the whole product is one static binary with no runtime and no cgo. Fernet + Argon2id for the vault; fsnotify for the vault watcher.
 - **Frontend:** PWA, CodeMirror 6, vanilla ES modules (no heavy build), service worker + IndexedDB. Homelab-PWA conventions.
 - **AI:** local **Ollama** default (private RAG + embeddings via `nomic-embed-text`, already in the homelab), Claude optional via a vault secret. Reuses doc-rag learnings.
 - **CLI:** a single `grimoire` entrypoint (argparse/click).
@@ -182,7 +182,7 @@ Status: **v0.1–v0.9 shipped** (2026-07-16) — deployed, 160 hermetic tests + 
 - **v0.5 (sync) ✅:** delta sync + conflict copies, live cross-device refresh, static e-ink export.
 - **v0.6–v0.9 ✅ (best-in-class):** tag browsing, graph view, task checkboxes, command palette (Ctrl-K), real editor (toolbar/smart-lists/tab), image/file attachments, theme toggle, outline/TOC, note templates, per-note HTML export, in-app settings, **encryption-at-rest for private notes**, soft-delete/trash + undo, aliases, word count, pin/favorite, calendar.
 - **v0.10–v0.13 ✅:** tables, find & replace, unlinked mentions, random/duplicate, zip import/export, search operators, properties editor, tag rename, **desktop-first-class** (split view + draggable divider, collapsible/resizable sidebar, context menu, focus mode, keyboard nav), callouts/highlights, code syntax highlighting, tag autocomplete + browser, note hover previews, offline draft protection, **security hardening** (Argon2id, lockout, idle-lock, SSRF guard, scope-bypass fix, CSP, rotation, revocation — see SECURITY.md), **background auto-sync** with a peer.
-- **v1.0 ✅ true CRDT sync:** `server/crdt.py` is a real sequence CRDT (fractional-index / Logoot). Concurrent edits to the same note auto-merge with no conflict copies (proven by a randomized fuzz test); the body is CRDT'd while frontmatter converges deterministically; independent same-name histories are conflict-copied rather than garbled.
+- **v1.0 ✅ true CRDT sync:** `go/internal/crdt` is a real sequence CRDT (fractional-index / Logoot). Concurrent edits to the same note auto-merge with no conflict copies (proven by a randomized fuzz test); the body is CRDT'd while frontmatter converges deterministically; independent same-name histories are conflict-copied rather than garbled.
 - **remaining:** rename off the "grimoire" placeholder, publish (OSP).
 
 ## 10. Risks & threat model (sketch — expanded per phase)
