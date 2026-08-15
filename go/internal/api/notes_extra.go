@@ -93,8 +93,11 @@ func (s *Server) duplicateNote(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusNotFound, "no such note")
 		return
 	}
-	base := strings.TrimSuffix(rel, ".md") + "-copy.md"
-	newRel, err := s.uniquePath(base)
+	// the copy is named from the TITLE, not the old path: a note titled
+	// "Scratch" at inbox/2026-01-01.md duplicates to scratch-copy.md, which is
+	// what a person looking at the list expects to find
+	title := fm2Title(note)
+	newRel, err := s.uniquePath(vault.Slugify(title) + ".md")
 	if err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
@@ -102,9 +105,7 @@ func (s *Server) duplicateNote(w http.ResponseWriter, r *http.Request) {
 	fm := note.Frontmatter.Clone()
 	fm.Delete("created")
 	fm.Delete("updated")
-	if t := fm.StringVal("title"); t != "" {
-		fm.Set("title", t+" (copy)")
-	}
+	fm.Set("title", title)
 	if _, err := s.Vault.Write(newRel, note.Body, fm); err != nil {
 		writeErr(w, statusForVaultErr(err), err.Error())
 		return
@@ -115,6 +116,16 @@ func (s *Server) duplicateNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, s.viewOf(created))
+}
+
+// fm2Title is the duplicate's title: the frontmatter title when there is one,
+// else the note's derived title, with " (copy)" appended.
+func fm2Title(note *vault.Note) string {
+	t := note.Frontmatter.StringVal("title")
+	if t == "" {
+		t = note.Title
+	}
+	return t + " (copy)"
 }
 
 type linkIn struct {

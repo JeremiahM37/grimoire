@@ -30,28 +30,38 @@ checks: int = 0
 diffs: list[str] = []
 
 
-def fetch(base: str, path: str) -> tuple[int, str]:
+def fetch(base: str, path: str, method: str = "GET", body=None) -> tuple[int, str]:
+    data = json.dumps(body).encode() if body is not None else None
+    req = urllib.request.Request(base + path, data=data, method=method,
+                                 headers={"Content-Type": "application/json"})
     try:
-        with urllib.request.urlopen(base + path, timeout=30) as r:
+        with urllib.request.urlopen(req, timeout=60) as r:
             return r.status, r.read().decode()
     except urllib.error.HTTPError as e:
         return e.code, e.read().decode()
 
 
-def jget(base: str, path: str):
-    status, body = fetch(base, path)
+def jget(base: str, path: str, method: str = "GET", body=None):
+    status, body = fetch(base, path, method, body)
     try:
         return status, json.loads(body)
     except Exception:
         return status, body
 
 
-def compare(path: str, key=None, note: str = "") -> None:
-    """Compare one endpoint. `key` normalizes away legitimately-unordered data."""
+def compare(path: str, key=None, note: str = "",
+            method: str = "GET", body=None) -> None:
+    """Compare one endpoint. `key` normalizes away legitimately-unordered data.
+
+    POST endpoints are compared too, and must be: a GET-only sweep reported
+    "no differences" while /api/ask returned a different answer format and
+    /api/actions a different tag order, because neither was ever requested.
+    Writes go to the throwaway note below, never to shared fixtures.
+    """
     global checks
     checks += 1
-    pst, pv = jget(PY_BASE, path)
-    gst, gv = jget(GO_BASE, path)
+    pst, pv = jget(PY_BASE, path, method, body)
+    gst, gv = jget(GO_BASE, path, method, body)
     if pst != gst:
         diffs.append(f"{path}: status {pst} vs {gst}")
         return
@@ -80,6 +90,56 @@ def compare_html(path: str) -> None:
                          f"    go: ...{gv[max(0, i-70):i+70]!r}")
             return
     diffs.append(f"{path}: html length {len(pv)} vs {len(gv)}")
+
+
+def compare_writes() -> None:
+    """The mutating surface, run LAST and cleaned up.
+
+    Writes are compared at fixed paths and then deleted, because a comparison
+    that leaves notes behind poisons every later run: the second sweep sees a
+    scratch note on one side only and reports it as an implementation
+    difference. Timestamp-named endpoints (capture, audio) are deliberately
+    excluded — two servers called in sequence can land in different seconds, so
+    their paths differ by construction and prove nothing.
+    """
+    scratch = "compat-scratch.md"
+    body = "# Scratch\n\nport:: 1234\n\nbody #compat"
+    view = lambda d: {k: d.get(k) for k in ("path", "title", "tags")}  # noqa: E731
+
+    compare("/api/notes", method="POST", note="create note",
+            body={"path": scratch, "body": body}, key=view)
+    compare(f"/api/notes/{scratch}", method="PUT", note="update note",
+            body={"body": "# Scratch\n\nedited #compat"}, key=view)
+    compare("/api/facts", method="POST", note="set fact (append)",
+            body={"note": scratch, "key": "owner", "value": "platform"})
+    compare("/api/facts", method="POST", note="set fact (update in place)",
+            body={"note": scratch, "key": "OWNER", "value": "infra"})
+    compare(f"/api/notes/{scratch}", note="note after fact edits",
+            key=lambda d: {"body": d.get("body"), "tags": d.get("tags")})
+    compare("/api/facts", method="POST", note="set fact on a missing note",
+            body={"note": "nope.md", "key": "k", "value": "v"})
+    compare(f"/api/notes/{scratch}/pin", method="POST", note="pin",
+            key=lambda d: {k: d.get(k) for k in ("path", "pinned")})
+    compare(f"/api/notes/{scratch}/pin", method="POST", note="unpin",
+            key=lambda d: {k: d.get(k) for k in ("path", "pinned")})
+    compare(f"/api/notes/{scratch}/duplicate", method="POST", note="duplicate",
+            key=lambda d: {"path": d.get("path")})
+    compare("/api/memory", method="POST", note="remember",
+            body={"topic": "compat", "text": "a durable fact", "agent": "compat-check"},
+            key=lambda d: {"path": d.get("path")})
+    compare("/api/memory?q=durable", note="recall",
+            key=lambda rows: [r["path"] for r in rows] if isinstance(rows, list) else rows)
+
+    for rel in (scratch, "scratch-copy.md", "memory/compat.md"):
+        for base in (PY_BASE, GO_BASE):
+            fetch(base, "/api/notes/" + urllib.parse.quote(rel), "DELETE")
+    # the trash keeps a copy, so empty it too or the next run starts dirty
+    for base in (PY_BASE, GO_BASE):
+        _, items = jget(base, "/api/trash")
+        for item in items if isinstance(items, list) else []:
+            tid = item.get("id") or item.get("trash_id")
+            if tid:
+                fetch(base, f"/api/trash/{tid}", "DELETE")
 
 
 def main() -> int:
@@ -150,6 +210,37 @@ def main() -> int:
             {"path": r["path"], "body": r.get("body"),
              "excerpted": r.get("excerpted")} for r in rows])
 
+    # ---- read-only POST surfaces -------------------------------------------
+    # A GET-only sweep reported "no differences" while /api/ask returned a
+    # different answer format and /api/actions a different tag order, because
+    # neither was ever requested. These change nothing, so they run inline.
+    compare("/api/ask", method="POST", note="ask (extractive answer + citations)",
+            body={"q": "where do the notes live", "smart": False},
+            key=lambda d: {"answer": d.get("answer"),
+                           "citations": [c.get("path") for c in d.get("citations", [])]})
+    compare("/api/ask", method="POST", note="ask with no query", body={"q": ""})
+    for action in ("tags", "title", "summarize", "expand", "bogus"):
+        compare("/api/actions", method="POST", note=f"action {action!r}",
+                body={"action": action,
+                      "text": "Deployment runbook. Deployment rollback via proxy.\n"
+                              "The gateway listens on 8443. Restart is not enough."})
+    compare("/api/query", method="POST", note="query block",
+            body={"block": "TABLE FROM #daily"},
+            key=lambda d: d if not isinstance(d, dict) else {
+                "columns": d.get("columns"),
+                "rows": sorted(map(str, d.get("rows", [])))})
+    compare("/api/retrieve?q=notes&k=3", note="retrieve top-k",
+            key=lambda rows: [r["path"] for r in rows] if isinstance(rows, list) else rows)
+    compare("/api/sync/status", note="sync status")
+    compare("/api/sync/manifest", note="sync manifest",
+            key=lambda d: sorted(d) if isinstance(d, dict) else d)
+    compare("/api/sync/pull", method="POST", note="sync pull",
+            body={"paths": ["index.md", "definitely-missing.md"]},
+            key=lambda d: {k: (v is None) for k, v in d.get("contents", {}).items()})
+    compare("/api/sync/now", method="POST", note="sync with no peer configured")
+    compare("/api/memory/consolidate", method="POST", note="consolidate (no LLM)",
+            body={"path": "does-not-exist.md"})
+
     html_pages = 0
     for r in notes:
         if r.get("private"):
@@ -157,6 +248,8 @@ def main() -> int:
         html_pages += 1
         compare_html("/read/" + urllib.parse.quote(r["path"][:-3]))
     compare_html("/read")
+
+    compare_writes()
 
     print(f"compared {checks} endpoints ({html_pages} full HTML pages, byte for byte)")
     if diffs:
