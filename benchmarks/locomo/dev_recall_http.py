@@ -70,7 +70,7 @@ def context_for(base: str, question: str) -> str:
             continue
         seen.add(key)
         parts.append(f"### {c['title']}\n{c['chunk']}")
-    for h in api(base, f"/api/search?q={q}"):
+    for h in api(base, f"/api/search?q={q}&limit=5&full=true"):
         text = h.get("body") or h.get("snippet") or ""
         key = (h["path"], text[:64])
         if key in seen:

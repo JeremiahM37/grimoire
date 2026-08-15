@@ -209,10 +209,14 @@ def phase_report():
         t = toks.get((r["qid"], r["condition"]))
         if t:
             tk[r["condition"]].append(t)
+    # report every condition that was actually judged, not just the declared
+    # ones — a condition produced by an external retriever (retrieve_go.py) is
+    # otherwise scored and then silently dropped from the table
+    conds = CONDITIONS + sorted(c for c in tot if c not in CONDITIONS)
     print(f"{'condition':17}" + "".join(f"{c[:14]:>16}" for c in cats)
           + f"{'overall':>10}{'medtok':>9}")
     summary = {}
-    for cond in CONDITIONS:
+    for cond in conds:
         ok, n = tot[cond]
         if not n:
             continue

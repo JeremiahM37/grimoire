@@ -131,6 +131,25 @@ def main() -> int:
         compare(f"/api/search?q={q}", note=f"search {q!r}",
                 key=lambda rows: sorted(r["path"] for r in rows))
 
+    # Search VARIANTS, not just the default shape. A gap here cost 6.4pp on the
+    # scored benchmark and was invisible to the plain-query comparison: full=true
+    # bodies, the limit, the operators, and above all the any-term fallback that
+    # question-shaped queries depend on.
+    for path, note in (
+        ("/api/search?q=where%20do%20the%20notes%20live&full=true",
+         "full=true bodies for a question-shaped query"),
+        ("/api/search?q=grimoire&full=true", "full=true bodies"),
+        ("/api/search?q=grimoire&limit=2", "limit"),
+        ("/api/search?q=this%20query%20matches%20absolutely%20no%20single%20note%20term",
+         "any-term OR fallback"),
+        ("/api/search?q=tag:daily", "tag: operator"),
+        ("/api/search?q=is:pinned", "is:pinned operator"),
+        ("/api/search?q=path:journal", "path: operator"),
+    ):
+        compare(path, note=note, key=lambda rows: [
+            {"path": r["path"], "body": r.get("body"),
+             "excerpted": r.get("excerpted")} for r in rows])
+
     html_pages = 0
     for r in notes:
         if r.get("private"):
