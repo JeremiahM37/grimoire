@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Produce LoCoMo contexts from a RUNNING server over HTTP.
 
-run_locomo.py's retrieve phase imports server.index in-process, which can only
-ever measure the Python implementation. This writes the same
+run_locomo.py's retrieve phase used to build the vault and retrieve in-process,
+which could only ever measure one implementation. This writes the same
 `contexts.jsonl` records for a condition of your choosing by driving a live
 server, so the reader and judge phases — which are implementation-agnostic and
 read that file — can score any build.
@@ -25,8 +25,11 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE.parent))
 
+import goserver  # noqa: E402
 from run_locomo import RESULTS, load_data, session_docs  # noqa: E402
 
 
@@ -76,9 +79,14 @@ def context_for(base: str, question: str) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--base-url", required=True)
+    ap.add_argument("--base-url",
+                    help="an already-running server; omit to launch --binary")
+    ap.add_argument("--binary", help="path to the grimoire binary to launch")
+    ap.add_argument("--embed", default="auto", choices=("off", "auto", "ollama"),
+                    help="embedder condition (see benchmarks/goserver.py)")
+    ap.add_argument("--port", type=int, default=9121)
     ap.add_argument("--vault", required=True,
-                    help="the vault directory the server is indexing")
+                    help="the vault directory the server indexes")
     ap.add_argument("--condition", default="grimoire-go")
     a = ap.parse_args()
 
@@ -89,23 +97,33 @@ def main() -> int:
     done = {(r["qid"], r["condition"])
             for r in map(json.loads, cfile.open())} if cfile.exists() else set()
 
-    written = 0
-    with cfile.open("a") as out:
-        for ci, c in enumerate(data):
-            todo = [q for q in qs
-                    if q["conv"] == ci and (q["qid"], a.condition) not in done]
-            if not todo:
-                continue
-            build_vault(Path(a.vault), c["conversation"])
-            indexed = api(a.base_url, "/api/reindex", {})
-            for q in todo:
-                out.write(json.dumps({
-                    "qid": q["qid"], "condition": a.condition,
-                    "context": context_for(a.base_url, q["question"])}) + "\n")
-                written += 1
-            out.flush()
-            print(f"retrieve {a.condition} conv{ci}: {len(todo)} contexts "
-                  f"({indexed.get('indexed')} notes indexed)")
+    def sweep(base: str) -> int:
+        written = 0
+        with cfile.open("a") as out:
+            for ci, c in enumerate(data):
+                todo = [q for q in qs
+                        if q["conv"] == ci and (q["qid"], a.condition) not in done]
+                if not todo:
+                    continue
+                build_vault(Path(a.vault), c["conversation"])
+                indexed = api(base, "/api/reindex", {})
+                for q in todo:
+                    out.write(json.dumps({
+                        "qid": q["qid"], "condition": a.condition,
+                        "context": context_for(base, q["question"])}) + "\n")
+                    written += 1
+                out.flush()
+                print(f"retrieve {a.condition} conv{ci}: {len(todo)} contexts "
+                      f"({indexed.get('indexed')} notes indexed)")
+        return written
+
+    if a.base_url:
+        written = sweep(a.base_url)
+    elif a.binary:
+        with goserver.launch(a.binary, a.vault, a.port, a.embed) as base:
+            written = sweep(base)
+    else:
+        return ap.error("give --base-url or --binary")
     print(f"wrote {written} contexts for condition {a.condition!r}")
     return 0
 

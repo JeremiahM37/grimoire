@@ -89,7 +89,7 @@ reverted and are reported as rejected, per the tuning rule.
 
 - Protocol, prompts, sample seed frozen before round 1.
 - Improvement iterations may only change **generic product code** committed
-  to `server/` — nothing may read benchmark data, special-case question
+  to the product code — nothing may read benchmark data, special-case question
   shapes, or ship benchmark-only configuration.
 - Every round's raw per-question results are kept in `results/` and every
   round is reported, including regressions and nulls.

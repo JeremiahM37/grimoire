@@ -8,22 +8,13 @@ authors = [{ name = "Jeremiah Mackey" }]
 requires-python = ">=3.11"
 keywords = ["notes", "markdown", "local-first", "ai", "rag", "mcp", "obsidian",
             "knowledge-base", "self-hosted", "wiki"]
-dependencies = [
-    "fastapi>=0.115",
-    "uvicorn>=0.30",
-    "httpx>=0.27",
-    "watchdog>=4.0",
-    "cryptography>=42",
-    "python-multipart>=0.0.9",
-]
+# The server, CLI and MCP server are one static Go binary with no runtime
+# dependencies — see go/. This project file exists for the test and benchmark
+# harness, which stays in Python.
+dependencies = []
 
 [project.optional-dependencies]
-# <2: the SDK removed mcp.server.fastmcp in 2.x (see requirements.txt)
-mcp = ["mcp>=1.0,<2"]
-dev = ["pytest>=8", "playwright>=1.45"]
-
-[project.scripts]
-grimoire = "cli.grimoire:main"
+dev = ["pytest>=8", "playwright>=1.45", "ruff>=0.8"]
 
 [project.urls]
 Homepage = "https://github.com/JeremiahM37/grimoire"
@@ -44,5 +35,4 @@ select = ["E", "F", "B", "I", "UP"]
 ignore = [
   "E501",   # long lines: templates/HTML strings — line-length is advisory here
   "E702", "E701",  # small same-line statements are idiomatic in this codebase
-  "B008",   # FastAPI Depends() in defaults is the framework idiom
 ]

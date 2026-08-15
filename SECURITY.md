@@ -2,8 +2,8 @@
 
 grimoire stores notes and — uniquely — an encrypted vault of API keys / tokens that
 your AI can *use* but never *read*. This document states the threat model and the
-controls that back it. Security-relevant code: `server/crypto.py`,
-`server/secrets.py`, and the middleware in `server/app.py`.
+controls that back it. Security-relevant code: `go/internal/crypto`,
+`go/internal/secrets`, and the security headers in `go/internal/api`.
 
 ## What grimoire protects
 
@@ -71,7 +71,7 @@ and never needs the key. Editing requires an unlocked vault.
   no-referrer` (so a `?token=` never leaks via Referer), `X-Frame-Options`
   (default `SAMEORIGIN`, override with `GRIMOIRE_FRAME_OPTIONS`), and
   `Cross-Origin-Opener-Policy: same-origin`.
-- **XSS:** both renderers (`server/render.py`, the PWA's `mdToHtml`) escape HTML
+- **XSS:** both renderers (`go/internal/render`, the PWA's `mdToHtml`) escape HTML
   first, then apply a small allowlist of formatting. Wiki-links/images become
   attributes on escaped text; no user markup reaches the DOM as live HTML. The
   CSP is defense-in-depth on top.

@@ -4,31 +4,37 @@
 #
 # Configuration is entirely env-driven (see README "Config"): GRIMOIRE_VAULT,
 # GRIMOIRE_PORT/HOST, GRIMOIRE_AUTH_TOKEN, GRIMOIRE_OLLAMA_URL, GRIMOIRE_SYNC_*…
-FROM python:3.12-slim
+FROM golang:1.24-alpine AS build
+WORKDIR /src
+COPY go/go.mod go/go.sum ./go/
+RUN cd go && go mod download
+COPY go ./go
+# CGO_ENABLED=0 keeps this a static binary: the SQLite driver is pure Go, so
+# the runtime image needs no libc and no toolchain
+RUN cd go \
+    && CGO_ENABLED=0 go build -ldflags="-s -w" -o /out/grimoire ./cmd/grimoire \
+    && CGO_ENABLED=0 go build -ldflags="-s -w" -o /out/grimoire-mcp ./cmd/grimoire-mcp
 
+FROM alpine:3.20
 WORKDIR /app
-
-# runtime deps only (argon2-cffi is required by the secret vault)
-RUN pip install --no-cache-dir \
-    fastapi uvicorn watchdog cryptography python-multipart argon2-cffi
-
-COPY server ./server
+COPY --from=build /out/grimoire /out/grimoire-mcp /usr/local/bin/
 COPY web ./web
-COPY cli ./cli
 COPY plugins ./plugins
 
 # run as a non-root user; the vault volume is the only writable path it needs
-RUN useradd --create-home --uid 1000 grimoire \
+RUN adduser -D -u 1000 grimoire \
     && mkdir /vault && chown grimoire:grimoire /vault
 USER grimoire
 
 ENV GRIMOIRE_VAULT=/vault \
     GRIMOIRE_PORT=9111 \
-    GRIMOIRE_HOST=0.0.0.0
+    GRIMOIRE_HOST=0.0.0.0 \
+    GRIMOIRE_WEB_DIR=/app/web \
+    GRIMOIRE_PLUGIN_DIR=/app/plugins
 VOLUME /vault
 EXPOSE 9111
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s \
-  CMD ["python", "-c", "import urllib.request,os;urllib.request.urlopen(f'http://127.0.0.1:{os.environ.get(\"GRIMOIRE_PORT\",\"9111\")}/api/health')"]
+  CMD wget -qO- "http://127.0.0.1:${GRIMOIRE_PORT}/api/health" >/dev/null || exit 1
 
-CMD ["python", "-m", "server"]
+CMD ["grimoire"]

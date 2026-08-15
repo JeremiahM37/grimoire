@@ -2,8 +2,9 @@
 
 A map for contributors. The one-paragraph version: **plain markdown files are
 the source of truth; everything else is a rebuildable cache or a view.** The
-server is FastAPI + SQLite (FTS5); the client is a no-build vanilla-JS PWA with
-one vendored artifact (the CodeMirror 6 live editor).
+server is one static Go binary over SQLite (FTS5, pure-Go driver, no cgo); the
+client is a no-build vanilla-JS PWA with one vendored artifact (the CodeMirror 6
+live editor).
 
 ## Invariants (break these and you've broken Grimoire)
 
@@ -11,7 +12,7 @@ one vendored artifact (the CodeMirror 6 live editor).
    The SQLite index (`.grimoire/index.db`) can be deleted at any time and is
    rebuilt on boot (`index.reindex()`); the watcher reconciles external edits.
 2. **Escape first, then render.** Both markdown renderers (server
-   `server/render.py`, client `mdToHtml`) HTML-escape input before applying
+   `go/internal/render`, client `mdToHtml`) HTML-escape input before applying
    rules. Any new rule operates on escaped text.
 3. **Private/encrypted never leaks.** Private notes are excluded from vectors,
    RAG, `/read`, export, transclusion and live queries on unauthenticated
@@ -20,45 +21,45 @@ one vendored artifact (the CodeMirror 6 live editor).
    authenticated API only, and never in localStorage drafts.
 4. **User input never reaches SQL/FTS as syntax.** Parameterized queries only;
    FTS input is quoted; sort keys and columns come from whitelists
-   (`server/queries.py`).
-5. **Paths are confined.** All file access goes through `vault.safe_path` /
-   `safe_raw_path` (or the plugin/history equivalents), which resolve and
-   verify containment. `.grimoire/` is reserved.
+   (`go/internal/queries`).
+5. **Paths are confined.** All file access goes through `Vault.SafePath` /
+   `SafeRawPath` (or the plugin/history equivalents), which resolve and verify
+   containment. `.grimoire/` is reserved.
 
-## Server (`server/`)
+## Server (`go/`)
 
-| Module | Responsibility |
+| Package | Responsibility |
 |--------|----------------|
-| `config.py` | Env-driven configuration; `GRIMOIRE_*` variables |
-| `db.py` | SQLite connection + schema. Single shared connection, lock-guarded; `init()` is re-entrant (closes the prior handle) |
-| `vault.py` | File I/O, path safety, slugs, note serialization |
-| `markdown.py` | Parsing: frontmatter, links, tags, title derivation |
-| `index.py` | vault ⇄ index reconciliation; links/tags/FTS/vectors rows |
-| `render.py` | Markdown → safe HTML (`RenderContext`: link map, transclusion, queries) for `/read` + export |
-| `queries.py` | Live-query engine: typed parse → parameterized execution |
-| `history.py` | Per-note version snapshots (ring buffer) |
-| `routers/memory.py` | Agent-memory namespace: provenance-attributed, append-accreting notes under `memory/` (snapshot-before-append → rollbackable) |
-| `plugins.py` | Plugin discovery/enablement/asset confinement |
-| `ai.py` | Embeddings (hashing or Ollama), RAG answer, inline actions |
-| `crypto.py` / `secrets.py` | Argon2id KDF, Fernet sealing, secret vault + broker, note encryption |
-| `crdt.py` / `crdtstore.py` | Sequence CRDT for concurrent note-body merges |
-| `syncclient.py` | Bidirectional delta sync with a peer |
-| `watcher.py` | Debounced filesystem watcher |
-| `settings.py` | UI-editable operational settings (`.grimoire/settings.json`) |
-| `trash.py` | Soft delete to `.grimoire/trash/` |
-| `mcp_server.py` | The agent interface: knowledge tools + `remember`/`recall` + `use_credential`/`list_grants` |
-| `routers/` | HTTP surface, one module per domain; `app.py` assembles + security headers |
+| `cmd/grimoire` | The binary: server *and* CLI. Env-driven config; `GRIMOIRE_*` variables |
+| `cmd/grimoire-mcp` | The agent interface: knowledge tools + `remember`/`recall` + `use_credential`/`list_grants` |
+| `internal/db` | SQLite connection + schema (modernc.org/sqlite — pure Go, no cgo) |
+| `internal/vault` | File I/O, path safety, slugs, note serialization |
+| `internal/markdown` | Parsing: frontmatter (order-preserving), links, tags, title derivation |
+| `internal/index` | vault ⇄ index reconciliation; links/tags/FTS/vectors rows; hybrid retrieval |
+| `internal/render` | Markdown → safe HTML (link map, transclusion, queries) for `/read` + export |
+| `internal/queries` | Live-query engine: typed parse → parameterized execution |
+| `internal/history` | Per-note version snapshots (ring buffer) |
+| `internal/embed` | Embedders: hashing floor, built-in model2vec, Ollama, OpenAI-compatible |
+| `internal/ai` | Answer synthesis, question decomposition, reranking, consolidation, transcription |
+| `internal/crypto`, `internal/secrets` | Argon2id KDF, Fernet sealing, secret vault + broker, note encryption |
+| `internal/crdt`, `internal/crdtstore` | Sequence CRDT for concurrent note-body merges |
+| `internal/sync` | Bidirectional delta sync with a peer |
+| `internal/watcher` | Debounced filesystem watcher |
+| `internal/settings` | UI-editable operational settings (`.grimoire/settings.json`) |
+| `internal/api` | HTTP surface, one file per domain; `Routes()` assembles + security headers |
 
-Route-ordering rule: FastAPI matches in registration order, and
-`/notes/{path:path}` is greedy — **specific GET sub-routes (`/random`,
-`/unlinked`, `/history…`) must be registered before `get_note`.**
+Route-ordering rule: `/api/notes/{path...}` is greedy, and Go's ServeMux
+requires a `{path...}` wildcard to be the LAST segment of a pattern — so the
+per-note actions (`/pin`, `/rename`, `/history/…`) cannot be routed by pattern
+at all. They are dispatched on the trailing segment in `internal/api/dispatch.go`,
+and `/api/notes/random` is registered as its own literal route.
 
 ## Client (`web/`)
 
 | File | Responsibility |
 |------|----------------|
 | `util.js` | Dependency-free base: `$`, `api()` fetch, toasts, `esc()`, slugs |
-| `markdown.js` | Client markdown engine (mirrors `server/render.py`): `mdToHtml`, dynamic-block hydration, heading anchors. Link data injected via `setNoteIndex` — no app-state coupling |
+| `markdown.js` | Client markdown engine (mirrors `internal/render`): `mdToHtml`, dynamic-block hydration, heading anchors. Link data injected via `setNoteIndex` — no app-state coupling |
 | `app.js` | Application shell: state, note list/folders, editor wiring, palette, modals, sync polling. Organized by `/* ---------- section ---------- */` banners, each < ~100 lines |
 | `editor.js` | Editor facade — one API over live (CM6) and classic (textarea) modes. The hidden textarea mirrors the CM doc so reads stay uniform; writers call `Editor.sync()` |
 | `plugins.js` | Plugin runtime: registry, activation, fence renderers, panels, events |
@@ -86,11 +87,15 @@ until explicitly enabled. Full contract in [PLUGINS.md](PLUGINS.md).
 
 ## Testing
 
-* `tests/unit` — pure logic (renderer, queries, CRDT, crypto…)
-* `tests/api` — FastAPI TestClient against a fresh temp vault per test
-* `tests/e2e` — Playwright against a real server; `page` fixture pins the
+* `go/internal/*/[_]test.go` — pure logic (renderer, queries, CRDT, crypto…)
+  and the HTTP API against a fresh temp vault per test
+* `compat/fixtures/` — frozen output from the original Python implementation,
+  replayed by `go/internal/compat`. They are a historical contract: the
+  generator is gone with the implementation that produced them, so a fixture
+  that fails means the Go build changed, not that the fixture is stale
+* `tests/e2e` — Playwright against the real binary; `page` fixture pins the
   classic editor, `live_page` runs CM6; shared fixtures in `tests/e2e/conftest.py`
 * `.verify.yaml` — live smoke (isolated port 9119; never the production vault)
 
-Lint: `ruff check server/ cli/ tests/` must stay clean (config in
+Lint: `gofmt -l go/`, `go vet ./...`, and `ruff check tests/ benchmarks/` must stay clean (config in
 `pyproject.toml`).

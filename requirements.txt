@@ -1,15 +1,7 @@
-fastapi>=0.115
-uvicorn>=0.30
-httpx>=0.27
-watchdog>=4.0
-cryptography>=42
-python-multipart>=0.0.9
-# optional. Pinned below 2.0: the MCP SDK removed mcp.server.fastmcp in 2.x,
-# which is the API server/mcp_server.py is written against. Unpinned, CI
-# installed 2.0.0 and every MCP test failed at import.
-mcp>=1.0,<2
-# dev/test
+# The product is a single Go binary (go/) with no runtime dependencies.
+# What is left here is the test and benchmark harness, which stays in Python:
+# Playwright drives the browser, and the benchmark readers/judges shell out to
+# the claude CLI.
 pytest>=8
 playwright>=1.45
-argon2-cffi>=23.0
 ruff>=0.8

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Produce LongMemEval contexts from a RUNNING server over HTTP.
 
-Same idea as benchmarks/locomo/retrieve_go.py: run_lme.py's retrieve phase
-builds the vault in-process, which can only measure the Python implementation.
+Same idea as benchmarks/locomo/retrieve_go.py: run_lme.py's retrieve phase used
+to build the vault in-process, which could only measure one implementation.
 This drives a live server instead, so the reader and judge phases — which read
 contexts.jsonl and do not care what produced it — can score any build.
 
@@ -26,7 +26,9 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE.parent))
 
+import goserver  # noqa: E402
 from run_lme import RESULTS, _session_note, load_data  # noqa: E402
 
 
@@ -48,7 +50,7 @@ def build_vault(vault: Path, inst) -> int:
         p.unlink()
     sessions = inst["haystack_sessions"]
     dates = inst["haystack_dates"]
-    for i, (sess, when) in enumerate(zip(sessions, dates)):
+    for i, (sess, when) in enumerate(zip(sessions, dates, strict=False)):
         (vault / f"session-{i:03d}.md").write_text(
             f"---\ntitle: Chat session {i + 1} ({when})\n---\n"
             f"Date: {when}\n\n{_session_note(sess)}\n", encoding="utf-8")
@@ -78,7 +80,12 @@ def context_for(base: str, question: str) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--base-url", required=True)
+    ap.add_argument("--base-url",
+                    help="an already-running server; omit to launch --binary")
+    ap.add_argument("--binary", help="path to the grimoire binary to launch")
+    ap.add_argument("--embed", default="auto", choices=("off", "auto", "ollama"),
+                    help="embedder condition (see benchmarks/goserver.py)")
+    ap.add_argument("--port", type=int, default=9121)
     ap.add_argument("--vault", required=True)
     ap.add_argument("--condition", default="grimoire-go")
     ap.add_argument("--limit", type=int, default=0)
@@ -95,18 +102,28 @@ def main() -> int:
         todo = todo[: a.limit]
     print(f"{len(todo)} questions to retrieve for {a.condition!r}")
 
-    written = 0
-    with cfile.open("a") as out:
-        for q in todo:
-            n = build_vault(Path(a.vault), data[q["idx"]])
-            api(a.base_url, "/api/reindex", {})
-            out.write(json.dumps({
-                "qid": q["qid"], "condition": a.condition,
-                "context": context_for(a.base_url, q["question"])}) + "\n")
-            out.flush()
-            written += 1
-            if written % 25 == 0:
-                print(f"  {written}/{len(todo)} (last haystack: {n} sessions)")
+    def sweep(base: str) -> int:
+        written = 0
+        with cfile.open("a") as out:
+            for q in todo:
+                n = build_vault(Path(a.vault), data[q["idx"]])
+                api(base, "/api/reindex", {})
+                out.write(json.dumps({
+                    "qid": q["qid"], "condition": a.condition,
+                    "context": context_for(base, q["question"])}) + "\n")
+                out.flush()
+                written += 1
+                if written % 25 == 0:
+                    print(f"  {written}/{len(todo)} (last haystack: {n} sessions)")
+        return written
+
+    if a.base_url:
+        written = sweep(a.base_url)
+    elif a.binary:
+        with goserver.launch(a.binary, a.vault, a.port, a.embed) as base:
+            written = sweep(base)
+    else:
+        return ap.error("give --base-url or --binary")
     print(f"wrote {written} contexts for condition {a.condition!r}")
     return 0
 

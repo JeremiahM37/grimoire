@@ -1,6 +1,10 @@
 # systemd unit for a bare-metal install.
+#   cd go && go build -o /usr/local/bin/grimoire ./cmd/grimoire
 #   sudo cp deploy/grimoire.service /etc/systemd/system/
 #   sudo systemctl enable --now grimoire
+#
+# One static binary: no virtualenv, no interpreter, nothing to keep in sync
+# with the OS package manager.
 [Unit]
 Description=grimoire — local-first AI-native notes
 After=network-online.target
@@ -21,7 +25,10 @@ Environment=GRIMOIRE_EMBED_MODEL=nomic-embed-text
 # uncomment to allow brokered calls to private-range hosts (LAN services);
 # cloud-metadata and link-local addresses stay blocked either way
 #Environment=GRIMOIRE_BROKER_ALLOW_PRIVATE=1
-ExecStart=/opt/grimoire/.venv/bin/python -m server
+# the binary serves the console and plugins from explicit paths
+Environment=GRIMOIRE_WEB_DIR=/opt/grimoire/web
+Environment=GRIMOIRE_PLUGIN_DIR=/opt/grimoire/plugins
+ExecStart=/usr/local/bin/grimoire
 Restart=on-failure
 RestartSec=5
 

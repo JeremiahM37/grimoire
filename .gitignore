@@ -11,3 +11,8 @@ grimoire-vault/
 /tmp/
 docs/GAP-ANALYSIS.md
 tools/node_modules/
+
+# built binaries
+go/grimoire
+go/grimoire-mcp
+.verify-artifacts/
