@@ -167,7 +167,7 @@ Four kinds, all hermetic by default (temp vault, no network, local stub embedder
 `.verify.yaml` wires unit+API+e2e + a real headless UI flow (create→link→search→ask), per the homelab house rule.
 
 ## 8. Tech stack
-- **Backend:** Go 1.24+, standard library HTTP, SQLite (FTS5) via modernc.org/sqlite — pure Go, so the whole product is one static binary with no runtime and no cgo. Fernet + Argon2id for the vault; fsnotify for the vault watcher.
+- **Backend:** Go 1.26+, standard library HTTP, SQLite (FTS5) via modernc.org/sqlite — pure Go, so the whole product is one static binary with no runtime and no cgo. Fernet + Argon2id for the vault; fsnotify for the vault watcher.
 - **Frontend:** PWA, CodeMirror 6, vanilla ES modules (no heavy build), service worker + IndexedDB. Homelab-PWA conventions.
 - **AI:** local **Ollama** default (private RAG + embeddings via `nomic-embed-text`, already in the homelab), Claude optional via a vault secret. Reuses doc-rag learnings.
 - **CLI:** a single `grimoire` entrypoint (argparse/click).

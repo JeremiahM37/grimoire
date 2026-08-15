@@ -10,7 +10,7 @@ human console.
 <!-- badges -->
 ![status](https://img.shields.io/badge/status-stable-2ea44f)
 ![license](https://img.shields.io/badge/license-MIT-blue)
-![go](https://img.shields.io/badge/go-1.24%2B-00add8)
+![go](https://img.shields.io/badge/go-1.26%2B-00add8)
 ![docker](https://img.shields.io/badge/docker-ready-2496ed)
 ![MCP](https://img.shields.io/badge/MCP-first--class-5b4bff)
 ![PWA](https://img.shields.io/badge/console-offline%20PWA-19c37d)
