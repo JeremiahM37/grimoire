@@ -188,7 +188,7 @@ Everything is environment-driven (same variables bare-metal, systemd, Docker):
 | `GRIMOIRE_LLM` / `GRIMOIRE_LLM_MODEL` | auto / `qwen3.5:4b` | Answer backend (`ollama` · `claude` · `openai`) + model |
 | `GRIMOIRE_LLM_BASE_URL` / `_API_KEY` | *(empty)* | Any OpenAI-compatible endpoint (OpenAI, OpenRouter, Together, Groq, vLLM, LM Studio, LiteLLM…); key can also live in the vault as `llm-api-key` |
 | `GRIMOIRE_EMBED_MODEL` | `nomic-embed-text` | Embeddings (offline hashing fallback built in) |
-| `GRIMOIRE_LOCAL_EMBED` / `_MODEL` | `auto` / `potion-base-8M` | Local semantic embeddings, built in, no service |
+| `GRIMOIRE_LOCAL_EMBED` / `_MODEL` | `auto` / `potion-base-8M` | Local semantic embeddings — the ~30 MB model is fetched once on first start (`grimoire fetch-model` to pre-seed); `off` to stay on the hashing embedder |
 | `GRIMOIRE_WHISPER_URL` / `_MODEL` | *(empty)* | Audio-memo transcription |
 | `GRIMOIRE_DAILY_DIR` / `GRIMOIRE_INBOX_DIR` | `journal` / `inbox` | Vault sub-folders |
 | `GRIMOIRE_SYNC_PEER` / `_TOKEN` / `_INTERVAL` | *(off)* | Background sync with a peer |
@@ -225,7 +225,7 @@ LLM judge (`claude-sonnet-5`).
 |---|---|---|
 | nothing | 1.2% | 0 |
 | grimoire retrieval, zero-dependency default | 76.8% | ~6.2k |
-| grimoire retrieval + built-in local model | 81.6% | ~7.0k |
+| grimoire retrieval + the local model (default) | 81.6% | ~7.0k |
 | grimoire retrieval + nomic-embed (Ollama) | **81.6%** | ~6.2k |
 | entire conversation in context | 82.2% | ~24k |
 
@@ -234,7 +234,7 @@ LLM judge (`claude-sonnet-5`).
 | context given to the reader | accuracy | context tokens / question |
 |---|---|---|
 | nothing | 6.5% | 0 |
-| grimoire retrieval + built-in local model | **74.5%** | ~6.8k |
+| grimoire retrieval + the local model (default) | **74.5%** | ~6.8k |
 | grimoire retrieval + nomic-embed (Ollama) | 73.0% | ~5.8k |
 | entire haystack in context | 70.5% | ~117k |
 
