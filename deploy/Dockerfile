@@ -15,15 +15,23 @@ RUN cd go \
     && CGO_ENABLED=0 go build -ldflags="-s -w" -o /out/grimoire ./cmd/grimoire \
     && CGO_ENABLED=0 go build -ldflags="-s -w" -o /out/grimoire-mcp ./cmd/grimoire-mcp
 
+# bake the local embedding model into the image (~30 MB): a container that
+# comes up on an air-gapped network should still get semantic retrieval, not
+# silently fall back to the hashing embedder
+FROM build AS model
+RUN /out/grimoire fetch-model
+
 FROM alpine:3.20
 WORKDIR /app
 COPY --from=build /out/grimoire /out/grimoire-mcp /usr/local/bin/
+COPY --from=model /root/.cache/huggingface /home/grimoire/.cache/huggingface
 COPY web ./web
 COPY plugins ./plugins
 
 # run as a non-root user; the vault volume is the only writable path it needs
 RUN adduser -D -u 1000 grimoire \
-    && mkdir /vault && chown grimoire:grimoire /vault
+    && mkdir /vault && chown grimoire:grimoire /vault \
+    && chown -R grimoire:grimoire /home/grimoire
 USER grimoire
 
 ENV GRIMOIRE_VAULT=/vault \

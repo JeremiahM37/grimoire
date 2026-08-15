@@ -66,7 +66,7 @@ func (e *env) close() {
 	}
 }
 
-func newEnv() (*env, error) {
+func newEnv(fetchModel bool) (*env, error) {
 	vaultPath := envOr("GRIMOIRE_VAULT", filepath.Join(os.Getenv("HOME"), "notes"))
 	v, err := vault.New(vaultPath)
 	if err != nil {
@@ -83,7 +83,7 @@ func newEnv() (*env, error) {
 
 	vaultSecrets := secrets.New(grimoireDir)
 	store := settings.New(grimoireDir)
-	emb := newEmbedder(store)
+	emb := newEmbedder(store, fetchModel)
 	ix := index.New(database, v, emb)
 	crdt := crdtstore.New(grimoireDir)
 	syncer := gsync.New(ix, v, crdt)
@@ -114,7 +114,7 @@ func newEnv() (*env, error) {
 // openEnv is newEnv for CLI commands: it also makes sure the index exists, so
 // `grimoire search` works on a vault that has never been served.
 func openEnv() (*env, error) {
-	e, err := newEnv()
+	e, err := newEnv(false)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +133,7 @@ func openEnv() (*env, error) {
 }
 
 func run(args []string) error {
-	e, err := newEnv()
+	e, err := newEnv(true)
 	if err != nil {
 		return err
 	}
@@ -207,7 +207,7 @@ func run(args []string) error {
 //
 // The hasher is always last so the server starts and indexes no matter what is
 // missing — being unable to embed must degrade retrieval, not prevent startup.
-func newEmbedder(st *settings.Store) index.Embedder {
+func newEmbedder(st *settings.Store, download bool) index.Embedder {
 	chain := &embed.Chain{}
 	model := st.Get("embed_model")
 
@@ -223,57 +223,18 @@ func newEmbedder(st *settings.Store) index.Embedder {
 	}
 	if !strings.EqualFold(st.Get("local_embed"), "off") {
 		name := st.Get("local_embed_model")
-		if dir := modelDir(name); dir != "" {
+		// download only when serving: a CLI command should not block on a
+		// 30 MB fetch, and `grimoire ls` should not print a warning either
+		if dir := embed.EnsureModel(name, download); dir != "" {
 			if m, err := embed.LoadModel2Vec(dir, name); err == nil {
 				chain.Backends = append(chain.Backends, m)
 			} else {
 				log.Printf("local embedding model unavailable: %v", err)
 			}
-		} else {
-			// silence here is dangerous: the hasher below still yields a
-			// server that starts, indexes, and answers — with far worse
-			// retrieval, and nothing in the output says why
-			log.Printf("local embedding model %q not found in the HuggingFace "+
-				"cache; set GRIMOIRE_MODEL_DIR to its snapshot directory", name)
 		}
 	}
 	chain.Backends = append(chain.Backends, embed.Hash{})
 	return chain
-}
-
-// modelDir locates a model2vec snapshot. GRIMOIRE_MODEL_DIR wins; otherwise we
-// look where `huggingface_hub` puts it, because that is where the Python
-// implementation's automatic download lands — a vault indexed by one build
-// should not silently fall back to hash embeddings under the other.
-func modelDir(name string) string {
-	if dir := os.Getenv("GRIMOIRE_MODEL_DIR"); dir != "" {
-		return dir
-	}
-	hub := os.Getenv("HF_HUB_CACHE")
-	if hub == "" {
-		if home := os.Getenv("HF_HOME"); home != "" {
-			hub = filepath.Join(home, "hub")
-		} else {
-			h, err := os.UserHomeDir()
-			if err != nil {
-				return ""
-			}
-			hub = filepath.Join(h, ".cache", "huggingface", "hub")
-		}
-	}
-	repo := "models--" + strings.ReplaceAll(name, "/", "--")
-	// snapshots are named by commit hash; any of them is the right model, so
-	// take whichever the glob finds first rather than tracking revisions
-	hits, err := filepath.Glob(filepath.Join(hub, repo, "snapshots", "*"))
-	if err != nil {
-		return ""
-	}
-	for _, dir := range hits {
-		if _, err := os.Stat(filepath.Join(dir, "tokenizer.json")); err == nil {
-			return dir
-		}
-	}
-	return ""
 }
 
 // atoiOr parses an integer setting, falling back rather than failing startup on

@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/JeremiahM37/grimoire/go/internal/embed"
 	"github.com/JeremiahM37/grimoire/go/internal/markdown"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
 )
@@ -40,6 +41,7 @@ const usage = `grimoire — local-first AI-native notes
   grimoire reindex                    rebuild the search index
   grimoire ingest PATH [--into DIR]   bulk-import a folder of markdown/text
   grimoire seed-demo                  write a small sample vault (first-run demo)
+  grimoire fetch-model                pre-download the local embedding model
   grimoire export [--out DIR]         static HTML export of the vault
   grimoire sync PEER_URL [--watch] [--interval N] [--token T]
   grimoire agent-setup [API_URL]      print MCP + agent-context setup
@@ -66,6 +68,7 @@ func runCLI(args []string) (handled bool, code int) {
 		"search": cmdSearch, "ls": cmdLs, "open": cmdOpen,
 		"reindex": cmdReindex, "ingest": cmdIngest, "seed-demo": cmdSeedDemo,
 		"export": cmdExport, "sync": cmdSync, "agent-setup": cmdAgentSetup,
+		"fetch-model": cmdFetchModel,
 	}
 	fn, ok := cmds[args[0]]
 	if !ok {
@@ -476,6 +479,27 @@ func cmdSeedDemo([]string) int {
 	}
 	fmt.Printf("seeded %d demo notes into %s — try: grimoire search deploy\n",
 		len(demo), e.vault.Root)
+	return 0
+}
+
+// cmdFetchModel pre-downloads the local embedding model. Serving does this on
+// first start, so this exists for the cases where that is the wrong moment: a
+// container image built ahead of time, or a host that will be offline later.
+func cmdFetchModel(args []string) int {
+	name := "minishlab/potion-base-8M"
+	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
+		name = args[0]
+	}
+	if dir := embed.FindModel(name); dir != "" {
+		fmt.Printf("%s already present at %s\n", name, dir)
+		return 0
+	}
+	fmt.Printf("downloading %s …\n", name)
+	dir, err := embed.FetchModel(name)
+	if err != nil {
+		return fail("%v", err)
+	}
+	fmt.Printf("%s ready at %s\n", name, dir)
 	return 0
 }
 
