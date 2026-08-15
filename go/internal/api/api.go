@@ -571,43 +571,6 @@ func (s *Server) randomNote(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"path": path})
 }
 
-func (s *Server) search(w http.ResponseWriter, r *http.Request) {
-	q := strings.TrimSpace(r.URL.Query().Get("q"))
-	if q == "" {
-		writeJSON(w, http.StatusOK, []any{})
-		return
-	}
-	// per-term prefix match, quoted so FTS5 can't interpret user input as
-	// syntax — an injected NEAR/OR would otherwise change the query shape
-	var terms []string
-	for _, t := range strings.Fields(strings.ReplaceAll(q, `"`, " ")) {
-		terms = append(terms, `"`+t+`"*`)
-	}
-	if len(terms) == 0 {
-		writeJSON(w, http.StatusOK, []any{})
-		return
-	}
-	rows, err := s.Index.DB.Query(
-		"SELECT path, title, snippet(fts, 2, '[', ']', ' … ', 12) AS snip "+
-			"FROM fts WHERE fts MATCH ? ORDER BY rank LIMIT 50",
-		strings.Join(terms, " AND "))
-	if err != nil {
-		writeErr(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer rows.Close()
-	out := []map[string]string{}
-	for rows.Next() {
-		var path, title, snip string
-		if err := rows.Scan(&path, &title, &snip); err != nil {
-			writeErr(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-		out = append(out, map[string]string{"path": path, "title": title, "snippet": snip})
-	}
-	writeJSON(w, http.StatusOK, out)
-}
-
 func (s *Server) retrieve(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query().Get("q")
 	k := 8
