@@ -141,17 +141,58 @@ func newEmbedder(st *settings.Store) index.Embedder {
 		chain.Backends = append(chain.Backends, embed.NewOllama(url, model))
 	}
 	if !strings.EqualFold(st.Get("local_embed"), "off") {
-		if dir := os.Getenv("GRIMOIRE_MODEL_DIR"); dir != "" {
-			name := st.Get("local_embed_model")
+		name := st.Get("local_embed_model")
+		if dir := modelDir(name); dir != "" {
 			if m, err := embed.LoadModel2Vec(dir, name); err == nil {
 				chain.Backends = append(chain.Backends, m)
 			} else {
 				log.Printf("local embedding model unavailable: %v", err)
 			}
+		} else {
+			// silence here is dangerous: the hasher below still yields a
+			// server that starts, indexes, and answers — with far worse
+			// retrieval, and nothing in the output says why
+			log.Printf("local embedding model %q not found in the HuggingFace "+
+				"cache; set GRIMOIRE_MODEL_DIR to its snapshot directory", name)
 		}
 	}
 	chain.Backends = append(chain.Backends, embed.Hash{})
 	return chain
+}
+
+// modelDir locates a model2vec snapshot. GRIMOIRE_MODEL_DIR wins; otherwise we
+// look where `huggingface_hub` puts it, because that is where the Python
+// implementation's automatic download lands — a vault indexed by one build
+// should not silently fall back to hash embeddings under the other.
+func modelDir(name string) string {
+	if dir := os.Getenv("GRIMOIRE_MODEL_DIR"); dir != "" {
+		return dir
+	}
+	hub := os.Getenv("HF_HUB_CACHE")
+	if hub == "" {
+		if home := os.Getenv("HF_HOME"); home != "" {
+			hub = filepath.Join(home, "hub")
+		} else {
+			h, err := os.UserHomeDir()
+			if err != nil {
+				return ""
+			}
+			hub = filepath.Join(h, ".cache", "huggingface", "hub")
+		}
+	}
+	repo := "models--" + strings.ReplaceAll(name, "/", "--")
+	// snapshots are named by commit hash; any of them is the right model, so
+	// take whichever the glob finds first rather than tracking revisions
+	hits, err := filepath.Glob(filepath.Join(hub, repo, "snapshots", "*"))
+	if err != nil {
+		return ""
+	}
+	for _, dir := range hits {
+		if _, err := os.Stat(filepath.Join(dir, "tokenizer.json")); err == nil {
+			return dir
+		}
+	}
+	return ""
 }
 
 func envOr(key, def string) string {
