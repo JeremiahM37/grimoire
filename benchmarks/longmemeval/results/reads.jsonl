@@ -798,3 +798,203 @@
 {"qid": "gpt4_fe651585", "condition": "full", "answer": "Alex became a parent first (January), before Rachel (February 12th).", "input_tokens": 138685}
 {"qid": "gpt4_e05b82a6", "condition": "full", "answer": "7 rollercoaster rides\n\n(3 at SeaWorld in July: Mako, Kraken, Manta; 1 on October 8th: Xcelerator; 3 on October 15th: Revenge of the Mummy)", "input_tokens": 141820}
 {"qid": "gpt4_7abb270c", "condition": "full", "answer": "Based on the context provided, I can only clearly identify five museum visits with explicit dates:\n\n1. Metropolitan Museum of Art (6 January 2023)\n2. Museum of Contemporary Art (15 January 2023)\n3. Modern Art Museum (20 February 2023)\n4. Museum of History (20 February 2023)\n5. Natural History Museum (4 March 2023)\n\nI cannot locate references to a sixth museum visit in the provided context.", "input_tokens": 139767}
+{"qid": "0e5e2d1a", "condition": "grimoire-go", "answer": "38 subjects", "input_tokens": 30439}
+{"qid": "0bb5a684", "condition": "grimoire-go", "answer": "7 days", "input_tokens": 30183}
+{"qid": "07741c44", "condition": "grimoire-go", "answer": "Under the bed.", "input_tokens": 30753}
+{"qid": "01493427", "condition": "grimoire-go", "answer": "25 new postcards (as of November 30, 2023)", "input_tokens": 27976}
+{"qid": "031748ae", "condition": "grimoire-go", "answer": "When you just started: 4 engineers. Now: 5 engineers.", "input_tokens": 30728}
+{"qid": "09ba9854", "condition": "grimoire-go", "answer": "$30-40 (taxi ~$60 vs. train ~$20-30)", "input_tokens": 31011}
+{"qid": "078150f1", "condition": "grimoire-go", "answer": "$50", "input_tokens": 29897}
+{"qid": "099778bb", "condition": "grimoire-go", "answer": "20 women in leadership positions (specific percentage not stated in the chat)", "input_tokens": 27952}
+{"qid": "09d032c9", "condition": "grimoire-go", "answer": "Reduce screen brightness, enable battery saver mode, close unused apps, use a portable power bank.", "input_tokens": 31001}
+{"qid": "07741c45", "condition": "grimoire-go", "answer": "Under the bed for storage.", "input_tokens": 30896}
+{"qid": "10d9b85a", "condition": "grimoire-go", "answer": "3 days (April 10 lecture on sustainable development, and April 17-18 workshop on standardization and normalization)", "input_tokens": 30748}
+{"qid": "1192316e", "condition": "grimoire-go", "answer": "1 hour and 30 minutes (1 hour to get ready + 30 minutes commute)", "input_tokens": 30773}
+{"qid": "129d1232", "condition": "grimoire-go", "answer": "$5,850 total\n\n(Bike-a-Thon: $5,000, charity walk: $250, charity yoga event: $600)", "input_tokens": 30775}
+{"qid": "18bc8abd", "condition": "grimoire-go", "answer": "Kansas City Masterpiece BBQ sauce", "input_tokens": 28589}
+{"qid": "18dcd5a5", "condition": "grimoire-go", "answer": "4 mummies", "input_tokens": 30887}
+{"qid": "184da446", "condition": "grimoire-go", "answer": "At least 220 pages (as of May 29, 2023).", "input_tokens": 27956}
+{"qid": "19b5f2b3", "condition": "grimoire-go", "answer": "Two weeks.", "input_tokens": 31190}
+{"qid": "0977f2af", "condition": "grimoire-go", "answer": "Based on the provided context, I cannot find information about a kitchen gadget purchased before the Air Fryer. The context does not contain this detail.", "input_tokens": 30980}
+{"qid": "0bc8ad93", "condition": "grimoire-go", "answer": "Based on the context, two months before March 11, 2023 would be around January 11, 2023. At that time, you mentioned attending a lecture at the History Museum, but did not mention visiting with a friend.\n\n**No** (or not mentioned with a friend)", "input_tokens": 30190}
+{"qid": "15745da0", "condition": "grimoire-go", "answer": "The context does not specify when you started collecting. Based on your collection of 17 cameras as of May 2023, I'd estimate at least a few years, but there's no exact timeline provided.", "input_tokens": 28427}
+{"qid": "16c90bf4", "condition": "grimoire-go", "answer": "Pilsner or lager.", "input_tokens": 31330}
+{"qid": "1e043500", "condition": "grimoire-go", "answer": "Summer Vibes", "input_tokens": 31248}
+{"qid": "1d4e3b97", "condition": "grimoire-go", "answer": "Chain and cassette replaced February 1st.", "input_tokens": 31182}
+{"qid": "21436231", "condition": "grimoire-go", "answer": "12 largemouth bass", "input_tokens": 30858}
+{"qid": "1cea1afa", "condition": "grimoire-go", "answer": "Not mentioned in the provided context.", "input_tokens": 28329}
+{"qid": "25e5aa4f", "condition": "grimoire-go", "answer": "UCLA", "input_tokens": 30828}
+{"qid": "1c0ddc50", "condition": "grimoire-go", "answer": "Listen to podcasts, audiobooks, language learning apps, or catch up on news during your commute.", "input_tokens": 28725}
+{"qid": "2318644b", "condition": "grimoire-go", "answer": "Approximately $270 per night more ($300+ in Maui vs. $30 in Tokyo).", "input_tokens": 31083}
+{"qid": "1a1907b4", "condition": "grimoire-go", "answer": "Pimm's Cup with a Twist, or Hendrick's gin-based cocktails with cucumber and grapefruit simple syrup.", "input_tokens": 29938}
+{"qid": "2788b940", "condition": "grimoire-go", "answer": "5 classes per week (Zumba twice, plus yoga, BodyPump, and Hip Hop Abs once each)", "input_tokens": 30856}
+{"qid": "3249768e", "condition": "grimoire-go", "answer": "Absinthe", "input_tokens": 31280}
+{"qid": "352ab8bd", "condition": "grimoire-go", "answer": "Approximately 20% improvement in framerate.", "input_tokens": 30702}
+{"qid": "37d43f65", "condition": "grimoire-go", "answer": "16GB", "input_tokens": 31283}
+{"qid": "2a1811e2", "condition": "grimoire-go", "answer": "21 days", "input_tokens": 29983}
+{"qid": "28dc39ac", "condition": "grimoire-go", "answer": "Based on the chat history, approximately **115 hours** (30 hours for The Last of Us Part II, 70 hours for Assassin's Creed Odyssey, 10 hours for Celeste, and 5 hours for Hyper Light Drifter).", "input_tokens": 31018}
+{"qid": "3fe836c9", "condition": "grimoire-go", "answer": "$25,000", "input_tokens": 30958}
+{"qid": "4100d0a0", "condition": "grimoire-go", "answer": "Irish and Italian", "input_tokens": 28586}
+{"qid": "42ec0761", "condition": "grimoire-go", "answer": "Yes, you picked one up when organizing your desk (mentioned 15 Aug 2023).", "input_tokens": 28531}
+{"qid": "35a27287", "condition": "grimoire-go", "answer": "I don't have access to your location, so I can't recommend specific events. Try searching Eventbrite, Meetup, or local Facebook groups for \"cultural events\" or \"festivals\" near you this weekend.", "input_tokens": 30626}
+{"qid": "370a8ff4", "condition": "grimoire-go", "answer": "Approximately 11 weeks (81 days)", "input_tokens": 31073}
+{"qid": "488d3006", "condition": "grimoire-go", "answer": "GR-90", "input_tokens": 30439}
+{"qid": "38146c39", "condition": "grimoire-go", "answer": "Try adding warm spices like cinnamon or nutmeg, a pinch of flaky sea salt, or nuts like almonds or pecans. These pair well with chocolate and would enhance the flavor.", "input_tokens": 31310}
+{"qid": "4c36ccef", "condition": "grimoire-go", "answer": "Roscioli", "input_tokens": 30670}
+{"qid": "4b24c848", "condition": "grimoire-go", "answer": "Five tops from H&M.", "input_tokens": 31369}
+{"qid": "4baee567", "condition": "grimoire-go", "answer": "12 games at Arrowhead Stadium.", "input_tokens": 31076}
+{"qid": "46a3abf7", "condition": "grimoire-go", "answer": "2 tanks - the 1-gallon tank for your friend's kid and the 20-gallon Amazonia tank.", "input_tokens": 31179}
+{"qid": "3a704032", "condition": "grimoire-go", "answer": "At least 2 plants: a peace lily and a succulent (acquired around early May 2023).", "input_tokens": 30666}
+{"qid": "4d6b87c8", "condition": "grimoire-go", "answer": "25 titles", "input_tokens": 31035}
+{"qid": "4fd1909e", "condition": "grimoire-go", "answer": "Xfinity Center on June 15th", "input_tokens": 31137}
+{"qid": "21d02d0d", "condition": "grimoire-go", "answer": "1 (March 5th)", "input_tokens": 30431}
+{"qid": "4dfccbf8", "condition": "grimoire-go", "answer": "Started ukulele lessons with Rachel on 2023/02/01.", "input_tokens": 31057}
+{"qid": "577d4d32", "condition": "grimoire-go", "answer": "7 pm", "input_tokens": 30547}
+{"qid": "4dfccbf7", "condition": "grimoire-go", "answer": "24 days", "input_tokens": 30475}
+{"qid": "545bd2b5", "condition": "grimoire-go", "answer": "2 hours per day", "input_tokens": 30809}
+{"qid": "58bf7951", "condition": "grimoire-go", "answer": "The Glass Menagerie", "input_tokens": 28328}
+{"qid": "505af2f5", "condition": "grimoire-go", "answer": "Try almond milk-based creamer with vanilla extract and honey. Consider adding spices like cinnamon, alternative milk types (oat or cashew), or probiotic powder for variety and health benefits.", "input_tokens": 31149}
+{"qid": "561fabcd", "condition": "grimoire-go", "answer": "Fissionator", "input_tokens": 31266}
+{"qid": "5831f84d", "condition": "grimoire-go", "answer": "15 Crash Course videos", "input_tokens": 28734}
+{"qid": "5809eb10", "condition": "grimoire-go", "answer": "The context does not contain information about when the construction began. The provided chat history only discusses optimizing the case summary article, not the specific construction dates.", "input_tokens": 31139}
+{"qid": "5e1b23de", "condition": "grimoire-go", "answer": "About 3 months ago (November 1, 2023)", "input_tokens": 30561}
+{"qid": "60d45044", "condition": "grimoire-go", "answer": "Japanese short-grain rice", "input_tokens": 31591}
+{"qid": "58ef2f1c", "condition": "grimoire-go", "answer": "February 2023", "input_tokens": 29630}
+{"qid": "66f24dbb", "condition": "grimoire-go", "answer": "A yellow dress and matching earrings.", "input_tokens": 28548}
+{"qid": "61f8c8f8", "condition": "grimoire-go", "answer": "10 minutes faster (35 minutes vs. 45 minutes)", "input_tokens": 30305}
+{"qid": "69fee5aa", "condition": "grimoire-go", "answer": "37 coins", "input_tokens": 28962}
+{"qid": "5c40ec5b", "condition": "grimoire-go", "answer": "Twice already (as of September 2023), with a planned third meeting in Berlin.", "input_tokens": 30598}
+{"qid": "60bf93ed", "condition": "grimoire-go", "answer": "5 days (purchased 1/15, arrived 1/20)", "input_tokens": 29627}
+{"qid": "6aeb4375", "condition": "grimoire-go", "answer": "Four Korean restaurants (as of 2023/09/30).", "input_tokens": 27807}
+{"qid": "6cb6f249", "condition": "grimoire-go", "answer": "10 days (mid-February 2023)", "input_tokens": 31484}
+{"qid": "6f9b354f", "condition": "grimoire-go", "answer": "Light gray (or lighter shade of gray)", "input_tokens": 30799}
+{"qid": "5d3d2817", "condition": "grimoire-go", "answer": "The context does not explicitly state your previous occupation. Based on the chat history, you appear to have been selling soaps and candles at farmers markets and craft events before taking on a new role (mentioned in Session 29).\n\nBest guess: **Soap and candle vendor/crafter**", "input_tokens": 31136}
+{"qid": "71017276", "condition": "grimoire-go", "answer": "4 weeks ago", "input_tokens": 31147}
+{"qid": "681a1674", "condition": "grimoire-go", "answer": "1 (Spider-Man: No Way Home)", "input_tokens": 27991}
+{"qid": "71017277", "condition": "grimoire-go", "answer": "My aunt.", "input_tokens": 31072}
+{"qid": "726462e0", "condition": "grimoire-go", "answer": "10% discount", "input_tokens": 31656}
+{"qid": "72e3ee87", "condition": "grimoire-go", "answer": "50 episodes", "input_tokens": 31032}
+{"qid": "7024f17c", "condition": "grimoire-go", "answer": "The context does not contain specific data about jogging or yoga hours completed in the week of May 23-29, 2023. Best guess: minimal or none, as the user mentioned \"slacking off\" that month and was just planning to get back into a routine.", "input_tokens": 31241}
+{"qid": "6e984301", "condition": "grimoire-go", "answer": "About 3 weeks.\n\n(Started classes on 2023/02/11, got sculpting tools on 2023/03/04)", "input_tokens": 30520}
+{"qid": "76d63226", "condition": "grimoire-go", "answer": "55-inch 4K", "input_tokens": 28511}
+{"qid": "60159905", "condition": "grimoire-go", "answer": "4 dinner parties/food events (Sarah's Italian feast, Alex's potluck, Mike's BBQ, family reunion at aunt's house)", "input_tokens": 31367}
+{"qid": "6e984302", "condition": "grimoire-go", "answer": "Polymer clay and resin materials", "input_tokens": 30544}
+{"qid": "720133ac", "condition": "grimoire-go", "answer": "$75\n\n($50 vet consultation + $25 flea medication)", "input_tokens": 31034}
+{"qid": "853b0a1d", "condition": "grimoire-go", "answer": "18 years old.", "input_tokens": 30830}
+{"qid": "778164c6", "condition": "grimoire-go", "answer": "Grilled Snapper with Mango Salsa", "input_tokens": 30929}
+{"qid": "852ce960", "condition": "grimoire-go", "answer": "$350,000", "input_tokens": 29193}
+{"qid": "73d42213", "condition": "grimoire-go", "answer": "The context does not specify the exact time you reached the clinic. You mentioned it took 2 hours to get there and you were back at the office at 1:00 PM, but the arrival time at the clinic is not stated.\n\nBest guess: around 10:00-11:00 AM", "input_tokens": 30780}
+{"qid": "8979f9ec", "condition": "grimoire-go", "answer": "8 meals total (3 from chicken fajitas, 5 from lentil soup)", "input_tokens": 31173}
+{"qid": "8aef76bc", "condition": "grimoire-go", "answer": "Mod Podge", "input_tokens": 30569}
+{"qid": "830ce83f", "condition": "grimoire-go", "answer": "The suburbs (near Tampa area)", "input_tokens": 30831}
+{"qid": "89527b6b", "condition": "grimoire-go", "answer": "Blue", "input_tokens": 30675}
+{"qid": "8b9d4367", "condition": "grimoire-go", "answer": "Jaipur Rugs", "input_tokens": 29730}
+{"qid": "8cf51dda", "condition": "grimoire-go", "answer": "The three objectives were: (1) identify molecular subtypes using genomic and transcriptomic approaches; (2) investigate clinical and biological significance and therapy response; (3) develop biomarkers for early detection and prognosis.", "input_tokens": 30374}
+{"qid": "8fb83627", "condition": "grimoire-go", "answer": "5 issues", "input_tokens": 29673}
+{"qid": "9ee3ecd6", "condition": "grimoire-go", "answer": "300 points", "input_tokens": 30261}
+{"qid": "a08a253f", "condition": "grimoire-go", "answer": "3 days a week (Tuesdays, Thursdays, Saturdays)", "input_tokens": 30821}
+{"qid": "95228167", "condition": "grimoire-go", "answer": "Based on the context provided, there is no specific advice about shopping for a new guitar. My best guess: Check tone, comfort, build quality, and budget.", "input_tokens": 30770}
+{"qid": "9bbe84a2", "condition": "grimoire-go", "answer": "Level 100 before the end of 2023.", "input_tokens": 31240}
+{"qid": "80ec1f4f", "condition": "grimoire-go", "answer": "2\n\n(The Art Cube on 15 February, and the Natural History Museum)", "input_tokens": 30589}
+{"qid": "88432d0a", "condition": "grimoire-go", "answer": "3 times: sourdough bread (May 16), whole wheat baguette (May 20), and cookies (May 25).", "input_tokens": 31290}
+{"qid": "8752c811", "condition": "grimoire-go", "answer": "I cannot see the 27th parameter in the context provided\u2014the list jumps from parameter 14 directly to parameter 30. Based on the progression of parameters, I'd guess it might be something like \"Imagery\" or \"Color palette.\"", "input_tokens": 31105}
+{"qid": "a1cc6108", "condition": "grimoire-go", "answer": "11 years old", "input_tokens": 31069}
+{"qid": "a1eacc2a", "condition": "grimoire-go", "answer": "Seven short stories.", "input_tokens": 28112}
+{"qid": "a3045048", "condition": "grimoire-go", "answer": "7 days (ordered April 15, party on April 22)", "input_tokens": 30705}
+{"qid": "a3332713", "condition": "grimoire-go", "answer": "$200 total ($100 brother's graduation gift + $100 coworker's baby shower gift)", "input_tokens": 31272}
+{"qid": "ac031881", "condition": "grimoire-go", "answer": "LIV (with a square around it)", "input_tokens": 27998}
+{"qid": "a4996e51", "condition": "grimoire-go", "answer": "50 hours per week", "input_tokens": 31336}
+{"qid": "b01defab", "condition": "grimoire-go", "answer": "Yes, by 30 March 2023, the user had finished reading it and described it as \"such a powerful and emotional read.\"", "input_tokens": 28046}
+{"qid": "b320f3f8", "condition": "grimoire-go", "answer": "A rare blue Snaggletooth action figure", "input_tokens": 30526}
+{"qid": "bbf86515", "condition": "grimoire-go", "answer": "4 days before", "input_tokens": 31152}
+{"qid": "b0479f84", "condition": "grimoire-go", "answer": "Based on 28 May recommendations: Planet Earth, Dynasties, Chasing Coral, Fyre, or The Imposter on your preferred streaming platform.", "input_tokens": 30672}
+{"qid": "bb7c3b45", "condition": "grimoire-go", "answer": "$300\n\n(Purchased for $200 at outlet mall; original retail price was $500)", "input_tokens": 30850}
+{"qid": "b29f3365", "condition": "grimoire-go", "answer": "4 weeks (or approximately 1 month)", "input_tokens": 31161}
+{"qid": "afdc33df", "condition": "grimoire-go", "answer": "Organize and categorize items, purge duplicates, assign designated spaces, and use dividers to contain clutter.", "input_tokens": 31392}
+{"qid": "982b5123", "condition": "grimoire-go", "answer": "5 months ago\n\n(You went to SF exactly two months ago for your best friend's wedding on around March 21, 2023, and had to book three months in advance, placing the booking around December 21, 2022.)", "input_tokens": 30796}
+{"qid": "bc149d6b", "condition": "grimoire-go", "answer": "70 pounds (50 lbs layer feed + 20 lbs organic scratch grains)", "input_tokens": 30843}
+{"qid": "6a1eabeb", "condition": "grimoire-go", "answer": "25:50", "input_tokens": 28821}
+{"qid": "c19f7a0b", "condition": "grimoire-go", "answer": "Around 6:30 pm", "input_tokens": 28270}
+{"qid": "59524333", "condition": "grimoire-go", "answer": "6:00 pm on Mondays, Wednesdays, and Fridays", "input_tokens": 28958}
+{"qid": "ba358f49", "condition": "grimoire-go", "answer": "The context doesn't specify the user's current age. Based on context clues (5 years of work experience, considering graduate school), a reasonable guess would be approximately 29-31 years old.", "input_tokens": 30716}
+{"qid": "c5e8278d", "condition": "grimoire-go", "answer": "Johnson", "input_tokens": 29315}
+{"qid": "c8f1aeed", "condition": "grimoire-go", "answer": "Pennsylvania", "input_tokens": 30895}
+{"qid": "c4ea545c", "condition": "grimoire-go", "answer": "Yes, increased from 3 to 4 times per week by mid-August 2023.", "input_tokens": 31020}
+{"qid": "bcbe585f", "condition": "grimoire-go", "answer": "About 4 weeks ago (April 1, 2023).", "input_tokens": 30646}
+{"qid": "caf9ead2", "condition": "grimoire-go", "answer": "5 hours", "input_tokens": 28072}
+{"qid": "c7dc5443", "condition": "grimoire-go", "answer": "5-2 (Net Ninjas team, as of 30 June 2023)", "input_tokens": 30666}
+{"qid": "c6853660", "condition": "grimoire-go", "answer": "Increased to two cups.", "input_tokens": 30863}
+{"qid": "ccb36322", "condition": "grimoire-go", "answer": "Spotify", "input_tokens": 30912}
+{"qid": "cc06de0d", "condition": "grimoire-go", "answer": "$6 more expensive ($12 taxi vs $6 train fare)", "input_tokens": 30219}
+{"qid": "c9f37c46", "condition": "grimoire-go", "answer": "About 2 months.", "input_tokens": 30661}
+{"qid": "d52b4f67", "condition": "grimoire-go", "answer": "Grand Ballroom", "input_tokens": 31007}
+{"qid": "caf03d32", "condition": "grimoire-go", "answer": "Based on the chat history, the assistant suggested adjusting ingredients and seasonings to suit your taste preferences, and exploring different recipe types across various cuisines to find what works best for you.", "input_tokens": 31232}
+{"qid": "c4a1ceb8", "condition": "grimoire-go", "answer": "2 (lemon and orange)", "input_tokens": 28405}
+{"qid": "d6062bb9", "condition": "grimoire-go", "answer": "1,998 views total (1,456 on TikTok + 542 on YouTube)", "input_tokens": 30734}
+{"qid": "dc439ea3", "condition": "grimoire-go", "answer": "Hoop Dance", "input_tokens": 30648}
+{"qid": "d7c942c3", "condition": "grimoire-go", "answer": "Yes, same grocery list app.", "input_tokens": 28164}
+{"qid": "db467c8c", "condition": "grimoire-go", "answer": "Nine months", "input_tokens": 28181}
+{"qid": "e3fc4d6e", "condition": "grimoire-go", "answer": "Dr. Arati Prabhakar", "input_tokens": 30596}
+{"qid": "e47becba", "condition": "grimoire-go", "answer": "Business Administration", "input_tokens": 30891}
+{"qid": "d6233ab6", "condition": "grimoire-go", "answer": "Yes, if you value reconnecting with friends and reflecting on shared memories.", "input_tokens": 30470}
+{"qid": "e61a7584", "condition": "grimoire-go", "answer": "About 9 months.", "input_tokens": 29375}
+{"qid": "dd2973ad", "condition": "grimoire-go", "answer": "2 AM on 24 May 2023", "input_tokens": 30814}
+{"qid": "e9327a54", "condition": "grimoire-go", "answer": "The Sugar Factory at Icon Park.", "input_tokens": 31384}
+{"qid": "e8a79c70", "condition": "grimoire-go", "answer": "3 large eggs.", "input_tokens": 31353}
+{"qid": "eaca4986", "condition": "grimoire-go", "answer": "C D E F G A B A G F E D C", "input_tokens": 30989}
+{"qid": "e4e14d04", "condition": "grimoire-go", "answer": "About 2-3 weeks. You joined \"Book Lovers Unite\" three weeks before May 28, 2023, and attended the meetup the week prior.", "input_tokens": 30813}
+{"qid": "eeda8a6d", "condition": "grimoire-go", "answer": "17 fish total\n\n(10 neon tetras + 5 golden honey gouramis + 1 pleco in the 20-gallon tank, plus 1 betta in the 10-gallon tank)", "input_tokens": 30756}
+{"qid": "f0e564bc", "condition": "grimoire-go", "answer": "$1,300 ($800 Coach handbag + $500 skincare products)", "input_tokens": 30986}
+{"qid": "efc3f7c2", "condition": "grimoire-go", "answer": "30 minutes earlier (6:00 AM on Fridays vs. 6:30 AM on other weekdays)", "input_tokens": 31225}
+{"qid": "d23cf73b", "condition": "grimoire-go", "answer": "4 cuisines: Korean, Ethiopian, Indian, and Vegan.", "input_tokens": 30683}
+{"qid": "ef66a6e5", "condition": "grimoire-go", "answer": "2 sports (tennis and swimming)", "input_tokens": 30829}
+{"qid": "e3038f8c", "condition": "grimoire-go", "answer": "100 rare items (57 records, 5 books, 25 coins, 12 figurines, and 1 antique vase)", "input_tokens": 31080}
+{"qid": "f35224e0", "condition": "grimoire-go", "answer": "Approximately 27 episodes (12 from \"My Favorite Murder\" and around 15 from \"How I Built This\")", "input_tokens": 30852}
+{"qid": "f8c5f88b", "condition": "grimoire-go", "answer": "A sports store downtown.", "input_tokens": 31041}
+{"qid": "edced276", "condition": "grimoire-go", "answer": "5 days in New York City; Hawaii duration not specified in the context.", "input_tokens": 30435}
+{"qid": "f0853d11", "condition": "grimoire-go", "answer": "14 days\n\n(February 21 to March 7, 2023)", "input_tokens": 31078}
+{"qid": "fca762bc", "condition": "grimoire-go", "answer": "Memrise", "input_tokens": 30313}
+{"qid": "fca70973", "condition": "grimoire-go", "answer": "Visit Disneyland for Halloween Time (mid-September) or Knott's Scary Farm for their fall events.", "input_tokens": 30862}
+{"qid": "f9e8c073", "condition": "grimoire-go", "answer": "Five sessions (as stated in October 2023), though an earlier chat mentioned three sessions.", "input_tokens": 33310}
+{"qid": "gpt4_1d4ab0c9", "condition": "grimoire-go", "answer": "24 days (from 22 March 2023 to 15 April 2023)", "input_tokens": 31083}
+{"qid": "gpt4_2312f94c", "condition": "grimoire-go", "answer": "Samsung Galaxy S22 (February 20th, before Dell XPS 13 on February 25th)", "input_tokens": 31579}
+{"qid": "gpt4_385a5000", "condition": "grimoire-go", "answer": "Tomatoes (February 20th). Marigolds arrived March 3rd.", "input_tokens": 31081}
+{"qid": "gpt4_1e4a8aec", "condition": "grimoire-go", "answer": "Used a gardening app to track weather and soil moisture levels for watering tomato plants.", "input_tokens": 30919}
+{"qid": "gpt4_1d80365e", "condition": "grimoire-go", "answer": "About 2 days (May 15-17, 2023)", "input_tokens": 31081}
+{"qid": "gpt4_2d58bcd6", "condition": "grimoire-go", "answer": "The Hate U Give (finished around May 13, 2023, several weeks before The Nightingale which was finished the last weekend of May).", "input_tokens": 30881}
+{"qid": "gpt4_2ba83207", "condition": "grimoire-go", "answer": "Thrive Market ($150)", "input_tokens": 31084}
+{"qid": "gpt4_4cd9eba1", "condition": "grimoire-go", "answer": "1 week (accepted March 20, started orientation sessions March 27)", "input_tokens": 31138}
+{"qid": "gpt4_4929293a", "condition": "grimoire-go", "answer": "Michael's engagement party (5 May 2023), then cousin's wedding (15 June 2023).", "input_tokens": 30455}
+{"qid": "gpt4_4929293b", "condition": "grimoire-go", "answer": "Cousin's wedding (bridesmaid)", "input_tokens": 30597}
+{"qid": "gpt4_483dd43c", "condition": "grimoire-go", "answer": "Game of Thrones (started about a month before 29 May 2023, while The Crown was started more recently within 14 days of that date)", "input_tokens": 30861}
+{"qid": "gpt4_68e94288", "condition": "grimoire-go", "answer": "#PlankChallenge", "input_tokens": 30678}
+{"qid": "gpt4_59149c77", "condition": "grimoire-go", "answer": "7 days", "input_tokens": 30779}
+{"qid": "gpt4_1916e0ea", "condition": "grimoire-go", "answer": "54 days (5 January to 28 February 2023)", "input_tokens": 30290}
+{"qid": "gpt4_70e84552", "condition": "grimoire-go", "answer": "Fixing the fence (3 weeks before 25 May 2023, vs. hoof trimming 2 weeks before).", "input_tokens": 30044}
+{"qid": "gpt4_78cf46a3", "condition": "grimoire-go", "answer": "The narrator receiving their new phone case happened first (about a month before 26 May 2023, so around 26 April 2023), before losing their phone charger (about two weeks before 26 May 2023, so around 12 May 2023).", "input_tokens": 31325}
+{"qid": "gpt4_7de946e7", "condition": "grimoire-go", "answer": "The persistent cough (February 10th visit vs. February 22nd skin tag removal)", "input_tokens": 30819}
+{"qid": "gpt4_731e37d7", "condition": "grimoire-go", "answer": "$200 (writing workshop in November)", "input_tokens": 30344}
+{"qid": "gpt4_7a0daae1", "condition": "grimoire-go", "answer": "1 week (bought 10 March 2023, received 17 March 2023)", "input_tokens": 30190}
+{"qid": "gpt4_74aed68e", "condition": "grimoire-go", "answer": "29 days", "input_tokens": 30912}
+{"qid": "gpt4_8279ba02", "condition": "grimoire-go", "answer": "The context does not contain information about when you bought a smoker.", "input_tokens": 31063}
+{"qid": "gpt4_59149c78", "condition": "grimoire-go", "answer": "Metropolitan Museum of Art", "input_tokens": 30988}
+{"qid": "gpt4_8e165409", "condition": "grimoire-go", "answer": "14 days", "input_tokens": 30742}
+{"qid": "gpt4_85da3956", "condition": "grimoire-go", "answer": "6 weeks ago (approximately 24 June 2023)", "input_tokens": 31239}
+{"qid": "gpt4_a2d1d1f6", "condition": "grimoire-go", "answer": "3 days ago (on 15 April 2023)", "input_tokens": 30794}
+{"qid": "gpt4_a56e767c", "condition": "grimoire-go", "answer": "3 festivals: AFI Fest, Portland Film Festival, Austin Film Festival", "input_tokens": 28173}
+{"qid": "gpt4_88806d6e", "condition": "grimoire-go", "answer": "Tom was met first. He was met a few months before (around February-March 2023), whereas Mark and Sarah were met about a month before (late April 2023).", "input_tokens": 30275}
+{"qid": "gpt4_8279ba03", "condition": "grimoire-go", "answer": "I don't see any kitchen appliance purchase mentioned in the provided chat history from around 2023/03/15. The context does not contain this information.", "input_tokens": 30870}
+{"qid": "gpt4_af6db32f", "condition": "grimoire-go", "answer": "17 days ago (12 February 2023)", "input_tokens": 30822}
+{"qid": "gpt4_9a159967", "condition": "grimoire-go", "answer": "United Airlines", "input_tokens": 29969}
+{"qid": "gpt4_c27434e8", "condition": "grimoire-go", "answer": "The Japanese Zero fighter plane model (started about a month before the Ferrari, which was started about three weeks before 29 May 2023).", "input_tokens": 30906}
+{"qid": "gpt4_b5700ca9", "condition": "grimoire-go", "answer": "4 days ago (2023/04/06)", "input_tokens": 29859}
+{"qid": "gpt4_e05b82a6", "condition": "grimoire-go", "answer": "10 rollercoaster rides (3 at SeaWorld in July, 3 at Disneyland on September 24th, 1 at Knott's on October 8th, 3 at Universal Studios on October 15th)", "input_tokens": 31001}
+{"qid": "gpt4_fe651585", "condition": "grimoire-go", "answer": "Alex became a parent first, in January 2023 (through adoption from China), before Rachel's twins were born on February 12th.", "input_tokens": 30727}
+{"qid": "gpt4_cd90e484", "condition": "grimoire-go", "answer": "About 2 weeks.", "input_tokens": 30343}
+{"qid": "gpt4_ec93e27f", "condition": "grimoire-go", "answer": "Train (on 3 March 2023)", "input_tokens": 28181}
+{"qid": "gpt4_ab202e7f", "condition": "grimoire-go", "answer": "4 items: kitchen shelves (fixed), toaster (replaced with toaster oven), kitchen faucet (replaced), and pet food/water bowls (replaced).", "input_tokens": 30136}
+{"qid": "gpt4_d12ceb0e", "condition": "grimoire-go", "answer": "Approximately 60 years old.\n\n(User: 32, Mom: 55, Dad: 58, Grandma: 75, Grandpa: 78 = average of 59.6)", "input_tokens": 30763}
+{"qid": "gpt4_f2262a51", "condition": "grimoire-go", "answer": "3 named doctors: Dr. Patel, Dr. Lee, Dr. Smith. Plus 1 unnamed ENT specialist = 4 total.", "input_tokens": 30514}
+{"qid": "gpt4_fa19884d", "condition": "grimoire-go", "answer": "A bluegrass band (with a banjo player)", "input_tokens": 30919}
+{"qid": "gpt4_7f6b06db", "condition": "grimoire-go", "answer": "Muir Woods (10 March), Big Sur and Monterey (20 April), Yosemite (15 May)", "input_tokens": 30887}
+{"qid": "gpt4_7abb270c", "condition": "grimoire-go", "answer": "I can only clearly identify five museum visits from the context with specific dates:\n\n1. Science Museum (15 January)\n2. Ancient Egyptian Artifacts museum (10 February)\n3. Museum of History (15 February)\n4. Contemporary Art Museum (15 February)\n5. Modern Art Museum (20 February)\n\nA sixth museum cannot be clearly identified from the provided chat history.", "input_tokens": 30726}

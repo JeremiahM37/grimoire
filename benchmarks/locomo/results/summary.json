@@ -128,5 +128,31 @@
       }
     },
     "median_input_tokens": 48063
+  },
+  "grimoire-go": {
+    "overall": {
+      "correct": 408,
+      "n": 500,
+      "pct": 81.6
+    },
+    "by_category": {
+      "multi-hop": {
+        "correct": 63,
+        "n": 92
+      },
+      "temporal": {
+        "correct": 82,
+        "n": 104
+      },
+      "open-domain": {
+        "correct": 20,
+        "n": 31
+      },
+      "single-hop": {
+        "correct": 243,
+        "n": 273
+      }
+    },
+    "median_input_tokens": 31019
   }
 }

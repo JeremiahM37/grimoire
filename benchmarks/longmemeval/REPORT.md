@@ -13,8 +13,14 @@ for or after this run; it is a single-shot validation on a second dataset.
 | grimoire + model2vec | 83.9% | 60.8% | 87.5% | 30.8% | 88.9% | 81.5% | **75.0%** | ~5.9k |
 | grimoire + nomic-embed | 77.4% | 60.8% | 95.8% | 15.4% | 85.2% | 79.6% | **73.0%** | ~5.8k |
 | full context (~117k tokens) | 80.6% | 54.9% | 100.0% | 30.8% | 85.2% | 68.5% | **70.5%** | ~117k |
+| grimoire + model2vec (Go) | 80.6% | 56.9% | 87.5% | 30.8% | 88.9% | 85.2% | **74.5%** | ~6.8k |
 
 \* median reader input tokens minus the `none` baseline (CLI overhead).
+
+The Go row was added on 2026-08-14, when the implementation was ported;
+contexts came from a running Go server over HTTP (`retrieve_go.py`), with
+the reader and judge phases unchanged and shared. Go vs Python on the same
+embedder: 6 wins / 7 losses, exact McNemar p = 1.00 — indistinguishable.
 
 ## Reading the numbers
 
