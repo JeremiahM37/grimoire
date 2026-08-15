@@ -10,6 +10,7 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/crdtstore"
 	"github.com/JeremiahM37/grimoire/go/internal/markdown"
 	"github.com/JeremiahM37/grimoire/go/internal/secrets"
+	gsync "github.com/JeremiahM37/grimoire/go/internal/sync"
 )
 
 // Note encryption, CRDT sync, and whole-vault export/import.
@@ -175,35 +176,80 @@ func (s *Server) mergeCRDT(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) syncStatus(w http.ResponseWriter, _ *http.Request) {
-	notes, _ := s.Index.DB.Count("SELECT COUNT(*) FROM notes")
+	var peer any
+	if s.SyncPeer != "" {
+		peer = s.SyncPeer
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"site_id": s.CRDT.SiteID(),
-		"notes":   notes,
-		"peer":    s.SyncPeer,
-	})
+		"peer": peer, "interval": s.SyncInterval})
 }
 
-// syncManifest lists every note with its content hash, so a peer can work out
-// what it is missing without transferring bodies.
+// syncManifest lists every note with its content hash and mtime, so a peer can
+// work out what it is missing without transferring bodies. Keyed by path —
+// this is the wire format a peer of EITHER implementation expects.
 func (s *Server) syncManifest(w http.ResponseWriter, _ *http.Request) {
-	rows, err := s.Index.DB.Query("SELECT path, hash, updated FROM notes ORDER BY path")
+	m, err := s.Sync.LocalManifest()
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	defer rows.Close()
-	out := []map[string]string{}
-	for rows.Next() {
-		var path, hash, updated string
-		if err := rows.Scan(&path, &hash, &updated); err != nil {
-			writeErr(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-		out = append(out, map[string]string{"path": path, "hash": hash, "updated": updated})
+	writeJSON(w, http.StatusOK, m)
+}
+
+// syncPull returns the raw text of the requested notes. A note missing here is
+// reported as null rather than omitted, so the caller can tell "deleted on the
+// peer" from "never asked for".
+func (s *Server) syncPull(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Paths []string `json:"paths"`
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
-		"site_id": s.CRDT.SiteID(), "notes": out,
-	})
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	out := map[string]*string{}
+	for _, rel := range in.Paths {
+		note, err := s.Vault.Read(rel)
+		if err != nil {
+			out[rel] = nil
+			continue
+		}
+		raw := note.Raw
+		out[rel] = &raw
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"contents": out})
+}
+
+// syncPush accepts a peer's changes. A change whose base_hash no longer matches
+// becomes a conflict copy: the local version is never overwritten blindly.
+func (s *Server) syncPush(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Changes []gsync.Change `json:"changes"`
+		Device  string         `json:"device"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	results := make([]gsync.Result, 0, len(in.Changes))
+	for _, ch := range in.Changes {
+		results = append(results, s.Sync.Apply(ch))
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"results": results})
+}
+
+// syncNow runs a bidirectional sync with the configured peer right now.
+func (s *Server) syncNow(w http.ResponseWriter, _ *http.Request) {
+	if s.SyncPeer == "" {
+		writeErr(w, http.StatusBadRequest, "no peer configured (set GRIMOIRE_SYNC_PEER)")
+		return
+	}
+	st, err := s.Sync.SyncWithPeer(s.SyncPeer, "manual", s.SyncToken)
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, "sync failed: "+err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, st)
 }
 
 // ---------------------------------------------------------------- export/import

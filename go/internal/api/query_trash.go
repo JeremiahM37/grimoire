@@ -6,10 +6,12 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
+	"github.com/JeremiahM37/grimoire/go/internal/ai"
+	"github.com/JeremiahM37/grimoire/go/internal/index"
 	"github.com/JeremiahM37/grimoire/go/internal/markdown"
 	"github.com/JeremiahM37/grimoire/go/internal/queries"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
@@ -214,6 +216,7 @@ func (s *Server) ask(w http.ResponseWriter, r *http.Request) {
 		Question       string `json:"question"`
 		K              int    `json:"k"`
 		IncludePrivate bool   `json:"include_private"`
+		Smart          *bool  `json:"smart"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 		writeErr(w, http.StatusBadRequest, "invalid json")
@@ -224,39 +227,97 @@ func (s *Server) ask(w http.ResponseWriter, r *http.Request) {
 		q = in.Question
 	}
 	if strings.TrimSpace(q) == "" {
-		writeErr(w, http.StatusBadRequest, "q required")
+		writeJSON(w, http.StatusOK, map[string]any{"answer": "", "citations": []any{}})
 		return
 	}
 	k := in.K
 	if k <= 0 {
 		k = 6
 	}
-	hits, err := s.Index.Retrieve(q, k, in.IncludePrivate)
+	smart := in.Smart == nil || *in.Smart
+	hits, err := s.smartRetrieve(q, k, in.IncludePrivate, smart)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	citations := []map[string]any{}
-	var parts []string
+	contexts := make([]ai.Context, 0, len(hits))
 	for _, h := range hits {
 		citations = append(citations, map[string]any{
-			"path": h.Path, "title": h.Title, "chunk": h.Chunk, "score": h.Score,
-		})
-		parts = append(parts, h.Chunk)
-	}
-	answer := "No matching notes."
-	if len(parts) > 0 {
-		answer = strings.Join(parts, "\n\n---\n\n")
+			"path": h.Path, "title": h.Title, "score": h.Score})
+		contexts = append(contexts, ai.Context{Path: h.Path, Title: h.Title, Chunk: h.Chunk})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"question": q, "answer": answer, "citations": citations,
-		"backend": "extractive",
-	})
+		"answer": s.AI.Answer(q, contexts), "citations": citations})
+}
+
+// smartRetrieve is retrieval for ANSWERING, as opposed to /api/retrieve: with
+// an LLM available it decomposes a multi-hop question into sub-questions,
+// retrieves each, and reranks the merged pool. Without one it is plain
+// retrieval, byte for byte — which is what keeps the offline path and the
+// benchmark numbers unchanged.
+func (s *Server) smartRetrieve(q string, k int, includePrivate, smart bool) ([]index.Hit, error) {
+	subs := []string{q}
+	if smart {
+		subs = s.AI.Decompose(q)
+	}
+	if len(subs) == 1 {
+		return s.Index.Retrieve(subs[0], k, includePrivate)
+	}
+	var pool []index.Hit
+	seen := map[string]bool{}
+	for _, sub := range subs {
+		hits, err := s.Index.Retrieve(sub, k, includePrivate)
+		if err != nil {
+			return nil, err
+		}
+		for _, h := range hits {
+			key := h.Path + "\x00" + firstN(h.Chunk, 80)
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			pool = append(pool, h)
+		}
+	}
+	keep := max(k, 6)
+	byKey := map[string]index.Hit{}
+	ctxs := make([]ai.Context, 0, len(pool))
+	for _, h := range pool {
+		c := ai.Context{Path: h.Path, Title: h.Title, Chunk: h.Chunk}
+		byKey[c.Path+"\x00"+firstN(c.Chunk, 80)] = h
+		ctxs = append(ctxs, c)
+	}
+	out := make([]index.Hit, 0, keep)
+	for _, c := range s.AI.Rerank(q, ctxs, keep) {
+		out = append(out, byKey[c.Path+"\x00"+firstN(c.Chunk, 80)])
+	}
+	return out, nil
+}
+
+// firstN truncates to n CHARACTERS — this key must match the Python
+// dedupe key (c["chunk"][:80]) or the two pools differ.
+func firstN(s string, n int) string {
+	r := []rune(s)
+	if len(r) <= n {
+		return s
+	}
+	return string(r[:n])
 }
 
 // actions are the inline editor AI helpers. Without a configured LLM they fall
 // back to deterministic behaviour so the feature still works offline — a dead
 // button is worse than a simple answer.
+// pyRepr renders a string the way Python's %r does — single quotes — because
+// this text reaches the console's error toast, and a client that string-matches
+// it should not care which implementation answered.
+func pyRepr(s string) string {
+	if !strings.Contains(s, "'") {
+		return "'" + s + "'"
+	}
+	return strconv.Quote(s)
+}
+
 func (s *Server) actions(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		Action string `json:"action"`
@@ -269,98 +330,26 @@ func (s *Server) actions(w http.ResponseWriter, r *http.Request) {
 	text := strings.TrimSpace(in.Text)
 	switch in.Action {
 	case "tags":
-		writeJSON(w, http.StatusOK, map[string]any{"result": suggestTags(text)})
+		writeJSON(w, http.StatusOK, map[string]any{"result": ai.SuggestTags(text)})
+		return
 	case "title":
-		writeJSON(w, http.StatusOK, map[string]any{"result": firstLineTitle(text)})
-	case "summarize":
-		writeJSON(w, http.StatusOK, map[string]any{"result": firstSentences(text, 3)})
-	case "expand":
-		// no generative backend: return the selection unchanged rather than
-		// inventing content about the user's own notes
-		writeJSON(w, http.StatusOK, map[string]any{"result": text})
-	default:
-		writeJSON(w, http.StatusOK, map[string]any{
-			"result": "", "error": fmt.Sprintf("unknown action %q", in.Action)})
-	}
-}
-
-var wordRE = regexp.MustCompile(`[\p{L}\p{N}][\p{L}\p{N}'-]{2,}`)
-
-// stopWords keeps the suggestions to words that actually characterise the text.
-var stopWords = map[string]bool{}
-
-func init() {
-	for _, w := range strings.Fields(`the and for that with this from have will your you not
-are was were but they their there then than when what which who how why can could should would
-into out about over under more most some any all one two get got has had its it's about`) {
-		stopWords[w] = true
-	}
-}
-
-func suggestTags(text string) []string {
-	counts := map[string]int{}
-	for _, w := range wordRE.FindAllString(strings.ToLower(text), -1) {
-		if stopWords[w] || len(w) < 4 {
-			continue
-		}
-		counts[w]++
-	}
-	type kv struct {
-		w string
-		n int
-	}
-	var list []kv
-	for w, n := range counts {
-		list = append(list, kv{w, n})
-	}
-	sort.Slice(list, func(i, j int) bool {
-		if list[i].n != list[j].n {
-			return list[i].n > list[j].n
-		}
-		return list[i].w < list[j].w
-	})
-	out := []string{}
-	for i, kv := range list {
-		if i >= 5 {
-			break
-		}
-		out = append(out, kv.w)
-	}
-	return out
-}
-
-func firstLineTitle(text string) string {
-	for _, line := range strings.Split(text, "\n") {
-		line = strings.TrimSpace(strings.TrimLeft(line, "# "))
-		if line != "" {
-			if len(line) > 80 {
-				line = line[:80]
-			}
-			return line
-		}
-	}
-	return "Untitled"
-}
-
-func firstSentences(text string, n int) string {
-	parts := regexp.MustCompile(`(?:[.!?])\s+`).Split(strings.TrimSpace(text), -1)
-	if len(parts) > n {
-		parts = parts[:n]
-	}
-	out := strings.Join(parts, ". ")
-	if out != "" && !strings.HasSuffix(out, ".") {
-		out += "."
-	}
-	return out
-}
-
-// syncNow is a no-op without a configured peer; it reports that rather than
-// failing, so the console's button is honest instead of broken.
-func (s *Server) syncNow(w http.ResponseWriter, _ *http.Request) {
-	if s.SyncPeer == "" {
-		writeJSON(w, http.StatusOK, map[string]any{
-			"synced": false, "reason": "no sync peer configured"})
+		writeJSON(w, http.StatusOK, map[string]any{"result": ai.FirstLineTitle(text)})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"synced": false, "peer": s.SyncPeer})
+	var prompt string
+	switch in.Action {
+	case "summarize":
+		prompt = "Summarize these notes in 2-3 sentences:\n\n" + text
+	case "expand":
+		prompt = "Expand these notes into a fuller draft, keeping the meaning:\n\n" + text
+	default:
+		writeJSON(w, http.StatusOK, map[string]any{
+			"result": "", "error": fmt.Sprintf("unknown action %s", pyRepr(in.Action))})
+		return
+	}
+	// routed through Answer so the offline fallback is the same extractive
+	// path the rest of the product uses — a dead button is worse than a
+	// simple answer
+	out := s.AI.Answer(prompt, []ai.Context{{Path: "_", Title: "selection", Chunk: text}})
+	writeJSON(w, http.StatusOK, map[string]any{"result": out})
 }

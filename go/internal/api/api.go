@@ -17,29 +17,35 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/JeremiahM37/grimoire/go/internal/ai"
 	"github.com/JeremiahM37/grimoire/go/internal/crdtstore"
 	"github.com/JeremiahM37/grimoire/go/internal/history"
 	"github.com/JeremiahM37/grimoire/go/internal/index"
 	"github.com/JeremiahM37/grimoire/go/internal/markdown"
 	"github.com/JeremiahM37/grimoire/go/internal/secrets"
 	"github.com/JeremiahM37/grimoire/go/internal/settings"
+	gsync "github.com/JeremiahM37/grimoire/go/internal/sync"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
 )
 
 // Server holds everything the handlers need.
 type Server struct {
-	Index     *index.Index
-	Vault     *vault.Vault
-	Settings  *settings.Store
-	History   *history.Store
-	Secrets   *secrets.Vault
-	Broker    *secrets.Broker
-	CRDT      *crdtstore.Store
-	SyncPeer  string
-	WebDir    string
-	PluginDir string
-	DailyDir  string
-	InboxDir  string
+	Index        *index.Index
+	Vault        *vault.Vault
+	Settings     *settings.Store
+	History      *history.Store
+	Secrets      *secrets.Vault
+	Broker       *secrets.Broker
+	CRDT         *crdtstore.Store
+	AI           *ai.Client
+	Sync         *gsync.Client
+	SyncPeer     string
+	SyncToken    string
+	SyncInterval int
+	WebDir       string
+	PluginDir    string
+	DailyDir     string
+	InboxDir     string
 }
 
 // Routes builds the mux. Specific paths are registered before the catch-all
@@ -115,6 +121,11 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/ask", s.ask)
 	mux.HandleFunc("POST /api/actions", s.actions)
 	mux.HandleFunc("POST /api/sync/now", s.syncNow)
+	mux.HandleFunc("POST /api/sync/pull", s.syncPull)
+	mux.HandleFunc("POST /api/sync/push", s.syncPush)
+	mux.HandleFunc("POST /api/facts", s.setFact)
+	mux.HandleFunc("POST /api/memory/consolidate", s.consolidateMemory)
+	mux.HandleFunc("POST /api/audio", s.audioMemo)
 	mux.HandleFunc("POST /api/vault/change-passphrase", s.changePassphrase)
 	mux.HandleFunc("GET /notes/{path...}", s.noteGet)
 	mux.HandleFunc("GET /read", s.readIndex)

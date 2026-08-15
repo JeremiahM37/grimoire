@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/JeremiahM37/grimoire/go/internal/ai"
 	"github.com/JeremiahM37/grimoire/go/internal/crdtstore"
 	"github.com/JeremiahM37/grimoire/go/internal/db"
 	"github.com/JeremiahM37/grimoire/go/internal/embed"
@@ -19,6 +20,7 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/index"
 	"github.com/JeremiahM37/grimoire/go/internal/secrets"
 	"github.com/JeremiahM37/grimoire/go/internal/settings"
+	gsync "github.com/JeremiahM37/grimoire/go/internal/sync"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
 )
 
@@ -41,14 +43,21 @@ func testServer(t *testing.T) (*Server, http.Handler) {
 	t.Cleanup(func() { vault.Now = old })
 
 	vaultSecrets := secrets.New(gdir)
+	st := settings.New(gdir)
+	ix := index.New(database, v, embed.Hash{})
+	crdt := crdtstore.New(gdir)
 	s := &Server{
-		Index:    index.New(database, v, embed.Hash{}),
+		Index:    ix,
 		Vault:    v,
-		Settings: settings.New(gdir),
+		Settings: st,
 		History:  history.New(gdir),
 		Secrets:  vaultSecrets,
 		Broker:   secrets.NewBroker(vaultSecrets, database),
-		CRDT:     crdtstore.New(gdir),
+		CRDT:     crdt,
+		// no LLM configured: every AI path takes its deterministic fallback,
+		// which is what keeps these tests hermetic
+		AI:       ai.New(st, vaultSecrets.Get),
+		Sync:     gsync.New(ix, v, crdt),
 		DailyDir: "journal",
 		InboxDir: "inbox",
 	}
