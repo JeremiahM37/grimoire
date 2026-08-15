@@ -35,7 +35,21 @@ a direct embedder A/B on ASCII text matches byte for byte.
 ## What this licenses
 
 The published LoCoMo (81.6%) and LongMemEval (75.0%) figures were measured
-against the Python build with an LLM reader and judge. This measurement says the
+against the Python build with an LLM reader and judge. This measurement said the
 Go build's retrieval is within ~1pp of it on a proxy metric — close enough to
 expect those figures to hold, NOT close enough to quote them for the Go build
 without re-running the full scored pipeline.
+
+## The full scored pipeline, re-run (2026-08-14)
+
+So it was re-run, both datasets, contexts regenerated from a live Go server:
+
+| | LoCoMo (n=500) | LongMemEval (n=200) |
+|---|---|---|
+| Python + model2vec | 80.8% | 75.0% |
+| Go + model2vec | **81.6%** | **74.5%** |
+| exact McNemar | 30W/26L, p = 0.69 | 6W/7L, p = 1.00 |
+
+Indistinguishable on both. The ~1pp proxy gap did not translate into a scored
+difference in either direction, which is what "within noise" is supposed to
+mean. The Go build may now quote these figures as its own.

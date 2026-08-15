@@ -130,5 +130,38 @@
       }
     },
     "median_input_tokens": 141053
+  },
+  "grimoire-go": {
+    "overall": {
+      "correct": 149,
+      "n": 200
+    },
+    "by_type": {
+      "knowledge-update": {
+        "correct": 25,
+        "n": 31
+      },
+      "multi-session": {
+        "correct": 29,
+        "n": 51
+      },
+      "single-session-assistant": {
+        "correct": 21,
+        "n": 24
+      },
+      "single-session-preference": {
+        "correct": 4,
+        "n": 13
+      },
+      "single-session-user": {
+        "correct": 24,
+        "n": 27
+      },
+      "temporal-reasoning": {
+        "correct": 46,
+        "n": 54
+      }
+    },
+    "median_input_tokens": 30794
   }
 }

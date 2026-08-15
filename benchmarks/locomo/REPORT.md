@@ -118,6 +118,28 @@ condition `grimoire-local`; every other condition carried forward unchanged.
 indistinguishable from full context (37/44, p = 0.51) — the fully-local,
 no-external-service config now sits at the ceiling too.
 
+## Round 6 — the Go implementation
+
+Same product, reimplemented in Go (`go/`). No retrieval algorithm changed;
+this run exists to answer whether the rewrite kept the numbers. Contexts
+were produced by driving a running Go server over HTTP
+(`retrieve_go.py`), assembling context exactly as the in-process retriever
+does; the reader and judge phases are untouched and shared.
+
+| condition | multi-hop | temporal | open-domain | single-hop | **overall** | context tokens* |
+|---|---|---|---|---|---|---|
+| grimoire + model2vec (Python) | 56.5% | 79.8% | 61.3% | 91.6% | **80.8%** | ~6.1k |
+| **grimoire + model2vec (Go)** | 68.5% | 78.8% | 64.5% | 89.0% | **81.6%** | ~7.0k |
+| full context | 71.7% | 72.1% | 58.1% | 92.3% | **82.2%** | ~24.0k |
+
+Go vs Python on the same embedder: 30 wins / 26 losses, exact McNemar
+p = 0.69 — **indistinguishable**, which is the result the port was aiming
+for. It is also indistinguishable from full context (39/42, p = 0.82).
+The per-category movement (multi-hop +12, single-hop −2.6) is rank-flip
+noise at these cell sizes, not a retrieval difference: see
+[results/go-port-recall.md](results/go-port-recall.md) for the
+deterministic, LLM-free recall comparison and the float32 root cause.
+
 ## Reading the numbers
 
 - **Round 4 grimoire + nomic-embed (81.6%) is statistically
