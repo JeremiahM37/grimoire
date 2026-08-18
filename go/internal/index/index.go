@@ -262,6 +262,9 @@ func (ix *Index) resolveAll() error {
 			setDefault(byAlias, strings.ToLower(a), path)
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
 	rows.Close()
 
 	linkRows, err := ix.DB.Query("SELECT rowid, target FROM links")
@@ -289,6 +292,9 @@ func (ix *Index) resolveAll() error {
 			}
 		}
 		updates = append(updates, upd{rowid, sql.NullString{String: dst, Valid: dst != ""}})
+	}
+	if err := linkRows.Err(); err != nil {
+		return err
 	}
 	linkRows.Close()
 
@@ -328,6 +334,9 @@ func (ix *Index) AliasMap() (map[string]string, error) {
 		for _, a := range aliasesOf(fmJSON) {
 			setDefault(out, strings.ToLower(a), path)
 		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return out, nil
 }

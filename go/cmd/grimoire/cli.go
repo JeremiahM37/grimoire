@@ -298,6 +298,9 @@ func cmdLs(args []string) int {
 			fmt.Printf("%-40s  %s\n", path, title)
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return fail("%v", err)
+	}
 	return 0
 }
 
@@ -539,6 +542,9 @@ func cmdExport(args []string) int {
 		if rows.Scan(&path) == nil {
 			paths = append(paths, path)
 		}
+	}
+	if err := rows.Err(); err != nil {
+		return fail("%v", err)
 	}
 	rows.Close()
 

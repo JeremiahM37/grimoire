@@ -99,6 +99,9 @@ func (b *Broker) List() ([]Grant, error) {
 		g.Created = created.String
 		out = append(out, g)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return out, nil
 }
 
@@ -218,6 +221,9 @@ func (b *Broker) Audit(limit int) ([]map[string]any, error) {
 		}
 		out = append(out, map[string]any{
 			"ts": ts, "action": action, "secret": secret, "detail": detail})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return out, nil
 }

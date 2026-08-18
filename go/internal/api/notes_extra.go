@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"regexp"
@@ -214,15 +215,21 @@ func (s *Server) unlinkedMentions(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, []any{})
 		return
 	}
+	// Swallowing this error would silently widen the result: notes that DO
+	// already link here would stop being excluded and get reported as
+	// unlinked mentions.
 	linked := map[string]bool{}
-	if rows, err := s.Index.DB.Query("SELECT src FROM links WHERE dst=?", rel); err == nil {
-		for rows.Next() {
+	if err := s.eachRow("SELECT src FROM links WHERE dst=?", []any{rel},
+		func(rows *sql.Rows) error {
 			var src string
-			if rows.Scan(&src) == nil {
-				linked[src] = true
+			if err := rows.Scan(&src); err != nil {
+				return err
 			}
-		}
-		rows.Close()
+			linked[src] = true
+			return nil
+		}); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
 	}
 	type pat struct {
 		name string
@@ -271,6 +278,10 @@ func (s *Server) unlinkedMentions(w http.ResponseWriter, r *http.Request) {
 			})
 			break
 		}
+	}
+	if err := rows.Err(); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
 	}
 	writeJSON(w, http.StatusOK, out)
 }

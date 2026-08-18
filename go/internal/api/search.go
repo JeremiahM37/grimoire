@@ -75,38 +75,60 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 	if len(terms) > 0 {
 		query := "SELECT path, title, snippet(fts, 2, '[', ']', ' … ', 12) AS snippet " +
 			"FROM fts WHERE fts MATCH ? ORDER BY bm25(fts) LIMIT 500"
-		scan := func(match string) []row {
+		// The closure returns an error rather than swallowing one. Returning
+		// an empty slice on failure made a broken query indistinguishable from
+		// a query with no matches, and the caller then "fell back" to a
+		// broader search that failed the same way — reporting "no results"
+		// for what was actually an index error.
+		scan := func(match string) ([]row, error) {
 			out := []row{}
 			rs, err := s.Index.DB.Query(query, match)
 			if err != nil {
-				return out
+				return nil, err
 			}
 			defer rs.Close()
 			for rs.Next() {
 				var x row
-				if rs.Scan(&x.path, &x.title, &x.snippet) == nil {
-					out = append(out, x)
+				if err := rs.Scan(&x.path, &x.title, &x.snippet); err != nil {
+					return nil, err
 				}
+				out = append(out, x)
 			}
-			return out
+			return out, rs.Err()
 		}
-		rows = scan(fts.PrefixTerms(terms, fts.And))
+		var err error
+		rows, err = scan(fts.PrefixTerms(terms, fts.And))
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 		if len(rows) == 0 && len(terms) > 1 {
 			// natural-language queries rarely match EVERY term — fall back to
 			// any-term so a question still surfaces its best notes
-			rows = scan(fts.PrefixTerms(terms, fts.Or))
+			if rows, err = scan(fts.PrefixTerms(terms, fts.Or)); err != nil {
+				writeErr(w, http.StatusInternalServerError, err.Error())
+				return
+			}
 		}
 	} else if opTag != "" || wantPinned || pathLike != "" {
 		rs, err := s.Index.DB.Query(
 			"SELECT path, title, '' FROM notes ORDER BY updated DESC, path LIMIT 500")
-		if err == nil {
-			defer rs.Close()
-			for rs.Next() {
-				var x row
-				if rs.Scan(&x.path, &x.title, &x.snippet) == nil {
-					rows = append(rows, x)
-				}
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		defer rs.Close()
+		for rs.Next() {
+			var x row
+			if err := rs.Scan(&x.path, &x.title, &x.snippet); err != nil {
+				writeErr(w, http.StatusInternalServerError, err.Error())
+				return
 			}
+			rows = append(rows, x)
+		}
+		if err := rs.Err(); err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
 		}
 	} else {
 		writeJSON(w, http.StatusOK, []searchHit{})
