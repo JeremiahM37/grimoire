@@ -403,7 +403,12 @@ img.embed { border-left: none; padding: 0; background: none; }   /* image embeds
 
 /* ---------- live editor (CM6) ---------- */
 #live-editor { display: none; }
-body.live-editor-on #live-editor { display: block; flex: 1; min-height: 0; overflow-y: auto; }
+/* #ed-body is a block box (position: relative; overflow: hidden), not a flex
+   container — so `flex: 1` here was inert and the mount grew to the full
+   document height, which #ed-body then clipped with no way to scroll. Fill
+   the parent the same way #preview does, so .cm-editor's height:100% resolves
+   against a definite box and CM's own .cm-scroller takes over scrolling. */
+body.live-editor-on #live-editor { display: block; position: absolute; inset: 0; overflow-y: auto; }
 body.live-editor-on #content { display: none; }   /* textarea becomes the hidden mirror */
 #live-editor .cm-editor { height: 100%; font: 16px/1.65 var(--serif); background: transparent; }
 #live-editor .cm-editor.cm-focused { outline: none; }

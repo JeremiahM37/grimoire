@@ -1,5 +1,5 @@
 /* Grimoire service worker — offline shell */
-const CACHE = "grimoire-v17";
+const CACHE = "grimoire-v18";
 const SHELL = ["/", "/style.css", "/app.js", "/editor.js", "/plugins.js", "/canvas.js", "/util.js", "/markdown.js", "/vendor/editor.js", "/icon.svg", "/manifest.webmanifest"];
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));
@@ -13,7 +13,10 @@ self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
   if (url.pathname.startsWith("/api")) return;   // never cache data
   e.respondWith(
-    fetch(e.request).then((r) => {
+    // revalidate against the server rather than reusing a heuristically-cached
+    // copy — otherwise this network-first handler still returns stale shell
+    // assets straight out of the browser's HTTP cache after a deploy
+    fetch(e.request, { cache: "no-cache" }).then((r) => {
       const copy = r.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); return r;
     }).catch(() => caches.match(e.request).then((m) => m || caches.match("/")))
   );
