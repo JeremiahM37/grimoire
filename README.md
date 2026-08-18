@@ -197,6 +197,10 @@ Everything is environment-driven (same variables bare-metal, systemd, Docker):
 | `GRIMOIRE_FRAME_OPTIONS` | `SAMEORIGIN` | X-Frame-Options (reverse-proxy embedding) |
 | `GRIMOIRE_MCP_TRANSPORT` | `stdio` | `http` serves MCP over streamable-HTTP instead |
 | `GRIMOIRE_MCP_ADDR` / `_PORT` | `127.0.0.1` / `9112` | Bind for the MCP http transport |
+| `GRIMOIRE_URL` | `http://127.0.0.1:$PORT` | API the MCP server talks to |
+| `GRIMOIRE_PLUGIN_DIR` | `plugins` | Where plugin bundles are loaded from |
+| `GRIMOIRE_MODEL_DIR` | *(cache dir)* | Where the local embedding model is stored |
+| `GRIMOIRE_EMBED_BASE_URL` / `_API_KEY` | *(empty)* | OpenAI-compatible embeddings endpoint |
 | `GRIMOIRE_NO_WATCHER` | `0` | Disable the filesystem watcher (tests/CI) |
 
 AI/model settings can also be changed live in ⚙ Settings (persisted in the
