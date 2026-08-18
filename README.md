@@ -254,6 +254,14 @@ vs 68.5%). Full methods, per-category tables, per-question raw data, and
 the honest failure notes: [benchmarks/locomo/](benchmarks/locomo/) ·
 [benchmarks/longmemeval/](benchmarks/longmemeval/).
 
+**Round 8** — `finalize` now expands each top hit into a query-focused excerpt
+of its note (its other high-scoring chunks, in document order) instead of
+merging the hit with its immediate neighbours. Measured against a same-epoch
+control, replicated on the questions the study had never scored, and pooled:
+**LongMemEval +4.3 points (72.3% → 76.6%, n = 470, exact McNemar p = 0.0045)**
+with **no measurable change on LoCoMo** (−0.3 points, n = 999, p = 0.84). Still
+~15× fewer tokens than full context. Details: [benchmarks/longmemeval/REPORT.md](benchmarks/longmemeval/REPORT.md).
+
 **Measurement floor** (round 6): re-reading a byte-identical context set with
 the same frozen reader and judge flips 8–12% of answers and moves accuracy by
 1–4 points, so a difference smaller than roughly 5 points between two

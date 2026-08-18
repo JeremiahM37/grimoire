@@ -26,7 +26,7 @@ from pathlib import Path
 
 HERE = Path(__file__).parent
 REPO = HERE.parent.parent
-RESULTS = HERE / "results"
+RESULTS = Path(os.environ.get("LOCOMO_RESULTS", HERE / "results"))
 DATA = Path(os.environ.get("LOCOMO_DATA", "/tmp/locomo10.json"))
 DATA_URL = "https://raw.githubusercontent.com/snap-research/locomo/main/data/locomo10.json"
 

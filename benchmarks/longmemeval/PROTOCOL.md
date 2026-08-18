@@ -117,3 +117,21 @@ Recorded because the diagnosis holds even though the remedies did not:
   instead of the top 3 reached 84.1% coverage for 25.5k characters, while
   simply raising k to 15 reached 85.9% for 25.3k. Dominated at equal budget.
 - *Per-note cap and smaller chunks* — scored, null, reverted; see REPORT.md.
+
+## Amendment — round 8 (2026-08-18)
+
+**Replication sample.** `results_ext/` holds the 270 LongMemEval questions
+that are neither abstention items nor in the frozen scored sample — everything
+the study had never scored. A candidate that fails significance on the frozen
+200 is re-scored there before it is either shipped or abandoned, against a
+control retrieved with the unmodified binary and read in the same session.
+Both samples are reported, and the pooled figure covers all 470 questions.
+
+Disclosed: those 270 questions were the dev split used to choose the
+candidate's one parameter (three chunks per hit, over a grid of two and three).
+The replication is therefore a fresh ACCURACY measurement — accuracy was never
+measured on them — but not a fully clean holdout. The direction does not depend
+on that choice: two chunks per hit also improved dev coverage (75.6% → 78.1%).
+
+`LME_RESULTS` overrides the results directory so a second sample can be scored
+without touching the frozen one.

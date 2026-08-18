@@ -530,6 +530,19 @@ type candidate struct {
 	rrf      float64
 }
 
+// mergeTopHits is how many returned hits are expanded into a query-focused
+// excerpt of their note; mergeChunksPerHit bounds how many of that note's
+// chunks the excerpt may draw on.
+//
+// Three chunks mirrors the lexical leg, whose excerpt budget is 2400
+// characters against an 800-character chunk target — so both halves of a
+// search return about the same amount of any one note, which is the property
+// that made that leg carry most of the pipeline's coverage.
+const (
+	mergeTopHits      = 3
+	mergeChunksPerHit = 3
+)
+
 // cmpDesc orders descending, reproducing the `a > b` less-function the ranking
 // was defined with: everything that is not strictly greater compares equal.
 //
@@ -619,30 +632,66 @@ func (ix *Index) finalize(c *corpusCache, cands []candidate, order []int32, k in
 			ChunkIdx: int(r.ci),
 			Score:    math.Round(cand.rrf*10000) / 10000,
 		}
-		if len(out) < 3 {
-			rows, err := ix.DB.Query(
-				"SELECT chunk_idx, chunk FROM vectors WHERE note=? "+
-					"AND chunk_idx BETWEEN ? AND ? ORDER BY chunk_idx",
-				h.Path, h.ChunkIdx-1, h.ChunkIdx+1)
-			if err != nil {
-				return nil, err
+		if len(out) < mergeTopHits {
+			// Small-to-big, selected by RELEVANCE within the note rather than
+			// by adjacency.
+			//
+			// The chunk leg emits one chunk per note, so a fact sitting
+			// anywhere but its note's best-matching chunk is unreachable:
+			// chunks-only coverage saturates at 43% on the LongMemEval dev
+			// split whether k is 10, 25 or 30, because raising k only adds
+			// more notes' FIRST chunks. Merging chunk_idx +/-1 helps only when
+			// the fact happens to sit next door, and on that split it does
+			// not — evidence ranked past 30 was a later chunk of an
+			// already-seen note in 100% of cases.
+			//
+			// So a hit brings its note's other high-scoring chunks with it, in
+			// document order with an elision marker: the same shape the
+			// lexical leg's excerpt returns, which is why that leg carries most
+			// of this pipeline's coverage. Crucially this keeps ONE entry per
+			// note, so response breadth is unchanged (10.96 distinct sessions
+			// per context, against 10.96 for adjacency merging); only the entry
+			// itself gets richer.
+			byIdx := map[int32]bool{r.ci: true}
+			for _, other := range order {
+				if len(byIdx) >= mergeChunksPerHit {
+					break
+				}
+				o := &c.rows[cands[other].row]
+				if o.note != r.note || byIdx[o.ci] {
+					continue
+				}
+				byIdx[o.ci] = true
 			}
-			var parts []string
-			for rows.Next() {
-				var ci int
+			want := make([]int32, 0, len(byIdx)+2)
+			for ci := range byIdx {
+				want = append(want, ci)
+			}
+			// the hit's own neighbours still count: a chunk boundary often
+			// cuts the sentence that answers the question
+			want = append(want, r.ci-1, r.ci+1)
+			slices.Sort(want)
+			want = slices.Compact(want)
+
+			parts := make([]string, 0, len(want))
+			prev := int32(-99)
+			for _, ci := range want {
+				if ci < 0 {
+					continue
+				}
 				var chunk string
-				if err := rows.Scan(&ci, &chunk); err != nil {
-					rows.Close()
-					return nil, err
+				if err := ix.DB.QueryRow(
+					"SELECT chunk FROM vectors WHERE note=? AND chunk_idx=?",
+					h.Path, ci).Scan(&chunk); err != nil {
+					continue // a gap in the note is not an error here
+				}
+				if prev >= 0 && ci != prev+1 {
+					parts = append(parts, "[…]")
 				}
 				parts = append(parts, chunk)
-				covered[key{r.note, int32(ci)}] = true
+				covered[key{r.note, ci}] = true
+				prev = ci
 			}
-			if err := rows.Err(); err != nil {
-				rows.Close()
-				return nil, err
-			}
-			rows.Close()
 			if len(parts) > 0 {
 				h.Chunk = strings.Join(parts, "\n")
 			}
