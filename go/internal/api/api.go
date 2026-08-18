@@ -156,6 +156,12 @@ func securityHeaders(next http.Handler) http.Handler {
 func (s *Server) staticHandler() http.Handler {
 	fs := http.FileServer(http.Dir(s.WebDir))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Without an explicit directive browsers fall back to heuristic caching
+		// (~10% of the file's age), so a shell asset that had sat unchanged for
+		// days kept being served from disk cache for hours after a deploy — the
+		// console would keep running stale CSS/JS. "no-cache" means revalidate,
+		// not "don't cache": ServeFile still answers 304 from Last-Modified.
+		w.Header().Set("Cache-Control", "no-cache")
 		// serve index.html for the app shell, files otherwise
 		if r.URL.Path == "/" {
 			http.ServeFile(w, r, filepath.Join(s.WebDir, "index.html"))
