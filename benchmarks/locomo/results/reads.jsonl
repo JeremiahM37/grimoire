@@ -4498,3 +4498,1003 @@
 {"qid": "c9q88", "condition": "probe-nocap", "answer": "Regular walks together in the park.", "input_tokens": 31181}
 {"qid": "c9q93", "condition": "grimoire-chunk400", "answer": "Keep pursuing your music and never give up.", "input_tokens": 29331}
 {"qid": "c9q93", "condition": "probe-nocap", "answer": "Stay focused, pursue your passion, never give up.", "input_tokens": 31036}
+{"qid": "c0q0", "condition": "grimoire-excerpt", "answer": "7 May 2023", "input_tokens": 30502}
+{"qid": "c0q106", "condition": "grimoire-excerpt", "answer": "Running.", "input_tokens": 28758}
+{"qid": "c0q127", "condition": "grimoire-excerpt", "answer": "Stained glass window(s)", "input_tokens": 28982}
+{"qid": "c0q121", "condition": "grimoire-excerpt", "answer": "Matt Patterson", "input_tokens": 31919}
+{"qid": "c0q118", "condition": "grimoire-excerpt", "answer": "Perseid meteor shower", "input_tokens": 32737}
+{"qid": "c0q11", "condition": "grimoire-excerpt", "answer": "Sweden", "input_tokens": 32201}
+{"qid": "c0q122", "condition": "grimoire-excerpt", "answer": "To catch the eye and make people smile; to express feelings and be creative.", "input_tokens": 32101}
+{"qid": "c0q124", "condition": "grimoire-excerpt", "answer": "Luna (dog), Oliver (cat), and Bailey (cat).", "input_tokens": 29096}
+{"qid": "c0q110", "condition": "grimoire-excerpt", "answer": "A cup with a dog face on it.", "input_tokens": 31813}
+{"qid": "c0q107", "condition": "grimoire-excerpt", "answer": "To de-stress and clear her mind.", "input_tokens": 31168}
+{"qid": "c0q133", "condition": "grimoire-excerpt", "answer": "A sign stating that someone is not being able to leave.", "input_tokens": 32037}
+{"qid": "c0q134", "condition": "grimoire-excerpt", "answer": "Research, find an adoption agency or lawyer, gather documents (references, financial info, medical checks), prepare emotionally.", "input_tokens": 32004}
+{"qid": "c0q1", "condition": "grimoire-excerpt", "answer": "About 2022 (she mentioned painting a lake sunrise \"last year\" when speaking on 8 May 2023)", "input_tokens": 31922}
+{"qid": "c0q137", "condition": "grimoire-excerpt", "answer": "A sunset painting with a pink sky.", "input_tokens": 29371}
+{"qid": "c0q140", "condition": "grimoire-excerpt", "answer": "\"trans lives matter\"", "input_tokens": 32035}
+{"qid": "c0q151", "condition": "grimoire-excerpt", "answer": "Went on a trail walk with the kids.", "input_tokens": 29282}
+{"qid": "c0q141", "condition": "grimoire-excerpt", "answer": "Freedom and being real; staying true to herself and embracing her womanhood.", "input_tokens": 32056}
+{"qid": "c0q28", "condition": "grimoire-excerpt", "answer": "14 July 2023", "input_tokens": 31663}
+{"qid": "c0q144", "condition": "grimoire-excerpt", "answer": "He was okay\u2014he wasn't severely injured in the accident.", "input_tokens": 32114}
+{"qid": "c0q2", "condition": "grimoire-excerpt", "answer": "Counseling and mental health, specifically working with trans people.", "input_tokens": 32110}
+{"qid": "c0q30", "condition": "grimoire-excerpt", "answer": "No, not indicated in the conversations. Melanie appears to be a supportive ally but does not identify as LGBTQ.", "input_tokens": 31265}
+{"qid": "c0q22", "condition": "grimoire-excerpt", "answer": "Yes, likely. Caroline stated on 6 July 2023 that her library includes \"classics\" and \"kids' books,\" and Dr. Seuss is a canonical classic children's author.", "input_tokens": 31139}
+{"qid": "c0q142", "condition": "grimoire-excerpt", "answer": "Melanie and Caroline describe their journey together as one of spreading love and understanding, supporting each other through challenges, and building a more inclusive world. They emphasize sharing their stories to create hope and acceptance within their community, with Melanie saying she's \"proud to be part of the difference\" Caroline is making and Caroline stating \"We can tackle life's challenges together.\"", "input_tokens": 30881}
+{"qid": "c0q34", "condition": "grimoire-excerpt", "answer": "Mentorship program for LGBTQ youth (17 July 2023), volunteering at LGBTQ+ youth center (28 August 2023), organizing a talent show for youth center kids.", "input_tokens": 32153}
+{"qid": "c0q44", "condition": "grimoire-excerpt", "answer": "13 August 2023", "input_tokens": 31762}
+{"qid": "c0q31", "condition": "grimoire-excerpt", "answer": "Around 20 June 2023", "input_tokens": 32299}
+{"qid": "c0q41", "condition": "grimoire-excerpt", "answer": "18 July 2023", "input_tokens": 29064}
+{"qid": "c0q38", "condition": "grimoire-excerpt", "answer": "Camping, roasting marshmallows, hiking, beach trips, pottery workshop, museum visits (dinosaur exhibit), park visits, swimming, exploring forests and nature.", "input_tokens": 31814}
+{"qid": "c0q43", "condition": "grimoire-excerpt", "answer": "Paintings, drawings, and abstract art. She primarily creates paintings that explore her trans experience and identity, as well as drawings of flowers and abstract works.", "input_tokens": 29460}
+{"qid": "c0q50", "condition": "grimoire-excerpt", "answer": "Progressive/liberal, strong LGBTQ+ advocacy focus.", "input_tokens": 32303}
+{"qid": "c0q48", "condition": "grimoire-excerpt", "answer": "Pots and a cup with a dog face on it (made during a pottery workshop on 12 July 2023).", "input_tokens": 31265}
+{"qid": "c0q37", "condition": "grimoire-excerpt", "answer": "A sunset painting with pink sky and an abstract painting with blue streaks (October 2023)", "input_tokens": 31342}
+{"qid": "c0q60", "condition": "grimoire-excerpt", "answer": "Melanie plays clarinet.", "input_tokens": 31692}
+{"qid": "c0q47", "condition": "grimoire-excerpt", "answer": "Melanie, her friends, and her LGBTQ support community.", "input_tokens": 32329}
+{"qid": "c0q62", "condition": "grimoire-excerpt", "answer": "27 August 2023", "input_tokens": 28772}
+{"qid": "c0q53", "condition": "grimoire-excerpt", "answer": "23 August 2023 (or around that week)", "input_tokens": 29177}
+{"qid": "c0q61", "condition": "grimoire-excerpt", "answer": "Summer Sounds (28 August 2023), Matt Patterson (14 August 2023)", "input_tokens": 31840}
+{"qid": "c0q52", "condition": "grimoire-excerpt", "answer": "Luna, Oliver, and Bailey.", "input_tokens": 31887}
+{"qid": "c0q33", "condition": "grimoire-excerpt", "answer": "11 August 2023 (and also around 26 June 2023)", "input_tokens": 31476}
+{"qid": "c0q40", "condition": "grimoire-excerpt", "answer": "Based on the context, Melanie mentions going to the beach **once** in 2023 (sometime before July 20, 2023, which she describes as \"recently\").", "input_tokens": 32596}
+{"qid": "c0q59", "condition": "grimoire-excerpt", "answer": "No clear evidence in the context. She had a negative encounter with religious conservatives, but her own beliefs aren't stated.", "input_tokens": 31908}
+{"qid": "c0q64", "condition": "grimoire-excerpt", "answer": "Likely yes. Melanie enjoys classical music (Bach, Mozart) and plays clarinet, so Vivaldi's \"The Four Seasons\" fits her taste.", "input_tokens": 31761}
+{"qid": "c0q66", "condition": "grimoire-excerpt", "answer": "She explores nature and connects with each other.", "input_tokens": 31620}
+{"qid": "c0q72", "condition": "grimoire-excerpt", "answer": "Last year (2022)", "input_tokens": 31084}
+{"qid": "c0q73", "condition": "grimoire-excerpt", "answer": "September 2023", "input_tokens": 31839}
+{"qid": "c0q90", "condition": "grimoire-excerpt", "answer": "5 years (as of 9 June, 2023)", "input_tokens": 28710}
+{"qid": "c0q78", "condition": "grimoire-excerpt", "answer": "Pink sneakers for running (12 July 2023) and wooden figurines (22 October 2023).", "input_tokens": 31983}
+{"qid": "c0q65", "condition": "grimoire-excerpt", "answer": "Caroline faced changes in her relationships (some friends couldn't handle it; found genuine support), explored her gender identity and changing body through art, worked toward self-acceptance, and found community with supportive people after transitioning (started 3 years before June 9, 2023).", "input_tokens": 32477}
+{"qid": "c0q83", "condition": "grimoire-excerpt", "answer": "That self-care is really important, and that looking after herself helps her better care for her family.", "input_tokens": 32003}
+{"qid": "c0q85", "condition": "grimoire-excerpt", "answer": "Research adoption agencies; plan nature outing with Melanie.", "input_tokens": 30931}
+{"qid": "c0q91", "condition": "grimoire-excerpt", "answer": "Love, faith, and strength.", "input_tokens": 32016}
+{"qid": "c0q84", "condition": "grimoire-excerpt", "answer": "Running, reading, playing violin, and creative activities like painting and pottery.", "input_tokens": 31656}
+{"qid": "c0q8", "condition": "grimoire-excerpt", "answer": "Early June 2023 (the week before June 9, 2023)", "input_tokens": 32366}
+{"qid": "c1q10", "condition": "grimoire-excerpt", "answer": "8 February 2023", "input_tokens": 31418}
+{"qid": "c1q2", "condition": "grimoire-excerpt", "answer": "Dancing", "input_tokens": 28910}
+{"qid": "c1q29", "condition": "grimoire-excerpt", "answer": "Paris (visited 28 January 2023)", "input_tokens": 31858}
+{"qid": "c0q97", "condition": "grimoire-excerpt", "answer": "Transgender poetry reading (early October 2023)", "input_tokens": 31965}
+{"qid": "c0q9", "condition": "grimoire-excerpt", "answer": "Early June 2023 (the week before 9 June 2023)", "input_tokens": 32012}
+{"qid": "c1q37", "condition": "grimoire-excerpt", "answer": "23 July 2023", "input_tokens": 30882}
+{"qid": "c1q39", "condition": "grimoire-excerpt", "answer": "Contemporary dance", "input_tokens": 30429}
+{"qid": "c1q33", "condition": "grimoire-excerpt", "answer": "20 June 2023", "input_tokens": 32045}
+{"qid": "c1q28", "condition": "grimoire-excerpt", "answer": "Around mid-June 2023 (the week before June 19, 2023)", "input_tokens": 29693}
+{"qid": "c1q34", "condition": "grimoire-excerpt", "answer": "Early July 2023 (mentioned on 9 July as happening \"last week\")", "input_tokens": 31650}
+{"qid": "c1q4", "condition": "grimoire-excerpt", "answer": "Jon was passionate about dancing since childhood and wanted to share the joy of dance with others. Losing his job as a banker also gave him the push to finally pursue this dream.", "input_tokens": 32225}
+{"qid": "c1q32", "condition": "grimoire-excerpt", "answer": "Around mid-June 2023 (approximately 14-17 June 2023)", "input_tokens": 31979}
+{"qid": "c1q42", "condition": "grimoire-excerpt", "answer": "\"Finding Freedom,\" a contemporary piece.", "input_tokens": 29089}
+{"qid": "c1q41", "condition": "grimoire-excerpt", "answer": "Winning first place at regionals at age 15 with a contemporary piece called \"Finding Freedom.\"", "input_tokens": 31939}
+{"qid": "c1q49", "condition": "grimoire-excerpt", "answer": "Comfortable, cozy, and inviting\u2014like they were in a cool oasis.", "input_tokens": 32227}
+{"qid": "c1q61", "condition": "grimoire-excerpt", "answer": "A trophy (with a glass globe on top)", "input_tokens": 31542}
+{"qid": "c1q62", "condition": "grimoire-excerpt", "answer": "Gina stays confident by reminding herself of her successes and progress, maintaining a good support system, and focusing on why she started her business\u2014because she loves it.", "input_tokens": 31074}
+{"qid": "c1q63", "condition": "grimoire-excerpt", "answer": "Fashion internship (part-time position in the fashion department of an international company)", "input_tokens": 30985}
+{"qid": "c1q14", "condition": "grimoire-excerpt", "answer": "By 3 April 2023 (when it's already mentioned as ongoing in the conversation).", "input_tokens": 31283}
+{"qid": "c1q66", "condition": "grimoire-excerpt", "answer": "Dance classes, workshops, and one-on-one mentoring and training to help dancers reach their potential.", "input_tokens": 30731}
+{"qid": "c1q67", "condition": "grimoire-excerpt", "answer": "Jon uses it to stay organized, set goals, track achievements, and identify areas to improve.", "input_tokens": 31432}
+{"qid": "c1q69", "condition": "grimoire-excerpt", "answer": "To clear his mind.", "input_tokens": 32249}
+{"qid": "c1q50", "condition": "grimoire-excerpt", "answer": "\"It looks awesome. Your commitment and creativity in your business really stands out.\" (8 February 2023)", "input_tokens": 31273}
+{"qid": "c1q72", "condition": "grimoire-excerpt", "answer": "Excited, positive, and eager to savor the moment. He's ready to celebrate and make memories (20 June 2023).", "input_tokens": 32025}
+{"qid": "c1q77", "condition": "grimoire-excerpt", "answer": "A limited edition line of hoodies.", "input_tokens": 31968}
+{"qid": "c2q104", "condition": "grimoire-excerpt", "answer": "10 years", "input_tokens": 28635}
+{"qid": "c2q110", "condition": "grimoire-excerpt", "answer": "She joined a gym.", "input_tokens": 28276}
+{"qid": "c2q103", "condition": "grimoire-excerpt", "answer": "Max", "input_tokens": 31969}
+{"qid": "c1q78", "condition": "grimoire-excerpt", "answer": "His positivity and determination.", "input_tokens": 31477}
+{"qid": "c1q76", "condition": "grimoire-excerpt", "answer": "Highly excited and enthusiastic. Both Jon and Gina express great anticipation, with words like \"pumped,\" \"awesome,\" \"blast,\" and \"magical\" used to describe the opening on 20 June 2023.", "input_tokens": 32019}
+{"qid": "c1q44", "condition": "grimoire-excerpt", "answer": "\"They're so graceful!\"", "input_tokens": 31418}
+{"qid": "c2q111", "condition": "grimoire-excerpt", "answer": "Kundalini yoga", "input_tokens": 31858}
+{"qid": "c2q120", "condition": "grimoire-excerpt", "answer": "A flood", "input_tokens": 30497}
+{"qid": "c2q113", "condition": "grimoire-excerpt", "answer": "Self-doubt", "input_tokens": 30957}
+{"qid": "c2q117", "condition": "grimoire-excerpt", "answer": "A marching event for veterans' rights (participation mentioned around 3 July 2023).", "input_tokens": 29081}
+{"qid": "c2q115", "condition": "grimoire-excerpt", "answer": "A day at the park with family where the kids played on the playground.", "input_tokens": 31574}
+{"qid": "c2q133", "condition": "grimoire-excerpt", "answer": "Visited a military memorial with his kids.", "input_tokens": 31581}
+{"qid": "c2q134", "condition": "grimoire-excerpt", "answer": "Awestruck and humbled.", "input_tokens": 31860}
+{"qid": "c2q135", "condition": "grimoire-excerpt", "answer": "To remember and appreciate those who served in the military.", "input_tokens": 31129}
+{"qid": "c2q122", "condition": "grimoire-excerpt", "answer": "A flood that devastated John's area and damaged many homes.", "input_tokens": 31328}
+{"qid": "c2q12", "condition": "grimoire-excerpt", "answer": "Military aptitude test", "input_tokens": 32091}
+{"qid": "c2q118", "condition": "grimoire-excerpt", "answer": "Long-standing respect for the military and a desire to show his support for veterans' rights.", "input_tokens": 28209}
+{"qid": "c2q139", "condition": "grimoire-excerpt", "answer": "Helped renovate a rundown community center.", "input_tokens": 31592}
+{"qid": "c2q142", "condition": "grimoire-excerpt", "answer": "A medal.", "input_tokens": 31382}
+{"qid": "c2q146", "condition": "grimoire-excerpt", "answer": "He doesn't feel like he's making much of an impact on people and the world.", "input_tokens": 31546}
+{"qid": "c2q149", "condition": "grimoire-excerpt", "answer": "Fire-fighting brigade and school mentoring", "input_tokens": 31679}
+{"qid": "c2q19", "condition": "grimoire-excerpt", "answer": "Broken windshield (9 January 2023)", "input_tokens": 29798}
+{"qid": "c2q22", "condition": "grimoire-excerpt", "answer": "March 2023", "input_tokens": 31840}
+{"qid": "c2q148", "condition": "grimoire-excerpt", "answer": "Shadow is adjusting well - learning commands, house training, getting along with her other dog Coco, and bringing her joy.", "input_tokens": 32362}
+{"qid": "c2q17", "condition": "grimoire-excerpt", "answer": "Political Science or Public Policy (not explicitly stated; inferred from his interest in policymaking, education, and infrastructure)", "input_tokens": 31608}
+{"qid": "c1q73", "condition": "grimoire-excerpt", "answer": "\"Expressing yourself and finding happiness; magical, bringing joy and thrill\"", "input_tokens": 31495}
+{"qid": "c2q21", "condition": "grimoire-excerpt", "answer": "East Coast (planning to go, mentioned 6 May 2023)", "input_tokens": 31362}
+{"qid": "c2q20", "condition": "grimoire-excerpt", "answer": "Last year (2022) - John mentions this during the April 10, 2023 conversation, referring to a road trip they took the previous year.", "input_tokens": 31740}
+{"qid": "c2q27", "condition": "grimoire-excerpt", "answer": "19 May 2023", "input_tokens": 31664}
+{"qid": "c2q29", "condition": "grimoire-excerpt", "answer": "Ring-toss tournament and chili cook-off", "input_tokens": 31545}
+{"qid": "c2q28", "condition": "grimoire-excerpt", "answer": "Veterans and their families, domestic abuse awareness, military support, community service, and helping underprivileged youth with education and career opportunities.", "input_tokens": 28898}
+{"qid": "c2q25", "condition": "grimoire-excerpt", "answer": "None mentioned in the context.", "input_tokens": 31884}
+{"qid": "c2q2", "condition": "grimoire-excerpt", "answer": "No martial arts explicitly mentioned. Kickboxing classes are offered at his yoga studio, but he only confirms doing yoga and weight training.", "input_tokens": 29034}
+{"qid": "c2q44", "condition": "grimoire-excerpt", "answer": "Hiking (22 July 2023), picnic with games like charades and scavenger hunt (17 July 2023), community work/volunteering (5 August 2023).", "input_tokens": 31159}
+{"qid": "c2q3", "condition": "grimoire-excerpt", "answer": "Based on the provided context, there is no evidence that John and Maria have both done the same type of volunteering. Maria volunteers at a homeless shelter and a dog shelter, while John volunteers with military veterans and support groups.", "input_tokens": 31190}
+{"qid": "c2q47", "condition": "grimoire-excerpt", "answer": "Yoga, weight training, and boot camps.", "input_tokens": 28869}
+{"qid": "c2q35", "condition": "grimoire-excerpt", "answer": "Spain (though it's a country, not a US state). No US states are mentioned in the conversation.", "input_tokens": 31718}
+{"qid": "c2q57", "condition": "grimoire-excerpt", "answer": "Veterans and their families, domestic abuse awareness, and schools/students.", "input_tokens": 28570}
+{"qid": "c2q51", "condition": "grimoire-excerpt", "answer": "About August 2022 (she stated \"about a year ago\" in her August 3, 2023 conversation)", "input_tokens": 29028}
+{"qid": "c2q65", "condition": "grimoire-excerpt", "answer": "Education and infrastructure", "input_tokens": 30824}
+{"qid": "c2q30", "condition": "grimoire-excerpt", "answer": "Based on the context, no specific shelter name is mentioned. Maria refers to it only as \"a homeless shelter\" or \"the homeless shelter\" throughout multiple conversations.", "input_tokens": 31261}
+{"qid": "c2q73", "condition": "grimoire-excerpt", "answer": "Her aunt.", "input_tokens": 31041}
+{"qid": "c2q46", "condition": "grimoire-excerpt", "answer": "15-16 July 2023", "input_tokens": 28895}
+{"qid": "c2q53", "condition": "grimoire-excerpt", "answer": "Last year (2022)", "input_tokens": 31135}
+{"qid": "c2q54", "condition": "grimoire-excerpt", "answer": "4 August 2023", "input_tokens": 31997}
+{"qid": "c2q81", "condition": "grimoire-excerpt", "answer": "A trip to England (London) a few years ago.", "input_tokens": 28996}
+{"qid": "c3q103", "condition": "grimoire-excerpt", "answer": "\"Little Women\"", "input_tokens": 29126}
+{"qid": "c2q86", "condition": "grimoire-excerpt", "answer": "His car broke down and he's trying to get it fixed.", "input_tokens": 29038}
+{"qid": "c3q106", "condition": "grimoire-excerpt", "answer": "Personal experiences and her own journey of self-discovery.", "input_tokens": 28852}
+{"qid": "c2q95", "condition": "grimoire-excerpt", "answer": "Made dinner together.", "input_tokens": 32133}
+{"qid": "c2q85", "condition": "grimoire-excerpt", "answer": "5K charity run for veterans and their families", "input_tokens": 30329}
+{"qid": "c2q84", "condition": "grimoire-excerpt", "answer": "5K charity run for a homeless shelter", "input_tokens": 31994}
+{"qid": "c2q9", "condition": "grimoire-excerpt", "answer": "Maria's auntie (aunt)", "input_tokens": 31005}
+{"qid": "c2q69", "condition": "grimoire-excerpt", "answer": "Not in context. (Context only covers through August 2023. In December 2022, Maria donated her old car.)", "input_tokens": 31830}
+{"qid": "c2q88", "condition": "grimoire-excerpt", "answer": "Politics and the government, specifically education reform and infrastructure development.", "input_tokens": 31707}
+{"qid": "c3q1", "condition": "grimoire-excerpt", "answer": "Movies, reading/books, and creative pursuits (screenwriting, gaming content creation).", "input_tokens": 30651}
+{"qid": "c3q110", "condition": "grimoire-excerpt", "answer": "He wanted a bright, bold color to stand out from regular options because it reflected who he is.", "input_tokens": 31842}
+{"qid": "c3q132", "condition": "grimoire-excerpt", "answer": "Vegan ice cream", "input_tokens": 31689}
+{"qid": "c3q131", "condition": "grimoire-excerpt", "answer": "The love and encouragement from her family.", "input_tokens": 29082}
+{"qid": "c3q107", "condition": "grimoire-excerpt", "answer": "He's drawn to their unique qualities, their slow pace provides a nice change from life's rush, they're calming, and they're low-maintenance.", "input_tokens": 29359}
+{"qid": "c3q121", "condition": "grimoire-excerpt", "answer": "Joanna invited Nate to join her on the trails sometime.", "input_tokens": 32329}
+{"qid": "c3q115", "condition": "grimoire-excerpt", "answer": "Dramas, romcoms, and emotionally-driven films.", "input_tokens": 31754}
+{"qid": "c3q130", "condition": "grimoire-excerpt", "answer": "Quotes, photos, and little keepsakes", "input_tokens": 31564}
+{"qid": "c3q116", "condition": "grimoire-excerpt", "answer": "Video games and fantasy/sci-fi movies", "input_tokens": 32595}
+{"qid": "c3q128", "condition": "grimoire-excerpt", "answer": "Spider-Man (also likes superheroes in general)", "input_tokens": 31686}
+{"qid": "c3q136", "condition": "grimoire-excerpt", "answer": "4 video game tournaments", "input_tokens": 32034}
+{"qid": "c3q138", "condition": "grimoire-excerpt", "answer": "A book from the 1900s with stories and sketches.", "input_tokens": 32362}
+{"qid": "c3q140", "condition": "grimoire-excerpt", "answer": "A road trip to Woodhaven and an old book from the 1900s about the town's history.", "input_tokens": 31249}
+{"qid": "c3q145", "condition": "grimoire-excerpt", "answer": "An online blog post about a hard moment in her life.", "input_tokens": 32358}
+{"qid": "c3q156", "condition": "grimoire-excerpt", "answer": "Dairy-free chocolate mousse", "input_tokens": 31711}
+{"qid": "c3q155", "condition": "grimoire-excerpt", "answer": "Coconut milk ice cream", "input_tokens": 32668}
+{"qid": "c3q142", "condition": "grimoire-excerpt", "answer": "Video game tournaments", "input_tokens": 29200}
+{"qid": "c3q143", "condition": "grimoire-excerpt", "answer": "Touched and awesome. She realized her words had the power to bring comfort to others and it reminded her why she loves writing.", "input_tokens": 32399}
+{"qid": "c3q148", "condition": "grimoire-excerpt", "answer": "Fun and rewarding. Nate said sharing his love for dairy-free desserts \"has been fun and rewarding\" and he was \"always happy to share them\" with Joanna.", "input_tokens": 32102}
+{"qid": "c3q158", "condition": "grimoire-excerpt", "answer": "Dairy-free chocolate cake with raspberries.", "input_tokens": 32533}
+{"qid": "c3q161", "condition": "grimoire-excerpt", "answer": "A bookmark with a plant on top.", "input_tokens": 29177}
+{"qid": "c3q159", "condition": "grimoire-excerpt", "answer": "Blueberries and coconut milk", "input_tokens": 31784}
+{"qid": "c3q180", "condition": "grimoire-excerpt", "answer": "A combination of vegetables, fruits, and insects.", "input_tokens": 31670}
+{"qid": "c3q176", "condition": "grimoire-excerpt", "answer": "A movie script (screenplay)", "input_tokens": 32570}
+{"qid": "c3q194", "condition": "grimoire-excerpt", "answer": "He saw one at a pet store and couldn't resist; his tank was big enough for three.", "input_tokens": 29124}
+{"qid": "c3q179", "condition": "grimoire-excerpt", "answer": "She felt amazed, surreal, and rewarding. She said seeing her characters come alive was her favorite part and that it felt like they \"jumped off the page and became real.\"", "input_tokens": 32116}
+{"qid": "c3q166", "condition": "grimoire-excerpt", "answer": "The story was gripping and the actors were great, it really stuck with her.", "input_tokens": 31787}
+{"qid": "c3q173", "condition": "grimoire-excerpt", "answer": "Don't give up on your dreams; keep going and believing in yourself. Rejections don't define you.", "input_tokens": 30257}
+{"qid": "c3q171", "condition": "grimoire-excerpt", "answer": "She doesn't give up\u2014she keeps writing and continues submitting more scripts.", "input_tokens": 32038}
+{"qid": "c3q191", "condition": "grimoire-excerpt", "answer": "Watch other people's videos first to understand what your audience likes, so your videos don't flop.", "input_tokens": 31168}
+{"qid": "c3q20", "condition": "grimoire-excerpt", "answer": "Before 20 May 2022 (exact date not specified in conversations)", "input_tokens": 31294}
+{"qid": "c3q197", "condition": "grimoire-excerpt", "answer": "The peace and joy they bring him, and how they make him feel calm and remind him to slow down.", "input_tokens": 31310}
+{"qid": "c3q35", "condition": "grimoire-excerpt", "answer": "The weekend following 22 August 2022", "input_tokens": 32646}
+{"qid": "c3q29", "condition": "grimoire-excerpt", "answer": "The weekend after 24 June 2022 (approximately 25-26 June 2022).", "input_tokens": 31397}
+{"qid": "c3q5", "condition": "grimoire-excerpt", "answer": "Writing, reading, watching movies, exploring nature.", "input_tokens": 30152}
+{"qid": "c3q3", "condition": "grimoire-excerpt", "answer": "Around mid-January 2022 (week before 21 January)", "input_tokens": 31888}
+{"qid": "c3q40", "condition": "grimoire-excerpt", "answer": "Last week from 14 September 2022 (early September 2022)", "input_tokens": 29608}
+{"qid": "c3q30", "condition": "grimoire-excerpt", "answer": "Screenplays, scripts, and blog posts about personal experiences, loss, and self-discovery.", "input_tokens": 31800}
+{"qid": "c3q49", "condition": "grimoire-excerpt", "answer": "2 times", "input_tokens": 32327}
+{"qid": "c3q195", "condition": "grimoire-excerpt", "answer": "The context does not describe Nate going to Joanna's place. In their interactions, Joanna goes to Nate's place to try his dairy-free ice cream and share her recipes.", "input_tokens": 30768}
+{"qid": "c3q51", "condition": "grimoire-excerpt", "answer": "25 May 2022", "input_tokens": 32104}
+{"qid": "c3q45", "condition": "grimoire-excerpt", "answer": "Last week of September 2022 (she finished \"last week\" as of 6 October 2022)", "input_tokens": 29262}
+{"qid": "c3q23", "condition": "grimoire-excerpt", "answer": "Her first screenplay (drama and romance mix) was rejected by a major company in June 2022. She also received another rejection from a production company by October 2022.", "input_tokens": 32095}
+{"qid": "c3q57", "condition": "grimoire-excerpt", "answer": "5 November 2022", "input_tokens": 32412}
+{"qid": "c3q59", "condition": "grimoire-excerpt", "answer": "She writes them down in a notebook.", "input_tokens": 29091}
+{"qid": "c3q55", "condition": "grimoire-excerpt", "answer": "Nature, personal experiences, dreams, and stories about courage and self-discovery.", "input_tokens": 31850}
+{"qid": "c3q56", "condition": "grimoire-excerpt", "answer": "Dogs and turtles. (Though Joanna is allergic to dogs, she has affection for them through the stuffed animal Nate gave her. Both clearly enjoy turtles\u2014Nate owns them, and Joanna shows interest in visiting and playing with his turtles.)", "input_tokens": 28982}
+{"qid": "c3q60", "condition": "grimoire-excerpt", "answer": "Nintendo", "input_tokens": 31894}
+{"qid": "c3q63", "condition": "grimoire-excerpt", "answer": "Counter-Strike: Global Offensive, Street Fighter, Valorant, Xeonoblade Chronicles, Catan.", "input_tokens": 29402}
+{"qid": "c3q6", "condition": "grimoire-excerpt", "answer": "3 years (as of January 2022)", "input_tokens": 31838}
+{"qid": "c3q65", "condition": "grimoire-excerpt", "answer": "Valorant tournament", "input_tokens": 31969}
+{"qid": "c3q64", "condition": "grimoire-excerpt", "answer": "5 November 2022", "input_tokens": 32718}
+{"qid": "c3q53", "condition": "grimoire-excerpt", "answer": "Once (on 25 October, 2022)", "input_tokens": 32155}
+{"qid": "c3q62", "condition": "grimoire-excerpt", "answer": "At least 1 (a letter from a reader after her blog post in August 2022), plus a rejection letter from a company in June 2022. Possibly more not mentioned in detail.", "input_tokens": 32046}
+{"qid": "c3q71", "condition": "grimoire-excerpt", "answer": "Nature", "input_tokens": 31991}
+{"qid": "c3q58", "condition": "grimoire-excerpt", "answer": "Based on the conversations, Nate recommended to Joanna:\n\n1. **The Lord of the Rings** trilogy (movie)\n2. **Coconut** (for dairy-free desserts)\n3. **A book series** with adventures, magic, and great characters (specific title not mentioned)\n4. **Xeonoblade Chronicles** (fantasy RPG video game)", "input_tokens": 32547}
+{"qid": "c3q97", "condition": "grimoire-excerpt", "answer": "Her first full screenplay.", "input_tokens": 32209}
+{"qid": "c3q96", "condition": "grimoire-excerpt", "answer": "Action and sci-fi movies", "input_tokens": 32323}
+{"qid": "c4q100", "condition": "grimoire-excerpt", "answer": "Four years in high school.", "input_tokens": 28691}
+{"qid": "c3q84", "condition": "grimoire-excerpt", "answer": "No. Joanna lost all her writing work in a laptop crash (14 September), and Nate had a setback in a gaming tournament (5 September), though he did do a cooking show (mid-September).", "input_tokens": 31809}
+{"qid": "c3q77", "condition": "grimoire-excerpt", "answer": "Late April 2022 (mentioned as \"last week\" in the May 2, 2022 conversation)", "input_tokens": 32005}
+{"qid": "c4q0", "condition": "grimoire-excerpt", "answer": "Win a championship, improve shooting percentage, be a consistent performer, help his team, build his brand through endorsements, and make a positive impact through charity work.", "input_tokens": 31457}
+{"qid": "c4q101", "condition": "grimoire-excerpt", "answer": "Amazing. Everywhere was new and exciting, exploring the city and restaurants was awesome.", "input_tokens": 28781}
+{"qid": "c3q92", "condition": "grimoire-excerpt", "answer": "Not specified in the context.", "input_tokens": 31972}
+{"qid": "c3q68", "condition": "grimoire-excerpt", "answer": "At least 4-5 hikes mentioned (Whispering Falls in May, hometown trail in April, planned hike with friends in June, and one near Fort Wayne in summer).", "input_tokens": 32188}
+{"qid": "c4q107", "condition": "grimoire-excerpt", "answer": "Edinburgh, Scotland", "input_tokens": 28897}
+{"qid": "c3q87", "condition": "grimoire-excerpt", "answer": "The context does not mention Nate visiting any state. Only Joanna is mentioned as taking a road trip to Woodhaven in the Midwest.", "input_tokens": 31778}
+{"qid": "c4q111", "condition": "grimoire-excerpt", "answer": "A greenhouse venue.", "input_tokens": 32267}
+{"qid": "c4q1", "condition": "grimoire-excerpt", "answer": "Building his brand, securing endorsements, charity work, and starting a foundation to inspire others and help disadvantaged kids.", "input_tokens": 31497}
+{"qid": "c4q119", "condition": "grimoire-excerpt", "answer": "Smoky Mountains", "input_tokens": 28949}
+{"qid": "c3q73", "condition": "grimoire-excerpt", "answer": "The context does not contain information about what state Joanna visited in summer 2021. The conversation sessions provided begin in January 2022. However, Joanna mentions visiting Fort Wayne (Indiana) on a hike \"last summer,\" which would refer to summer 2022, not 2021.\n\nUnable to determine from provided context.", "input_tokens": 32781}
+{"qid": "c4q126", "condition": "grimoire-excerpt", "answer": "Motivational quotes and strategies for tough workouts", "input_tokens": 30607}
+{"qid": "c4q11", "condition": "grimoire-excerpt", "answer": "Surfing", "input_tokens": 31818}
+{"qid": "c4q117", "condition": "grimoire-excerpt", "answer": "Tough opponents drive them to get better.", "input_tokens": 31591}
+{"qid": "c4q133", "condition": "grimoire-excerpt", "answer": "Spectacular; epic and beautiful.", "input_tokens": 32060}
+{"qid": "c4q138", "condition": "grimoire-excerpt", "answer": "Physical therapy, rest, and strength training.", "input_tokens": 31669}
+{"qid": "c4q13", "condition": "grimoire-excerpt", "answer": "Reading fantasy books and watching fantasy movies/shows.", "input_tokens": 29918}
+{"qid": "c4q122", "condition": "grimoire-excerpt", "answer": "Reach their goals, develop confidence, and improve on and off the court.", "input_tokens": 31259}
+{"qid": "c4q118", "condition": "grimoire-excerpt", "answer": "A trophy", "input_tokens": 31659}
+{"qid": "c4q113", "condition": "grimoire-excerpt", "answer": "The context does not specify which basketball team Tim supports. Based on the conversations, Tim's interests focus on Harry Potter fan projects, reading fantasy books, and photography rather than basketball. No specific team support is mentioned for Tim.", "input_tokens": 30242}
+{"qid": "c4q148", "condition": "grimoire-excerpt", "answer": "About four months.", "input_tokens": 28920}
+{"qid": "c4q14", "condition": "grimoire-excerpt", "answer": "Articles about fantasy novels for an online magazine, and fantasy novel fiction writing.", "input_tokens": 31385}
+{"qid": "c4q159", "condition": "grimoire-excerpt", "answer": "Sports and marketing seminars for aspiring professionals.", "input_tokens": 31247}
+{"qid": "c4q154", "condition": "grimoire-excerpt", "answer": "The atmosphere was electric and intense, making it a memorable night.", "input_tokens": 31645}
+{"qid": "c4q151", "condition": "grimoire-excerpt", "answer": "Basketball achievements, thrilling games, and pursuing dreams together.", "input_tokens": 30710}
+{"qid": "c4q170", "condition": "grimoire-excerpt", "answer": "Stay true and be a leader.", "input_tokens": 31575}
+{"qid": "c4q172", "condition": "grimoire-excerpt", "answer": "Ireland (Galway)", "input_tokens": 28588}
+{"qid": "c4q173", "condition": "grimoire-excerpt", "answer": "Galway", "input_tokens": 31390}
+{"qid": "c4q176", "condition": "grimoire-excerpt", "answer": "It felt crazy. He felt like all his hard work had paid off.", "input_tokens": 31064}
+{"qid": "c4q168", "condition": "grimoire-excerpt", "answer": "John likes Aragorn because he's a great leader who puts others first, is brave and selfless, never gives up, and stands up for justice. Aragorn's character inspires John to stay true and be a leader in everything he does.", "input_tokens": 31548}
+{"qid": "c4q23", "condition": "grimoire-excerpt", "answer": "September 2023", "input_tokens": 28937}
+{"qid": "c4q165", "condition": "grimoire-excerpt", "answer": "The context does not indicate that Tim got a book in Italy that inspired him to cook. It was John who got a book in Italy that gave him cooking inspiration, but the specific title is not mentioned in the conversations.", "input_tokens": 32011}
+{"qid": "c4q24", "condition": "grimoire-excerpt", "answer": "Chicago (on a trip)", "input_tokens": 30612}
+{"qid": "c4q31", "condition": "grimoire-excerpt", "answer": "September 2023", "input_tokens": 28991}
+{"qid": "c4q29", "condition": "grimoire-excerpt", "answer": "Four years in high school; specific school names not mentioned in the conversations.", "input_tokens": 31840}
+{"qid": "c4q22", "condition": "grimoire-excerpt", "answer": "15 August 2023", "input_tokens": 31184}
+{"qid": "c4q20", "condition": "grimoire-excerpt", "answer": "Based on the context provided, there is no explicit statement about which city John was in before traveling to Chicago. The context does not contain this information.", "input_tokens": 31840}
+{"qid": "c4q46", "condition": "grimoire-excerpt", "answer": "UK (visiting a castle)", "input_tokens": 28310}
+{"qid": "c4q37", "condition": "grimoire-excerpt", "answer": "Week of 6-12 October 2023", "input_tokens": 31628}
+{"qid": "c4q169", "condition": "grimoire-excerpt", "answer": "A painting of a man smoking a cigarette (in the context of Aragorn inspiration for being a leader)", "input_tokens": 32247}
+{"qid": "c4q52", "condition": "grimoire-excerpt", "answer": "Strength training and yoga.", "input_tokens": 31288}
+{"qid": "c4q32", "condition": "grimoire-excerpt", "answer": "Florida or California\n\n(Universal Studios locations with Harry Potter attractions are in Orlando, Florida and Los Angeles, California. The context doesn't specify which one Tim planned to visit.)", "input_tokens": 30533}
+{"qid": "c4q62", "condition": "grimoire-excerpt", "answer": "Through seminars and mentoring younger players on his basketball team.", "input_tokens": 29425}
+{"qid": "c4q57", "condition": "grimoire-excerpt", "answer": "Piano and violin.", "input_tokens": 28823}
+{"qid": "c4q64", "condition": "grimoire-excerpt", "answer": "December 2023", "input_tokens": 28959}
+{"qid": "c4q5", "condition": "grimoire-excerpt", "answer": "A fantasy bookstore or The Strand Bookstore (given his passion for fantasy novels and extensive book collection)", "input_tokens": 31614}
+{"qid": "c4q63", "condition": "grimoire-excerpt", "answer": "Last summer (2023)", "input_tokens": 29258}
+{"qid": "c4q72", "condition": "grimoire-excerpt", "answer": "Shooting guard", "input_tokens": 30968}
+{"qid": "c4q65", "condition": "grimoire-excerpt", "answer": "Star Wars, Lord of the Rings, The Wheel of Time", "input_tokens": 30570}
+{"qid": "c4q83", "condition": "grimoire-excerpt", "answer": "Fantasy novels, studying characters, themes, and making book recommendations.", "input_tokens": 28644}
+{"qid": "c4q4", "condition": "grimoire-excerpt", "answer": "Based on the context, Tim has read or is reading:\n\n- The Name of the Wind (Patrick Rothfuss)\n- The Alchemist\n- Game of Thrones series (George R. R. Martin)\n- A Dance with Dragons (George R. R. Martin)\n- Harry Potter series (J.K. Rowling)\n- The Hobbit\n- Books on castles in the UK\n- Books on growth, psychology, and personal development\n- A series about friendship and loyalty\n- A book with travel stories from around the world", "input_tokens": 30332}
+{"qid": "c4q81", "condition": "grimoire-excerpt", "answer": "Five years.", "input_tokens": 28977}
+{"qid": "c4q66", "condition": "grimoire-excerpt", "answer": "\"Heir to the Empire\" by Timothy Zahn or other Thrawn Legends novels, based on Tim's love of epic fantasy with complex characters and immersive worlds.", "input_tokens": 31919}
+{"qid": "c4q96", "condition": "grimoire-excerpt", "answer": "Harry Potter and the Philosopher's Stone", "input_tokens": 31610}
+{"qid": "c4q98", "condition": "grimoire-excerpt", "answer": "\"Home Alone\"", "input_tokens": 32271}
+{"qid": "c5q114", "condition": "grimoire-excerpt", "answer": "A picnic date with his girlfriend.", "input_tokens": 32339}
+{"qid": "c4q99", "condition": "grimoire-excerpt", "answer": "Prepping the feast, talking about what they're thankful for, and watching movies afterwards.", "input_tokens": 31363}
+{"qid": "c5q108", "condition": "grimoire-excerpt", "answer": "Her dogs hate snow and get confused by it; they prefer sunny days.", "input_tokens": 32561}
+{"qid": "c5q111", "condition": "grimoire-excerpt", "answer": "Exploring new hiking trails and getting fresh air.", "input_tokens": 30998}
+{"qid": "c4q9", "condition": "grimoire-excerpt", "answer": "Nike (basketball shoe and gear deal), Gatorade (in talks), outdoor gear company deal, and beverage company deal.", "input_tokens": 31491}
+{"qid": "c4q58", "condition": "grimoire-excerpt", "answer": "Before 2 August 2023", "input_tokens": 31510}
+{"qid": "c5q112", "condition": "grimoire-excerpt", "answer": "Sushi", "input_tokens": 32674}
+{"qid": "c5q102", "condition": "grimoire-excerpt", "answer": "To express her love of creativity and sustainability while reducing waste.", "input_tokens": 32233}
+{"qid": "c5q116", "condition": "grimoire-excerpt", "answer": "The autumn colors.", "input_tokens": 32455}
+{"qid": "c5q121", "condition": "grimoire-excerpt", "answer": "Take them to a nearby park.", "input_tokens": 32391}
+{"qid": "c5q2", "condition": "grimoire-excerpt", "answer": "Wine tasting, board games, and dining at cafes/restaurants.", "input_tokens": 32601}
+{"qid": "c5q15", "condition": "grimoire-excerpt", "answer": "Finding dog-friendly rental spots and pet-friendly places to visit.", "input_tokens": 32889}
+{"qid": "c4q75", "condition": "grimoire-excerpt", "answer": "fantasy literature forum", "input_tokens": 31809}
+{"qid": "c5q25", "condition": "grimoire-excerpt", "answer": "19-20 August 2023", "input_tokens": 31875}
+{"qid": "c5q36", "condition": "grimoire-excerpt", "answer": "Sushi, roasted chicken, chicken pot pie, pastries, garlic", "input_tokens": 30075}
+{"qid": "c5q27", "condition": "grimoire-excerpt", "answer": "Andrew feels his work is tough and stressful (as of 6 September 2023), causing him to miss outdoor activities.", "input_tokens": 32191}
+{"qid": "c5q32", "condition": "grimoire-excerpt", "answer": "A tattoo of her four dogs and sunflowers.", "input_tokens": 29402}
+{"qid": "c5q20", "condition": "grimoire-excerpt", "answer": "Chicken (roasted chicken is her favorite comfort meal)", "input_tokens": 32200}
+{"qid": "c5q28", "condition": "grimoire-excerpt", "answer": "Hats (birthday hats and party hats)", "input_tokens": 32875}
+{"qid": "c5q40", "condition": "grimoire-excerpt", "answer": "Dog park", "input_tokens": 32462}
+{"qid": "c5q16", "condition": "grimoire-excerpt", "answer": "Late October 2023 (around 28 October based on the final conversation)", "input_tokens": 32041}
+{"qid": "c5q54", "condition": "grimoire-excerpt", "answer": "Fetch and Frisbee, plus running around and meeting other pups.", "input_tokens": 30857}
+{"qid": "c5q48", "condition": "grimoire-excerpt", "answer": "Friends and confidantes; companions bringing joy, comfort, and love.", "input_tokens": 32592}
+{"qid": "c5q63", "condition": "grimoire-excerpt", "answer": "Croissants, muffins, and tarts.", "input_tokens": 29681}
+{"qid": "c5q46", "condition": "grimoire-excerpt", "answer": "As of September 2023, Andrew had **1 pet** (Toby, a puppy he adopted in July 2023). Buddy was adopted between September and October 2023.", "input_tokens": 32386}
+{"qid": "c5q64", "condition": "grimoire-excerpt", "answer": "Sunflowers", "input_tokens": 32624}
+{"qid": "c5q7", "condition": "grimoire-excerpt", "answer": "Approximately 3 years. Audrey had Pepper, Precious, and Panda for 3 years as of March 2023, and adopted Pixie in April 2023.", "input_tokens": 32711}
+{"qid": "c5q72", "condition": "grimoire-excerpt", "answer": "Punishment is never the proper way for pets; she doesn't want to hurt her dogs.", "input_tokens": 32315}
+{"qid": "c5q75", "condition": "grimoire-excerpt", "answer": "Kayaking and bungee jumping.", "input_tokens": 32503}
+{"qid": "c5q76", "condition": "grimoire-excerpt", "answer": "About an hour, varies by day.", "input_tokens": 32056}
+{"qid": "c5q80", "condition": "grimoire-excerpt", "answer": "Roasted Chicken", "input_tokens": 32440}
+{"qid": "c5q65", "condition": "grimoire-excerpt", "answer": "Audrey plays fetch with a ball or frisbee with the dogs and chats with other dog owners.", "input_tokens": 32387}
+{"qid": "c5q87", "condition": "grimoire-excerpt", "answer": "Two hours", "input_tokens": 32860}
+{"qid": "c5q52", "condition": "grimoire-excerpt", "answer": "Visit city parks during weekends, similar to how he explores the city with his girlfriend and takes his dog on outings.", "input_tokens": 31185}
+{"qid": "c5q84", "condition": "grimoire-excerpt", "answer": "Relaxed and wise; playful and game-ready; naughty but cuddly; energetic and adventurous.", "input_tokens": 28946}
+{"qid": "c5q60", "condition": "grimoire-excerpt", "answer": "Three dogs: Toby, Buddy, and Scout.", "input_tokens": 32378}
+{"qid": "c5q83", "condition": "grimoire-excerpt", "answer": "Audrey has memories of taking long walks with Max in her neighborhood, exploring new paths together, and sharing her worries and hopes with him. He was a great listener and always there for her.", "input_tokens": 31880}
+{"qid": "c5q96", "condition": "grimoire-excerpt", "answer": "Andrew learned about animals, plants, and ecosystems, and how they work together.", "input_tokens": 29066}
+{"qid": "c6q101", "condition": "grimoire-excerpt", "answer": "Reading", "input_tokens": 30960}
+{"qid": "c5q95", "condition": "grimoire-excerpt", "answer": "Peruvian Lilies", "input_tokens": 28814}
+{"qid": "c5q91", "condition": "grimoire-excerpt", "answer": "She got new beds for them.", "input_tokens": 32555}
+{"qid": "c5q89", "condition": "grimoire-excerpt", "answer": "Regular grooming\u2014daily brushing, regular baths, nail trims, and lots of love.", "input_tokens": 31558}
+{"qid": "c6q104", "condition": "grimoire-excerpt", "answer": "Vancouver", "input_tokens": 31412}
+{"qid": "c6q105", "condition": "grimoire-excerpt", "answer": "July 20", "input_tokens": 31618}
+{"qid": "c6q110", "condition": "grimoire-excerpt", "answer": "Strategy and RPG games", "input_tokens": 31344}
+{"qid": "c6q107", "condition": "grimoire-excerpt", "answer": "He wanted to pursue his passion for the gaming industry and focus on work that aligned with his values.", "input_tokens": 28909}
+{"qid": "c6q108", "condition": "grimoire-excerpt", "answer": "Fortnite", "input_tokens": 31483}
+{"qid": "c6q130", "condition": "grimoire-excerpt", "answer": "Guitar", "input_tokens": 28593}
+{"qid": "c6q122", "condition": "grimoire-excerpt", "answer": "$10 per class", "input_tokens": 31868}
+{"qid": "c6q113", "condition": "grimoire-excerpt", "answer": "Samantha.", "input_tokens": 31760}
+{"qid": "c6q119", "condition": "grimoire-excerpt", "answer": "Basic games and stories.", "input_tokens": 28290}
+{"qid": "c6q12", "condition": "grimoire-excerpt", "answer": "No, not during April 2022. He got a girlfriend (Samantha) in September 2022.", "input_tokens": 30521}
+{"qid": "c6q128", "condition": "grimoire-excerpt", "answer": "A medieval castle with a labyrinth full of puzzles and traps (few weeks before 18 September 2022).", "input_tokens": 31071}
+{"qid": "c6q136", "condition": "grimoire-excerpt", "answer": "Excited and inspired. He sees it as a great chance to help others and boost his own skills, and finds it rewarding.", "input_tokens": 31273}
+{"qid": "c6q137", "condition": "grimoire-excerpt", "answer": "RPGs, particularly Cyberpunk 2077.", "input_tokens": 31978}
+{"qid": "c6q139", "condition": "grimoire-excerpt", "answer": "Super Mario and The Legend of Zelda", "input_tokens": 29137}
+{"qid": "c6q143", "condition": "grimoire-excerpt", "answer": "They decided to move in together.", "input_tokens": 30844}
+{"qid": "c6q14", "condition": "grimoire-excerpt", "answer": "26 April 2022", "input_tokens": 30974}
+{"qid": "c6q140", "condition": "grimoire-excerpt", "answer": "A game (he was at the big reveal when the power went out)", "input_tokens": 31481}
+{"qid": "c6q142", "condition": "grimoire-excerpt", "answer": "Raise money for a children's hospital.", "input_tokens": 30763}
+{"qid": "c6q145", "condition": "grimoire-excerpt", "answer": "Because they both love spending time at McGee's bar together.", "input_tokens": 31592}
+{"qid": "c6q16", "condition": "grimoire-excerpt", "answer": "UNO", "input_tokens": 31662}
+{"qid": "c6q24", "condition": "grimoire-excerpt", "answer": "Strategy games (Unity) and a character-based game inspired by childhood comic sketches.", "input_tokens": 30546}
+{"qid": "c6q21", "condition": "grimoire-excerpt", "answer": "7 May 2022", "input_tokens": 31301}
+{"qid": "c6q42", "condition": "grimoire-excerpt", "answer": "9 August 2022", "input_tokens": 31898}
+{"qid": "c6q22", "condition": "grimoire-excerpt", "answer": "Dog shelter, homeless people, children's hospital", "input_tokens": 31441}
+{"qid": "c6q47", "condition": "grimoire-excerpt", "answer": "3 September 2022", "input_tokens": 29391}
+{"qid": "c6q41", "condition": "grimoire-excerpt", "answer": "9 August 2022 (at a beach outing with his dogs)", "input_tokens": 31555}
+{"qid": "c6q31", "condition": "grimoire-excerpt", "answer": "8-9 days (leaving evening of July 11, returning July 20)", "input_tokens": 31640}
+{"qid": "c6q43", "condition": "grimoire-excerpt", "answer": "September 2022 (next month from August 21)", "input_tokens": 31178}
+{"qid": "c6q45", "condition": "grimoire-excerpt", "answer": "Stout, light beers, and lager.", "input_tokens": 31687}
+{"qid": "c6q5", "condition": "grimoire-excerpt", "answer": "James: The Witcher 3, RPGs, strategy games\nJohn: CS:GO, The Witcher 3, FIFA 23", "input_tokens": 31523}
+{"qid": "c6q58", "condition": "grimoire-excerpt", "answer": "20 October 2022", "input_tokens": 29342}
+{"qid": "c6q57", "condition": "grimoire-excerpt", "answer": "19 October 2022", "input_tokens": 31886}
+{"qid": "c6q55", "condition": "grimoire-excerpt", "answer": "13 October 2022 (the week before)", "input_tokens": 31110}
+{"qid": "c6q52", "condition": "grimoire-excerpt", "answer": "A few months before 20 September 2022 (around June-July 2022)", "input_tokens": 31680}
+{"qid": "c6q71", "condition": "grimoire-excerpt", "answer": "Help find the perfect pet for John.", "input_tokens": 31827}
+{"qid": "c6q68", "condition": "grimoire-excerpt", "answer": "Dog walking and pet care app (to connect pet owners with reliable dog walkers and provide pet care information)", "input_tokens": 31986}
+{"qid": "c6q85", "condition": "grimoire-excerpt", "answer": "Labrador", "input_tokens": 31755}
+{"qid": "c6q87", "condition": "grimoire-excerpt", "answer": "Hawaiian pizza.", "input_tokens": 31859}
+{"qid": "c6q79", "condition": "grimoire-excerpt", "answer": "Ned", "input_tokens": 29409}
+{"qid": "c6q6", "condition": "grimoire-excerpt", "answer": "No information provided in the conversations.", "input_tokens": 31750}
+{"qid": "c6q84", "condition": "grimoire-excerpt", "answer": "A coding assignment involving an algorithm that he was struggling to make work better.", "input_tokens": 31864}
+{"qid": "c7q100", "condition": "grimoire-excerpt", "answer": "An electrical engineering project", "input_tokens": 31890}
+{"qid": "c6q65", "condition": "grimoire-excerpt", "answer": "5-6 November 2022", "input_tokens": 31793}
+{"qid": "c6q39", "condition": "grimoire-excerpt", "answer": "July 2019 (approximately)\n\nBased on the August 6, 2022 conversation where John says he \"recently left my IT job after 3 years,\" working backward from that timeline places his start date around 3 years prior.", "input_tokens": 28780}
+{"qid": "c6q61", "condition": "grimoire-excerpt", "answer": "Not in provided context. Best guess: Got engaged.", "input_tokens": 31222}
+{"qid": "c7q102", "condition": "grimoire-excerpt", "answer": "A robotics project from her engineering professor.", "input_tokens": 31309}
+{"qid": "c7q103", "condition": "grimoire-excerpt", "answer": "At yoga in the park.", "input_tokens": 31500}
+{"qid": "c7q107", "condition": "grimoire-excerpt", "answer": "An amulet (from her mother)", "input_tokens": 32339}
+{"qid": "c7q11", "condition": "grimoire-excerpt", "answer": "Yes, Deborah is married. She mentions her husband in the conversations.", "input_tokens": 29309}
+{"qid": "c7q105", "condition": "grimoire-excerpt", "answer": "Built a sustainable water purifier for a rural community in need.", "input_tokens": 31230}
+{"qid": "c7q118", "condition": "grimoire-excerpt", "answer": "Lasagna", "input_tokens": 29404}
+{"qid": "c7q129", "condition": "grimoire-excerpt", "answer": "art show", "input_tokens": 31142}
+{"qid": "c6q75", "condition": "grimoire-excerpt", "answer": "The context does not explicitly state which game James played in the April 2022 tournament. Best guess: Apex Legends", "input_tokens": 28981}
+{"qid": "c7q144", "condition": "grimoire-excerpt", "answer": "She adopted her two years ago when feeling lonely and wanting company.", "input_tokens": 29120}
+{"qid": "c7q108", "condition": "grimoire-excerpt", "answer": "Confidence boost in her engineering abilities and a desire to contribute to green tech and help disadvantaged communities through STEM education.", "input_tokens": 31857}
+{"qid": "c7q119", "condition": "grimoire-excerpt", "answer": "A desk with a notebook and a computer monitor (shared on 2 March 2023 when discussing exam stress).", "input_tokens": 32414}
+{"qid": "c7q146", "condition": "grimoire-excerpt", "answer": "A gentle flow focused on breathing and grounding.", "input_tokens": 32107}
+{"qid": "c7q165", "condition": "grimoire-excerpt", "answer": "Yoga classes", "input_tokens": 31826}
+{"qid": "c7q159", "condition": "grimoire-excerpt", "answer": "Thrilled and rewarded.", "input_tokens": 30808}
+{"qid": "c7q136", "condition": "grimoire-excerpt", "answer": "Dancer Pose (Natarajasana)", "input_tokens": 30968}
+{"qid": "c7q13", "condition": "grimoire-excerpt", "answer": "Her mother's old house (bench by the window), a garden with flowers, Bali, a park with a forest trail and beach near her house, and the beach where she got married and surfs.", "input_tokens": 31136}
+{"qid": "c7q16", "condition": "grimoire-excerpt", "answer": "Susie and Seraphim.", "input_tokens": 29197}
+{"qid": "c7q15", "condition": "grimoire-excerpt", "answer": "Jolene has two snakes: Susie and Seraphim.", "input_tokens": 30688}
+{"qid": "c7q170", "condition": "grimoire-excerpt", "answer": "She came to her yoga classes with her and was her biggest fan and source of motivation.", "input_tokens": 31959}
+{"qid": "c7q175", "condition": "grimoire-excerpt", "answer": "Phuket, for a meditation retreat.", "input_tokens": 31259}
+{"qid": "c7q106", "condition": "grimoire-excerpt", "answer": "Sapiens", "input_tokens": 31715}
+{"qid": "c7q177", "condition": "grimoire-excerpt", "answer": "Experiencing a new level of joy and happiness.", "input_tokens": 31821}
+{"qid": "c7q183", "condition": "grimoire-excerpt", "answer": "Jolene describes their room as \"a little haven for peace and rest\" and \"the perfect spot to relax and recharge.\"", "input_tokens": 32309}
+{"qid": "c7q184", "condition": "grimoire-excerpt", "answer": "A free gardening class", "input_tokens": 31015}
+{"qid": "c7q17", "condition": "grimoire-excerpt", "answer": "January 2022", "input_tokens": 32325}
+{"qid": "c7q186", "condition": "grimoire-excerpt", "answer": "Pineapple birthday cakes", "input_tokens": 31735}
+{"qid": "c7q178", "condition": "grimoire-excerpt", "answer": "Found inner peace and experienced new joy through mindfulness and appreciating the present moment.", "input_tokens": 31777}
+{"qid": "c7q22", "condition": "grimoire-excerpt", "answer": "31 January 2023", "input_tokens": 28745}
+{"qid": "c7q187", "condition": "grimoire-excerpt", "answer": "Chocolate chip cookies.", "input_tokens": 31293}
+{"qid": "c7q19", "condition": "grimoire-excerpt", "answer": "Once (2010 in Paris). This is the only mention in the conversations - her mother gave her a pendant there in 2010.", "input_tokens": 31898}
+{"qid": "c7q35", "condition": "grimoire-excerpt", "answer": "24 February 2023", "input_tokens": 29839}
+{"qid": "c7q33", "condition": "grimoire-excerpt", "answer": "Three years.", "input_tokens": 30268}
+{"qid": "c7q185", "condition": "grimoire-excerpt", "answer": "Travel, flowers, art, and reading.", "input_tokens": 30063}
+{"qid": "c7q25", "condition": "grimoire-excerpt", "answer": "\"Sapiens\" and \"Avalanche\" by Neal Stephenson.", "input_tokens": 32156}
+{"qid": "c7q23", "condition": "grimoire-excerpt", "answer": "Playing video games with her partner and being busy with engineering school/internship work made it difficult to find time for yoga.", "input_tokens": 31975}
+{"qid": "c7q28", "condition": "grimoire-excerpt", "answer": "Colombia (Bogota)", "input_tokens": 31915}
+{"qid": "c7q171", "condition": "grimoire-excerpt", "answer": "Nintendo Wii", "input_tokens": 32201}
+{"qid": "c7q3", "condition": "grimoire-excerpt", "answer": "2022 (sometime in 2022, based on Jolene stating \"last year\" when speaking on January 23, 2023)", "input_tokens": 29600}
+{"qid": "c7q42", "condition": "grimoire-excerpt", "answer": "Deborah listens to instrumental tracks with mellow melodies, the track \"Savana,\" and an album called \"Sleep.\"", "input_tokens": 31506}
+{"qid": "c7q47", "condition": "grimoire-excerpt", "answer": "5 June 2023", "input_tokens": 32005}
+{"qid": "c7q38", "condition": "grimoire-excerpt", "answer": "10 March 2023 (the Friday before the conversation on 13 March 2023)", "input_tokens": 29034}
+{"qid": "c7q5", "condition": "grimoire-excerpt", "answer": "France", "input_tokens": 31398}
+{"qid": "c7q40", "condition": "grimoire-excerpt", "answer": "The beach. Deborah frequently mentions a beach nearby her home, does yoga and surfs there, and got married there.", "input_tokens": 32714}
+{"qid": "c7q45", "condition": "grimoire-excerpt", "answer": "May 2023", "input_tokens": 31192}
+{"qid": "c7q50", "condition": "grimoire-excerpt", "answer": "2020\n\n(Jolene stated in August 2023 that she had been doing yoga for 3 years, indicating she started around 2020.)", "input_tokens": 29228}
+{"qid": "c7q63", "condition": "grimoire-excerpt", "answer": "Max is 8 years old and Luna is 5 years old.", "input_tokens": 29167}
+{"qid": "c7q44", "condition": "grimoire-excerpt", "answer": "Not mentioned in the context. Deborah went to an art show with an unnamed friend on 9 April 2023, and met Anna at yoga, but no art show outing with Anna is described.", "input_tokens": 31940}
+{"qid": "c7q58", "condition": "grimoire-excerpt", "answer": "Zelda BOTW for Switch, Animal Crossing: New Horizons, and Overcooked 2.", "input_tokens": 32191}
+{"qid": "c7q64", "condition": "grimoire-excerpt", "answer": "Yes, Deborah loves cats. She explicitly states \"I really love cats\" on 26 August 2023 and owns two cats: Luna (adopted from a shelter) and Max (her mother's cat).", "input_tokens": 29423}
+{"qid": "c7q69", "condition": "grimoire-excerpt", "answer": "Yes, both have been. Jolene recently (August 29, 2023) and Deborah three years prior (around 2020).", "input_tokens": 29410}
+{"qid": "c7q43", "condition": "grimoire-excerpt", "answer": "Early April 2023", "input_tokens": 31409}
+{"qid": "c7q54", "condition": "grimoire-excerpt", "answer": "Susie. She was adopted around August 2021, while Seraphim was bought about a year later (around January 2022).", "input_tokens": 32402}
+{"qid": "c7q71", "condition": "grimoire-excerpt", "answer": "Last Friday (1 September 2023)", "input_tokens": 28761}
+{"qid": "c7q68", "condition": "grimoire-excerpt", "answer": "August 2020 (three years before August 30, 2023)", "input_tokens": 32105}
+{"qid": "c7q72", "condition": "grimoire-excerpt", "answer": "When she was 10 years old.", "input_tokens": 31491}
+{"qid": "c7q74", "condition": "grimoire-excerpt", "answer": "Fresh pastries.", "input_tokens": 31681}
+{"qid": "c7q81", "condition": "grimoire-excerpt", "answer": "17 September 2023", "input_tokens": 30593}
+{"qid": "c7q9", "condition": "grimoire-excerpt", "answer": "25 January 2023", "input_tokens": 31664}
+{"qid": "c7q179", "condition": "grimoire-excerpt", "answer": "Monster Hunter: World", "input_tokens": 30859}
+{"qid": "c7q94", "condition": "grimoire-excerpt", "answer": "Max (from her mother when she passed away) and Luna (from a shelter).", "input_tokens": 30108}
+{"qid": "c7q86", "condition": "grimoire-excerpt", "answer": "Letter from group members thanking her for positive influence (26 January 2023)", "input_tokens": 31446}
+{"qid": "c7q96", "condition": "grimoire-excerpt", "answer": "Took yoga classes, visited cafes, and went on excursions to temples.", "input_tokens": 29933}
+{"qid": "c7q84", "condition": "grimoire-excerpt", "answer": "Solar-powered vehicle, robotics project, clean water system for rural communities, aerial surveillance prototype.", "input_tokens": 31364}
+{"qid": "c8q0", "condition": "grimoire-excerpt", "answer": "A Prius (a new one he bought)", "input_tokens": 31975}
+{"qid": "c7q82", "condition": "grimoire-excerpt", "answer": "Beach, park, yoga studio/room with mats", "input_tokens": 31768}
+{"qid": "c7q88", "condition": "grimoire-excerpt", "answer": "Running, organizing mindfulness workshops and events, video games, spending time outdoors and exploring nature.", "input_tokens": 31881}
+{"qid": "c8q1", "condition": "grimoire-excerpt", "answer": "Old Prius, new Prius, knee", "input_tokens": 32181}
+{"qid": "c7q93", "condition": "grimoire-excerpt", "answer": "Based on the context provided, Jolene hasn't explicitly stated specific projects planned for \"next year.\" However, she mentions future plans for renewable energy development (solar projects) and clean water supply initiatives for communities with limited access, though she notes she \"still has so much to figure out before beginning.\"", "input_tokens": 29109}
+{"qid": "c8q117", "condition": "grimoire-excerpt", "answer": "Journal writing and creative writing.", "input_tokens": 31432}
+{"qid": "c8q115", "condition": "grimoire-excerpt", "answer": "Watercolor painting.", "input_tokens": 32293}
+{"qid": "c8q120", "condition": "grimoire-excerpt", "answer": "Find a trainer to help with good form and technique to avoid injuries while building strength.", "input_tokens": 31074}
+{"qid": "c8q121", "condition": "grimoire-excerpt", "answer": "Lake Tahoe", "input_tokens": 31864}
+{"qid": "c8q129", "condition": "grimoire-excerpt", "answer": "He relied on it for his active lifestyle and road trips.", "input_tokens": 31878}
+{"qid": "c8q11", "condition": "grimoire-excerpt", "answer": "Weight/being overweight (doctor's check-up 24 May 2023; friends mocking his weight 27 July 2023).", "input_tokens": 32332}
+{"qid": "c8q13", "condition": "grimoire-excerpt", "answer": "Late May 2023 (last week before 6 June 2023)", "input_tokens": 31510}
+{"qid": "c8q106", "condition": "grimoire-excerpt", "answer": "Watercolor painting", "input_tokens": 32447}
+{"qid": "c8q10", "condition": "grimoire-excerpt", "answer": "Camping trip in the outdoors. Evan consistently shows a strong preference for nature-based vacations with his family\u2014road trips to the Rockies, Jasper, camping, kayaking, and hiking\u2014rather than any mention of metropolitan city tours.", "input_tokens": 31827}
+{"qid": "c8q130", "condition": "grimoire-excerpt", "answer": "Sam suggested that setbacks can lead to new opportunities.", "input_tokens": 31865}
+{"qid": "c8q137", "condition": "grimoire-excerpt", "answer": "A close friend of Evan's.", "input_tokens": 29041}
+{"qid": "c8q147", "condition": "grimoire-excerpt", "answer": "Two ginger snaps a day", "input_tokens": 31714}
+{"qid": "c8q140", "condition": "grimoire-excerpt", "answer": "Joy and freedom, playful and liberated.", "input_tokens": 28527}
+{"qid": "c8q148", "condition": "grimoire-excerpt", "answer": "Snowshoeing.", "input_tokens": 31316}
+{"qid": "c8q145", "condition": "grimoire-excerpt", "answer": "Recipes", "input_tokens": 31433}
+{"qid": "c8q151", "condition": "grimoire-excerpt", "answer": "The Godfather", "input_tokens": 31943}
+{"qid": "c8q142", "condition": "grimoire-excerpt", "answer": "Evan described it as created with \"a sense of joy and freedom. The spontaneous strokes and bold colors reflect a playful and liberated mood, embracing the creative process without restraint.\"", "input_tokens": 31889}
+{"qid": "c8q155", "condition": "grimoire-excerpt", "answer": "Evan describes being out on the water kayaking and watching the sunset as \"truly unforgettable\" and \"so peaceful.\"", "input_tokens": 32107}
+{"qid": "c8q150", "condition": "grimoire-excerpt", "answer": "Swimming, yoga, walking, and beach walks. Evan also suggested kayaking as a fun outdoor exercise option.", "input_tokens": 28945}
+{"qid": "c8q17", "condition": "grimoire-excerpt", "answer": "Last Friday (21 July 2023)", "input_tokens": 32202}
+{"qid": "c8q23", "condition": "grimoire-excerpt", "answer": "28 July 2023", "input_tokens": 32350}
+{"qid": "c8q152", "condition": "grimoire-excerpt", "answer": "Yoga", "input_tokens": 28983}
+{"qid": "c8q4", "condition": "grimoire-excerpt", "answer": "Painting", "input_tokens": 31898}
+{"qid": "c8q32", "condition": "grimoire-excerpt", "answer": "Losing his keys (described as a \"weekly ritual\")", "input_tokens": 31486}
+{"qid": "c8q41", "condition": "grimoire-excerpt", "answer": "Painting classes (watercolor)", "input_tokens": 31511}
+{"qid": "c8q26", "condition": "grimoire-excerpt", "answer": "His family and a thirst for adventure/hiking motivate him to stay healthy.", "input_tokens": 31129}
+{"qid": "c8q42", "condition": "grimoire-excerpt", "answer": "A friend got him into it and gave him advice; the friend's painting inspired him.", "input_tokens": 29994}
+{"qid": "c8q3", "condition": "grimoire-excerpt", "answer": "Two Priuses: an old one that broke down (which he repaired and sold before May 2023), and a new one purchased around May 2023 (which also broke down by December 2023).", "input_tokens": 30979}
+{"qid": "c8q5", "condition": "grimoire-excerpt", "answer": "Canada", "input_tokens": 30870}
+{"qid": "c8q59", "condition": "grimoire-excerpt", "answer": "14 October 2023", "input_tokens": 32495}
+{"qid": "c8q58", "condition": "grimoire-excerpt", "answer": "October 2022 (one year before 8 October 2023)", "input_tokens": 31750}
+{"qid": "c8q55", "condition": "grimoire-excerpt", "answer": "Helping lost tourists find their way, which leads to unexpected city tours.", "input_tokens": 32211}
+{"qid": "c8q54", "condition": "grimoire-excerpt", "answer": "Heart palpitation incident (early June 2023); hospitalization with suspicious finding later revealed as misunderstanding (November 2023)", "input_tokens": 31995}
+{"qid": "c8q53", "condition": "grimoire-excerpt", "answer": "11 September 2023 (to paint the following Saturday, 16 September 2023)", "input_tokens": 29283}
+{"qid": "c8q43", "condition": "grimoire-excerpt", "answer": "The context does not establish a clear regular frequency. Sam mentions checkups in May 2023, October 2023, but by January 2024 says \"haven't seen a doctor in a while,\" suggesting irregular/as-needed rather than scheduled checkups.", "input_tokens": 32440}
+{"qid": "c8q71", "condition": "grimoire-excerpt", "answer": "Christmas (December 2023)", "input_tokens": 30497}
+{"qid": "c8q72", "condition": "grimoire-excerpt", "answer": "Hiking", "input_tokens": 31193}
+{"qid": "c8q75", "condition": "grimoire-excerpt", "answer": "5 January 2024", "input_tokens": 31216}
+{"qid": "c8q87", "condition": "grimoire-excerpt", "answer": "Jasper", "input_tokens": 31310}
+{"qid": "c8q79", "condition": "grimoire-excerpt", "answer": "February 2024", "input_tokens": 32145}
+{"qid": "c8q51", "condition": "grimoire-excerpt", "answer": "Sam faces weight management, breaking habits (soda/candy consumption), and low motivation. He addresses these through dietary substitutes, cooking classes, motivational quotes, community support (becomes Weight Watchers coach), hiking, and time in nature.", "input_tokens": 32493}
+{"qid": "c8q81", "condition": "grimoire-excerpt", "answer": "Painting. Evan explicitly states \"I find painting to be a great stress reliever\" and mentions it helps him find peace and express himself.", "input_tokens": 29546}
+{"qid": "c8q92", "condition": "grimoire-excerpt", "answer": "The self-checkout machines were all broken.", "input_tokens": 32056}
+{"qid": "c8q45", "condition": "grimoire-excerpt", "answer": "None mentioned in July 2023", "input_tokens": 32312}
+{"qid": "c8q97", "condition": "grimoire-excerpt", "answer": "It symbolizes strength and resilience, and caring for it motivates him through tough times.", "input_tokens": 32577}
+{"qid": "c8q89", "condition": "grimoire-excerpt", "answer": "Reducing soda and candy intake.", "input_tokens": 31998}
+{"qid": "c8q70", "condition": "grimoire-excerpt", "answer": "The context does not specify how long Evan and his partner dated before marriage. Evan mentions it was \"love at first sight\" and wonders \"why we didn't get married before,\" suggesting a relatively short dating period, but no exact duration is provided.", "input_tokens": 31487}
+{"qid": "c8q91", "condition": "grimoire-excerpt", "answer": "Flavored seltzer water and dark chocolate with high cocoa content.", "input_tokens": 32073}
+{"qid": "c8q93", "condition": "grimoire-excerpt", "answer": "The Great Gatsby", "input_tokens": 32391}
+{"qid": "c9q104", "condition": "grimoire-excerpt", "answer": "For a unique look and to match his style.", "input_tokens": 32067}
+{"qid": "c8q9", "condition": "grimoire-excerpt", "answer": "20-21 May 2023", "input_tokens": 31976}
+{"qid": "c9q116", "condition": "grimoire-excerpt", "answer": "Ford Mustang", "input_tokens": 28880}
+{"qid": "c9q108", "condition": "grimoire-excerpt", "answer": "Boston", "input_tokens": 30756}
+{"qid": "c9q109", "condition": "grimoire-excerpt", "answer": "Visiting Tokyo and exploring places like Shibuya Crossing and Shinjuku, trying ramen and other food.", "input_tokens": 29861}
+{"qid": "c9q111", "condition": "grimoire-excerpt", "answer": "Ratatouille", "input_tokens": 31985}
+{"qid": "c9q127", "condition": "grimoire-excerpt", "answer": "Shibuya Crossing and Shinjuku", "input_tokens": 31126}
+{"qid": "c9q119", "condition": "grimoire-excerpt", "answer": "Therapy, self-expression, and a sense of achievement. It's a calming outlet where he connects with himself and experiences fulfillment by transforming broken things into something that works.", "input_tokens": 31847}
+{"qid": "c9q139", "condition": "grimoire-excerpt", "answer": "Calvin realized how much music means to him\u2014it's his passion and purpose.", "input_tokens": 28805}
+{"qid": "c9q134", "condition": "grimoire-excerpt", "answer": "Paying attention to detail isn't easy, but it takes patience and the payoff is worth it.", "input_tokens": 32164}
+{"qid": "c9q124", "condition": "grimoire-excerpt", "answer": "Fixing and repairing cars (automotive engineering and car modifications). Dave compares the fulfillment of fixing broken cars and making them whole to how Calvin finds joy in music and performing live.", "input_tokens": 31938}
+{"qid": "c9q125", "condition": "grimoire-excerpt", "answer": "Music festival in Tokyo (August 2022)", "input_tokens": 31322}
+{"qid": "c9q133", "condition": "grimoire-excerpt", "answer": "Dave was fascinated with how machines work since age 10. He found an old car in a neighbor's garage and asked to fix it, which sparked his love for car engineering. He also worked on cars with his dad growing up.", "input_tokens": 31349}
+{"qid": "c9q142", "condition": "grimoire-excerpt", "answer": "Threw a party at his Japanese house to celebrate his new album release.", "input_tokens": 31646}
+{"qid": "c9q117", "condition": "grimoire-excerpt", "answer": "Seeing old cars transformed into something beautiful and the sense of accomplishment from bringing them back to life. Dave also finds satisfaction in people's reactions to the finished product.", "input_tokens": 31367}
+{"qid": "c9q120", "condition": "grimoire-excerpt", "answer": "Build a custom car from scratch and share his passion through blogging about car mods.", "input_tokens": 32000}
+{"qid": "c9q144", "condition": "grimoire-excerpt", "answer": "A blog on car mods.", "input_tokens": 31599}
+{"qid": "c9q148", "condition": "grimoire-excerpt", "answer": "Car modifications/car mods. He posted about how he made a car look like a beast.", "input_tokens": 30394}
+{"qid": "c9q140", "condition": "grimoire-excerpt", "answer": "Hard work, dedication, and progress are essential to achieving their goals.", "input_tokens": 31419}
+{"qid": "c9q16", "condition": "grimoire-excerpt", "answer": "July 2023 (booked for next month from 9 June)", "input_tokens": 31644}
+{"qid": "c9q24", "condition": "grimoire-excerpt", "answer": "Yes, Dave can work with engines. He operates a car maintenance shop, has fixed engines for neighbors and friends, worked on a vintage Mustang engine, and has been tinkering with engines since childhood in his father's garage.", "input_tokens": 31941}
+{"qid": "c9q153", "condition": "grimoire-excerpt", "answer": "Nature photography\u2014sunsets, beaches, waves, and natural landscapes.", "input_tokens": 31111}
+{"qid": "c9q152", "condition": "grimoire-excerpt", "answer": "Record player (2 November 2023)", "input_tokens": 31560}
+{"qid": "c9q38", "condition": "grimoire-excerpt", "answer": "14 September 2023", "input_tokens": 30027}
+{"qid": "c9q40", "condition": "grimoire-excerpt", "answer": "Tupac and Dr. Dre", "input_tokens": 30874}
+{"qid": "c9q20", "condition": "grimoire-excerpt", "answer": "His dad (who took him to his first car show at age 10), and a neighbor (who let him fix an old car in their garage at age 10).", "input_tokens": 31069}
+{"qid": "c9q19", "condition": "grimoire-excerpt", "answer": "Music festival, Shibuya Crossing, Shinjuku, Tokyo streets/nightlife", "input_tokens": 31244}
+{"qid": "c9q2", "condition": "grimoire-excerpt", "answer": "25 March 2023 (at a music festival in Boston)", "input_tokens": 28981}
+{"qid": "c9q37", "condition": "grimoire-excerpt", "answer": "Yes. Calvin repeatedly expresses excitement about tours, describing them as \"amazing,\" saying touring \"fuels [his] soul,\" and that performing live is an \"absolute high\" with \"indescribable\" connection to the crowd.", "input_tokens": 28615}
+{"qid": "c9q69", "condition": "grimoire-excerpt", "answer": "November 2023", "input_tokens": 31892}
+{"qid": "c9q70", "condition": "grimoire-excerpt", "answer": "16 November 2023", "input_tokens": 28908}
+{"qid": "c9q53", "condition": "grimoire-excerpt", "answer": "Friends, team, and supportive people around him (particularly Dave, his close friend)", "input_tokens": 30652}
+{"qid": "c9q75", "condition": "grimoire-excerpt", "answer": "Car maintenance shop", "input_tokens": 31606}
+{"qid": "c9q65", "condition": "grimoire-excerpt", "answer": "September 2023", "input_tokens": 31182}
+{"qid": "c9q151", "condition": "grimoire-excerpt", "answer": "Based on the context provided, there is no clear indication that Calvin took up a new hobby recently. Throughout the conversations, his primary passion has been music and performing (touring, album release, collaborations). The context does not show him taking up a distinctly new hobby.", "input_tokens": 30978}
+{"qid": "c9q68", "condition": "grimoire-excerpt", "answer": "Last week (from 2 November 2023), so approximately late October 2023.", "input_tokens": 31989}
+{"qid": "c9q31", "condition": "grimoire-excerpt", "answer": "Not specified in context. The only activity mentioned for that period is a card night with friends on August 18, 2023, but no location is given.", "input_tokens": 31141}
+{"qid": "c9q50", "condition": "grimoire-excerpt", "answer": "Early October 2023 (approximately October 8-9, based on Calvin saying \"last week\" on October 15, 2023)", "input_tokens": 31832}
+{"qid": "c9q76", "condition": "grimoire-excerpt", "answer": "All kinds of cars\u2014regular maintenance to classic car restorations.", "input_tokens": 32500}
+{"qid": "c9q58", "condition": "grimoire-excerpt", "answer": "Dad took him to his first car show at age 10, and he found an old car in a neighbor's garage that he restored.", "input_tokens": 32194}
+{"qid": "c9q82", "condition": "grimoire-excerpt", "answer": "A car maintenance shop.", "input_tokens": 29039}
+{"qid": "c9q57", "condition": "grimoire-excerpt", "answer": "Photography", "input_tokens": 30961}
+{"qid": "c9q86", "condition": "grimoire-excerpt", "answer": "Skiing", "input_tokens": 31159}
+{"qid": "c9q96", "condition": "grimoire-excerpt", "answer": "Silver Corvette (classic muscle car)", "input_tokens": 31679}
+{"qid": "c9q98", "condition": "grimoire-excerpt", "answer": "Everyone sang along with him; it was a magical moment.", "input_tokens": 31451}
+{"qid": "c9q83", "condition": "grimoire-excerpt", "answer": "Fixing and restoring cars, transforming broken things into something that works and looks great.", "input_tokens": 28866}
+{"qid": "c9q88", "condition": "grimoire-excerpt", "answer": "The context does not show Calvin arranging anything in a park. It was Dave who arranged regular walks with friends in the park.", "input_tokens": 31733}
+{"qid": "c9q93", "condition": "grimoire-excerpt", "answer": "Keep pursuing your passion and never give up.", "input_tokens": 31620}
+{"qid": "c0q106", "condition": "grimoire-excerpt-gated", "answer": "Running.", "input_tokens": 28491}
+{"qid": "c0q118", "condition": "grimoire-excerpt-gated", "answer": "The Perseid meteor shower", "input_tokens": 32381}
+{"qid": "c0q127", "condition": "grimoire-excerpt-gated", "answer": "A stained glass window showing time changing our lives, representing her journey as a transgender woman.", "input_tokens": 28455}
+{"qid": "c0q0", "condition": "grimoire-excerpt-gated", "answer": "7 May 2023", "input_tokens": 29820}
+{"qid": "c0q11", "condition": "grimoire-excerpt-gated", "answer": "Sweden", "input_tokens": 32201}
+{"qid": "c0q107", "condition": "grimoire-excerpt-gated", "answer": "To de-stress and clear her mind for her mental health.", "input_tokens": 31028}
+{"qid": "c0q124", "condition": "grimoire-excerpt-gated", "answer": "A dog named Luna and two cats named Oliver and Bailey.", "input_tokens": 28590}
+{"qid": "c0q121", "condition": "grimoire-excerpt-gated", "answer": "Matt Patterson", "input_tokens": 31174}
+{"qid": "c0q110", "condition": "grimoire-excerpt-gated", "answer": "A cup with a dog face on it.", "input_tokens": 31423}
+{"qid": "c0q133", "condition": "grimoire-excerpt-gated", "answer": "A sign stating that someone is not being able to leave", "input_tokens": 31616}
+{"qid": "c0q122", "condition": "grimoire-excerpt-gated", "answer": "To catch the eye and make people smile, and to express her feelings creatively.", "input_tokens": 32039}
+{"qid": "c0q134", "condition": "grimoire-excerpt-gated", "answer": "Research, find an adoption agency or lawyer, gather documents (references, financial info, medical checks), prepare emotionally.", "input_tokens": 31691}
+{"qid": "c0q140", "condition": "grimoire-excerpt-gated", "answer": "\"trans lives matter\"", "input_tokens": 31668}
+{"qid": "c0q1", "condition": "grimoire-excerpt-gated", "answer": "2022 (last year from May 2023)", "input_tokens": 31761}
+{"qid": "c0q137", "condition": "grimoire-excerpt-gated", "answer": "A sunset painting with a pink sky.", "input_tokens": 28642}
+{"qid": "c0q151", "condition": "grimoire-excerpt-gated", "answer": "Went camping with her family and took nature walks/hikes.", "input_tokens": 28461}
+{"qid": "c0q141", "condition": "grimoire-excerpt-gated", "answer": "Freedom and being real; embracing her womanhood and staying true to herself.", "input_tokens": 31520}
+{"qid": "c0q22", "condition": "grimoire-excerpt-gated", "answer": "Yes, likely. Caroline said she has \"classics\" and \"kids' books\" in her library for her future children.", "input_tokens": 31695}
+{"qid": "c0q2", "condition": "grimoire-excerpt-gated", "answer": "Counseling and mental health, particularly working with transgender individuals.", "input_tokens": 31985}
+{"qid": "c0q144", "condition": "grimoire-excerpt-gated", "answer": "He was okay; physically unharmed from the accident. The context doesn't describe his specific emotional response, only that the family was scared and he survived without serious injury.", "input_tokens": 31459}
+{"qid": "c0q28", "condition": "grimoire-excerpt-gated", "answer": "14 July 2023", "input_tokens": 30976}
+{"qid": "c0q142", "condition": "grimoire-excerpt-gated", "answer": "A shared journey of learning, growth, and making a positive impact together through mutual support and spreading love and understanding.", "input_tokens": 31273}
+{"qid": "c0q31", "condition": "grimoire-excerpt-gated", "answer": "Around 20 June 2023 (the week before 27 June).", "input_tokens": 31723}
+{"qid": "c0q34", "condition": "grimoire-excerpt-gated", "answer": "Mentorship program for LGBTQ youth (July 2023), volunteering at youth center, organizing talent show for kids (August 2023).", "input_tokens": 31753}
+{"qid": "c0q30", "condition": "grimoire-excerpt-gated", "answer": "No, based on the context provided. Melanie appears to be a supportive ally of the LGBTQ community but does not identify as a member of it. She discusses her family and children but never mentions her own gender identity or sexual orientation.", "input_tokens": 30836}
+{"qid": "c0q41", "condition": "grimoire-excerpt-gated", "answer": "18 July 2023", "input_tokens": 28601}
+{"qid": "c0q37", "condition": "grimoire-excerpt-gated", "answer": "A sunset painting with a pink sky and an abstract painting with blue streaks.", "input_tokens": 31011}
+{"qid": "c0q38", "condition": "grimoire-excerpt-gated", "answer": "Camping (roasting marshmallows, campfire stories, watching meteor showers), hiking, beach trips, museum visits (dinosaur exhibit, 6 July 2023), park outings (28 August 2023), swimming, exploring forests.", "input_tokens": 31319}
+{"qid": "c0q47", "condition": "grimoire-excerpt-gated", "answer": "Melanie, her friends, and family support Caroline when she has negative experiences.", "input_tokens": 32015}
+{"qid": "c0q44", "condition": "grimoire-excerpt-gated", "answer": "13 August 2023", "input_tokens": 31181}
+{"qid": "c0q43", "condition": "grimoire-excerpt-gated", "answer": "Paintings, drawings, and abstract art. She creates work exploring trans identity, self-acceptance, LGBTQ themes, and nature.", "input_tokens": 29121}
+{"qid": "c0q50", "condition": "grimoire-excerpt-gated", "answer": "Progressive/left-leaning. Caroline is actively involved in LGBTQ activism, trans rights advocacy, and community support initiatives.", "input_tokens": 31509}
+{"qid": "c0q48", "condition": "grimoire-excerpt-gated", "answer": "Pots and a cup with a dog face on it.", "input_tokens": 30943}
+{"qid": "c0q60", "condition": "grimoire-excerpt-gated", "answer": "Clarinet (started when young)", "input_tokens": 31351}
+{"qid": "c0q40", "condition": "grimoire-excerpt-gated", "answer": "Based on the context, Melanie explicitly mentions going to the beach **once in 2023** (sometime before July 20, 2023). She notes they typically go \"once or twice a year,\" but only one beach trip is detailed in these conversations.", "input_tokens": 31751}
+{"qid": "c0q52", "condition": "grimoire-excerpt-gated", "answer": "Luna, Oliver, and Bailey.", "input_tokens": 31465}
+{"qid": "c0q59", "condition": "grimoire-excerpt-gated", "answer": "No, not mentioned. She had a negative encounter with religious conservatives, but no indication she's religious herself.", "input_tokens": 31448}
+{"qid": "c0q53", "condition": "grimoire-excerpt-gated", "answer": "Week of 23 August 2023 (she applied sometime that week)", "input_tokens": 28669}
+{"qid": "c0q64", "condition": "grimoire-excerpt-gated", "answer": "Yes, likely. Melanie enjoys classical music like Bach and Mozart.", "input_tokens": 31418}
+{"qid": "c0q61", "condition": "grimoire-excerpt-gated", "answer": "Summer Sounds (28 August 2023), Matt Patterson (14 August 2023)", "input_tokens": 31587}
+{"qid": "c0q66", "condition": "grimoire-excerpt-gated", "answer": "Explore nature and mountains, connect with each other.", "input_tokens": 31581}
+{"qid": "c0q72", "condition": "grimoire-excerpt-gated", "answer": "Last year (sometime in 2022)", "input_tokens": 31311}
+{"qid": "c0q62", "condition": "grimoire-excerpt-gated", "answer": "27 August, 2023 (the day before she mentioned it in the 28 August conversation)", "input_tokens": 28300}
+{"qid": "c0q73", "condition": "grimoire-excerpt-gated", "answer": "September 2023 (last month before October 13, 2023)", "input_tokens": 31406}
+{"qid": "c0q83", "condition": "grimoire-excerpt-gated", "answer": "Self-care is really important.", "input_tokens": 31314}
+{"qid": "c0q65", "condition": "grimoire-excerpt-gated", "answer": "Changes in relationships (some friends unsupportive; found genuine connections with accepting people), personal growth through art exploring gender identity (starting ~2020), finding supportive LGBTQ+ community, and becoming more confident and proud of her authentic self (by 13 September 2023).", "input_tokens": 32070}
+{"qid": "c0q33", "condition": "grimoire-excerpt-gated", "answer": "11 August 2023", "input_tokens": 31491}
+{"qid": "c0q78", "condition": "grimoire-excerpt-gated", "answer": "Pink sneakers (12 July 2023), wooden figurines (21 October 2023)", "input_tokens": 31319}
+{"qid": "c0q91", "condition": "grimoire-excerpt-gated", "answer": "Love, faith, and strength.", "input_tokens": 31280}
+{"qid": "c0q90", "condition": "grimoire-excerpt-gated", "answer": "5 years", "input_tokens": 28710}
+{"qid": "c0q85", "condition": "grimoire-excerpt-gated", "answer": "Researching adoption agencies and planning a special outing with Melanie to explore nature.", "input_tokens": 30359}
+{"qid": "c0q84", "condition": "grimoire-excerpt-gated", "answer": "Running, reading, playing violin, and painting. Started with painting (8 May 2023), then expanded to running for stress relief (from 25 May 2023 onwards).", "input_tokens": 30924}
+{"qid": "c1q10", "condition": "grimoire-excerpt-gated", "answer": "8 February 2023", "input_tokens": 31223}
+{"qid": "c0q8", "condition": "grimoire-excerpt-gated", "answer": "Early June 2023 (she mentioned it happened \"last week\" during the June 9 conversation)", "input_tokens": 31987}
+{"qid": "c1q29", "condition": "grimoire-excerpt-gated", "answer": "Paris (visited 28 January 2023)", "input_tokens": 31483}
+{"qid": "c0q9", "condition": "grimoire-excerpt-gated", "answer": "Early June 2023 (mentioned as \"last week\" on 9 June 2023)", "input_tokens": 31688}
+{"qid": "c1q14", "condition": "grimoire-excerpt-gated", "answer": "3 April 2023", "input_tokens": 30846}
+{"qid": "c1q28", "condition": "grimoire-excerpt-gated", "answer": "Around 12-13 June 2023 (the week before 19 June 2023, when he mentioned the trip)", "input_tokens": 29311}
+{"qid": "c1q2", "condition": "grimoire-excerpt-gated", "answer": "Dancing. They both use dance as their primary way to destress and relieve stress.", "input_tokens": 28589}
+{"qid": "c1q39", "condition": "grimoire-excerpt-gated", "answer": "Contemporary dance", "input_tokens": 30091}
+{"qid": "c1q37", "condition": "grimoire-excerpt-gated", "answer": "23 July 2023", "input_tokens": 30816}
+{"qid": "c1q42", "condition": "grimoire-excerpt-gated", "answer": "A contemporary piece called \"Finding Freedom.\"", "input_tokens": 28713}
+{"qid": "c1q32", "condition": "grimoire-excerpt-gated", "answer": "Week of 14 June 2023 (last week before 21 June conversation)", "input_tokens": 31620}
+{"qid": "c1q4", "condition": "grimoire-excerpt-gated", "answer": "Jon was passionate about dancing since childhood and wanted to share the joy of dance with others. Losing his job as a banker gave him the push to finally pursue his dream business.", "input_tokens": 32033}
+{"qid": "c1q34", "condition": "grimoire-excerpt-gated", "answer": "Early July 2023 (the week before July 9, 2023)", "input_tokens": 30679}
+{"qid": "c1q41", "condition": "grimoire-excerpt-gated", "answer": "Winning first place at regionals at age fifteen with her team's contemporary piece \"Finding Freedom\"", "input_tokens": 31808}
+{"qid": "c1q33", "condition": "grimoire-excerpt-gated", "answer": "Jon visited networking events on June 20, 2023 (mentioned as \"yesterday\" in the June 21 conversation). Note: Jon was developing a dance studio, not a store.", "input_tokens": 31970}
+{"qid": "c1q49", "condition": "grimoire-excerpt-gated", "answer": "Gina wanted her customers to feel cozy, comfortable, and like they were in a \"cool oasis\"\u2014she wanted to create an inviting experience that would make them want to return.", "input_tokens": 31844}
+{"qid": "c1q62", "condition": "grimoire-excerpt-gated", "answer": "Gina stays confident by reminding herself of her successes and progress, maintaining a good support system, and focusing on why she started her business because she loves it.", "input_tokens": 30686}
+{"qid": "c1q61", "condition": "grimoire-excerpt-gated", "answer": "A trophy with a glass globe on top.", "input_tokens": 31354}
+{"qid": "c1q66", "condition": "grimoire-excerpt-gated", "answer": "Dance classes, workshops, and one-on-one mentoring and training.", "input_tokens": 30881}
+{"qid": "c1q63", "condition": "grimoire-excerpt-gated", "answer": "Fashion internship (part-time position in the fashion department of an international company)", "input_tokens": 30447}
+{"qid": "c1q69", "condition": "grimoire-excerpt-gated", "answer": "To clear his mind while working on his business.", "input_tokens": 32057}
+{"qid": "c1q44", "condition": "grimoire-excerpt-gated", "answer": "They're so graceful.", "input_tokens": 31014}
+{"qid": "c1q72", "condition": "grimoire-excerpt-gated", "answer": "Excited, positive, and ready. He can't wait to savor the moment and make memories.", "input_tokens": 31482}
+{"qid": "c1q67", "condition": "grimoire-excerpt-gated", "answer": "Jon uses the clipboard with a notepad to stay organized and motivated, set goals, track his achievements, and identify areas to improve.", "input_tokens": 31225}
+{"qid": "c1q77", "condition": "grimoire-excerpt-gated", "answer": "Hoodies.", "input_tokens": 31354}
+{"qid": "c1q73", "condition": "grimoire-excerpt-gated", "answer": "Stress relief.", "input_tokens": 31124}
+{"qid": "c1q50", "condition": "grimoire-excerpt-gated", "answer": "\"It looks awesome. Your commitment and creativity in your business really stands out.\" (8 February 2023)\n\nHe also congratulated her multiple times, saying the store looked \"sick\" and that she did great taking the leap.", "input_tokens": 31074}
+{"qid": "c2q103", "condition": "grimoire-excerpt-gated", "answer": "Max", "input_tokens": 31241}
+{"qid": "c2q104", "condition": "grimoire-excerpt-gated", "answer": "10 years", "input_tokens": 28433}
+{"qid": "c1q78", "condition": "grimoire-excerpt-gated", "answer": "His positivity and determination.", "input_tokens": 30904}
+{"qid": "c0q97", "condition": "grimoire-excerpt-gated", "answer": "LGBTQ+ counseling workshop (June 27, 2023)", "input_tokens": 31506}
+{"qid": "c2q110", "condition": "grimoire-excerpt-gated", "answer": "She joined a gym.", "input_tokens": 27921}
+{"qid": "c1q76", "condition": "grimoire-excerpt-gated", "answer": "Extremely positive and excited. Both Jon and Gina are enthusiastic, proud, and looking forward to celebrating the dance studio's grand opening on 20 June 2023.", "input_tokens": 31604}
+{"qid": "c2q111", "condition": "grimoire-excerpt-gated", "answer": "Kundalini yoga", "input_tokens": 31346}
+{"qid": "c2q117", "condition": "grimoire-excerpt-gated", "answer": "A marching event for veterans' rights.", "input_tokens": 28910}
+{"qid": "c2q118", "condition": "grimoire-excerpt-gated", "answer": "Great respect for the military and a desire to show support for what he believes in.", "input_tokens": 28523}
+{"qid": "c2q113", "condition": "grimoire-excerpt-gated", "answer": "Self-doubt", "input_tokens": 30788}
+{"qid": "c2q12", "condition": "grimoire-excerpt-gated", "answer": "Military aptitude test", "input_tokens": 31525}
+{"qid": "c2q120", "condition": "grimoire-excerpt-gated", "answer": "Flood", "input_tokens": 29999}
+{"qid": "c2q122", "condition": "grimoire-excerpt-gated", "answer": "A nasty flood that hit John's area and damaged homes.", "input_tokens": 30605}
+{"qid": "c2q134", "condition": "grimoire-excerpt-gated", "answer": "Awestruck and humbled.", "input_tokens": 31321}
+{"qid": "c2q139", "condition": "grimoire-excerpt-gated", "answer": "Renovated a rundown community center back home.", "input_tokens": 31227}
+{"qid": "c2q142", "condition": "grimoire-excerpt-gated", "answer": "A medal.", "input_tokens": 30828}
+{"qid": "c2q135", "condition": "grimoire-excerpt-gated", "answer": "To remember and appreciate those who served.", "input_tokens": 30797}
+{"qid": "c2q146", "condition": "grimoire-excerpt-gated", "answer": "He doesn't feel like he's making much of an impact.", "input_tokens": 31546}
+{"qid": "c2q133", "condition": "grimoire-excerpt-gated", "answer": "Took his kids to a military memorial where they held a flag in a cemetery.", "input_tokens": 30745}
+{"qid": "c2q148", "condition": "grimoire-excerpt-gated", "answer": "Shadow is adjusting well\u2014learning commands and house training, with lots of energy. Gets along great with Maria's other dog, Coco.", "input_tokens": 31856}
+{"qid": "c2q115", "condition": "grimoire-excerpt-gated", "answer": "Live music event", "input_tokens": 31150}
+{"qid": "c2q19", "condition": "grimoire-excerpt-gated", "answer": "Broken windshield (January 9, 2023)", "input_tokens": 29116}
+{"qid": "c2q17", "condition": "grimoire-excerpt-gated", "answer": "Political Science or Public Policy", "input_tokens": 31196}
+{"qid": "c2q149", "condition": "grimoire-excerpt-gated", "answer": "Fire-fighting brigade and mentoring at a local school.", "input_tokens": 30944}
+{"qid": "c2q2", "condition": "grimoire-excerpt-gated", "answer": "Kickboxing", "input_tokens": 28270}
+{"qid": "c2q22", "condition": "grimoire-excerpt-gated", "answer": "March 2023", "input_tokens": 31033}
+{"qid": "c2q20", "condition": "grimoire-excerpt-gated", "answer": "Sometime in 2022 (referred to as \"last year\" in April 2023)", "input_tokens": 30894}
+{"qid": "c2q21", "condition": "grimoire-excerpt-gated", "answer": "East Coast (18 April 2023)", "input_tokens": 31061}
+{"qid": "c2q27", "condition": "grimoire-excerpt-gated", "answer": "19 May 2023", "input_tokens": 31483}
+{"qid": "c2q29", "condition": "grimoire-excerpt-gated", "answer": "Ring-toss tournament and chili cook-off", "input_tokens": 31188}
+{"qid": "c2q25", "condition": "grimoire-excerpt-gated", "answer": "The context does not contain any information about Maria traveling to European countries.", "input_tokens": 31285}
+{"qid": "c2q28", "condition": "grimoire-excerpt-gated", "answer": "Veterans, military support, domestic abuse awareness, underprivileged youth education, community service.", "input_tokens": 28480}
+{"qid": "c2q30", "condition": "grimoire-excerpt-gated", "answer": "A homeless shelter (name not specified in the conversation).", "input_tokens": 30811}
+{"qid": "c2q44", "condition": "grimoire-excerpt-gated", "answer": "Hiking (22 July 2023), picnic with games like charades and scavenger hunt (17 July 2023), community volunteer work (5 August 2023).", "input_tokens": 30558}
+{"qid": "c2q35", "condition": "grimoire-excerpt-gated", "answer": "Spain (not a U.S. state; no U.S. states mentioned in the context)", "input_tokens": 31319}
+{"qid": "c2q65", "condition": "grimoire-excerpt-gated", "answer": "Education and infrastructure.", "input_tokens": 30695}
+{"qid": "c2q57", "condition": "grimoire-excerpt-gated", "answer": "Veterans and their families, and domestic abuse awareness.", "input_tokens": 28203}
+{"qid": "c2q53", "condition": "grimoire-excerpt-gated", "answer": "Last year (2022), relative to August 2023", "input_tokens": 30963}
+{"qid": "c2q47", "condition": "grimoire-excerpt-gated", "answer": "Yoga, weight training, boot camps, and kickboxing/circuit training (at his yoga studio).", "input_tokens": 28096}
+{"qid": "c2q81", "condition": "grimoire-excerpt-gated", "answer": "A trip to England (specifically London), where she was mesmerized by the castles.", "input_tokens": 28821}
+{"qid": "c2q73", "condition": "grimoire-excerpt-gated", "answer": "Her aunt inspired Maria to start volunteering.", "input_tokens": 30637}
+{"qid": "c2q46", "condition": "grimoire-excerpt-gated", "answer": "Around 15-16 July 2023 (last weekend before the 22 July conversation)", "input_tokens": 28708}
+{"qid": "c2q54", "condition": "grimoire-excerpt-gated", "answer": "4 August 2023", "input_tokens": 31634}
+{"qid": "c2q86", "condition": "grimoire-excerpt-gated", "answer": "His car broke down and he needed to get it fixed.", "input_tokens": 28548}
+{"qid": "c2q51", "condition": "grimoire-excerpt-gated", "answer": "About August 2022 (mentioned in August 2023 conversation as \"about a year ago\")", "input_tokens": 28364}
+{"qid": "c2q9", "condition": "grimoire-excerpt-gated", "answer": "Her auntie (aunt)", "input_tokens": 30736}
+{"qid": "c2q3", "condition": "grimoire-excerpt-gated", "answer": "They haven't done the same type of volunteering. Maria has volunteered at homeless shelters and dog shelters, while John has focused on military veteran support and advocacy.", "input_tokens": 31187}
+{"qid": "c2q84", "condition": "grimoire-excerpt-gated", "answer": "5K charity run for a homeless shelter", "input_tokens": 30976}
+{"qid": "c2q88", "condition": "grimoire-excerpt-gated", "answer": "Politics and government, focusing on education reform and infrastructure development.", "input_tokens": 31157}
+{"qid": "c3q103", "condition": "grimoire-excerpt-gated", "answer": "\"Little Women\"", "input_tokens": 28751}
+{"qid": "c2q85", "condition": "grimoire-excerpt-gated", "answer": "5K charity run for veterans and their families", "input_tokens": 30000}
+{"qid": "c2q95", "condition": "grimoire-excerpt-gated", "answer": "Made dinner together.", "input_tokens": 31270}
+{"qid": "c3q106", "condition": "grimoire-excerpt-gated", "answer": "Personal experiences and her own journey of self-discovery.", "input_tokens": 28253}
+{"qid": "c2q69", "condition": "grimoire-excerpt-gated", "answer": "The context does not contain information about December 2023 (it only covers events through August 2023). The only December donation mentioned is from December 2022, when Maria donated her old car to a homeless shelter.", "input_tokens": 31094}
+{"qid": "c3q121", "condition": "grimoire-excerpt-gated", "answer": "Joanna", "input_tokens": 31784}
+{"qid": "c3q110", "condition": "grimoire-excerpt-gated", "answer": "Bright and bold, wanted to stand out.", "input_tokens": 31462}
+{"qid": "c3q131", "condition": "grimoire-excerpt-gated", "answer": "The love and encouragement from her family.", "input_tokens": 28657}
+{"qid": "c3q1", "condition": "grimoire-excerpt-gated", "answer": "Movies, reading, creative pursuits, and pets.", "input_tokens": 31244}
+{"qid": "c3q132", "condition": "grimoire-excerpt-gated", "answer": "Vegan ice cream", "input_tokens": 31491}
+{"qid": "c3q115", "condition": "grimoire-excerpt-gated", "answer": "Dramas, romantic comedies, and emotionally-driven films.", "input_tokens": 31552}
+{"qid": "c3q107", "condition": "grimoire-excerpt-gated", "answer": "Nate likes turtles because they're unique, low-maintenance, calming, and their slow pace offers a nice change from life's rush. He's also been drawn to them since childhood.", "input_tokens": 29359}
+{"qid": "c3q128", "condition": "grimoire-excerpt-gated", "answer": "Spider-Man (and superheroes in general)", "input_tokens": 31994}
+{"qid": "c3q130", "condition": "grimoire-excerpt-gated", "answer": "Inspiring quotes, pictures, and keepsakes.", "input_tokens": 30414}
+{"qid": "c3q116", "condition": "grimoire-excerpt-gated", "answer": "Fantasy and sci-fi movies, and video games.", "input_tokens": 31857}
+{"qid": "c3q136", "condition": "grimoire-excerpt-gated", "answer": "4 video game tournaments", "input_tokens": 31210}
+{"qid": "c3q138", "condition": "grimoire-excerpt-gated", "answer": "A book from the 1900s with stories and sketches about the town and its people.", "input_tokens": 32011}
+{"qid": "c3q143", "condition": "grimoire-excerpt-gated", "answer": "Touched, awesome, and reminded of why she loves writing.", "input_tokens": 31752}
+{"qid": "c3q156", "condition": "grimoire-excerpt-gated", "answer": "Dairy-free chocolate mousse.", "input_tokens": 31364}
+{"qid": "c3q145", "condition": "grimoire-excerpt-gated", "answer": "An online blog post about a hard moment in her life.", "input_tokens": 31820}
+{"qid": "c3q158", "condition": "grimoire-excerpt-gated", "answer": "Dairy-free chocolate cake with raspberries", "input_tokens": 32120}
+{"qid": "c3q161", "condition": "grimoire-excerpt-gated", "answer": "A bookmark with a plant on top of it.", "input_tokens": 28589}
+{"qid": "c3q140", "condition": "grimoire-excerpt-gated", "answer": "A road trip to Woodhaven, a small Midwest town, and a 1900s book about the town's history and people.", "input_tokens": 30692}
+{"qid": "c3q155", "condition": "grimoire-excerpt-gated", "answer": "Coconut milk ice cream.", "input_tokens": 32296}
+{"qid": "c3q142", "condition": "grimoire-excerpt-gated", "answer": "Video gaming tournaments / competitive gaming", "input_tokens": 29024}
+{"qid": "c3q148", "condition": "grimoire-excerpt-gated", "answer": "Fun and rewarding.", "input_tokens": 31943}
+{"qid": "c3q159", "condition": "grimoire-excerpt-gated", "answer": "Blueberries and coconut milk.", "input_tokens": 31605}
+{"qid": "c3q176", "condition": "grimoire-excerpt-gated", "answer": "A movie script", "input_tokens": 31584}
+{"qid": "c3q180", "condition": "grimoire-excerpt-gated", "answer": "Vegetables, fruits, and insects.", "input_tokens": 31532}
+{"qid": "c3q194", "condition": "grimoire-excerpt-gated", "answer": "He saw another turtle at a pet store and wanted it because they bring him joy and peace; his tank was big enough for three.", "input_tokens": 28879}
+{"qid": "c3q179", "condition": "grimoire-excerpt-gated", "answer": "Surreal, amazing, and rewarding. She felt her characters \"jumped off the page and became real.\"", "input_tokens": 31612}
+{"qid": "c3q166", "condition": "grimoire-excerpt-gated", "answer": "A romantic drama that's all about memory and relationships; she called it \"awesome\" and said it was one of her favorites with great acting.", "input_tokens": 31718}
+{"qid": "c3q171", "condition": "grimoire-excerpt-gated", "answer": "Keeps writing and submitting her screenplays; doesn't give up.", "input_tokens": 31649}
+{"qid": "c3q191", "condition": "grimoire-excerpt-gated", "answer": "Watch other people's videos first to understand what your audience likes, so your videos don't flop.", "input_tokens": 31443}
+{"qid": "c3q197", "condition": "grimoire-excerpt-gated", "answer": "They make him feel calm and bring him peace; he also loves watching them soak in the sun.", "input_tokens": 31810}
+{"qid": "c3q173", "condition": "grimoire-excerpt-gated", "answer": "Don't give up on your dreams; keep going and believing in yourself. Rejections don't define your talent.", "input_tokens": 30666}
+{"qid": "c3q20", "condition": "grimoire-excerpt-gated", "answer": "The context does not specify the exact date. Nate mentions getting Max on 20 May 2022, saying \"I just got a new addition to the family,\" but the specific adoption date is not given. Best guess: around mid-May 2022.", "input_tokens": 30951}
+{"qid": "c3q45", "condition": "grimoire-excerpt-gated", "answer": "Late September 2022", "input_tokens": 28946}
+{"qid": "c3q35", "condition": "grimoire-excerpt-gated", "answer": "The weekend of 22 August 2022", "input_tokens": 32000}
+{"qid": "c3q30", "condition": "grimoire-excerpt-gated", "answer": "Screenplays and scripts, primarily dealing with themes of loss, self-discovery, identity, and connection. She also writes blog posts about personal experiences and difficult moments in her life.", "input_tokens": 31458}
+{"qid": "c3q40", "condition": "grimoire-excerpt-gated", "answer": "Week of 7 September 2022 (she mentioned it crashed \"last week\" on 14 September)", "input_tokens": 28853}
+{"qid": "c3q49", "condition": "grimoire-excerpt-gated", "answer": "Two confirmed rejections (June 2022 and October 2022). A third is speculated as a possibility for recently submitted scripts.", "input_tokens": 31628}
+{"qid": "c3q51", "condition": "grimoire-excerpt-gated", "answer": "25 May 2022", "input_tokens": 31678}
+{"qid": "c3q5", "condition": "grimoire-excerpt-gated", "answer": "Writing, reading, watching movies, exploring nature, and cooking/baking.", "input_tokens": 29642}
+{"qid": "c3q3", "condition": "grimoire-excerpt-gated", "answer": "Around mid-January 2022 (stated as \"last week\" on 21 January 2022)", "input_tokens": 31153}
+{"qid": "c3q29", "condition": "grimoire-excerpt-gated", "answer": "The weekend of 24 June 2022 (she said \"this weekend\" on 24 June 2022).", "input_tokens": 31238}
+{"qid": "c3q195", "condition": "grimoire-excerpt-gated", "answer": "Based on the context, there is no explicit instance of Nate going to Joanna's place. However, in conversation session 26 (4 November 2022), Joanna goes to Nate's place, and Nate says he's \"been wanting to try some of your chocolate and rasberry cake for a while now.\" By similar pattern, if Nate were to go to Joanna's place, he would likely want to try her desserts or baking.\n\n**Best guess: Try Joanna's chocolate and raspberry cake / enjoy desserts together**", "input_tokens": 31155}
+{"qid": "c3q23", "condition": "grimoire-excerpt-gated", "answer": "Her first screenplay (drama/romance mix), rejected 3 June 2022. Also another screenplay rejected by 21 October 2022, but not specifically named in the context.", "input_tokens": 31685}
+{"qid": "c3q6", "condition": "grimoire-excerpt-gated", "answer": "3 years (as of January 2022)", "input_tokens": 31437}
+{"qid": "c3q59", "condition": "grimoire-excerpt-gated", "answer": "Joanna writes down her favorite memories in a notebook.", "input_tokens": 28910}
+{"qid": "c3q65", "condition": "grimoire-excerpt-gated", "answer": "Valorant tournament", "input_tokens": 31264}
+{"qid": "c3q57", "condition": "grimoire-excerpt-gated", "answer": "5 November 2022", "input_tokens": 31863}
+{"qid": "c3q56", "condition": "grimoire-excerpt-gated", "answer": "Dogs.", "input_tokens": 28814}
+{"qid": "c3q63", "condition": "grimoire-excerpt-gated", "answer": "Counter-Strike: Global Offensive, Street Fighter, Catan, Xenoblade Chronicles, Valorant.", "input_tokens": 29023}
+{"qid": "c3q53", "condition": "grimoire-excerpt-gated", "answer": "Once, on 25 October, 2022.", "input_tokens": 31895}
+{"qid": "c3q55", "condition": "grimoire-excerpt-gated", "answer": "Personal experiences, nature, hiking, dreams, and her imagination.", "input_tokens": 31456}
+{"qid": "c3q64", "condition": "grimoire-excerpt-gated", "answer": "5 November 2022", "input_tokens": 32136}
+{"qid": "c3q58", "condition": "grimoire-excerpt-gated", "answer": "The Lord of the Rings Trilogy (movie), coconut (for desserts), a book series (unspecified), and Xeonoblade Chronicles (Nintendo RPG game).", "input_tokens": 31943}
+{"qid": "c3q60", "condition": "grimoire-excerpt-gated", "answer": "Nintendo Switch (or Nintendo console)\n\nBased on Nate mentioning he's \"a big fan of Nintendo games\" and currently playing \"Xeonoblade Chronicles,\" a Nintendo exclusive title.", "input_tokens": 31441}
+{"qid": "c3q62", "condition": "grimoire-excerpt-gated", "answer": "Based on the context, Joanna has received at least 2 letters:\n\n1. A rejection letter from a company (mentioned in Session 14 on 3 June 2022)\n2. A letter from a reader after posting a blog post (mentioned in Session 18 on 14 August 2022)\n\n**Answer: 2 letters**", "input_tokens": 31628}
+{"qid": "c3q96", "condition": "grimoire-excerpt-gated", "answer": "Action and sci-fi movies.", "input_tokens": 31986}
+{"qid": "c3q77", "condition": "grimoire-excerpt-gated", "answer": "Around 25 April 2022 (mentioned as \"last week\" in the 2 May 2022 conversation).", "input_tokens": 31419}
+{"qid": "c3q71", "condition": "grimoire-excerpt-gated", "answer": "Nature", "input_tokens": 31090}
+{"qid": "c4q100", "condition": "grimoire-excerpt-gated", "answer": "Four years in high school.", "input_tokens": 28482}
+{"qid": "c3q92", "condition": "grimoire-excerpt-gated", "answer": "The context does not specify what kind of lighting Nate's gaming room has. No details about his gaming room's lighting are provided in the conversations.", "input_tokens": 31703}
+{"qid": "c3q68", "condition": "grimoire-excerpt-gated", "answer": "At least 4 hikes (April, May, June, and summer near Fort Wayne).", "input_tokens": 31439}
+{"qid": "c3q84", "condition": "grimoire-excerpt-gated", "answer": "No.\n\nNate had a gaming tournament setback (5 Sept), and Joanna's laptop crashed causing her to lose all her work (around 7-8 Sept). While Nate had the positive of doing a cooking show (around 12 Sept), the major career losses outweighed the gains.", "input_tokens": 31201}
+{"qid": "c3q87", "condition": "grimoire-excerpt-gated", "answer": "The context does not show Nate visiting any state. Only Joanna is mentioned traveling\u2014to Woodhaven in the Midwest.", "input_tokens": 31559}
+{"qid": "c4q107", "condition": "grimoire-excerpt-gated", "answer": "Edinburgh, Scotland", "input_tokens": 28351}
+{"qid": "c3q97", "condition": "grimoire-excerpt-gated", "answer": "Her first full screenplay (which she also printed).", "input_tokens": 31479}
+{"qid": "c4q111", "condition": "grimoire-excerpt-gated", "answer": "A greenhouse.", "input_tokens": 31673}
+{"qid": "c4q0", "condition": "grimoire-excerpt-gated", "answer": "Win a championship, improve shooting, be a consistent performer, help his team, make a charitable difference, and build his brand for life after basketball.", "input_tokens": 31109}
+{"qid": "c4q101", "condition": "grimoire-excerpt-gated", "answer": "John's NYC experience was amazing. He found it had lots to explore, great food and culture, and considered it a must-visit that was an unforgettable adventure.", "input_tokens": 28271}
+{"qid": "c3q73", "condition": "grimoire-excerpt-gated", "answer": "The context does not contain information about summer 2021. Based on the conversations provided (which begin in January 2022), the only specific state mentioned in relation to Joanna's hiking is Indiana (near Fort Wayne), though this reference is to \"last summer\" from a November 2022 conversation, which would be summer 2022, not 2021.\n\n**Best guess: Indiana**", "input_tokens": 31961}
+{"qid": "c4q1", "condition": "grimoire-excerpt-gated", "answer": "Endorsements and brand building, charity work/foundation, mentoring younger players, inspiring others and leaving a meaningful legacy.", "input_tokens": 31315}
+{"qid": "c4q126", "condition": "grimoire-excerpt-gated", "answer": "Motivational quotes and strategies", "input_tokens": 30304}
+{"qid": "c4q119", "condition": "grimoire-excerpt-gated", "answer": "Smoky Mountains", "input_tokens": 28802}
+{"qid": "c4q117", "condition": "grimoire-excerpt-gated", "answer": "Facing tough opponents and pushing each other to improve as a team.", "input_tokens": 31190}
+{"qid": "c4q138", "condition": "grimoire-excerpt-gated", "answer": "John overcame his ankle injury through physical therapy, time off, staying focused on recovery, and working hard to strengthen his body.", "input_tokens": 31398}
+{"qid": "c4q113", "condition": "grimoire-excerpt-gated", "answer": "The context does not contain information about which basketball team Tim supports. Tim's interests focus on Harry Potter fan projects and fantasy books, not following a specific basketball team.", "input_tokens": 29769}
+{"qid": "c4q13", "condition": "grimoire-excerpt-gated", "answer": "Reading fantasy books and watching fantasy movies/shows.", "input_tokens": 29466}
+{"qid": "c4q133", "condition": "grimoire-excerpt-gated", "answer": "Spectacular and amazing. He said \"The views were spectacular\" and later \"It's hard to describe how beautiful they were!\"", "input_tokens": 31507}
+{"qid": "c4q122", "condition": "grimoire-excerpt-gated", "answer": "Growth, improvement, confidence, and reaching their goals.", "input_tokens": 30484}
+{"qid": "c4q14", "condition": "grimoire-excerpt-gated", "answer": "Articles about fantasy novels for an online magazine, and fantasy novels/stories.", "input_tokens": 31221}
+{"qid": "c4q11", "condition": "grimoire-excerpt-gated", "answer": "Based on the context provided, John does not explicitly mention any other sports he likes besides basketball. However, Tim makes a reference to surfing as something John does, though John never confirms this directly. There is no clear answer in the conversations.", "input_tokens": 31245}
+{"qid": "c4q154", "condition": "grimoire-excerpt-gated", "answer": "The atmosphere was really electric and intense, memorable.", "input_tokens": 31552}
+{"qid": "c4q118", "condition": "grimoire-excerpt-gated", "answer": "A trophy", "input_tokens": 31172}
+{"qid": "c4q159", "condition": "grimoire-excerpt-gated", "answer": "Sports and marketing seminars for aspiring professionals.", "input_tokens": 30590}
+{"qid": "c4q148", "condition": "grimoire-excerpt-gated", "answer": "About four months.", "input_tokens": 28185}
+{"qid": "c4q172", "condition": "grimoire-excerpt-gated", "answer": "Ireland (specifically Galway)", "input_tokens": 28146}
+{"qid": "c4q151", "condition": "grimoire-excerpt-gated", "answer": "John's basketball career-high in assists and Tim's English lit class; supporting each other's dreams", "input_tokens": 30076}
+{"qid": "c4q173", "condition": "grimoire-excerpt-gated", "answer": "Galway", "input_tokens": 31007}
+{"qid": "c4q168", "condition": "grimoire-excerpt-gated", "answer": "He's brave, selfless, and a great leader who puts others first. He never gives up and stands up for justice.", "input_tokens": 31062}
+{"qid": "c4q170", "condition": "grimoire-excerpt-gated", "answer": "Stay true and be a leader", "input_tokens": 31201}
+{"qid": "c4q176", "condition": "grimoire-excerpt-gated", "answer": "It felt crazy; all the hard work paid off.", "input_tokens": 31215}
+{"qid": "c4q22", "condition": "grimoire-excerpt-gated", "answer": "15 August 2023", "input_tokens": 30579}
+{"qid": "c4q23", "condition": "grimoire-excerpt-gated", "answer": "September 2023 (the following month after August 17, 2023)", "input_tokens": 28550}
+{"qid": "c4q31", "condition": "grimoire-excerpt-gated", "answer": "September 2023", "input_tokens": 28305}
+{"qid": "c4q24", "condition": "grimoire-excerpt-gated", "answer": "Chicago", "input_tokens": 29940}
+{"qid": "c4q37", "condition": "grimoire-excerpt-gated", "answer": "Week of October 6-12, 2023", "input_tokens": 31327}
+{"qid": "c4q32", "condition": "grimoire-excerpt-gated", "answer": "Florida (Orlando) or California (Los Angeles) \u2014 both have Universal Studios parks with the Harry Potter experience Tim mentioned.", "input_tokens": 30034}
+{"qid": "c4q46", "condition": "grimoire-excerpt-gated", "answer": "The UK (visiting a castle)", "input_tokens": 27742}
+{"qid": "c4q165", "condition": "grimoire-excerpt-gated", "answer": "The book title is not mentioned in the context. Note: It was actually John (not Tim) who got a book in Italy that inspired him to cook, but the specific title is never stated.", "input_tokens": 31790}
+{"qid": "c4q169", "condition": "grimoire-excerpt-gated", "answer": "A painting of a man smoking a cigarette (in the context of discussing Aragorn from Lord of the Rings as an inspiration for being a true leader).", "input_tokens": 31648}
+{"qid": "c4q29", "condition": "grimoire-excerpt-gated", "answer": "Schools not specified in context; 4 years in high school", "input_tokens": 31518}
+{"qid": "c4q52", "condition": "grimoire-excerpt-gated", "answer": "Strength training and yoga", "input_tokens": 31098}
+{"qid": "c4q64", "condition": "grimoire-excerpt-gated", "answer": "December 2023", "input_tokens": 28447}
+{"qid": "c4q72", "condition": "grimoire-excerpt-gated", "answer": "Shooting guard", "input_tokens": 30642}
+{"qid": "c4q5", "condition": "grimoire-excerpt-gated", "answer": "The Strand Bookstore (or a fantasy bookstore)", "input_tokens": 31228}
+{"qid": "c4q20", "condition": "grimoire-excerpt-gated", "answer": "Seattle", "input_tokens": 31446}
+{"qid": "c4q4", "condition": "grimoire-excerpt-gated", "answer": "Patrick Rothfuss book (likely \"The Name of the Wind\"), Harry Potter, Game of Thrones, A Dance with Dragons, The Hobbit, The Alchemist, books on UK castles, travel stories, and books on growth/psychology.", "input_tokens": 30714}
+{"qid": "c4q57", "condition": "grimoire-excerpt-gated", "answer": "Violin and piano.", "input_tokens": 28461}
+{"qid": "c4q62", "condition": "grimoire-excerpt-gated", "answer": "Mentoring younger players and doing seminars.", "input_tokens": 28569}
+{"qid": "c4q63", "condition": "grimoire-excerpt-gated", "answer": "Summer 2023", "input_tokens": 28516}
+{"qid": "c4q81", "condition": "grimoire-excerpt-gated", "answer": "Five years.", "input_tokens": 28603}
+{"qid": "c4q65", "condition": "grimoire-excerpt-gated", "answer": "Star Wars, Lord of the Rings, and The Wheel of Time", "input_tokens": 30349}
+{"qid": "c4q58", "condition": "grimoire-excerpt-gated", "answer": "The specific date is not provided in the context, but John attended the Harry Potter trivia before August 2, 2023 (when he first mentions it to Tim).", "input_tokens": 31209}
+{"qid": "c4q75", "condition": "grimoire-excerpt-gated", "answer": "fantasy literature forum", "input_tokens": 31112}
+{"qid": "c4q83", "condition": "grimoire-excerpt-gated", "answer": "Fantasy novels, characters, themes, and book recommendations.", "input_tokens": 28276}
+{"qid": "c4q66", "condition": "grimoire-excerpt-gated", "answer": "Heir to the Empire", "input_tokens": 31551}
+{"qid": "c4q96", "condition": "grimoire-excerpt-gated", "answer": "Harry Potter and the Philosopher's Stone", "input_tokens": 31411}
+{"qid": "c5q102", "condition": "grimoire-excerpt-gated", "answer": "To show her love of creativity and sustainability, and to reduce waste.", "input_tokens": 31816}
+{"qid": "c5q108", "condition": "grimoire-excerpt-gated", "answer": "They hate snow and were confused when taken to a snowy park.", "input_tokens": 32302}
+{"qid": "c5q112", "condition": "grimoire-excerpt-gated", "answer": "Sushi", "input_tokens": 32082}
+{"qid": "c5q114", "condition": "grimoire-excerpt-gated", "answer": "A picnic date with his girlfriend.", "input_tokens": 31695}
+{"qid": "c5q111", "condition": "grimoire-excerpt-gated", "answer": "Checking out new hiking trails and getting fresh air.", "input_tokens": 30415}
+{"qid": "c4q99", "condition": "grimoire-excerpt-gated", "answer": "Prepping the feast, talking about what they're thankful for, and watching movies afterwards.", "input_tokens": 30804}
+{"qid": "c4q9", "condition": "grimoire-excerpt-gated", "answer": "Nike, Gatorade (in talks), outdoor gear company, and a beverage company.", "input_tokens": 31271}
+{"qid": "c5q116", "condition": "grimoire-excerpt-gated", "answer": "The autumn colors.", "input_tokens": 31866}
+{"qid": "c5q121", "condition": "grimoire-excerpt-gated", "answer": "Take them to a nearby park to have fun and get some fresh air.", "input_tokens": 32034}
+{"qid": "c4q98", "condition": "grimoire-excerpt-gated", "answer": "Home Alone", "input_tokens": 31918}
+{"qid": "c5q20", "condition": "grimoire-excerpt-gated", "answer": "Chicken", "input_tokens": 31804}
+{"qid": "c5q15", "condition": "grimoire-excerpt-gated", "answer": "Finding dog-friendly places to explore and spend time with their dogs.", "input_tokens": 32280}
+{"qid": "c5q2", "condition": "grimoire-excerpt-gated", "answer": "Wine tasting, board games, visiting cafes and restaurants.", "input_tokens": 32182}
+{"qid": "c5q36", "condition": "grimoire-excerpt-gated", "answer": "Roasted chicken, sushi, chicken pot pie, pastries, garlic-based dishes", "input_tokens": 29470}
+{"qid": "c5q40", "condition": "grimoire-excerpt-gated", "answer": "Dog park", "input_tokens": 32079}
+{"qid": "c5q27", "condition": "grimoire-excerpt-gated", "answer": "Andrew feels his work is tough, stressful, and has been piling up, making it difficult to find balance with his hobbies and outdoor activities.", "input_tokens": 31615}
+{"qid": "c5q32", "condition": "grimoire-excerpt-gated", "answer": "A tattoo of her four dogs and sunflowers on her arm.", "input_tokens": 28665}
+{"qid": "c5q16", "condition": "grimoire-excerpt-gated", "answer": "November 2023 (mentioned in October as \"next month\")", "input_tokens": 31637}
+{"qid": "c5q25", "condition": "grimoire-excerpt-gated", "answer": "Weekend of 19 August 2023", "input_tokens": 31304}
+{"qid": "c5q46", "condition": "grimoire-excerpt-gated", "answer": "1 pet (Toby) as of September 2023.", "input_tokens": 32106}
+{"qid": "c5q28", "condition": "grimoire-excerpt-gated", "answer": "Party hats and birthday hats", "input_tokens": 32114}
+{"qid": "c5q54", "condition": "grimoire-excerpt-gated", "answer": "Fetch and Frisbee. They also love socializing with other pups and running around.", "input_tokens": 30466}
+{"qid": "c5q63", "condition": "grimoire-excerpt-gated", "answer": "Croissants, muffins, and tarts.", "input_tokens": 28764}
+{"qid": "c5q48", "condition": "grimoire-excerpt-gated", "answer": "Friends and confidantes; sources of joy and companionship.", "input_tokens": 32090}
+{"qid": "c5q60", "condition": "grimoire-excerpt-gated", "answer": "Three dogs: Toby, Buddy, and Scout.", "input_tokens": 32217}
+{"qid": "c5q75", "condition": "grimoire-excerpt-gated", "answer": "Kayaking and bungee jumping.", "input_tokens": 32097}
+{"qid": "c5q76", "condition": "grimoire-excerpt-gated", "answer": "About an hour.", "input_tokens": 31525}
+{"qid": "c5q7", "condition": "grimoire-excerpt-gated", "answer": "Approximately 3 years.\n\n(Audrey had Pepper, Precious, and Panda for 3 years as of 27 March 2023, meaning she adopted them around March 2020. She adopted Pixie on 2 April 2023.)", "input_tokens": 32367}
+{"qid": "c5q65", "condition": "grimoire-excerpt-gated", "answer": "Audrey chats with other dog owners and watches the dogs play together in the park.", "input_tokens": 32014}
+{"qid": "c5q52", "condition": "grimoire-excerpt-gated", "answer": "Combine birdwatching with dog walks in city parks.", "input_tokens": 30964}
+{"qid": "c5q80", "condition": "grimoire-excerpt-gated", "answer": "Roasted Chicken", "input_tokens": 32019}
+{"qid": "c5q64", "condition": "grimoire-excerpt-gated", "answer": "Sunflowers", "input_tokens": 32060}
+{"qid": "c5q84", "condition": "grimoire-excerpt-gated", "answer": "Relaxed/wise, playful, naughty/cuddly, adventurous/energetic.", "input_tokens": 28825}
+{"qid": "c5q87", "condition": "grimoire-excerpt-gated", "answer": "Two hours", "input_tokens": 32180}
+{"qid": "c5q83", "condition": "grimoire-excerpt-gated", "answer": "Long neighborhood walks, exploring new paths, sharing worries and hopes with him; he was a great listener and loved playing fetch.", "input_tokens": 31547}
+{"qid": "c5q72", "condition": "grimoire-excerpt-gated", "answer": "Because punishment is never the proper way for pets to learn; she believed in using rewards and love instead.", "input_tokens": 31802}
+{"qid": "c5q91", "condition": "grimoire-excerpt-gated", "answer": "Got new beds for them.", "input_tokens": 31884}
+{"qid": "c5q89", "condition": "grimoire-excerpt-gated", "answer": "Regular grooming, daily brushing, regular baths, nail trims, and lots of love", "input_tokens": 31177}
+{"qid": "c5q96", "condition": "grimoire-excerpt-gated", "answer": "Andrew learned about animals, plants, and ecosystems\u2014how they all work together.", "input_tokens": 28455}
+{"qid": "c6q104", "condition": "grimoire-excerpt-gated", "answer": "Vancouver", "input_tokens": 30901}
+{"qid": "c5q95", "condition": "grimoire-excerpt-gated", "answer": "Peruvian Lilies", "input_tokens": 28382}
+{"qid": "c6q101", "condition": "grimoire-excerpt-gated", "answer": "By reading. John said he loves entering the imaginative worlds of authors as a fun escape from reality.", "input_tokens": 30087}
+{"qid": "c6q105", "condition": "grimoire-excerpt-gated", "answer": "July 20, 2022", "input_tokens": 31031}
+{"qid": "c6q119", "condition": "grimoire-excerpt-gated", "answer": "Basic games and stories.", "input_tokens": 27946}
+{"qid": "c6q110", "condition": "grimoire-excerpt-gated", "answer": "Strategy and RPG games.", "input_tokens": 30984}
+{"qid": "c6q107", "condition": "grimoire-excerpt-gated", "answer": "He wanted work aligned with his values and passions, particularly his passion for the gaming industry.", "input_tokens": 28214}
+{"qid": "c6q113", "condition": "grimoire-excerpt-gated", "answer": "Samantha's phone number.", "input_tokens": 31170}
+{"qid": "c6q108", "condition": "grimoire-excerpt-gated", "answer": "Fortnite", "input_tokens": 31204}
+{"qid": "c6q130", "condition": "grimoire-excerpt-gated", "answer": "Guitar", "input_tokens": 28811}
+{"qid": "c6q122", "condition": "grimoire-excerpt-gated", "answer": "$10 per class", "input_tokens": 31347}
+{"qid": "c6q128", "condition": "grimoire-excerpt-gated", "answer": "A medieval castle with a labyrinth full of puzzles and traps.", "input_tokens": 30725}
+{"qid": "c6q139", "condition": "grimoire-excerpt-gated", "answer": "Super Mario and The Legend of Zelda", "input_tokens": 28857}
+{"qid": "c6q136", "condition": "grimoire-excerpt-gated", "answer": "John feels excited and inspired\u2014he views it as rewarding and a great chance to help others while boosting his own skills.", "input_tokens": 31111}
+{"qid": "c6q142", "condition": "grimoire-excerpt-gated", "answer": "Raise money for a children's hospital.", "input_tokens": 30250}
+{"qid": "c6q12", "condition": "grimoire-excerpt-gated", "answer": "No. James got together with Samantha in early September 2022.", "input_tokens": 30109}
+{"qid": "c6q137", "condition": "grimoire-excerpt-gated", "answer": "RPGs (Role-Playing Games), specifically mentioning excitement about Cyberpunk 2077.", "input_tokens": 31202}
+{"qid": "c6q14", "condition": "grimoire-excerpt-gated", "answer": "26 April 2022", "input_tokens": 30724}
+{"qid": "c6q140", "condition": "grimoire-excerpt-gated", "answer": "A game (he forgot to save his progress).", "input_tokens": 31299}
+{"qid": "c6q143", "condition": "grimoire-excerpt-gated", "answer": "They decided to move in together.", "input_tokens": 30011}
+{"qid": "c6q145", "condition": "grimoire-excerpt-gated", "answer": "Because they love spending time together at McGee's bar and it was one of their criteria for choosing the apartment.", "input_tokens": 31154}
+{"qid": "c6q16", "condition": "grimoire-excerpt-gated", "answer": "UNO", "input_tokens": 31281}
+{"qid": "c6q42", "condition": "grimoire-excerpt-gated", "answer": "9 August 2022", "input_tokens": 31731}
+{"qid": "c6q22", "condition": "grimoire-excerpt-gated", "answer": "Dog shelter (8 May 2022), homeless people (8 May 2022), children's hospital (31 October 2022)", "input_tokens": 31285}
+{"qid": "c6q21", "condition": "grimoire-excerpt-gated", "answer": "7 May 2022", "input_tokens": 30817}
+{"qid": "c6q24", "condition": "grimoire-excerpt-gated", "answer": "Strategy games and a storytelling-based game project.", "input_tokens": 30126}
+{"qid": "c6q47", "condition": "grimoire-excerpt-gated", "answer": "3 September 2022", "input_tokens": 28872}
+{"qid": "c6q31", "condition": "grimoire-excerpt-gated", "answer": "9 days (July 11-20, 2022)", "input_tokens": 31073}
+{"qid": "c6q41", "condition": "grimoire-excerpt-gated", "answer": "9 August 2022", "input_tokens": 31312}
+{"qid": "c6q45", "condition": "grimoire-excerpt-gated", "answer": "Stout, lager, and light beers.", "input_tokens": 31111}
+{"qid": "c6q5", "condition": "grimoire-excerpt-gated", "answer": "James: The Witcher 3, RPGs, strategy games (Civilization)\nJohn: The Witcher 3, CS:GO, FIFA 23, strategy games", "input_tokens": 30990}
+{"qid": "c6q43", "condition": "grimoire-excerpt-gated", "answer": "September 2022", "input_tokens": 31423}
+{"qid": "c6q57", "condition": "grimoire-excerpt-gated", "answer": "19 October 2022", "input_tokens": 31282}
+{"qid": "c6q58", "condition": "grimoire-excerpt-gated", "answer": "20 October, 2022", "input_tokens": 28813}
+{"qid": "c6q39", "condition": "grimoire-excerpt-gated", "answer": "July 2022\n\n(He got his dream job offer in June 2022 and said he'd start \"next month\")", "input_tokens": 28126}
+{"qid": "c6q52", "condition": "grimoire-excerpt-gated", "answer": "June or July 2022 (he said he'd been working on it \"for the past few months\" as of September 20, 2022)", "input_tokens": 31314}
+{"qid": "c6q55", "condition": "grimoire-excerpt-gated", "answer": "Early October 2022 (the week before 13 October)", "input_tokens": 30927}
+{"qid": "c6q71", "condition": "grimoire-excerpt-gated", "answer": "Help find the perfect pet for him.", "input_tokens": 31446}
+{"qid": "c6q68", "condition": "grimoire-excerpt-gated", "answer": "Dog walking and pet care app", "input_tokens": 31439}
+{"qid": "c6q79", "condition": "grimoire-excerpt-gated", "answer": "Ned", "input_tokens": 29032}
+{"qid": "c6q87", "condition": "grimoire-excerpt-gated", "answer": "Hawaiian pizza", "input_tokens": 31469}
+{"qid": "c6q85", "condition": "grimoire-excerpt-gated", "answer": "Labrador", "input_tokens": 31360}
+{"qid": "c6q61", "condition": "grimoire-excerpt-gated", "answer": "Moved in together (rented an apartment near McGee's bar)", "input_tokens": 30277}
+{"qid": "c6q6", "condition": "grimoire-excerpt-gated", "answer": "No, not mentioned in the context.", "input_tokens": 31033}
+{"qid": "c6q65", "condition": "grimoire-excerpt-gated", "answer": "Before 7 November 2022 (exact date not specified in context)", "input_tokens": 31423}
+{"qid": "c7q100", "condition": "grimoire-excerpt-gated", "answer": "An electrical engineering project", "input_tokens": 31157}
+{"qid": "c7q103", "condition": "grimoire-excerpt-gated", "answer": "At yoga in the park.", "input_tokens": 31250}
+{"qid": "c7q102", "condition": "grimoire-excerpt-gated", "answer": "A robotics project from her engineering professor.", "input_tokens": 30613}
+{"qid": "c6q84", "condition": "grimoire-excerpt-gated", "answer": "A coding algorithm assignment.", "input_tokens": 31305}
+{"qid": "c7q107", "condition": "grimoire-excerpt-gated", "answer": "An amulet.", "input_tokens": 31968}
+{"qid": "c7q105", "condition": "grimoire-excerpt-gated", "answer": "Designed and built a sustainable water purifier for a rural community.", "input_tokens": 30681}
+{"qid": "c6q75", "condition": "grimoire-excerpt-gated", "answer": "Not specified in the context. Best guess: **Apex Legends** (mentioned later as his favorite game with his team around this time period).", "input_tokens": 28609}
+{"qid": "c7q118", "condition": "grimoire-excerpt-gated", "answer": "Lasagna", "input_tokens": 29077}
+{"qid": "c7q129", "condition": "grimoire-excerpt-gated", "answer": "art show", "input_tokens": 30573}
+{"qid": "c7q11", "condition": "grimoire-excerpt-gated", "answer": "Yes, she is married. She mentions her husband and says the beach is where she got married.", "input_tokens": 29754}
+{"qid": "c7q119", "condition": "grimoire-excerpt-gated", "answer": "A photo of a desk with a notebook and a computer monitor (2 March 2023).", "input_tokens": 32169}
+{"qid": "c7q144", "condition": "grimoire-excerpt-gated", "answer": "She adopted Susie two years ago when feeling lonely and wanting company.", "input_tokens": 28783}
+{"qid": "c7q108", "condition": "grimoire-excerpt-gated", "answer": "Confidence boost and interest in using green tech and engineering to help disadvantaged communities and teach STEM to underprivileged kids.", "input_tokens": 31106}
+{"qid": "c7q106", "condition": "grimoire-excerpt-gated", "answer": "Not mentioned in the provided context.", "input_tokens": 31021}
+{"qid": "c7q159", "condition": "grimoire-excerpt-gated", "answer": "Thrilled and rewarded.", "input_tokens": 30629}
+{"qid": "c7q146", "condition": "grimoire-excerpt-gated", "answer": "A gentle flow focused on breathing and grounding.", "input_tokens": 31723}
+{"qid": "c7q165", "condition": "grimoire-excerpt-gated", "answer": "Yoga classes", "input_tokens": 30909}
+{"qid": "c7q13", "condition": "grimoire-excerpt-gated", "answer": "Her mom's house (window seat/bench), a park near her home (forest trail and beach), a garden with flowers, Bali, and the beach where she got married.", "input_tokens": 30757}
+{"qid": "c7q15", "condition": "grimoire-excerpt-gated", "answer": "Jolene has two snakes: Susie and Seraphim.", "input_tokens": 30128}
+{"qid": "c7q16", "condition": "grimoire-excerpt-gated", "answer": "Susie and Seraphim", "input_tokens": 29092}
+{"qid": "c7q170", "condition": "grimoire-excerpt-gated", "answer": "Her mom was her biggest fan and source of motivation, and would often come to her yoga classes with her.", "input_tokens": 31575}
+{"qid": "c7q136", "condition": "grimoire-excerpt-gated", "answer": "Dancer Pose (Natarajasana)", "input_tokens": 30501}
+{"qid": "c7q175", "condition": "grimoire-excerpt-gated", "answer": "Phuket (meditation retreat)", "input_tokens": 30620}
+{"qid": "c7q177", "condition": "grimoire-excerpt-gated", "answer": "Experiencing a new level of joy and happiness.", "input_tokens": 31271}
+{"qid": "c7q183", "condition": "grimoire-excerpt-gated", "answer": "Jolene describes her room as \"a little haven for peace and rest\" and \"the perfect spot to relax and recharge\" after a busy day.", "input_tokens": 31804}
+{"qid": "c7q184", "condition": "grimoire-excerpt-gated", "answer": "A free gardening class", "input_tokens": 30425}
+{"qid": "c7q178", "condition": "grimoire-excerpt-gated", "answer": "Jolene found inner peace, learned mindfulness and gratitude, and experienced increased joy and happiness. She realized the importance of balancing her engineering goals with self-care and appreciating the present moment rather than just focusing on the finish line.", "input_tokens": 31598}
+{"qid": "c7q186", "condition": "grimoire-excerpt-gated", "answer": "Pineapple birthday cakes", "input_tokens": 31204}
+{"qid": "c7q22", "condition": "grimoire-excerpt-gated", "answer": "31 January 2023", "input_tokens": 28383}
+{"qid": "c7q187", "condition": "grimoire-excerpt-gated", "answer": "Chocolate chip cookies.", "input_tokens": 30900}
+{"qid": "c7q19", "condition": "grimoire-excerpt-gated", "answer": "Once (2010, when her mother gave her a pendant in Paris)", "input_tokens": 31809}
+{"qid": "c7q25", "condition": "grimoire-excerpt-gated", "answer": "\"Sapiens\" and \"Avalanche\" by Neal Stephenson", "input_tokens": 31670}
+{"qid": "c7q185", "condition": "grimoire-excerpt-gated", "answer": "Travel, cooking, and art.", "input_tokens": 29486}
+{"qid": "c7q28", "condition": "grimoire-excerpt-gated", "answer": "Bogota, Colombia (mentioned as \"vacation last summer\" in February 2023 conversation)", "input_tokens": 31369}
+{"qid": "c7q23", "condition": "grimoire-excerpt-gated", "answer": "She was busy with engineering school and work/internship, and spent time playing video games with her partner instead.", "input_tokens": 31785}
+{"qid": "c7q3", "condition": "grimoire-excerpt-gated", "answer": "Last year (2022) \u2014 based on Jolene's statement in the January 23, 2023 conversation that her mother \"passed away last year.\"", "input_tokens": 29979}
+{"qid": "c7q35", "condition": "grimoire-excerpt-gated", "answer": "24 February 2023", "input_tokens": 29144}
+{"qid": "c7q33", "condition": "grimoire-excerpt-gated", "answer": "Three years.", "input_tokens": 30268}
+{"qid": "c7q17", "condition": "grimoire-excerpt-gated", "answer": "January 2022\n\n(She mentioned on 27 January 2023 that she \"bought it a year ago in Paris\")", "input_tokens": 32000}
+{"qid": "c7q42", "condition": "grimoire-excerpt-gated", "answer": "Deborah listens to instrumental tracks with mellow melodies, including a track called \"Savana\" and an album called \"Sleep.\"", "input_tokens": 31735}
+{"qid": "c7q47", "condition": "grimoire-excerpt-gated", "answer": "5 June 2023", "input_tokens": 31635}
+{"qid": "c7q5", "condition": "grimoire-excerpt-gated", "answer": "France", "input_tokens": 31209}
+{"qid": "c7q50", "condition": "grimoire-excerpt-gated", "answer": "2020", "input_tokens": 28700}
+{"qid": "c7q171", "condition": "grimoire-excerpt-gated", "answer": "Nintendo Wii", "input_tokens": 32027}
+{"qid": "c7q40", "condition": "grimoire-excerpt-gated", "answer": "Close to the beach.", "input_tokens": 32286}
+{"qid": "c7q43", "condition": "grimoire-excerpt-gated", "answer": "Early April 2023 (the week before 9 April 2023)", "input_tokens": 31247}
+{"qid": "c7q45", "condition": "grimoire-excerpt-gated", "answer": "May 2023", "input_tokens": 30768}
+{"qid": "c7q63", "condition": "grimoire-excerpt-gated", "answer": "Luna is 5 years old, Max is 8 years old.", "input_tokens": 28417}
+{"qid": "c7q38", "condition": "grimoire-excerpt-gated", "answer": "Friday, 10 March 2023", "input_tokens": 28543}
+{"qid": "c7q64", "condition": "grimoire-excerpt-gated", "answer": "Yes, Deborah likes cats. She explicitly states \"I really love cats\" and has two cats named Luna and Max.", "input_tokens": 28918}
+{"qid": "c7q44", "condition": "grimoire-excerpt-gated", "answer": "The context does not mention Deborah going to an art show with Anna. Deborah went to an art show with an unnamed friend on 27 January 2023, and Anna is first mentioned as being met at yoga on 1 February 2023. There is no record of them attending an art show together.", "input_tokens": 31381}
+{"qid": "c7q69", "condition": "grimoire-excerpt-gated", "answer": "Yes. Jolene recently (late August 2023), Deborah three years prior (around August 2020).", "input_tokens": 28844}
+{"qid": "c7q58", "condition": "grimoire-excerpt-gated", "answer": "Zelda BOTW, Animal Crossing: New Horizons, and Overcooked 2.", "input_tokens": 31646}
+{"qid": "c7q71", "condition": "grimoire-excerpt-gated", "answer": "1 September 2023", "input_tokens": 28565}
+{"qid": "c7q68", "condition": "grimoire-excerpt-gated", "answer": "Approximately August 2020 (she mentioned visiting Rio de Janeiro \"three years ago\" during a conversation on 30 August 2023).", "input_tokens": 31750}
+{"qid": "c7q74", "condition": "grimoire-excerpt-gated", "answer": "Fresh pastries.", "input_tokens": 30838}
+{"qid": "c7q54", "condition": "grimoire-excerpt-gated", "answer": "Susie was adopted first (approximately August 2021), followed by Seraphim (approximately January 2022).", "input_tokens": 32071}
+{"qid": "c7q9", "condition": "grimoire-excerpt-gated", "answer": "25 January 2023", "input_tokens": 31337}
+{"qid": "c7q81", "condition": "grimoire-excerpt-gated", "answer": "17 September 2023", "input_tokens": 30790}
+{"qid": "c7q88", "condition": "grimoire-excerpt-gated", "answer": "Running, playing video games (detective games), spending time outdoors exploring nature, and organizing mindfulness workshops and self-care events.", "input_tokens": 31527}
+{"qid": "c7q72", "condition": "grimoire-excerpt-gated", "answer": "When she was 10 years old.", "input_tokens": 31074}
+{"qid": "c7q86", "condition": "grimoire-excerpt-gated", "answer": "A letter from group members (late January 2023), and a pendant from her mother.", "input_tokens": 31067}
+{"qid": "c7q82", "condition": "grimoire-excerpt-gated", "answer": "Dance studio, park, beach", "input_tokens": 31562}
+{"qid": "c7q94", "condition": "grimoire-excerpt-gated", "answer": "Max from her mother when she passed away; Luna from a shelter.", "input_tokens": 29756}
+{"qid": "c7q96", "condition": "grimoire-excerpt-gated", "answer": "Checking out yoga classes, visiting cafes, and going on excursions to an old temple.", "input_tokens": 29385}
+{"qid": "c7q93", "condition": "grimoire-excerpt-gated", "answer": "Renewable energy (solar) and clean water supply projects for communities.", "input_tokens": 28498}
+{"qid": "c8q0", "condition": "grimoire-excerpt-gated", "answer": "A Prius.", "input_tokens": 31395}
+{"qid": "c8q1", "condition": "grimoire-excerpt-gated", "answer": "Prius (5 December 2023), knee (6 October 2023)", "input_tokens": 31308}
+{"qid": "c7q84", "condition": "grimoire-excerpt-gated", "answer": "Based on the conversations, Jolene has worked on:\n\n1. **Solar-powered vehicle** (completed ~May 2023)\n2. **Robotics project** (February 2023)\n3. **Clean water system** for rural communities (completed by February 2023)\n4. **Aerial surveillance prototype** (August 2023)\n\nShe's also planning future projects in renewable energy and clean water access.", "input_tokens": 31021}
+{"qid": "c8q115", "condition": "grimoire-excerpt-gated", "answer": "Watercolor painting", "input_tokens": 31539}
+{"qid": "c8q11", "condition": "grimoire-excerpt-gated", "answer": "Weight issues; discovered during doctor's check-up in May 2023, reinforced by friends mocking his weight in July 2023.", "input_tokens": 31601}
+{"qid": "c8q117", "condition": "grimoire-excerpt-gated", "answer": "Journal writing and creative writing.", "input_tokens": 31061}
+{"qid": "c8q120", "condition": "grimoire-excerpt-gated", "answer": "Find a trainer to help with good form and technique, start with something small, and increase intensity gradually as you get stronger.", "input_tokens": 31413}
+{"qid": "c8q10", "condition": "grimoire-excerpt-gated", "answer": "Camping trips in the outdoors. Evan consistently shares road trips to natural areas (Rockies, Jasper, Canada), family hiking adventures, and camping trips, and repeatedly expresses how nature brings him peace and joy.", "input_tokens": 31648}
+{"qid": "c8q121", "condition": "grimoire-excerpt-gated", "answer": "Lake Tahoe", "input_tokens": 31499}
+{"qid": "c7q179", "condition": "grimoire-excerpt-gated", "answer": "Overcooked 2", "input_tokens": 31231}
+{"qid": "c8q129", "condition": "grimoire-excerpt-gated", "answer": "He relied on it for his active lifestyle and road trips.", "input_tokens": 31360}
+{"qid": "c8q137", "condition": "grimoire-excerpt-gated", "answer": "A close friend of Evan's.", "input_tokens": 28448}
+{"qid": "c8q106", "condition": "grimoire-excerpt-gated", "answer": "Watercolor painting", "input_tokens": 31807}
+{"qid": "c8q140", "condition": "grimoire-excerpt-gated", "answer": "Joy and freedom, with a playful and liberated mood.", "input_tokens": 28642}
+{"qid": "c8q148", "condition": "grimoire-excerpt-gated", "answer": "Snowshoeing", "input_tokens": 31045}
+{"qid": "c8q145", "condition": "grimoire-excerpt-gated", "answer": "Recipes (for cookies and healthy snacks)", "input_tokens": 31413}
+{"qid": "c8q147", "condition": "grimoire-excerpt-gated", "answer": "Two ginger snaps a day", "input_tokens": 31887}
+{"qid": "c8q130", "condition": "grimoire-excerpt-gated", "answer": "Find new opportunities; setbacks can lead to new possibilities.", "input_tokens": 31310}
+{"qid": "c8q13", "condition": "grimoire-excerpt-gated", "answer": "Late May 2023 (last week before 6 June 2023)", "input_tokens": 30773}
+{"qid": "c8q151", "condition": "grimoire-excerpt-gated", "answer": "The Godfather", "input_tokens": 32085}
+{"qid": "c8q152", "condition": "grimoire-excerpt-gated", "answer": "Yoga", "input_tokens": 29167}
+{"qid": "c8q150", "condition": "grimoire-excerpt-gated", "answer": "Swimming, yoga, walking, and beach walks.", "input_tokens": 28775}
+{"qid": "c8q142", "condition": "grimoire-excerpt-gated", "answer": "Spontaneous strokes and bold colors reflecting a playful and liberated mood, embracing the creative process without restraint.", "input_tokens": 31889}
+{"qid": "c8q155", "condition": "grimoire-excerpt-gated", "answer": "\"truly unforgettable\" and \"so peaceful\"", "input_tokens": 31694}
+{"qid": "c8q17", "condition": "grimoire-excerpt-gated", "answer": "21 July 2023", "input_tokens": 31599}
+{"qid": "c8q32", "condition": "grimoire-excerpt-gated", "answer": "Losing his keys (recurring weekly)", "input_tokens": 30759}
+{"qid": "c8q23", "condition": "grimoire-excerpt-gated", "answer": "28 July 2023\n\n(Based on Sam's statement on 27 July: \"Starting tomorrow, I will go to the gym and exercise regularly.\")", "input_tokens": 31724}
+{"qid": "c8q41", "condition": "grimoire-excerpt-gated", "answer": "Painting classes (learning watercolors).", "input_tokens": 30801}
+{"qid": "c8q42", "condition": "grimoire-excerpt-gated", "answer": "A friend got him into it and gave him advice.", "input_tokens": 29354}
+{"qid": "c8q26", "condition": "grimoire-excerpt-gated", "answer": "His family, adventure/hiking, and a fitness watch that reminds him to stay on track.", "input_tokens": 31006}
+{"qid": "c8q3", "condition": "grimoire-excerpt-gated", "answer": "2 \u2014 an old one that broke down (repaired and sold by May 2023) and a new one purchased by May 2023.", "input_tokens": 30461}
+{"qid": "c8q4", "condition": "grimoire-excerpt-gated", "answer": "Painting", "input_tokens": 30995}
+{"qid": "c8q53", "condition": "grimoire-excerpt-gated", "answer": "11 September 2023", "input_tokens": 28640}
+{"qid": "c8q55", "condition": "grimoire-excerpt-gated", "answer": "Helping lost tourists find their way around the city.", "input_tokens": 31411}
+{"qid": "c8q59", "condition": "grimoire-excerpt-gated", "answer": "14 October 2023, around 4:07 pm", "input_tokens": 31870}
+{"qid": "c8q54", "condition": "grimoire-excerpt-gated", "answer": "Heart palpitation (early June 2023) and hospital visit with suspicious finding that was a misunderstanding (mid-November 2023).", "input_tokens": 31437}
+{"qid": "c8q72", "condition": "grimoire-excerpt-gated", "answer": "Hiking", "input_tokens": 30564}
+{"qid": "c8q71", "condition": "grimoire-excerpt-gated", "answer": "Christmas season (December 2023)", "input_tokens": 30227}
+{"qid": "c8q51", "condition": "grimoire-excerpt-gated", "answer": "Sam faces weight/health issues, lack of motivation, and difficulty breaking old habits (soda, candy). He addresses these by: taking cooking classes (Aug 15, 2023), starting a structured diet and exercise routine (Aug 19, 2023), using motivational quotes about progress over perfection, becoming a Weight Watchers coach (Nov 9, 2023), finding outdoor activities like hiking and nature exposure, celebrating small wins, and relying on Evan's supportive friendship.", "input_tokens": 31821}
+{"qid": "c8q43", "condition": "grimoire-excerpt-gated", "answer": "Based on the context, Sam appears to get checkups irregularly\u2014mentions show checkups around May 2023, August 2023, and October 2023, with a note by January 2024 that they \"haven't seen a doctor in a while.\" No consistent pattern is evident.", "input_tokens": 32266}
+{"qid": "c8q5", "condition": "grimoire-excerpt-gated", "answer": "Canada", "input_tokens": 30145}
+{"qid": "c8q58", "condition": "grimoire-excerpt-gated", "answer": "One year before 8 October 2023 (approximately October 2022).", "input_tokens": 31177}
+{"qid": "c8q75", "condition": "grimoire-excerpt-gated", "answer": "5 January 2024", "input_tokens": 30772}
+{"qid": "c8q79", "condition": "grimoire-excerpt-gated", "answer": "February 2024", "input_tokens": 31656}
+{"qid": "c8q45", "condition": "grimoire-excerpt-gated", "answer": "The context does not specify which Canadian places Evan visited in July 2023. No specific locations are named.", "input_tokens": 31348}
+{"qid": "c8q91", "condition": "grimoire-excerpt-gated", "answer": "Flavored seltzer water instead of soda, and dark chocolate with high cocoa content instead of candy.", "input_tokens": 31992}
+{"qid": "c8q70", "condition": "grimoire-excerpt-gated", "answer": "The context does not specify how long Evan and his partner dated before getting married. It only mentions he got married around 19 December 2023 and fell in love at first sight, but no information about when they first met.", "input_tokens": 30971}
+{"qid": "c8q87", "condition": "grimoire-excerpt-gated", "answer": "Jasper", "input_tokens": 30913}
+{"qid": "c8q97", "condition": "grimoire-excerpt-gated", "answer": "It symbolizes strength and resilience.", "input_tokens": 31899}
+{"qid": "c8q92", "condition": "grimoire-excerpt-gated", "answer": "The self-checkout machines were all broken.", "input_tokens": 31209}
+{"qid": "c9q104", "condition": "grimoire-excerpt-gated", "answer": "For a unique look and to match his style.", "input_tokens": 31870}
+{"qid": "c8q9", "condition": "grimoire-excerpt-gated", "answer": "Last weekend before 24 May 2023 (approximately 20-21 May 2023)", "input_tokens": 31246}
+{"qid": "c8q89", "condition": "grimoire-excerpt-gated", "answer": "Reducing soda and candy intake.", "input_tokens": 31820}
+{"qid": "c8q93", "condition": "grimoire-excerpt-gated", "answer": "\"The Great Gatsby\"", "input_tokens": 32021}
+{"qid": "c8q81", "condition": "grimoire-excerpt-gated", "answer": "Painting (watercolors)", "input_tokens": 29369}
+{"qid": "c9q108", "condition": "grimoire-excerpt-gated", "answer": "Boston", "input_tokens": 30117}
+{"qid": "c9q116", "condition": "grimoire-excerpt-gated", "answer": "Ford Mustang", "input_tokens": 28880}
+{"qid": "c9q109", "condition": "grimoire-excerpt-gated", "answer": "Going to Tokyo", "input_tokens": 29428}
+{"qid": "c9q111", "condition": "grimoire-excerpt-gated", "answer": "Ratatouille", "input_tokens": 31581}
+{"qid": "c9q124", "condition": "grimoire-excerpt-gated", "answer": "Working on and fixing cars (automotive engineering).", "input_tokens": 31408}
+{"qid": "c9q134", "condition": "grimoire-excerpt-gated", "answer": "Patience and paying attention to detail.", "input_tokens": 31635}
+{"qid": "c9q127", "condition": "grimoire-excerpt-gated", "answer": "Shibuya Crossing and Shinjuku", "input_tokens": 31047}
+{"qid": "c9q139", "condition": "grimoire-excerpt-gated", "answer": "Music is his passion and purpose.", "input_tokens": 28495}
+{"qid": "c9q125", "condition": "grimoire-excerpt-gated", "answer": "Music festival in Tokyo", "input_tokens": 31123}
+{"qid": "c9q119", "condition": "grimoire-excerpt-gated", "answer": "Therapy and self-expression\u2014a calming outlet that gives him a sense of achievement, purpose, and allows him to connect with himself.", "input_tokens": 31668}
+{"qid": "c9q120", "condition": "grimoire-excerpt-gated", "answer": "Dave aims to build a custom car from scratch and share his passion for cars through a blog about car mods to inspire others in DIY projects.", "input_tokens": 31809}
+{"qid": "c9q117", "condition": "grimoire-excerpt-gated", "answer": "Seeing old cars transformed into something beautiful, and the sense of accomplishment and pride from bringing them back to life.", "input_tokens": 31205}
+{"qid": "c9q142", "condition": "grimoire-excerpt-gated", "answer": "Threw a party for his new album (2 November 2023).", "input_tokens": 31299}
+{"qid": "c9q148", "condition": "grimoire-excerpt-gated", "answer": "Car mods (how he modified/transformed cars)", "input_tokens": 30097}
+{"qid": "c9q140", "condition": "grimoire-excerpt-gated", "answer": "They agree that hard work, dedication, and pursuing your passion are fulfilling and lead to success.", "input_tokens": 30700}
+{"qid": "c9q144", "condition": "grimoire-excerpt-gated", "answer": "A blog on car mods", "input_tokens": 31599}
+{"qid": "c9q133", "condition": "grimoire-excerpt-gated", "answer": "Ever since he was 10, he was fascinated with how machines work. He found an old car in a neighbor's garage and asked if he could fix it, which sparked his love for car engineering.", "input_tokens": 31170}
+{"qid": "c9q2", "condition": "grimoire-excerpt-gated", "answer": "Last weekend before 26 March 2023 (approximately 18-19 March 2023)", "input_tokens": 28513}
+{"qid": "c9q20", "condition": "grimoire-excerpt-gated", "answer": "His dad - he took Dave to his first car show when he was 10 and had a garage where Dave spent hours tinkering with engines.", "input_tokens": 31480}
+{"qid": "c9q153", "condition": "grimoire-excerpt-gated", "answer": "Nature \u2014 sunsets, beaches, waves, and waterfalls.", "input_tokens": 30727}
+{"qid": "c9q16", "condition": "grimoire-excerpt-gated", "answer": "July 2023", "input_tokens": 30950}
+{"qid": "c9q37", "condition": "grimoire-excerpt-gated", "answer": "Yes. Calvin describes upcoming tours as \"so excited,\" says performing \"fuels my soul,\" and calls touring experiences \"wild\" and \"unreal\" with amazing crowds.", "input_tokens": 28615}
+{"qid": "c9q24", "condition": "grimoire-excerpt-gated", "answer": "Yes, Dave can work with engines. He's an automotive engineer, opened his own car maintenance shop, and has been working on engines since childhood with his dad.", "input_tokens": 31400}
+{"qid": "c9q151", "condition": "grimoire-excerpt-gated", "answer": "Based on the provided conversations, Calvin has not taken up a new hobby recently. His primary focus throughout remains music\u2014performing, recording, touring, and collaborating with artists. The most recent activity mentioned is networking with other artists in October 2023 for his music career, but this is not a new hobby he took up.", "input_tokens": 30819}
+{"qid": "c9q19", "condition": "grimoire-excerpt-gated", "answer": "Music festival (April 2023, August 2023), performed at concert/show, met Frank Ocean at festival. Interested in visiting Shibuya Crossing and Shinjuku.", "input_tokens": 30934}
+{"qid": "c9q38", "condition": "grimoire-excerpt-gated", "answer": "14 September, 2023", "input_tokens": 29314}
+{"qid": "c9q31", "condition": "grimoire-excerpt-gated", "answer": "At a car show (last weekend of August).", "input_tokens": 30654}
+{"qid": "c9q40", "condition": "grimoire-excerpt-gated", "answer": "Tupac and Dr. Dre (the song \"California Love\")", "input_tokens": 31267}
+{"qid": "c9q53", "condition": "grimoire-excerpt-gated", "answer": "His friends and team, particularly Dave.", "input_tokens": 30459}
+{"qid": "c9q70", "condition": "grimoire-excerpt-gated", "answer": "16 November 2023", "input_tokens": 28135}
+{"qid": "c9q152", "condition": "grimoire-excerpt-gated", "answer": "Record player (2 November 2023)", "input_tokens": 31531}
+{"qid": "c9q75", "condition": "grimoire-excerpt-gated", "answer": "Car maintenance shop", "input_tokens": 30908}
+{"qid": "c9q65", "condition": "grimoire-excerpt-gated", "answer": "September 2023", "input_tokens": 31027}
+{"qid": "c9q76", "condition": "grimoire-excerpt-gated", "answer": "All kinds of cars\u2014regular maintenance and classic car restorations.", "input_tokens": 32116}
+{"qid": "c9q69", "condition": "grimoire-excerpt-gated", "answer": "November 2023", "input_tokens": 31165}
+{"qid": "c9q58", "condition": "grimoire-excerpt-gated", "answer": "Dad took him to his first car show at age 10; found an old car in a neighbor's garage and asked to fix it at age 10.", "input_tokens": 31804}
+{"qid": "c9q82", "condition": "grimoire-excerpt-gated", "answer": "A car maintenance shop (or car shop).", "input_tokens": 28402}
+{"qid": "c9q50", "condition": "grimoire-excerpt-gated", "answer": "Around 8 October 2023 (he said \"last week\" on 15 October)", "input_tokens": 31262}
+{"qid": "c9q86", "condition": "grimoire-excerpt-gated", "answer": "Skiing", "input_tokens": 30834}
+{"qid": "c9q57", "condition": "grimoire-excerpt-gated", "answer": "Photography", "input_tokens": 30469}
+{"qid": "c9q96", "condition": "grimoire-excerpt-gated", "answer": "A silver corvette (classic muscle car)", "input_tokens": 31322}
+{"qid": "c9q83", "condition": "grimoire-excerpt-gated", "answer": "Fixing up and transforming broken things, especially cars.", "input_tokens": 28491}
+{"qid": "c9q98", "condition": "grimoire-excerpt-gated", "answer": "Everyone sang along. It was a magical moment.", "input_tokens": 31108}
+{"qid": "c9q68", "condition": "grimoire-excerpt-gated", "answer": "Last week before 2 November 2023 (approximately late October 2023)", "input_tokens": 31619}
+{"qid": "c9q93", "condition": "grimoire-excerpt-gated", "answer": "Stay focused, keep going, and never give up on your music and dreams.", "input_tokens": 31036}
+{"qid": "c9q88", "condition": "grimoire-excerpt-gated", "answer": "Regular walks together in the park.\n\n(Note: The context shows it was actually Dave who arranged this with his friends, not Calvin.)", "input_tokens": 31181}

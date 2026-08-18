@@ -164,3 +164,57 @@ datasets were considered. Taken with the error decomposition, which found 28
 of 51 LongMemEval errors were questions full context also fails, the reading
 is that this pipeline is at a local optimum and its remaining errors are not
 mostly retrieval-limited.
+
+## Round 7 — four candidates, one trade-off, no net gain (2026-08-18)
+
+Round 6 ended with the diagnosis intact but no shippable change. Round 7 built
+three more candidates from it and scored all four against same-epoch controls
+on both datasets. The result is a clean structure rather than a win.
+
+| candidate | LongMemEval | LoCoMo | pooled, 700 paired questions |
+|---|---|---|---|
+| per-note cap | **+3.5pp** (p=0.19) | −2.0pp (p=0.20) | 34W/37L, p=0.81 |
+| chunk 800→400 | **+3.0pp** (p=0.33) | −1.2pp (p=0.53) | 45W/45L, p=1.00 |
+| within-note excerpt | **+4.0pp** (p=0.10) | −1.2pp (p=0.50) | 37W/35L, p=0.91 |
+| …+ relevance gate | 0.0pp (p=1.00) | **+0.6pp** (p=0.77) | 34W/31L, p=0.80 |
+
+Every change that puts more of a NOTE into the response gains three to four
+points on LongMemEval and loses one to two on LoCoMo. The one that takes it
+back out — admitting a further chunk only if it scores within 85% of the hit
+itself — reverses both signs exactly. Pooled across both datasets every
+candidate is a coin flip. **None shipped.**
+
+### The trade-off, stated plainly
+
+LongMemEval hides its evidence as asides inside long sessions, so answers fail
+by UNDER-inclusion and want depth. LoCoMo spreads its evidence across short
+sessions and asks for lists, so answers fail by OVER-inclusion and want focus.
+Depth and focus are the same dial turned opposite ways, and this pipeline is
+already sitting where the two curves cross.
+
+### The within-note excerpt (the best of the four)
+
+Worth describing because it is the one that came closest and because its
+failure is informative. Instead of merging a hit with its chunk_idx ±1
+neighbours, a hit brings its note's other high-scoring chunks with it, in
+document order with an elision marker — the shape the lexical leg's excerpt
+already returns. It keeps ONE entry per note, so breadth is untouched:
+distinct sessions per context stayed at 10.96 against the baseline's 10.96.
+
+On the deterministic dev metric it is the only candidate that improves **both**
+datasets — LongMemEval turn-full coverage 75.6% → 80.7%, LoCoMo 84.5% → 85.5%,
+multi-hop 45.8% → 48.4%. It still lost 1.2 points of LoCoMo accuracy.
+
+### Why coverage stopped being a usable gate
+
+That is the second time on LoCoMo that better evidence coverage came with worse
+accuracy — the per-note cap did the same with coverage flat. Two independent
+mechanisms, same direction. On this dataset the deterministic metric is not
+merely noisy about accuracy, it has been anti-correlated with it, because what
+the extra material adds is distractors for a list answer rather than evidence.
+
+So the honest position after seven rounds: retrieval coverage is not a
+sufficient gate for LoCoMo, and end-to-end accuracy cannot resolve differences
+of this size (the noise floor is 8–12% of answers). A change in this design
+space cannot currently be validated either way, which is itself the reason to
+ship none of them.
