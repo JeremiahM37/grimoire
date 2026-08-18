@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"regexp"
@@ -54,6 +55,10 @@ func (s *Server) facts(w http.ResponseWriter, r *http.Request) {
 		}
 		out = append(out, map[string]string{"note": note, "key": key, "value": value})
 	}
+	if err := rows.Err(); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 	writeJSON(w, http.StatusOK, out)
 }
 
@@ -102,6 +107,10 @@ func (s *Server) renameTag(w http.ResponseWriter, r *http.Request) {
 			rels = append(rels, rel)
 		}
 	}
+	if err := rows.Err(); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 	rows.Close()
 
 	affected := 0
@@ -148,41 +157,71 @@ func (s *Server) renameTag(w http.ResponseWriter, r *http.Request) {
 
 // graph serves the note graph for the visualiser.
 func (s *Server) graph(w http.ResponseWriter, _ *http.Request) {
+	// Each of these three reads used the `if rows, err := ...; err == nil`
+	// form, which drops the error and leaves the bucket empty. A failing query
+	// then rendered as a 200 with an empty graph — indistinguishable, in the
+	// visualiser, from a vault with no notes in it.
 	nodes := []map[string]string{}
-	if rows, err := s.Index.DB.Query("SELECT path, title FROM notes"); err == nil {
-		for rows.Next() {
-			var path, title string
-			if rows.Scan(&path, &title) == nil {
-				nodes = append(nodes, map[string]string{"id": path, "title": title})
-			}
+	if err := s.eachRow("SELECT path, title FROM notes", nil, func(rows *sql.Rows) error {
+		var path, title string
+		if err := rows.Scan(&path, &title); err != nil {
+			return err
 		}
-		rows.Close()
+		nodes = append(nodes, map[string]string{"id": path, "title": title})
+		return nil
+	}); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
 	}
 	edges := []map[string]string{}
-	if rows, err := s.Index.DB.Query(
-		"SELECT src, dst FROM links WHERE resolved=1"); err == nil {
-		for rows.Next() {
+	if err := s.eachRow("SELECT src, dst FROM links WHERE resolved=1", nil,
+		func(rows *sql.Rows) error {
 			var src, dst string
-			if rows.Scan(&src, &dst) == nil {
-				edges = append(edges, map[string]string{"src": src, "dst": dst})
+			if err := rows.Scan(&src, &dst); err != nil {
+				return err
 			}
-		}
-		rows.Close()
+			edges = append(edges, map[string]string{"src": src, "dst": dst})
+			return nil
+		}); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
 	}
 	unresolved := []string{}
-	if rows, err := s.Index.DB.Query(
-		"SELECT DISTINCT target FROM links WHERE resolved=0 ORDER BY target LIMIT 200"); err == nil {
-		for rows.Next() {
+	if err := s.eachRow(
+		"SELECT DISTINCT target FROM links WHERE resolved=0 ORDER BY target LIMIT 200", nil,
+		func(rows *sql.Rows) error {
 			var t string
-			if rows.Scan(&t) == nil {
-				unresolved = append(unresolved, t)
+			if err := rows.Scan(&t); err != nil {
+				return err
 			}
-		}
-		rows.Close()
+			unresolved = append(unresolved, t)
+			return nil
+		}); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"nodes": nodes, "edges": edges, "unresolved": unresolved,
 	})
+}
+
+// eachRow runs a query and hands each row to fn, taking care of the three
+// things every one of these loops has to get right and several did not: the
+// rows are always closed, a scan failure stops the loop instead of silently
+// skipping a row, and rows.Err() is consulted so an iteration that dies
+// halfway is reported rather than returned as a short result.
+func (s *Server) eachRow(query string, args []any, fn func(*sql.Rows) error) error {
+	rows, err := s.Index.DB.Query(query, args...)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		if err := fn(rows); err != nil {
+			return err
+		}
+	}
+	return rows.Err()
 }
 
 // tasks lists every `- [ ]` / `- [x]` across the vault, open ones first.
@@ -259,6 +298,10 @@ func (s *Server) complete(w http.ResponseWriter, r *http.Request) {
 		out = append(out, map[string]string{
 			"path": path, "title": title, "stem": strings.TrimSuffix(stem, ".md"),
 		})
+	}
+	if err := rows.Err(); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
 	}
 	writeJSON(w, http.StatusOK, out)
 }

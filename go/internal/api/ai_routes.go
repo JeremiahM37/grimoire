@@ -102,6 +102,10 @@ func (s *Server) consolidateMemory(w http.ResponseWriter, r *http.Request) {
 				rels = append(rels, p)
 			}
 		}
+		if err := rows.Err(); err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 	}
 
 	out := []map[string]any{}

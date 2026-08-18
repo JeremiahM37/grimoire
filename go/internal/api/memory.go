@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"regexp"
@@ -150,8 +151,12 @@ func (s *Server) recall(w http.ResponseWriter, r *http.Request) {
 			writeErr(w, http.StatusInternalServerError, err.Error())
 			return
 		}
-		out = scanMemories(rows)
+		out, err = scanMemories(rows)
 		rows.Close()
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 
 		if len(out) == 0 {
 			// exact terms missed — fall back to semantic retrieval over the
@@ -186,8 +191,12 @@ func (s *Server) recall(w http.ResponseWriter, r *http.Request) {
 			writeErr(w, http.StatusInternalServerError, err.Error())
 			return
 		}
-		out = scanMemories(rows)
+		out, err = scanMemories(rows)
 		rows.Close()
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 	}
 	if out == nil {
 		out = []memoryOut{}
@@ -195,19 +204,19 @@ func (s *Server) recall(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
-func scanMemories(rows interface {
-	Next() bool
-	Scan(...any) error
-}) []memoryOut {
+// scanMemories drains a memory query. It takes the concrete *sql.Rows rather
+// than a Next/Scan interface so that Err() — the only way to tell "no more
+// rows" apart from "iteration failed" — is reachable.
+func scanMemories(rows *sql.Rows) ([]memoryOut, error) {
 	var out []memoryOut
 	for rows.Next() {
 		var m memoryOut
 		if err := rows.Scan(&m.Path, &m.Title, &m.Body, &m.Updated); err != nil {
-			continue
+			return nil, err
 		}
 		out = append(out, m)
 	}
-	return out
+	return out, rows.Err()
 }
 
 // briefing is the "read this first" pack for an agent joining a session:
@@ -220,33 +229,47 @@ func (s *Server) briefing(w http.ResponseWriter, r *http.Request) {
 			n = k
 		}
 	}
-	collect := func(q string, args ...any) []map[string]string {
+	collect := func(q string, args ...any) ([]map[string]string, error) {
 		out := []map[string]string{}
 		rows, err := s.Index.DB.Query(q, args...)
 		if err != nil {
-			return out
+			return nil, err
 		}
 		defer rows.Close()
 		for rows.Next() {
 			var path, title, body string
 			if err := rows.Scan(&path, &title, &body); err != nil {
-				continue
+				return nil, err
 			}
 			out = append(out, map[string]string{"path": path, "title": title, "body": body})
 		}
-		return out
+		return out, rows.Err()
 	}
 	// Python stores frontmatter JSON with a space after the colon, so the LIKE
 	// pattern must match that shape exactly or no note ever looks pinned.
-	pinned := collect(
+	// A briefing that silently drops a bucket is worse than one that fails:
+	// the agent cannot tell "nothing is pinned" from "the pinned query broke".
+	pinned, err := collect(
 		"SELECT path, title, body FROM notes WHERE private=0 " +
 			"AND frontmatter_json LIKE '%\"pinned\": true%' ORDER BY updated DESC, path LIMIT 10")
-	onboarding := collect(
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	onboarding, err := collect(
 		"SELECT n.path, n.title, n.body FROM notes n JOIN tags t ON t.note=n.path " +
 			"WHERE t.tag='onboarding' AND n.private=0 ORDER BY n.updated DESC, n.path LIMIT 10")
-	recent := collect(
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	recent, err := collect(
 		"SELECT path, title, body FROM notes WHERE path LIKE ? AND private=0 "+
 			"ORDER BY updated DESC, path LIMIT ?", MemoryDir+"/%", n)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 
 	// A note appearing in more than one bucket is listed once, in the first
 	// bucket that claims it — the briefing is a reading list, not a join.

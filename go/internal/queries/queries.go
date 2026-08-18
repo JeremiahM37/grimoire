@@ -244,6 +244,9 @@ func Execute(database *db.DB, spec *Spec, includePrivate bool) ([]map[string]any
 					tags = append(tags, t)
 				}
 			}
+			if err := trows.Err(); err != nil {
+				continue
+			}
 			trows.Close()
 			r["tags"] = tags
 		}

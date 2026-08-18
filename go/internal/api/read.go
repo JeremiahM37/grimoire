@@ -60,6 +60,10 @@ func (s *Server) readIndex(w http.ResponseWriter, _ *http.Request) {
 		items.WriteString(fmt.Sprintf(`<a href="/read/%s">%s</a>`,
 			stripMD(path), htmlEscape(title)))
 	}
+	if err := rows.Err(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	fmt.Fprint(w, readPage("Grimoire — notes",
 		"<h1>Grimoire</h1><nav>"+items.String()+"</nav>"))

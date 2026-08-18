@@ -338,6 +338,10 @@ func (s *Server) listNotes(w http.ResponseWriter, r *http.Request) {
 		it.Pinned = pinnedFlag(fmJSON)
 		items = append(items, it)
 	}
+	if err := rows.Err(); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 	// pinned notes float to the top, stable within each group
 	sort.SliceStable(items, func(i, j int) bool { return items[i].Pinned && !items[j].Pinned })
 	writeJSON(w, http.StatusOK, items)
@@ -626,6 +630,10 @@ func (s *Server) tags(w http.ResponseWriter, _ *http.Request) {
 		// field name is "c", the raw SQL alias — the console reads that, and
 		// renaming it here would silently empty the tag list
 		out = append(out, map[string]any{"tag": tag, "c": c})
+	}
+	if err := rows.Err(); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
 	}
 	writeJSON(w, http.StatusOK, out)
 }

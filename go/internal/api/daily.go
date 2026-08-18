@@ -82,6 +82,10 @@ func (s *Server) dailyDates(w http.ResponseWriter, _ *http.Request) {
 			out = append(out, stem)
 		}
 	}
+	if err := rows.Err(); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 	writeJSON(w, http.StatusOK, out)
 }
 
