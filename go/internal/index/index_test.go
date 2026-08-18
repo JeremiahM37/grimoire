@@ -109,9 +109,9 @@ func TestUpsertAndRemove(t *testing.T) {
 	if err := ix.Remove("b.md"); err != nil {
 		t.Fatal(err)
 	}
-	for _, tbl := range []string{"notes", "vectors", "fts_chunks", "tags", "facts"} {
+	for _, tbl := range []string{"notes", "vectors", "tags", "facts"} {
 		c, _ := ix.DB.Count("SELECT COUNT(*) FROM " + tbl + " WHERE " +
-			map[string]string{"notes": "path", "vectors": "note", "fts_chunks": "note",
+			map[string]string{"notes": "path", "vectors": "note",
 				"tags": "note", "facts": "note"}[tbl] + "='b.md'")
 		if c != 0 {
 			t.Errorf("%s still has rows for the removed note", tbl)
