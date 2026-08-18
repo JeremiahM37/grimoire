@@ -76,7 +76,7 @@ func (ix *Index) Reindex() (int, error) {
 	// indefinitely without any error.
 	ix.bumpRev()
 
-	for _, tbl := range []string{"notes", "links", "tags", "fts", "facts", "vectors", "fts_chunks"} {
+	for _, tbl := range []string{"notes", "links", "tags", "fts", "facts", "vectors"} {
 		if err := ix.DB.Exec("DELETE FROM " + tbl); err != nil {
 			return 0, err
 		}
@@ -133,7 +133,6 @@ func (ix *Index) Remove(rel string) error {
 		"DELETE FROM links WHERE src=?",
 		"DELETE FROM tags WHERE note=?",
 		"DELETE FROM vectors WHERE note=?",
-		"DELETE FROM fts_chunks WHERE note=?",
 		"DELETE FROM facts WHERE note=?",
 	} {
 		if err := ix.DB.Exec(stmt, rel); err != nil {
@@ -153,7 +152,6 @@ func (ix *Index) writeNoteRows(note *vault.Note) error {
 		"DELETE FROM links WHERE src=?",
 		"DELETE FROM tags WHERE note=?",
 		"DELETE FROM vectors WHERE note=?",
-		"DELETE FROM fts_chunks WHERE note=?",
 		"DELETE FROM facts WHERE note=?",
 	} {
 		if err := ix.DB.Exec(stmt, rel); err != nil {
@@ -230,11 +228,6 @@ func (ix *Index) embedNote(note *vault.Note) error {
 		if err := ix.DB.Exec(
 			"INSERT INTO vectors(note,chunk_idx,chunk,embedding,private) VALUES(?,?,?,?,?)",
 			note.Path, i, c, Pack(vecs[i]), private); err != nil {
-			return err
-		}
-		if err := ix.DB.Exec(
-			"INSERT INTO fts_chunks(note,chunk_idx,chunk,private) VALUES(?,?,?,?)",
-			note.Path, i, c, private); err != nil {
 			return err
 		}
 	}

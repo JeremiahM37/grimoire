@@ -42,10 +42,6 @@ CREATE INDEX IF NOT EXISTS idx_facts_note ON facts(note);
 CREATE VIRTUAL TABLE IF NOT EXISTS fts USING fts5(
   path UNINDEXED, title, body, tokenize='porter unicode61'
 );
-CREATE VIRTUAL TABLE IF NOT EXISTS fts_chunks USING fts5(
-  note UNINDEXED, chunk_idx UNINDEXED, chunk, private UNINDEXED,
-  tokenize='porter unicode61'
-);
 CREATE TABLE IF NOT EXISTS vectors(
   note TEXT NOT NULL, chunk_idx INTEGER, chunk TEXT, embedding BLOB,
   private INTEGER DEFAULT 0
@@ -59,6 +55,23 @@ CREATE TABLE IF NOT EXISTS grants(
 CREATE TABLE IF NOT EXISTS audit(
   id INTEGER PRIMARY KEY, ts TEXT, action TEXT, secret TEXT, detail TEXT DEFAULT ''
 );
+`
+
+// migrations bring an index created by an older build up to the current shape.
+// The index is a rebuildable cache, so these only ever need to remove things —
+// anything missing is recreated by Schema, and anything unreadable is fixed by
+// a reindex.
+const migrations = `
+-- fts_chunks was a per-chunk FTS5 table that nothing ever queried: the lexical
+-- leg of retrieval is a hand-rolled BM25 over the vector store, kept that way
+-- so its scores match the Python implementation the published benchmarks were
+-- measured on. The table was written on every note write and every rebuild.
+--
+-- It was not merely idle. Mirroring every chunk into an FTS5 index made chunk
+-- writes 5x slower end to end (20k chunks: 1.43s with, 284ms without), and
+-- because FTS5 defers index merging, part of that cost was paid later by
+-- whichever statement ran next rather than by the write itself.
+DROP TABLE IF EXISTS fts_chunks;
 `
 
 // DB wraps the index connection.
@@ -91,6 +104,10 @@ func Open(path string) (*DB, error) {
 	if _, err := conn.Exec(Schema); err != nil {
 		conn.Close()
 		return nil, fmt.Errorf("applying schema: %w", err)
+	}
+	if _, err := conn.Exec(migrations); err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("migrating schema: %w", err)
 	}
 	return &DB{conn: conn}, nil
 }
