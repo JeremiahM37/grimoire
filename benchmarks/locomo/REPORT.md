@@ -191,3 +191,37 @@ better coverage came with worse answers — because LoCoMo's multi-hop questions
 have list answers, and the extra material is a distractor rather than
 evidence. Future changes here need an answer-precision measure, not just a
 recall one.
+
+## Round 8 — within-note excerpt: no measurable change (2026-08-18)
+
+Round 7's within-note excerpt measured −1.2pp here and looked like the price of
+its LongMemEval gain. Re-scored on a further **500 never-before-scored LoCoMo
+questions** (stratified sample of the 1,040 outside the frozen set), against a
+control retrieved with the unmodified binary and read in the same session:
+
+| sample | n | baseline | within-note excerpt | delta | W/L | exact McNemar |
+|---|---|---|---|---|---|---|
+| frozen sample | 500 | 78.0% | 76.8% | −1.2pp | 24/30 | 0.497 |
+| extension (never scored before) | 499 | 76.6% | 77.2% | +0.6pp | 22/19 | 0.755 |
+| **pooled** | **999** | **77.3%** | **77.0%** | **−0.3pp** | **46/49** | **0.838** |
+
+Pooled per category:
+
+| category | n | baseline | excerpt | delta |
+|---|---|---|---|---|
+| multi-hop | 176 | 54.5% | 54.5% | +0.0pp |
+| temporal | 215 | 69.8% | 69.3% | −0.5pp |
+| open-domain | 55 | 61.8% | 58.2% | −3.6pp |
+| single-hop | 553 | 89.0% | 89.0% | +0.0pp |
+
+The two samples disagree in sign and the pooled effect is a third of a point,
+so the honest reading is no measurable change. Multi-hop — the category that
+lost 20 points to the round-6 per-note cap and 5 to the ungated round-7
+variant — is flat at n = 176. Keeping one entry per note is what makes the
+difference: breadth is untouched, so the over-inclusion that broke list
+answers under the cap does not arise.
+
+This is also the round's methodological lesson repeating. A 1.2-point
+"regression" at n = 500 sat inside the noise this study measured in round 6,
+and doubling the sample dissolved it. Effects of that size need roughly a
+thousand questions here, not five hundred.

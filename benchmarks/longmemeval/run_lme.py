@@ -17,7 +17,7 @@ from pathlib import Path
 
 HERE = Path(__file__).parent
 REPO = HERE.parent.parent
-RESULTS = HERE / "results"
+RESULTS = Path(os.environ.get("LME_RESULTS", HERE / "results"))
 DATA = Path(os.environ.get("LME_DATA", "/tmp/longmemeval_s"))
 sys.path.insert(0, str(HERE.parent / "locomo"))
 sys.path.insert(0, str(REPO))

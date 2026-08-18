@@ -218,3 +218,73 @@ sufficient gate for LoCoMo, and end-to-end accuracy cannot resolve differences
 of this size (the noise floor is 8–12% of answers). A change in this design
 space cannot currently be validated either way, which is itself the reason to
 ship none of them.
+
+## Round 8 — within-note excerpt, replicated and significant (2026-08-18)
+
+Round 7's best candidate failed significance at n = 200 (p = 0.096). Rather
+than accept a trend, it was re-scored on the **270 LongMemEval questions that
+had never been scored before** — the remainder of the dataset after the frozen
+sample and the abstention items — against a control retrieved with the
+unmodified binary and read in the same session.
+
+| sample | n | baseline | within-note excerpt | delta | W/L | exact McNemar |
+|---|---|---|---|---|---|---|
+| original frozen sample | 200 | 73.5% | 77.5% | +4.0pp | 13/5 | 0.096 |
+| replication (never scored before) | 270 | 71.5% | 75.9% | +4.4pp | 20/8 | **0.036** |
+| **pooled — all 470 questions** | **470** | **72.3%** | **76.6%** | **+4.3pp** | **33/13** | **0.0045** |
+
+The replication reproduces the original effect almost exactly (+4.4 against
++4.0) and is significant on its own. Pooled over the whole dataset the effect
+is **+4.3 points at p = 0.0045**.
+
+Replication per category:
+
+| category | n | baseline | excerpt | delta |
+|---|---|---|---|---|
+| knowledge-update | 41 | 80.5% | 95.1% | **+14.6pp** |
+| multi-session | 70 | 54.3% | 60.0% | **+5.7pp** |
+| temporal-reasoning | 73 | 75.3% | 79.5% | +4.1pp |
+| single-session-assistant | 32 | 93.8% | 93.8% | 0.0 |
+| single-session-preference | 17 | 23.5% | 23.5% | 0.0 |
+| single-session-user | 37 | 89.2% | 86.5% | −2.7pp |
+
+Context cost is ~10% higher (7,563 against 6,843 median reader tokens), which
+still leaves retrieval at roughly **15× fewer tokens than full context** while
+now beating it by six points.
+
+### The change
+
+`finalize` expands each of the top hits into a query-focused excerpt of its
+note — the note's other high-scoring chunks, in document order, joined with an
+elision marker — instead of merging the hit with its `chunk_idx ±1`
+neighbours.
+
+It follows from the round-6/7 diagnosis. The chunk leg emits one chunk per
+note, so a fact anywhere but its note's best-matching chunk is unreachable:
+chunks-only coverage saturates at 43% whether k is 10, 25 or 30, and evidence
+ranked past 30 was a later chunk of an already-seen note in **100%** of cases.
+Adjacency merging only helps when the fact happens to sit next door. This is
+also the shape the lexical leg already returns, which is why that leg was
+carrying most of the pipeline's coverage.
+
+Critically it keeps **one entry per note**, so response breadth is untouched —
+10.96 distinct sessions per context against the baseline's 10.96. That is what
+separates it from the per-note cap of round 6, which bought the same depth by
+spending breadth and cost LoCoMo 20 points of multi-hop.
+
+### LoCoMo: no measurable cost
+
+Round 7 measured −1.2pp here (p = 0.50) and that looked like a real trade-off.
+It was not. Re-scored on a further 500 never-scored LoCoMo questions:
+
+| sample | n | baseline | excerpt | delta | W/L | p |
+|---|---|---|---|---|---|---|
+| frozen sample | 500 | 78.0% | 76.8% | −1.2pp | 24/30 | 0.497 |
+| extension (never scored) | 499 | 76.6% | 77.2% | +0.6pp | 22/19 | 0.755 |
+| **pooled** | **999** | **77.3%** | **77.0%** | **−0.3pp** | **46/49** | **0.838** |
+
+Pooled multi-hop is **+0.0pp** (54.5% → 54.5%, n = 176). The round-7 multi-hop
+worry was the small-sample noise this study now knows to expect.
+
+**Result: +4.3 points on LongMemEval at p = 0.0045, no measurable change on
+LoCoMo at n = 999.** Shipped.

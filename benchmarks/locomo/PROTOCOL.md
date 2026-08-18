@@ -116,3 +116,12 @@ context. That column exists because its absence cost a scored run: the per-note
 cap left evidence coverage flat on this dataset (84.5% → 84.6%) while costing
 multi-hop accuracy, and breadth was the thing that had moved. Coverage alone is
 not a sufficient gate for LoCoMo.
+
+## Amendment — round 8 (2026-08-18)
+
+**Extension sample.** `results_ext/` holds a 500-question stratified sample
+(`random.seed(7)`) of the 1,040 questions outside the frozen set and outside
+category 5. It exists because round 6 measured this dataset's noise floor at
+12% of answers, which makes a 1–2 point difference unresolvable at n = 500;
+pooling the two samples gives n = 999. `LOCOMO_RESULTS` overrides the results
+directory so the frozen sample is never touched.

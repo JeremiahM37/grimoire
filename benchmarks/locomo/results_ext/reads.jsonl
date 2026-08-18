@@ -1,0 +1,1000 @@
+{"qid": "c0q103", "condition": "control", "answer": "Charlotte's Web", "input_tokens": 28507}
+{"qid": "c0q103", "condition": "excerpt", "answer": "\"Charlotte's Web\"", "input_tokens": 28958}
+{"qid": "c0q101", "condition": "control", "answer": "Yes, she made it in her pottery class.", "input_tokens": 28814}
+{"qid": "c0q102", "condition": "excerpt", "answer": "Kids' books, classics, stories from different cultures, and educational books.", "input_tokens": 30625}
+{"qid": "c0q102", "condition": "control", "answer": "Kids' books, classics, stories from different cultures, educational books.", "input_tokens": 31553}
+{"qid": "c0q105", "condition": "control", "answer": "Self-acceptance and how to find support; that tough times don't last and hope and love exist.", "input_tokens": 28479}
+{"qid": "c0q101", "condition": "excerpt", "answer": "Yes, Melanie made it in her pottery class.", "input_tokens": 29006}
+{"qid": "c0q105", "condition": "excerpt", "answer": "Self-acceptance and how to find support. Also that tough times don't last and hope and love exist.", "input_tokens": 29305}
+{"qid": "c0q100", "condition": "control", "answer": "A safe and loving place where people can grow and express themselves.", "input_tokens": 28316}
+{"qid": "c0q104", "condition": "excerpt", "answer": "\"Becoming Nicole\" by Amy Ellis Nutt", "input_tokens": 29489}
+{"qid": "c0q100", "condition": "excerpt", "answer": "A safe, inviting place for people to grow.", "input_tokens": 28938}
+{"qid": "c0q104", "condition": "control", "answer": "\"Becoming Nicole\" by Amy Ellis Nutt", "input_tokens": 28913}
+{"qid": "c0q109", "condition": "control", "answer": "Pots (or pottery). One of the kids made a cup with a dog face on it.", "input_tokens": 28445}
+{"qid": "c0q112", "condition": "excerpt", "answer": "A sunset with a palm tree.", "input_tokens": 28991}
+{"qid": "c0q114", "condition": "excerpt", "answer": "Warmth and happiness.", "input_tokens": 32224}
+{"qid": "c0q114", "condition": "control", "answer": "Warmth and happiness.", "input_tokens": 31675}
+{"qid": "c0q109", "condition": "excerpt", "answer": "Pots (including a cup with a dog face on it)", "input_tokens": 29046}
+{"qid": "c0q112", "condition": "control", "answer": "A sunset with a palm tree.", "input_tokens": 28389}
+{"qid": "c0q116", "condition": "control", "answer": "Visiting a LGBTQ center; wanted to capture unity and strength.", "input_tokens": 29888}
+{"qid": "c0q116", "condition": "excerpt", "answer": "A visit to an LGBTQ center; she wanted to capture everyone's unity and strength.", "input_tokens": 29531}
+{"qid": "c0q125", "condition": "control", "answer": "In Melanie's slipper.", "input_tokens": 31678}
+{"qid": "c0q125", "condition": "excerpt", "answer": "In a slipper.", "input_tokens": 32229}
+{"qid": "c0q129", "condition": "excerpt", "answer": "\"Brave\" by Sara Bareilles", "input_tokens": 31195}
+{"qid": "c0q129", "condition": "control", "answer": "\"Brave\" by Sara Bareilles", "input_tokens": 31418}
+{"qid": "c0q130", "condition": "excerpt", "answer": "Bach and Mozart", "input_tokens": 31559}
+{"qid": "c0q130", "condition": "control", "answer": "Bach and Mozart", "input_tokens": 30801}
+{"qid": "c0q119", "condition": "control", "answer": "Tiny and in awe of the universe; amazed and awe-inspired.", "input_tokens": 30907}
+{"qid": "c0q131", "condition": "control", "answer": "Ed Sheeran", "input_tokens": 31353}
+{"qid": "c0q119", "condition": "excerpt", "answer": "Tiny and in awe of the universe.", "input_tokens": 31552}
+{"qid": "c0q131", "condition": "excerpt", "answer": "Ed Sheeran", "input_tokens": 31762}
+{"qid": "c0q136", "condition": "control", "answer": "Reading and painting.", "input_tokens": 31678}
+{"qid": "c0q136", "condition": "excerpt", "answer": "Reading and painting.", "input_tokens": 32161}
+{"qid": "c0q135", "condition": "excerpt", "answer": "Her son got into a car accident during a road trip.", "input_tokens": 31832}
+{"qid": "c0q148", "condition": "excerpt", "answer": "Melanie was thankful and expressed relief that they enjoyed the Grand Canyon a lot, especially given the accident earlier in the trip.", "input_tokens": 31477}
+{"qid": "c0q148", "condition": "control", "answer": "Grateful and thankful they enjoyed it despite the road trip accident.", "input_tokens": 31605}
+{"qid": "c0q147", "condition": "excerpt", "answer": "Scared but thankful; it reminded her to cherish her family.", "input_tokens": 31782}
+{"qid": "c0q147", "condition": "control", "answer": "Scared but grateful; reminded of how precious her family is and how much she needs them.", "input_tokens": 31271}
+{"qid": "c0q135", "condition": "control", "answer": "Her son got into a car accident during a roadtrip (20 October 2023).", "input_tokens": 30953}
+{"qid": "c0q138", "condition": "excerpt", "answer": "A drawing of a woman in a dress (inspired by a transgender poetry reading).", "input_tokens": 29286}
+{"qid": "c0q150", "condition": "control", "answer": "Melanie felt very grateful and appreciated her family's support deeply. She described them as \"awesome,\" said they helped her through tough times, and that they meant the world to her.", "input_tokens": 31675}
+{"qid": "c0q149", "condition": "control", "answer": "Strength, motivation, support, and love.", "input_tokens": 29475}
+{"qid": "c0q20", "condition": "control", "answer": "5 July 2023", "input_tokens": 31369}
+{"qid": "c0q18", "condition": "excerpt", "answer": "The beach and the forest.", "input_tokens": 28864}
+{"qid": "c0q149", "condition": "excerpt", "answer": "Love, support, and strength", "input_tokens": 29986}
+{"qid": "c0q150", "condition": "excerpt", "answer": "Melanie felt very grateful and appreciated her family's support. She called them \"awesome,\" said their love and support helped her through tough times, and that they mean the world to her.", "input_tokens": 31451}
+{"qid": "c0q25", "condition": "control", "answer": "10 July 2023", "input_tokens": 31060}
+{"qid": "c0q20", "condition": "excerpt", "answer": "5 July 2023", "input_tokens": 32086}
+{"qid": "c0q18", "condition": "control", "answer": "The beach and the forest.", "input_tokens": 28315}
+{"qid": "c0q25", "condition": "excerpt", "answer": "10 July 2023", "input_tokens": 31755}
+{"qid": "c0q3", "condition": "control", "answer": "Counseling or mental health career options.", "input_tokens": 29023}
+{"qid": "c0q138", "condition": "control", "answer": "A drawing of a woman in a dress.", "input_tokens": 28454}
+{"qid": "c0q3", "condition": "excerpt", "answer": "Counseling or mental health career options (the context doesn't explicitly specify).", "input_tokens": 29475}
+{"qid": "c0q29", "condition": "control", "answer": "14 July 2023", "input_tokens": 31481}
+{"qid": "c0q26", "condition": "excerpt", "answer": "The context does not mention Melanie reading a book called \"nothing is impossible.\"", "input_tokens": 31647}
+{"qid": "c0q35", "condition": "control", "answer": "Early July 2023 (two weekends before 17 July)", "input_tokens": 28804}
+{"qid": "c0q26", "condition": "control", "answer": "The book \"nothing is impossible\" is not mentioned in the provided conversation context.", "input_tokens": 31531}
+{"qid": "c0q4", "condition": "control", "answer": "Trans woman from Sweden, pursuing counseling/mental health work, planning adoption.", "input_tokens": 29393}
+{"qid": "c0q4", "condition": "excerpt", "answer": "Trans woman.", "input_tokens": 29815}
+{"qid": "c0q29", "condition": "excerpt", "answer": "14 July 2023", "input_tokens": 31811}
+{"qid": "c0q35", "condition": "excerpt", "answer": "Early July 2023 (approximately July 3, based on the mention in conversation session 9 of camping \"two weekends ago\" from July 17).", "input_tokens": 29820}
+{"qid": "c0q42", "condition": "control", "answer": "National park. Melanie consistently expresses deep love for nature, camping, hiking, and outdoor family activities, describing nature as bringing \"peace and serenity\" to her soul. No mention of theme parks anywhere in her conversations.", "input_tokens": 31638}
+{"qid": "c0q49", "condition": "control", "answer": "Last year (2022) \u2014 mentioned in August 2023 conversation as \"last year at the Pride fest\"", "input_tokens": 31320}
+{"qid": "c0q49", "condition": "excerpt", "answer": "Last year (approximately August 2022)", "input_tokens": 31869}
+{"qid": "c0q46", "condition": "excerpt", "answer": "Yes, she appears to be a supportive ally. She consistently praises Caroline's transgender advocacy, celebrates inclusivity efforts, and volunteers in her community.", "input_tokens": 31694}
+{"qid": "c0q42", "condition": "excerpt", "answer": "National park", "input_tokens": 32286}
+{"qid": "c0q45", "condition": "control", "answer": "11 August 2023", "input_tokens": 31646}
+{"qid": "c0q7", "condition": "control", "answer": "Single; pursuing adoption as a single parent.", "input_tokens": 31608}
+{"qid": "c0q45", "condition": "excerpt", "answer": "11 August 2023", "input_tokens": 32021}
+{"qid": "c0q46", "condition": "control", "answer": "Yes. Melanie consistently supports Caroline's transgender journey, praises her advocacy work, encourages LGBTQ+ community involvement, and expresses pride in her being an ally to the trans community.", "input_tokens": 31289}
+{"qid": "c0q80", "condition": "excerpt", "answer": "21 October 2023", "input_tokens": 32005}
+{"qid": "c0q80", "condition": "control", "answer": "21 October 2023", "input_tokens": 31449}
+{"qid": "c0q70", "condition": "control", "answer": "- LGBTQ support group (7 May 2023)\n- LGBTQ+ pride parade (2 July 2023)\n- LGBTQ conference (10 July 2023)\n- LGBT pride event (16 July 2023)\n- Transgender poetry reading (October 2023)\n- LGBTQ art show (hosted her paintings)", "input_tokens": 31515}
+{"qid": "c0q86", "condition": "control", "answer": "LGBTQ+ folks", "input_tokens": 31375}
+{"qid": "c0q86", "condition": "excerpt", "answer": "LGBTQ+ folks", "input_tokens": 31994}
+{"qid": "c0q7", "condition": "excerpt", "answer": "Single (planning to adopt as a single parent)", "input_tokens": 32114}
+{"qid": "c0q93", "condition": "control", "answer": "A necklace with a cross and a heart.", "input_tokens": 31091}
+{"qid": "c0q93", "condition": "excerpt", "answer": "A necklace with a cross and a heart.", "input_tokens": 31858}
+{"qid": "c0q96", "condition": "excerpt", "answer": "Working with trans people, helping them accept themselves and supporting their mental health.", "input_tokens": 30862}
+{"qid": "c0q99", "condition": "control", "answer": "Her own mental health struggles and the support she received that improved her life, which made her want to help others through similar experiences.", "input_tokens": 28689}
+{"qid": "c0q89", "condition": "excerpt", "answer": "Melanie is very supportive and enthusiastic. She congratulates Caroline, calls it \"amazing\" and \"awesome,\" believes Caroline will be an excellent mom, and thinks the kids will be lucky to have her.", "input_tokens": 31707}
+{"qid": "c0q89", "condition": "control", "answer": "Melanie is very supportive and enthusiastic. She thinks it's amazing and awesome, calls Caroline kind and caring, believes she'll be an excellent mom, and is excited for this new chapter in her life.", "input_tokens": 30947}
+{"qid": "c0q96", "condition": "control", "answer": "Working with trans people, helping them accept themselves and supporting their mental health.", "input_tokens": 30619}
+{"qid": "c0q75", "condition": "excerpt", "answer": "At least 3 children. The context mentions \"three children playing on the beach\" in one photo and references to a son and \"2 younger kids.\"", "input_tokens": 32385}
+{"qid": "c0q75", "condition": "control", "answer": "3 children", "input_tokens": 31698}
+{"qid": "c0q99", "condition": "excerpt", "answer": "Her own mental health struggles and the support she received helped her\u2014now she wants to help others on similar journeys.", "input_tokens": 28885}
+{"qid": "c1q1", "condition": "control", "answer": "January 2023", "input_tokens": 28772}
+{"qid": "c1q1", "condition": "excerpt", "answer": "January 2023 (sometime that month)", "input_tokens": 29386}
+{"qid": "c0q70", "condition": "excerpt", "answer": "Transgender poetry reading (8 October 2023), LGBTQ support group (7 May 2023)", "input_tokens": 32196}
+{"qid": "c1q11", "condition": "excerpt", "answer": "A few years before February 2023 (approximately 2020-2021)", "input_tokens": 31292}
+{"qid": "c1q12", "condition": "control", "answer": "Around 9 March 2023", "input_tokens": 31610}
+{"qid": "c1q12", "condition": "excerpt", "answer": "Around 9 March 2023 (he mentioned starting the gym \"last week\" on 16 March 2023).", "input_tokens": 32191}
+{"qid": "c1q11", "condition": "control", "answer": "A few years before February 2023 (exact date not specified)", "input_tokens": 30978}
+{"qid": "c1q19", "condition": "excerpt", "answer": "10 May 2023", "input_tokens": 29158}
+{"qid": "c1q19", "condition": "control", "answer": "10 May 2023", "input_tokens": 28756}
+{"qid": "c1q15", "condition": "control", "answer": "May 2023", "input_tokens": 31553}
+{"qid": "c1q22", "condition": "control", "answer": "By 13 June 2023", "input_tokens": 31791}
+{"qid": "c1q15", "condition": "excerpt", "answer": "May 2023 (mentioned as \"next month\" in early April conversation)", "input_tokens": 30605}
+{"qid": "c1q25", "condition": "control", "answer": "Dance classes, workshops, one-on-one mentoring and training, and dance competitions.", "input_tokens": 31456}
+{"qid": "c1q25", "condition": "excerpt", "answer": "Dance classes, workshops, and one-on-one mentoring and training.", "input_tokens": 31886}
+{"qid": "c1q22", "condition": "excerpt", "answer": "By 13 June 2023 (mentioned in conversation session 13).", "input_tokens": 32362}
+{"qid": "c1q13", "condition": "excerpt", "answer": "Late January 2023\n\n(She mentions launching an ad campaign for her store on 29 January 2023, indicating it was already open by then.)", "input_tokens": 29001}
+{"qid": "c1q26", "condition": "excerpt", "answer": "15 June 2023", "input_tokens": 32150}
+{"qid": "c1q26", "condition": "control", "answer": "15 June 2023", "input_tokens": 31860}
+{"qid": "c1q27", "condition": "excerpt", "answer": "Yes. Jon won first place in a local dance competition with his crew, and Gina won first place at regionals at age fifteen with her team in a contemporary piece called \"Finding Freedom.\"", "input_tokens": 32085}
+{"qid": "c1q27", "condition": "control", "answer": "Yes, both participated in dance competitions. Jon competed in a local competition where his dance crew won first place, and Gina competed in dance competitions and shows, winning first place at regionals at age fifteen.", "input_tokens": 31645}
+{"qid": "c1q3", "condition": "control", "answer": "Both own their own businesses and are passionate about dance.", "input_tokens": 31270}
+{"qid": "c1q3", "condition": "excerpt", "answer": "Both love dance and started their own businesses (Jon's dance studio, Gina's online clothing store).", "input_tokens": 31797}
+{"qid": "c1q38", "condition": "control", "answer": "21 July 2023", "input_tokens": 29992}
+{"qid": "c1q36", "condition": "excerpt", "answer": "21 July 2023", "input_tokens": 31210}
+{"qid": "c1q40", "condition": "control", "answer": "Contemporary dance.", "input_tokens": 30935}
+{"qid": "c1q31", "condition": "excerpt", "answer": "Approximately 5 months, from late January 2023 (when Jon lost his job and decided to start the studio) to June 20, 2023 (the official opening night).", "input_tokens": 31517}
+{"qid": "c1q36", "condition": "control", "answer": "21 July 2023", "input_tokens": 31083}
+{"qid": "c1q13", "condition": "control", "answer": "Late January 2023 (by 29 January, she had already launched an ad campaign for her store).", "input_tokens": 28477}
+{"qid": "c1q40", "condition": "excerpt", "answer": "Contemporary dance", "input_tokens": 31353}
+{"qid": "c1q38", "condition": "excerpt", "answer": "21 July 2023", "input_tokens": 30190}
+{"qid": "c1q31", "condition": "control", "answer": "About 5 months (20 January to 20 June 2023)", "input_tokens": 31130}
+{"qid": "c1q35", "condition": "excerpt", "answer": "9 July 2023", "input_tokens": 31566}
+{"qid": "c1q45", "condition": "control", "answer": "Jon is enthusiastic and excited about the dance festival. He found the performance \"awesome\" and it reinforced his passion for dancing.", "input_tokens": 31462}
+{"qid": "c1q45", "condition": "excerpt", "answer": "Enthusiastic and positive; he found it awesome and fulfilling.", "input_tokens": 31848}
+{"qid": "c1q47", "condition": "control", "answer": "A location in a shopping mall to expand her clothing store. A wholesaler had replied yes to her email, and she shared a photo of the shopping mall entrance.", "input_tokens": 31578}
+{"qid": "c1q51", "condition": "control", "answer": "She wanted to make the place look like her own style and make her customers feel cozy.", "input_tokens": 31561}
+{"qid": "c1q35", "condition": "control", "answer": "Early June 2023", "input_tokens": 31097}
+{"qid": "c1q52", "condition": "control", "answer": "Jon said it's \"the key to making them feel welcome and coming back.\"", "input_tokens": 31507}
+{"qid": "c1q51", "condition": "excerpt", "answer": "Her own style and to make customers feel cozy.", "input_tokens": 31878}
+{"qid": "c1q47", "condition": "excerpt", "answer": "A shopping mall location for her clothing store (a wholesaler approved her expansion)", "input_tokens": 32114}
+{"qid": "c1q5", "condition": "control", "answer": "Ocean view, natural light, Marley flooring, downtown location, good bounce for safety.", "input_tokens": 28988}
+{"qid": "c1q52", "condition": "excerpt", "answer": "\"It's the key to making them feel welcome and coming back.\"", "input_tokens": 32149}
+{"qid": "c1q53", "condition": "control", "answer": "She wants to create an experience that makes customers want to come back, making them feel like they're in a cool oasis.", "input_tokens": 30562}
+{"qid": "c1q55", "condition": "control", "answer": "Freedom \u2014 dancing without worrying what people think, and a reminder to follow passions and express herself.", "input_tokens": 31034}
+{"qid": "c1q5", "condition": "excerpt", "answer": "By the water with an ocean view, natural light, downtown location, and Marley flooring for safe dancing.", "input_tokens": 28718}
+{"qid": "c1q55", "condition": "excerpt", "answer": "Freedom - dancing without worrying what people think.", "input_tokens": 31615}
+{"qid": "c1q53", "condition": "excerpt", "answer": "She wanted to create an experience that makes customers want to come back, making them feel like they're in a cool oasis.", "input_tokens": 31200}
+{"qid": "c1q65", "condition": "control", "answer": "\"The Lean Startup\"", "input_tokens": 28721}
+{"qid": "c1q65", "condition": "excerpt", "answer": "\"The Lean Startup\"", "input_tokens": 29112}
+{"qid": "c1q59", "condition": "control", "answer": "Gina combined them because she's passionate about both dance and fashion, which lets her show her creativity and share her love with others. Plus, she could add dance-inspired items to her store.", "input_tokens": 31112}
+{"qid": "c1q59", "condition": "excerpt", "answer": "She was passionate about both dance and fashion, which allowed her to show her creativity, share her love with others, and add dance-inspired items to her store.", "input_tokens": 31762}
+{"qid": "c1q68", "condition": "control", "answer": "Quit (or give up).", "input_tokens": 30481}
+{"qid": "c1q64", "condition": "excerpt", "answer": "The location is not specified. Gina only mentions it's a part-time position in the fashion department of an international company.", "input_tokens": 31725}
+{"qid": "c1q68", "condition": "excerpt", "answer": "Won't quit / won't give up", "input_tokens": 31099}
+{"qid": "c1q8", "condition": "control", "answer": "28 January 2023", "input_tokens": 28913}
+{"qid": "c1q71", "condition": "control", "answer": "The studio looks amazing.", "input_tokens": 31550}
+{"qid": "c1q71", "condition": "excerpt", "answer": "Gina describes the studio as \"amazing\" and says Jon has \"put a lot of work into this.\"", "input_tokens": 32157}
+{"qid": "c1q8", "condition": "excerpt", "answer": "28 January 2023", "input_tokens": 29292}
+{"qid": "c1q64", "condition": "control", "answer": "International company (location not specified)", "input_tokens": 31396}
+{"qid": "c1q74", "condition": "control", "answer": "Celebrate and make memories with Gina.", "input_tokens": 31251}
+{"qid": "c1q74", "condition": "excerpt", "answer": "Make memories and celebrate with Gina and friends.", "input_tokens": 31802}
+{"qid": "c1q75", "condition": "control", "answer": "\"Can't wait for tomorrow's grand opening!\" and she expresses excitement, pride in his work, and promises to be there by his side to celebrate.", "input_tokens": 31085}
+{"qid": "c1q75", "condition": "excerpt", "answer": "\"Can't wait for tomorrow's grand opening!\" and \"I'll be right by your side, Jon. Let's live it up and make some great memories tomorrow.\"", "input_tokens": 31606}
+{"qid": "c2q1", "condition": "excerpt", "answer": "21 December 2022", "input_tokens": 29556}
+{"qid": "c1q80", "condition": "excerpt", "answer": "Sprucing up his business plan, tweaking his pitch to investors, and working on an online platform to showcase the dance studio.", "input_tokens": 31979}
+{"qid": "c1q80", "condition": "control", "answer": "Sprucing up business plan, tweaking investor pitch, and building an online platform to showcase the dance studio.", "input_tokens": 31773}
+{"qid": "c2q1", "condition": "control", "answer": "21 December 2022", "input_tokens": 29265}
+{"qid": "c1q81", "condition": "control", "answer": "Gina offers to help Jon with making content and managing his social media accounts.", "input_tokens": 31478}
+{"qid": "c2q10", "condition": "control", "answer": "24 February 2023", "input_tokens": 31296}
+{"qid": "c1q9", "condition": "excerpt", "answer": "Rome", "input_tokens": 32206}
+{"qid": "c1q9", "condition": "control", "answer": "The context does not mention Jean or John visiting any shared city. The conversation features Gina and Jon, who visited different cities (Jon visited Paris; Gina visited Rome).", "input_tokens": 31621}
+{"qid": "c2q10", "condition": "excerpt", "answer": "24 February 2023", "input_tokens": 31604}
+{"qid": "c1q81", "condition": "excerpt", "answer": "Help making content and managing his social media accounts for the dance studio.", "input_tokens": 31944}
+{"qid": "c2q107", "condition": "control", "answer": "Volunteering at a local dog shelter.", "input_tokens": 30808}
+{"qid": "c2q105", "condition": "control", "answer": "By adopting a rescue dog and cherishing Max's memory through the good times they shared.", "input_tokens": 31263}
+{"qid": "c2q106", "condition": "excerpt", "answer": "Responsibility and compassion.", "input_tokens": 30699}
+{"qid": "c2q105", "condition": "excerpt", "answer": "By adopting a rescue dog to teach his kids responsibility and compassion.", "input_tokens": 31562}
+{"qid": "c2q106", "condition": "control", "answer": "Responsibility and compassion.", "input_tokens": 30118}
+{"qid": "c2q108", "condition": "control", "answer": "She felt like she was in a fairy tale; the water sounded calming and it was truly magical.", "input_tokens": 31670}
+{"qid": "c2q108", "condition": "excerpt", "answer": "Like being in a fairy tale; magical and calming.", "input_tokens": 32084}
+{"qid": "c2q112", "condition": "control", "answer": "Assistant manager.", "input_tokens": 30485}
+{"qid": "c2q121", "condition": "control", "answer": "Lots of homes were ruined.", "input_tokens": 30867}
+{"qid": "c2q121", "condition": "excerpt", "answer": "Lots of homes were ruined.", "input_tokens": 31301}
+{"qid": "c2q112", "condition": "excerpt", "answer": "Assistant manager.", "input_tokens": 30839}
+{"qid": "c2q11", "condition": "control", "answer": "Jean (woman going through divorce and homelessness), Cindy (shelter resident), Laura (shelter resident who wrote a letter), a little 8-year-old girl, and an unnamed person who laughed while Maria played with kids.", "input_tokens": 28724}
+{"qid": "c2q11", "condition": "excerpt", "answer": "Jean (homeless woman), a little girl (age ~8), Laura (shelter resident), Cindy (shelter resident)", "input_tokens": 29046}
+{"qid": "c2q114", "condition": "control", "answer": "Support at home and belief in himself.", "input_tokens": 31511}
+{"qid": "c2q124", "condition": "control", "answer": "Charades and a scavenger hunt.", "input_tokens": 31049}
+{"qid": "c2q107", "condition": "excerpt", "answer": "Volunteering at a local dog shelter once a month.", "input_tokens": 31533}
+{"qid": "c2q124", "condition": "excerpt", "answer": "Chilled under trees, played charades and scavenger hunt, ate food.", "input_tokens": 31603}
+{"qid": "c2q114", "condition": "excerpt", "answer": "Support at home from his family and loved ones, whose trust and belief in him helped him power through self-doubt.", "input_tokens": 31756}
+{"qid": "c2q128", "condition": "excerpt", "answer": "Hiking", "input_tokens": 31223}
+{"qid": "c2q140", "condition": "control", "answer": "Veterans and their families.", "input_tokens": 28450}
+{"qid": "c2q126", "condition": "excerpt", "answer": "Appreciation for what he has, the need to give back, and it reminded him why he wanted to join the military.", "input_tokens": 31751}
+{"qid": "c2q126", "condition": "control", "answer": "Appreciation for what he has, need to give back, and hope from witnessing the veterans' resilience. It also reminded him why he wanted to join the military.", "input_tokens": 31570}
+{"qid": "c2q128", "condition": "control", "answer": "Hiking", "input_tokens": 30701}
+{"qid": "c2q127", "condition": "control", "answer": "Veterans' resilience and their inspiring stories, particularly from an elderly veteran named Samuel.", "input_tokens": 31252}
+{"qid": "c2q140", "condition": "excerpt", "answer": "Veterans and their families.", "input_tokens": 29073}
+{"qid": "c2q144", "condition": "excerpt", "answer": "Camping, hiking, and swimming.", "input_tokens": 31475}
+{"qid": "c2q144", "condition": "control", "answer": "Camping, hiking, and swimming.", "input_tokens": 30890}
+{"qid": "c2q127", "condition": "excerpt", "answer": "Hearing Samuel's inspiring stories and witnessing the veterans' resilience filled him with hope.", "input_tokens": 31014}
+{"qid": "c2q138", "condition": "control", "answer": "Community work (or volunteering)", "input_tokens": 30921}
+{"qid": "c2q15", "condition": "excerpt", "answer": "Creative writing class (25 February 2023) and poetry class (2 April 2023).", "input_tokens": 31826}
+{"qid": "c2q138", "condition": "excerpt", "answer": "Community work (mentioned on 5 August 2023 as something she did the previous day with church friends)", "input_tokens": 31327}
+{"qid": "c2q151", "condition": "control", "answer": "A brand new fire truck.", "input_tokens": 31186}
+{"qid": "c2q15", "condition": "control", "answer": "Creative writing (25 February 2023) and poetry (2 April 2023)", "input_tokens": 31428}
+{"qid": "c2q24", "condition": "excerpt", "answer": "April 2023 (one month before 4 May 2023)", "input_tokens": 32030}
+{"qid": "c2q151", "condition": "excerpt", "answer": "A brand new fire truck.", "input_tokens": 31806}
+{"qid": "c2q24", "condition": "control", "answer": "April 2023", "input_tokens": 31213}
+{"qid": "c2q23", "condition": "control", "answer": "Peach cobbler (22 Dec 2022); homemade desserts with her mom (4 May 2023)", "input_tokens": 28677}
+{"qid": "c2q23", "condition": "excerpt", "answer": "Peach cobbler and homemade desserts (including a banana split sundae).", "input_tokens": 29104}
+{"qid": "c2q31", "condition": "excerpt", "answer": "Around 2013 (approximately 10 years before June 2023)", "input_tokens": 31772}
+{"qid": "c2q31", "condition": "control", "answer": "Approximately 2013 (about 10 years before June 2023, when Max passed away)", "input_tokens": 31625}
+{"qid": "c2q33", "condition": "excerpt", "answer": "Aerial yoga and kundalini yoga.", "input_tokens": 31577}
+{"qid": "c2q34", "condition": "excerpt", "answer": "About 9 June 2023 (she mentioned joining \"last week\" on 16 June 2023)", "input_tokens": 28734}
+{"qid": "c2q33", "condition": "control", "answer": "Aerial yoga and kundalini yoga.", "input_tokens": 31358}
+{"qid": "c2q38", "condition": "control", "answer": "2 July 2023", "input_tokens": 31323}
+{"qid": "c2q36", "condition": "control", "answer": "Violin concert (late February 2023) and a live music event (mid-June 2023)", "input_tokens": 31530}
+{"qid": "c2q34", "condition": "control", "answer": "Approximately 9 June 2023 (she said she joined \"last week\" during the 16 June conversation)", "input_tokens": 28143}
+{"qid": "c2q38", "condition": "excerpt", "answer": "2 July 2023", "input_tokens": 31774}
+{"qid": "c2q36", "condition": "excerpt", "answer": "A violin concert (late February 2023) and a live music event (mid-to-late June 2023).", "input_tokens": 32006}
+{"qid": "c2q4", "condition": "control", "answer": "Late December 2022", "input_tokens": 28296}
+{"qid": "c2q40", "condition": "excerpt", "answer": "Kyle", "input_tokens": 29649}
+{"qid": "c2q4", "condition": "excerpt", "answer": "Late December 2022 (about a week before 1 January 2023)", "input_tokens": 28898}
+{"qid": "c2q49", "condition": "excerpt", "answer": "Baked goods (she baked items, specific type not mentioned)", "input_tokens": 32031}
+{"qid": "c2q40", "condition": "control", "answer": "Kyle", "input_tokens": 29074}
+{"qid": "c2q52", "condition": "control", "answer": "Cindy and Laura (both shelter residents).", "input_tokens": 31646}
+{"qid": "c2q49", "condition": "control", "answer": "Baked goods (the context only specifies \"stuff I baked\" without naming a specific item)", "input_tokens": 31477}
+{"qid": "c2q5", "condition": "control", "answer": "December 2022 (mentioned in conversation session 3 on January 1, 2023, where she said she took a beach sunset photo \"last month\")", "input_tokens": 30065}
+{"qid": "c2q52", "condition": "excerpt", "answer": "Cindy (3 August 2023) and Laura (3 July 2023)", "input_tokens": 32042}
+{"qid": "c2q45", "condition": "control", "answer": "No indication in context. Based on John's strong commitment to his community and local projects, unlikely.", "input_tokens": 30668}
+{"qid": "c2q5", "condition": "excerpt", "answer": "December 2022", "input_tokens": 30429}
+{"qid": "c2q55", "condition": "control", "answer": "Early August 2023 (she mentions it on 9 August 2023, saying \"last week\")", "input_tokens": 31259}
+{"qid": "c2q45", "condition": "excerpt", "answer": "Based on the context provided, there is no explicit mention of John's openness to moving to another country. However, given John's strong commitment to improving his local community (education, infrastructure, West County), his involvement in local politics, family ties, and his various community service activities, the best guess would be: **Unlikely** or **Probably not**.", "input_tokens": 31156}
+{"qid": "c2q55", "condition": "excerpt", "answer": "Early August 2023 (she mentioned it on August 9, saying \"last week\")", "input_tokens": 31968}
+{"qid": "c2q58", "condition": "excerpt", "answer": "Two weeks before 11 August 2023 (around 28 July 2023)", "input_tokens": 31714}
+{"qid": "c2q6", "condition": "control", "answer": "At the homeless shelter where she volunteers, and at church.", "input_tokens": 29485}
+{"qid": "c2q6", "condition": "excerpt", "answer": "At the shelter (with fellow volunteers) and at church.", "input_tokens": 29831}
+{"qid": "c2q71", "condition": "control", "answer": "A service-focused online group.", "input_tokens": 31130}
+{"qid": "c2q56", "condition": "excerpt", "answer": "Early August 2023 (the weekend before 9 August, 2023)", "input_tokens": 31887}
+{"qid": "c2q63", "condition": "control", "answer": "Approximately 1 week (Coco adopted around 28 July 2023, Shadow adopted around 6 August 2023).", "input_tokens": 31674}
+{"qid": "c2q67", "condition": "excerpt", "answer": "Repairs and renovations, making the learning environment safer and more modern for students.", "input_tokens": 31538}
+{"qid": "c2q58", "condition": "control", "answer": "Two weeks before 11 August 2023, which would be approximately 28 July 2023.", "input_tokens": 31245}
+{"qid": "c2q67", "condition": "control", "answer": "It enabled needed repairs and renovations, making the learning environment safer and more modern for students.", "input_tokens": 31178}
+{"qid": "c2q71", "condition": "excerpt", "answer": "A service-focused online group", "input_tokens": 31315}
+{"qid": "c2q72", "condition": "control", "answer": "Homeless shelter food and supplies distribution, and a toy drive for kids in need.", "input_tokens": 31493}
+{"qid": "c2q63", "condition": "excerpt", "answer": "Approximately 1 week (9 days). Coco was adopted around July 28, 2023, and Shadow around August 6, 2023.", "input_tokens": 32332}
+{"qid": "c2q56", "condition": "control", "answer": "Early August 2023", "input_tokens": 31577}
+{"qid": "c2q78", "condition": "control", "answer": "Kyle", "input_tokens": 28476}
+{"qid": "c2q74", "condition": "excerpt", "answer": "Maria noticed the little girl sitting alone and seeming sad, so she sat with her to provide comfort and a listening ear.", "input_tokens": 31512}
+{"qid": "c2q78", "condition": "excerpt", "answer": "Kyle", "input_tokens": 29335}
+{"qid": "c2q74", "condition": "control", "answer": "She noticed the little girl sitting alone and looking sad, so she sat with her to provide comfort.", "input_tokens": 31012}
+{"qid": "c2q72", "condition": "excerpt", "answer": "Food and supply distribution at a homeless shelter, toy drive for kids in need, and education/mentorship/job training initiatives for underserved communities.", "input_tokens": 31801}
+{"qid": "c2q75", "condition": "control", "answer": "Divorce, job loss, and homelessness.", "input_tokens": 31344}
+{"qid": "c2q82", "condition": "excerpt", "answer": "University degree completion.", "input_tokens": 31523}
+{"qid": "c2q75", "condition": "excerpt", "answer": "Jean went through a divorce, lost her job, and ended up homeless.", "input_tokens": 31811}
+{"qid": "c2q87", "condition": "control", "answer": "The Pacific Northwest coast and national parks.", "input_tokens": 28132}
+{"qid": "c2q82", "condition": "control", "answer": "University degree completion.", "input_tokens": 31292}
+{"qid": "c2q92", "condition": "control", "answer": "Three times a week.", "input_tokens": 31464}
+{"qid": "c2q87", "condition": "excerpt", "answer": "The Pacific Northwest coast and national parks.", "input_tokens": 28705}
+{"qid": "c2q92", "condition": "excerpt", "answer": "Three times a week.", "input_tokens": 32301}
+{"qid": "c2q91", "condition": "excerpt", "answer": "A convention", "input_tokens": 31837}
+{"qid": "c2q96", "condition": "control", "answer": "Joined a nearby church.", "input_tokens": 28765}
+{"qid": "c2q96", "condition": "excerpt", "answer": "Maria joined a nearby church.", "input_tokens": 29187}
+{"qid": "c2q89", "condition": "excerpt", "answer": "To make an impact and raise awareness about education and infrastructure issues in his community.", "input_tokens": 31537}
+{"qid": "c2q97", "condition": "excerpt", "answer": "She wanted to feel closer to a community and her faith.", "input_tokens": 31496}
+{"qid": "c2q97", "condition": "control", "answer": "She wanted to feel closer to a community and her faith.", "input_tokens": 30690}
+{"qid": "c2q89", "condition": "control", "answer": "To make an impact on education and infrastructure issues affecting his community.", "input_tokens": 31148}
+{"qid": "c3q100", "condition": "excerpt", "answer": "3 years", "input_tokens": 30766}
+{"qid": "c3q100", "condition": "control", "answer": "3 years (as of January 23, 2022)", "input_tokens": 30437}
+{"qid": "c3q0", "condition": "excerpt", "answer": "Yes. Nate has tournament gaming friends, a couple he met on walks, friends from his vegan diet group, and people who attended his gaming party.", "input_tokens": 29688}
+{"qid": "c3q102", "condition": "control", "answer": "Coconut milk, chocolate, and mixed berry flavors.", "input_tokens": 30745}
+{"qid": "c3q108", "condition": "control", "answer": "Nate describes it as not tough. He says you just need to keep their area clean, feed them properly, ensure they get enough light, and he finds it kind of fun.", "input_tokens": 31707}
+{"qid": "c3q0", "condition": "control", "answer": "Yes, very likely. Nate mentions tournament friends, gaming party attendees (7 people), a couple he met on walks with his dog Max, friends from his vegan diet group, and various teammates and competitors throughout the conversations.", "input_tokens": 29175}
+{"qid": "c3q118", "condition": "control", "answer": "Coconut cream frosting", "input_tokens": 31559}
+{"qid": "c3q102", "condition": "excerpt", "answer": "Coconut milk, chocolate, and mixed berry flavors.", "input_tokens": 31375}
+{"qid": "c3q108", "condition": "excerpt", "answer": "Keep their area clean, feed them properly, ensure they get enough light, and it's kind of fun.", "input_tokens": 31895}
+{"qid": "c3q118", "condition": "excerpt", "answer": "Coconut cream frosting.", "input_tokens": 32013}
+{"qid": "c3q125", "condition": "control", "answer": "Tournament friends, old friends, and teammates from other tournaments.", "input_tokens": 30792}
+{"qid": "c3q126", "condition": "control", "answer": "Custom controller decorations.", "input_tokens": 31574}
+{"qid": "c3q123", "condition": "excerpt", "answer": "A stuffed animal to remind you of the good vibes, like having joy in your pocket.", "input_tokens": 32341}
+{"qid": "c3q123", "condition": "control", "answer": "\"A stuffed animal to remind you of the good vibes\" and \"like having joy in your pocket.\"", "input_tokens": 31982}
+{"qid": "c3q126", "condition": "excerpt", "answer": "Custom controller decorations", "input_tokens": 32219}
+{"qid": "c3q137", "condition": "excerpt", "answer": "Woodhaven, a small town in the Midwest.", "input_tokens": 29140}
+{"qid": "c3q137", "condition": "control", "answer": "Woodhaven, a small town in the Midwest.", "input_tokens": 28745}
+{"qid": "c3q125", "condition": "excerpt", "answer": "Tournament friends, old friends, and teammates from other tournaments.", "input_tokens": 31440}
+{"qid": "c3q139", "condition": "excerpt", "answer": "Loss, redemption, and forgiveness.", "input_tokens": 32406}
+{"qid": "c3q141", "condition": "control", "answer": "Nate won his fourth video game tournament.", "input_tokens": 29038}
+{"qid": "c3q139", "condition": "control", "answer": "Loss, redemption, and forgiveness.", "input_tokens": 32085}
+{"qid": "c3q141", "condition": "excerpt", "answer": "Won his fourth video game tournament on Friday.", "input_tokens": 29598}
+{"qid": "c3q135", "condition": "excerpt", "answer": "Make it for her family this weekend.", "input_tokens": 32186}
+{"qid": "c3q146", "condition": "control", "answer": "Knowing that her writing can make a difference in others' lives.", "input_tokens": 28531}
+{"qid": "c3q135", "condition": "control", "answer": "Make it for her family and surprise them with something delicious.", "input_tokens": 31816}
+{"qid": "c3q146", "condition": "excerpt", "answer": "Knowing her writing can make a difference.", "input_tokens": 28932}
+{"qid": "c2q91", "condition": "control", "answer": "A convention. In Session 12 (18 April, 2023), John mentions: \"My colleagues and I went to a convention together last month. We're all passionate about using tech for good in our community.\"", "input_tokens": 31112}
+{"qid": "c3q15", "condition": "control", "answer": "Around 8 April 2022", "input_tokens": 31361}
+{"qid": "c3q152", "condition": "excerpt", "answer": "Because Joanna is lactose intolerant.", "input_tokens": 31010}
+{"qid": "c3q157", "condition": "control", "answer": "Chocolate raspberry tart", "input_tokens": 29200}
+{"qid": "c3q15", "condition": "excerpt", "answer": "Last week before 15 April 2022 (approximately 8 April 2022)", "input_tokens": 31631}
+{"qid": "c3q147", "condition": "excerpt", "answer": "Coconut milk ice cream", "input_tokens": 32187}
+{"qid": "c3q154", "condition": "control", "answer": "A cooking show.", "input_tokens": 31732}
+{"qid": "c3q154", "condition": "excerpt", "answer": "A cooking show.", "input_tokens": 32087}
+{"qid": "c3q152", "condition": "control", "answer": "She's lactose intolerant.", "input_tokens": 30355}
+{"qid": "c3q149", "condition": "excerpt", "answer": "Her book (she shared it with her writers group the week before August 22, 2022)", "input_tokens": 31895}
+{"qid": "c3q149", "condition": "control", "answer": "Her book", "input_tokens": 31146}
+{"qid": "c3q147", "condition": "control", "answer": "Coconut milk ice cream", "input_tokens": 31648}
+{"qid": "c3q157", "condition": "excerpt", "answer": "Chocolate raspberry tart", "input_tokens": 29536}
+{"qid": "c3q164", "condition": "control", "answer": "Cyberpunk 2077", "input_tokens": 28720}
+{"qid": "c3q164", "condition": "excerpt", "answer": "Cyberpunk 2077", "input_tokens": 29264}
+{"qid": "c3q168", "condition": "excerpt", "answer": "Tilly, the stuffed animal dog", "input_tokens": 28986}
+{"qid": "c3q167", "condition": "control", "answer": "A fluffy multi-person couch, a weighted blanket, and dimmable lights.", "input_tokens": 31644}
+{"qid": "c3q167", "condition": "excerpt", "answer": "A fluffy couch, a weighted blanket, and dimmable lights.", "input_tokens": 32004}
+{"qid": "c3q168", "condition": "control", "answer": "Tilly (the stuffed animal dog)", "input_tokens": 28523}
+{"qid": "c3q17", "condition": "excerpt", "answer": "\"The Lord of the Rings\" Trilogy", "input_tokens": 32176}
+{"qid": "c3q170", "condition": "control", "answer": "She named it after a dog she had in Michigan that she had to give up due to allergies.", "input_tokens": 32337}
+{"qid": "c3q17", "condition": "control", "answer": "\"The Lord of the Rings\" Trilogy", "input_tokens": 30905}
+{"qid": "c3q170", "condition": "excerpt", "answer": "She named it after a real dog she used to have in Michigan, before she became allergic.", "input_tokens": 32506}
+{"qid": "c3q175", "condition": "control", "answer": "A stuffed animal dog (named Tilly)", "input_tokens": 28781}
+{"qid": "c3q165", "condition": "excerpt", "answer": "A fish tank with a fish inside it.", "input_tokens": 31844}
+{"qid": "c3q178", "condition": "control", "answer": "From people she knows, things she saw, and her imagination.", "input_tokens": 31471}
+{"qid": "c3q175", "condition": "excerpt", "answer": "A stuffed animal dog (named Tilly)", "input_tokens": 29216}
+{"qid": "c3q178", "condition": "excerpt", "answer": "People she knows, things she saw, and her imagination.", "input_tokens": 32270}
+{"qid": "c3q181", "condition": "control", "answer": "Coconut milk", "input_tokens": 31993}
+{"qid": "c3q183", "condition": "control", "answer": "Xenoblade Chronicles", "input_tokens": 30762}
+{"qid": "c3q182", "condition": "control", "answer": "Her early writings. It showed her how much progress she had made as a writer.", "input_tokens": 30936}
+{"qid": "c3q182", "condition": "excerpt", "answer": "Early writings (or her early writings).", "input_tokens": 31520}
+{"qid": "c3q165", "condition": "control", "answer": "A fish tank with a fish inside", "input_tokens": 31285}
+{"qid": "c3q186", "condition": "control", "answer": "Homemade coconut ice cream", "input_tokens": 31471}
+{"qid": "c3q181", "condition": "excerpt", "answer": "Coconut milk", "input_tokens": 32564}
+{"qid": "c3q183", "condition": "excerpt", "answer": "Xenoblade Chronicles (listed as \"Xeonoblade Chronicles\" in the conversation)", "input_tokens": 31744}
+{"qid": "c3q186", "condition": "excerpt", "answer": "Homemade coconut ice cream", "input_tokens": 32244}
+{"qid": "c3q189", "condition": "excerpt", "answer": "He's a big fan of gaming videos and thought it would be fun to make them himself; he wanted to share his love of gaming and connect with others.", "input_tokens": 30272}
+{"qid": "c3q189", "condition": "control", "answer": "He's a big fan of gaming videos and wanted to share his love of gaming with others who enjoy it.", "input_tokens": 29674}
+{"qid": "c3q196", "condition": "control", "answer": "His turtles.", "input_tokens": 30691}
+{"qid": "c3q196", "condition": "excerpt", "answer": "His turtles.", "input_tokens": 31009}
+{"qid": "c3q28", "condition": "excerpt", "answer": "17 June 2022", "input_tokens": 28890}
+{"qid": "c3q32", "condition": "control", "answer": "Woodhaven, a small town in the Midwest.", "input_tokens": 30934}
+{"qid": "c3q32", "condition": "excerpt", "answer": "Woodhaven, a small town in the Midwest.", "input_tokens": 31777}
+{"qid": "c3q38", "condition": "control", "answer": "9 September 2022", "input_tokens": 32325}
+{"qid": "c3q19", "condition": "control", "answer": "2 times (17 April and 12 May 2022)", "input_tokens": 31132}
+{"qid": "c3q19", "condition": "excerpt", "answer": "2 times - April 17, 2022 and May 12, 2022", "input_tokens": 31524}
+{"qid": "c3q22", "condition": "excerpt", "answer": "The context does not specify when Joanna started her third screenplay. She had finished it by 20 May 2022, but the exact start date is not mentioned.", "input_tokens": 31817}
+{"qid": "c3q28", "condition": "control", "answer": "17 June 2022", "input_tokens": 28673}
+{"qid": "c3q38", "condition": "excerpt", "answer": "Last Friday (9 September 2022)", "input_tokens": 32726}
+{"qid": "c3q42", "condition": "excerpt", "answer": "\"Little Women\"", "input_tokens": 29903}
+{"qid": "c3q22", "condition": "control", "answer": "April 2022", "input_tokens": 31600}
+{"qid": "c3q42", "condition": "control", "answer": "Little Women", "input_tokens": 29689}
+{"qid": "c3q39", "condition": "control", "answer": "12 September 2022", "input_tokens": 31423}
+{"qid": "c3q39", "condition": "excerpt", "answer": "12 September 2022", "input_tokens": 31344}
+{"qid": "c3q48", "condition": "control", "answer": "7 October 2022", "input_tokens": 28839}
+{"qid": "c3q48", "condition": "excerpt", "answer": "7 October 2022", "input_tokens": 29302}
+{"qid": "c3q41", "condition": "control", "answer": "The context does not provide a specific date for when Joanna made the chocolate tart with raspberries. She mentions it on 14 September 2022 as her favorite dairy-free treat, but when she actually made it is not stated.", "input_tokens": 29208}
+{"qid": "c3q41", "condition": "excerpt", "answer": "5 October 2022 (or before 14 September 2022)\n\nThe context doesn't specify exactly when she made it, but she mentions trying her newest dairy-free tart recipe \"yesterday\" on 6 October 2022, placing that attempt on 5 October 2022.", "input_tokens": 29437}
+{"qid": "c3q7", "condition": "control", "answer": "21 January 2022", "input_tokens": 31739}
+{"qid": "c3q44", "condition": "control", "answer": "Late September 2022 (he mentions winning \"last week\" in the 6 October 2022 conversation where he says he made a lot of money).", "input_tokens": 28870}
+{"qid": "c3q7", "condition": "excerpt", "answer": "21 January 2022", "input_tokens": 32170}
+{"qid": "c3q66", "condition": "excerpt", "answer": "Cooking/vegan ice cream recipes (he did a cooking show in September 2022)", "input_tokens": 32395}
+{"qid": "c3q66", "condition": "control", "answer": "Cooking/a cooking show. Nate hosted a vegan ice cream cooking show (Session 21, 14 September 2022).", "input_tokens": 32157}
+{"qid": "c3q70", "condition": "control", "answer": "Feeds them fruit, holds them, watches them play and walk, brings them to the kitchen, bathes them.", "input_tokens": 31440}
+{"qid": "c3q75", "condition": "control", "answer": "Coconut milk ice cream, dairy-free chocolate mousse, chocolate, and mixed berry flavors.", "input_tokens": 29821}
+{"qid": "c3q70", "condition": "excerpt", "answer": "Takes them for walks, watches them play and eat, holds them, brings them to the kitchen, gives them baths.", "input_tokens": 31772}
+{"qid": "c3q54", "condition": "control", "answer": "The context does not provide the specific date when Joanna's second movie script was shown on the big screen. We only know that by 25 October 2022, three of her scripts had been shown, with the third one airing \"last Sunday\" (around 23 October 2022), but the dates for the first and second are not mentioned.", "input_tokens": 30940}
+{"qid": "c3q75", "condition": "excerpt", "answer": "Coconut milk ice cream, dairy-free chocolate mousse, and chocolate cake with berries.", "input_tokens": 30222}
+{"qid": "c3q44", "condition": "excerpt", "answer": "Late September 2022", "input_tokens": 29866}
+{"qid": "c3q54", "condition": "excerpt", "answer": "The specific date is not provided in the context. The context only mentions that by 25 October 2022, one of her scripts had been shown \"last Sunday\" (23 October 2022), and this was the third time her work had been shown on screen, but exact dates for the first and second screenings are not given.", "input_tokens": 31659}
+{"qid": "c3q79", "condition": "excerpt", "answer": "At least 3 screenplays - the first one submitted to a film festival (which got produced), a second one about a woman's journey of self-discovery after loss, and a suspenseful thriller set in a small Midwestern town.", "input_tokens": 31110}
+{"qid": "c3q81", "condition": "control", "answer": "Dairy-free chocolate coconut cupcakes with raspberry frosting, chocolate raspberry tart, dairy-free chocolate cake with raspberries, cookies, pies, and coconut milk ice cream.", "input_tokens": 31979}
+{"qid": "c3q8", "condition": "excerpt", "answer": "The context does not specify when Nate got his first two turtles. The earliest conversation (January 23, 2022) already shows him having both, suggesting he acquired them before that date, likely in late 2021.", "input_tokens": 30783}
+{"qid": "c3q82", "condition": "control", "answer": "Coconut milk ice cream, chocolate and vanilla swirl ice cream, dairy-free chocolate mousse, vegan ice cream recipes (on cooking show)", "input_tokens": 31128}
+{"qid": "c3q8", "condition": "control", "answer": "The context does not specify when Nate got his first two turtles. The earliest mention is January 23, 2022, when he already had them.", "input_tokens": 30476}
+{"qid": "c3q80", "condition": "control", "answer": "At least 7 tournaments. He explicitly mentions winning his \"fourth\" tournament on July 10, 2022, with additional tournament wins mentioned before and after that date.", "input_tokens": 30724}
+{"qid": "c3q81", "condition": "excerpt", "answer": "Dairy-free chocolate coconut cupcakes with raspberry frosting, dairy-free chocolate raspberry tart, dairy-free chocolate cake with raspberries, blueberry and coconut milk dessert with gluten-free crust, cookies, pies, and cakes (various dairy-free options).", "input_tokens": 31950}
+{"qid": "c3q82", "condition": "excerpt", "answer": "Coconut milk ice cream, chocolate and vanilla swirl ice cream, dairy-free chocolate mousse, and mixed berry flavored ice cream.", "input_tokens": 31703}
+{"qid": "c3q80", "condition": "excerpt", "answer": "At least 7 tournaments: his first (January 2022), second (May 2022), a regional one (June 2022), fourth (July 2022), an international tournament (August 2022), another big one (October 2022), and a Valorant tournament (November 2022).", "input_tokens": 31489}
+{"qid": "c3q79", "condition": "control", "answer": "At least 3-4 screenplays. The context confirms she submitted one to a film festival (February 2022), wrote a second about self-discovery, mentioned working on a \"new script\" that's \"different from previous work\" (July 2022), and was working on a suspenseful thriller set in a small Midwestern town (November 2022).", "input_tokens": 30907}
+{"qid": "c3q9", "condition": "control", "answer": "Finished and printed her first full screenplay", "input_tokens": 31486}
+{"qid": "c3q85", "condition": "control", "answer": "Filmmaker/director", "input_tokens": 31062}
+{"qid": "c3q94", "condition": "excerpt", "answer": "Loss, identity, and connection.", "input_tokens": 31965}
+{"qid": "c3q98", "condition": "control", "answer": "Drama and romance", "input_tokens": 30830}
+{"qid": "c3q9", "condition": "excerpt", "answer": "Finished and printed her first screenplay (around 21 January 2022)", "input_tokens": 32267}
+{"qid": "c3q85", "condition": "excerpt", "answer": "Filmmaker (or director)", "input_tokens": 31822}
+{"qid": "c3q98", "condition": "excerpt", "answer": "Drama and romance", "input_tokens": 30830}
+{"qid": "c3q94", "condition": "control", "answer": "Loss, identity, and connection.", "input_tokens": 31494}
+{"qid": "c4q104", "condition": "control", "answer": "Sage", "input_tokens": 30737}
+{"qid": "c3q91", "condition": "control", "answer": "Adventures, magic, and great characters.", "input_tokens": 29545}
+{"qid": "c4q104", "condition": "excerpt", "answer": "Sage", "input_tokens": 31133}
+{"qid": "c4q105", "condition": "excerpt", "answer": "The Harry Potter stuff.", "input_tokens": 31970}
+{"qid": "c3q91", "condition": "excerpt", "answer": "Awesome battles and interesting characters.", "input_tokens": 29016}
+{"qid": "c4q105", "condition": "control", "answer": "The Harry Potter stuff.", "input_tokens": 31170}
+{"qid": "c4q103", "condition": "control", "answer": "Butternut squash soup (made up on the spot with sage).", "input_tokens": 31283}
+{"qid": "c4q103", "condition": "excerpt", "answer": "Butternut squash soup (made with sage)", "input_tokens": 31439}
+{"qid": "c4q112", "condition": "control", "answer": "A cozy restaurant with candlelight.", "input_tokens": 30724}
+{"qid": "c4q112", "condition": "excerpt", "answer": "A cozy restaurant with candlelight and music.", "input_tokens": 32400}
+{"qid": "c4q106", "condition": "control", "answer": "Still deciding on the destination; considering Edinburgh, Scotland.", "input_tokens": 28645}
+{"qid": "c4q12", "condition": "control", "answer": "2018", "input_tokens": 28518}
+{"qid": "c4q114", "condition": "control", "answer": "Fantasy", "input_tokens": 30562}
+{"qid": "c4q106", "condition": "excerpt", "answer": "Edinburgh, Scotland", "input_tokens": 28798}
+{"qid": "c4q114", "condition": "excerpt", "answer": "Fantasy (or Harry Potter/fantasy books)", "input_tokens": 31033}
+{"qid": "c4q123", "condition": "control", "answer": "Fantasy", "input_tokens": 31146}
+{"qid": "c4q12", "condition": "excerpt", "answer": "2018", "input_tokens": 28847}
+{"qid": "c4q127", "condition": "control", "answer": "Cooking", "input_tokens": 31237}
+{"qid": "c4q120", "condition": "excerpt", "answer": "Really rewarding.", "input_tokens": 31244}
+{"qid": "c4q127", "condition": "excerpt", "answer": "Cooking", "input_tokens": 31608}
+{"qid": "c4q120", "condition": "control", "answer": "Really rewarding and fulfilling.", "input_tokens": 30872}
+{"qid": "c4q123", "condition": "excerpt", "answer": "Fantasy", "input_tokens": 30641}
+{"qid": "c4q129", "condition": "control", "answer": "John will write it down and mail it to Tim.", "input_tokens": 31500}
+{"qid": "c4q129", "condition": "excerpt", "answer": "He will write it down and mail it.", "input_tokens": 31836}
+{"qid": "c4q131", "condition": "control", "answer": "A basketball signed by LeBron James (his favorite player)", "input_tokens": 31169}
+{"qid": "c4q131", "condition": "excerpt", "answer": "A basketball signed by his favorite player (LeBron James)", "input_tokens": 31465}
+{"qid": "c4q140", "condition": "control", "answer": "He worked hard to get better and owned up to the mistake, focusing on resilience and growth.", "input_tokens": 28614}
+{"qid": "c4q137", "condition": "control", "answer": "Writing a story based on UK experiences that didn't go as planned.", "input_tokens": 29989}
+{"qid": "c4q141", "condition": "excerpt", "answer": "\"The Alchemist\"", "input_tokens": 31687}
+{"qid": "c4q140", "condition": "excerpt", "answer": "He worked hard to get better and owned up to his mistakes, focusing on resilience and growth rather than dwelling on the moment.", "input_tokens": 29341}
+{"qid": "c4q137", "condition": "excerpt", "answer": "A story based on his UK experiences didn't go as planned.", "input_tokens": 30651}
+{"qid": "c4q132", "condition": "excerpt", "answer": "His skills, leadership, work ethic, determination, and heart\u2014especially his famous Game 7 of the '16 Finals block against Iguodala, which exemplified his never-give-up attitude.", "input_tokens": 28846}
+{"qid": "c4q132", "condition": "control", "answer": "His determination, heart, work ethic, and never-give-up attitude\u2014especially demonstrated by his epic Game 7 block in the 2016 Finals.", "input_tokens": 28502}
+{"qid": "c4q141", "condition": "control", "answer": "\"The Alchemist\"", "input_tokens": 31296}
+{"qid": "c4q134", "condition": "excerpt", "answer": "\"That\"", "input_tokens": 31292}
+{"qid": "c4q142", "condition": "control", "answer": "It motivated him to chase his dreams, trust the process, and search for his personal legend. It made him feel hopeful and reinforced the importance of following one's dreams.", "input_tokens": 28244}
+{"qid": "c4q142", "condition": "excerpt", "answer": "It motivated him to pursue dreams and trust the process, while thinking about following his personal legend.", "input_tokens": 28904}
+{"qid": "c4q146", "condition": "excerpt", "answer": "Violin", "input_tokens": 31595}
+{"qid": "c4q146", "condition": "control", "answer": "Playing the violin (or learning an instrument).", "input_tokens": 31262}
+{"qid": "c4q147", "condition": "excerpt", "answer": "Violin.", "input_tokens": 28213}
+{"qid": "c4q150", "condition": "control", "answer": "\"A Dance with Dragons\" by George R. R. Martin", "input_tokens": 30664}
+{"qid": "c4q150", "condition": "excerpt", "answer": "\"A Dance with Dragons\" by George R. R. Martin", "input_tokens": 31434}
+{"qid": "c4q134", "condition": "control", "answer": "\"That\"", "input_tokens": 30834}
+{"qid": "c4q147", "condition": "control", "answer": "Violin.", "input_tokens": 27738}
+{"qid": "c4q153", "condition": "control", "answer": "Practicing basketball outside for hours.", "input_tokens": 31177}
+{"qid": "c4q149", "condition": "control", "answer": "\"A Dance with Dragons\"", "input_tokens": 30643}
+{"qid": "c4q153", "condition": "excerpt", "answer": "Practicing basketball outside for hours.", "input_tokens": 31654}
+{"qid": "c4q152", "condition": "control", "answer": "A basketball game against their rival team.", "input_tokens": 31031}
+{"qid": "c4q156", "condition": "control", "answer": "Outdoor gear company endorsement deal (December 19, 2023).", "input_tokens": 28320}
+{"qid": "c4q158", "condition": "control", "answer": "Communication and bonding", "input_tokens": 30598}
+{"qid": "c4q152", "condition": "excerpt", "answer": "A basketball game against their rival.", "input_tokens": 31564}
+{"qid": "c4q158", "condition": "excerpt", "answer": "Communication and bonding", "input_tokens": 30949}
+{"qid": "c4q155", "condition": "excerpt", "answer": "It was a huge relief and a great success after being out for so long.", "input_tokens": 31557}
+{"qid": "c4q149", "condition": "excerpt", "answer": "\"A Dance with Dragons\"", "input_tokens": 31465}
+{"qid": "c4q156", "condition": "excerpt", "answer": "An endorsement deal with a renowned outdoor gear company.", "input_tokens": 28912}
+{"qid": "c4q155", "condition": "control", "answer": "Relief; he considered it a huge success after being out for so long, and celebrated with a get-together.", "input_tokens": 31208}
+{"qid": "c4q160", "condition": "control", "answer": "Visited a travel agency to check requirements for his next dream trip.", "input_tokens": 31460}
+{"qid": "c4q161", "condition": "excerpt", "answer": "Youth sports for underserved communities", "input_tokens": 29175}
+{"qid": "c4q166", "condition": "control", "answer": "Lord of the Rings", "input_tokens": 28734}
+{"qid": "c4q161", "condition": "control", "answer": "Youth sports and fair chances in sports for underserved communities.", "input_tokens": 28641}
+{"qid": "c4q160", "condition": "excerpt", "answer": "Visited a travel agency to check requirements for his next dream trip.", "input_tokens": 31885}
+{"qid": "c4q167", "condition": "control", "answer": "Aragorn", "input_tokens": 31742}
+{"qid": "c4q167", "condition": "excerpt", "answer": "Aragorn", "input_tokens": 32109}
+{"qid": "c4q16", "condition": "excerpt", "answer": "About 4 weeks (from approximately July 9 to August 9, 2023)", "input_tokens": 32090}
+{"qid": "c4q166", "condition": "excerpt", "answer": "Lord of the Rings", "input_tokens": 28917}
+{"qid": "c4q16", "condition": "control", "answer": "About 4 weeks. Tim first mentioned chatting with a Harry Potter fan from California around mid-July 2023, then reconnected via Skype on 9 August 2023.", "input_tokens": 31461}
+{"qid": "c4q171", "condition": "excerpt", "answer": "Map of Middle-earth from The Lord of the Rings (LOTR)", "input_tokens": 31998}
+{"qid": "c4q175", "condition": "control", "answer": "Endorsement deal with a popular beverage company (12 January 2024)", "input_tokens": 28033}
+{"qid": "c4q171", "condition": "control", "answer": "A map of Middle-earth from LOTR.", "input_tokens": 31272}
+{"qid": "c4q175", "condition": "excerpt", "answer": "Endorsement with a popular beverage company", "input_tokens": 28902}
+{"qid": "c4q26", "condition": "control", "answer": "The Wheel of Time", "input_tokens": 31458}
+{"qid": "c4q26", "condition": "excerpt", "answer": "\"The Wheel of Time\"", "input_tokens": 31490}
+{"qid": "c4q18", "condition": "control", "answer": "Patrick Rothfuss, George R. R. Martin, J.K. Rowling, Paulo Coelho", "input_tokens": 29752}
+{"qid": "c4q34", "condition": "control", "answer": "Start a foundation and do charity work to inspire others and make a positive impact.", "input_tokens": 28568}
+{"qid": "c4q28", "condition": "control", "answer": "John Williams", "input_tokens": 31437}
+{"qid": "c4q33", "condition": "excerpt", "answer": "October 2023 (next month from September 21, 2023)", "input_tokens": 31155}
+{"qid": "c4q18", "condition": "excerpt", "answer": "Patrick Rothfuss, George R. R. Martin, Paulo Coelho, J.R.R. Tolkien, J.K. Rowling", "input_tokens": 29370}
+{"qid": "c4q33", "condition": "control", "answer": "October 2023 (mentioned as \"next month\" on 21 September 2023)", "input_tokens": 30789}
+{"qid": "c4q34", "condition": "excerpt", "answer": "Start a foundation and do charity work to inspire others and make a positive difference.", "input_tokens": 28825}
+{"qid": "c4q39", "condition": "control", "answer": "2022", "input_tokens": 28511}
+{"qid": "c4q35", "condition": "control", "answer": "Hiking, camping, basketball, and nature exploration.", "input_tokens": 31279}
+{"qid": "c4q39", "condition": "excerpt", "answer": "2022", "input_tokens": 28284}
+{"qid": "c4q36", "condition": "control", "answer": "LeBron James", "input_tokens": 28587}
+{"qid": "c4q35", "condition": "excerpt", "answer": "Hiking, basketball, exploring nature, and visiting castles/historical sites.", "input_tokens": 31127}
+{"qid": "c4q28", "condition": "excerpt", "answer": "John Williams (Harry Potter theme)", "input_tokens": 31886}
+{"qid": "c4q36", "condition": "excerpt", "answer": "LeBron (LeBron James)", "input_tokens": 28893}
+{"qid": "c4q42", "condition": "control", "answer": "Soup with sage (31 August 2023)", "input_tokens": 28921}
+{"qid": "c4q42", "condition": "excerpt", "answer": "Soup with sage (appears to be butternut soup based on the photo description).", "input_tokens": 29570}
+{"qid": "c4q59", "condition": "control", "answer": "Career-high in assists (8 December 2023)", "input_tokens": 30496}
+{"qid": "c4q40", "condition": "control", "answer": "No evidence in the context. Tim's travels mentioned are international (Europe, Ireland, Italy, UK, Himalayas) or not location-specified.", "input_tokens": 31560}
+{"qid": "c4q59", "condition": "excerpt", "answer": "Career-high in assists on 8 December 2023 (mentioned as \"last Friday\" in the 11 December conversation).", "input_tokens": 31013}
+{"qid": "c4q40", "condition": "excerpt", "answer": "No, there is no mention of Tim visiting North Carolina or Tennessee in the conversations provided.", "input_tokens": 32013}
+{"qid": "c4q25", "condition": "control", "answer": "Basketball memorabilia (signed basketball and jerseys)", "input_tokens": 31086}
+{"qid": "c4q6", "condition": "excerpt", "answer": "July 2023", "input_tokens": 31085}
+{"qid": "c4q6", "condition": "control", "answer": "July 2023", "input_tokens": 30532}
+{"qid": "c4q56", "condition": "control", "answer": "Tim recently started learning the violin as of early December 2023. No exact date is provided in the conversations.", "input_tokens": 30507}
+{"qid": "c4q69", "condition": "excerpt", "answer": "February 2024", "input_tokens": 31533}
+{"qid": "c4q68", "condition": "excerpt", "answer": "Friday, 5 January 2024", "input_tokens": 31216}
+{"qid": "c4q68", "condition": "control", "answer": "5 January 2024", "input_tokens": 30848}
+{"qid": "c4q77", "condition": "control", "answer": "40 points (16 July 2023)", "input_tokens": 31273}
+{"qid": "c4q61", "condition": "control", "answer": "\"The Alchemist,\" \"Dune\" by Frank Herbert, \"The Hobbit,\" and non-fiction books about personal development and mindset.", "input_tokens": 30646}
+{"qid": "c4q69", "condition": "control", "answer": "February 2024", "input_tokens": 30882}
+{"qid": "c4q67", "condition": "excerpt", "answer": "Photography or language learning.", "input_tokens": 31314}
+{"qid": "c4q56", "condition": "excerpt", "answer": "September 2023", "input_tokens": 31091}
+{"qid": "c4q61", "condition": "excerpt", "answer": "John has read:\n- \"The Alchemist\"\n- \"The Hobbit\"\n- \"Dune\" by Frank Herbert\n\nHe's also been reading an unspecified book after Session 14 (17 October 2023).", "input_tokens": 30264}
+{"qid": "c4q77", "condition": "excerpt", "answer": "40 points (16 July 2023)", "input_tokens": 32109}
+{"qid": "c4q80", "condition": "control", "answer": "Seattle", "input_tokens": 28767}
+{"qid": "c4q78", "condition": "control", "answer": "A tough win / their basketball victory", "input_tokens": 28464}
+{"qid": "c4q79", "condition": "control", "answer": "Nike: basketball shoe and gear deal. Gatorade: sponsorship (in talks, not yet signed).", "input_tokens": 28630}
+{"qid": "c4q80", "condition": "excerpt", "answer": "Seattle", "input_tokens": 29267}
+{"qid": "c4q79", "condition": "excerpt", "answer": "Nike: basketball shoe and gear deal. Gatorade: potential sponsorship (in talks).", "input_tokens": 28812}
+{"qid": "c4q78", "condition": "excerpt", "answer": "A basketball victory/tough win against a rival team.", "input_tokens": 29018}
+{"qid": "c4q25", "condition": "excerpt", "answer": "Basketball memorabilia", "input_tokens": 31584}
+{"qid": "c4q82", "condition": "control", "answer": "Excited and free-feeling. John describes being out in the water as \"super exciting and free-feeling\" and says he loves the connection to nature while surfing.", "input_tokens": 31276}
+{"qid": "c4q82", "condition": "excerpt", "answer": "Exciting and free-feeling; connected to nature.", "input_tokens": 31883}
+{"qid": "c4q67", "condition": "control", "answer": "Photography or travel journaling", "input_tokens": 31113}
+{"qid": "c4q93", "condition": "control", "answer": "To show their friendship and appreciation.", "input_tokens": 31239}
+{"qid": "c4q92", "condition": "excerpt", "answer": "An autographed basketball.", "input_tokens": 32167}
+{"qid": "c4q93", "condition": "excerpt", "answer": "To show their friendship and appreciation, and as a reminder of their bond.", "input_tokens": 31598}
+{"qid": "c4q94", "condition": "control", "answer": "To learn more about literature and create a stronger bond to it.", "input_tokens": 31107}
+{"qid": "c4q86", "condition": "control", "answer": "The context does not contain information about John skyping with someone. The only skyping reference is Tim mentioning he skyped with a Harry Potter fan he met in California.", "input_tokens": 29881}
+{"qid": "c4q92", "condition": "control", "answer": "A basketball with autographs on it.", "input_tokens": 31367}
+{"qid": "c4q95", "condition": "control", "answer": "Piano", "input_tokens": 30460}
+{"qid": "c4q94", "condition": "excerpt", "answer": "To learn more about literature and create a stronger bond to it.", "input_tokens": 31591}
+{"qid": "c4q86", "condition": "excerpt", "answer": "The context does not mention John skyping with anyone. Only Tim is described as skyping with a Harry Potter fan.", "input_tokens": 30492}
+{"qid": "c4q95", "condition": "excerpt", "answer": "Piano", "input_tokens": 31246}
+{"qid": "c5q100", "condition": "excerpt", "answer": "A knee injury.", "input_tokens": 32166}
+{"qid": "c5q100", "condition": "control", "answer": "A knee injury.", "input_tokens": 31652}
+{"qid": "c5q103", "condition": "control", "answer": "An animal shelter.", "input_tokens": 31285}
+{"qid": "c5q105", "condition": "control", "answer": "Fetch and Frisbee. They also love running around and meeting other dogs.", "input_tokens": 31820}
+{"qid": "c5q105", "condition": "excerpt", "answer": "Fetch and Frisbee.", "input_tokens": 32636}
+{"qid": "c5q103", "condition": "excerpt", "answer": "An animal shelter.", "input_tokens": 31707}
+{"qid": "c5q107", "condition": "excerpt", "answer": "They hate snow. They were confused when taken to a snowy park last winter and prefer sunny days in the grass.", "input_tokens": 32325}
+{"qid": "c5q107", "condition": "control", "answer": "They hate it. They were confused and prefer sunny days in the grass.", "input_tokens": 32077}
+{"qid": "c5q110", "condition": "control", "answer": "Walks and hiking trails.", "input_tokens": 28925}
+{"qid": "c5q11", "condition": "control", "answer": "11 June 2023", "input_tokens": 31937}
+{"qid": "c5q110", "condition": "excerpt", "answer": "Walks and hiking trails.", "input_tokens": 29136}
+{"qid": "c5q11", "condition": "excerpt", "answer": "11 June 2023", "input_tokens": 31435}
+{"qid": "c5q115", "condition": "control", "answer": "Go hiking with their dogs on a dog-friendly trail near a lake.", "input_tokens": 31114}
+{"qid": "c5q115", "condition": "excerpt", "answer": "Go hiking with their dogs on a dog-friendly trail with a lake nearby.", "input_tokens": 31854}
+{"qid": "c5q117", "condition": "control", "answer": "Took her dogs to the pet salon for grooming on 17 November 2023.", "input_tokens": 31493}
+{"qid": "c5q122", "condition": "control", "answer": "A bed, toys, and puppy pads", "input_tokens": 31888}
+{"qid": "c5q117", "condition": "excerpt", "answer": "Joined a dog owners group to learn how to better take care of them.", "input_tokens": 31906}
+{"qid": "c5q122", "condition": "excerpt", "answer": "A bed, toys, and puppy pads.", "input_tokens": 32483}
+{"qid": "c5q12", "condition": "control", "answer": "Rock climbing (13 June 2023)", "input_tokens": 31929}
+{"qid": "c5q12", "condition": "excerpt", "answer": "Rock climbing (13 June 2023), camping (4 August 2023), kayaking and bungee jumping (mentioned as interests, 13 June 2023).", "input_tokens": 32298}
+{"qid": "c5q119", "condition": "excerpt", "answer": "Photos of toys and games; activities like puzzles, training, and hide-and-seek.", "input_tokens": 32135}
+{"qid": "c5q14", "condition": "control", "answer": "Being outdoors in nature / hiking", "input_tokens": 28487}
+{"qid": "c5q22", "condition": "control", "answer": "Camping", "input_tokens": 31507}
+{"qid": "c5q14", "condition": "excerpt", "answer": "Being outdoors and in nature.", "input_tokens": 28900}
+{"qid": "c5q119", "condition": "control", "answer": "Photos of toys and games, and descriptions of activities like fetch, puzzles, training, and hide-and-seek.", "input_tokens": 31658}
+{"qid": "c5q18", "condition": "excerpt", "answer": "Adopted.", "input_tokens": 32550}
+{"qid": "c5q18", "condition": "control", "answer": "Adoption. The context does not specify the specific location or organization.", "input_tokens": 31855}
+{"qid": "c5q22", "condition": "excerpt", "answer": "Camping with his girlfriend and Toby.", "input_tokens": 32006}
+{"qid": "c5q23", "condition": "control", "answer": "Finding a pet-friendly apartment in the city; work piling up and being stuck inside, missing nature and hiking.", "input_tokens": 31839}
+{"qid": "c5q23", "condition": "excerpt", "answer": "Finding pet-friendly housing in the city and searching for the right dog to adopt.", "input_tokens": 32410}
+{"qid": "c5q35", "condition": "excerpt", "answer": "Toby, Buddy, and Scout", "input_tokens": 32658}
+{"qid": "c5q24", "condition": "control", "answer": "The context does not contain information about whether Audrey and Andrew grew up with pet dogs. Their conversations only discuss their current adult pet ownership.", "input_tokens": 28920}
+{"qid": "c5q34", "condition": "excerpt", "answer": "Approximately 3 months (from 11 July 2023 to 19 October 2023).", "input_tokens": 31904}
+{"qid": "c5q26", "condition": "control", "answer": "Work stress. Andrew explicitly mentions in session 18 that \"Work's been tough and stressful,\" which has caused his outdoor activities to take a backseat.", "input_tokens": 30901}
+{"qid": "c5q34", "condition": "control", "answer": "Approximately 3 months. Toby was adopted around July 11, 2023, and Buddy was adopted around October 19, 2023.", "input_tokens": 31855}
+{"qid": "c5q35", "condition": "control", "answer": "Toby, Buddy, and Scout", "input_tokens": 31887}
+{"qid": "c5q26", "condition": "excerpt", "answer": "Work stress and finding dog-friendly housing", "input_tokens": 31591}
+{"qid": "c5q24", "condition": "excerpt", "answer": "Not mentioned in the context. Based on the conversations, there's no information about their childhoods or whether they had childhood pets.", "input_tokens": 29636}
+{"qid": "c5q37", "condition": "excerpt", "answer": "Around 17 October 2023\n\n(She mentioned it was \"last week\" when speaking on 24 October 2023)", "input_tokens": 31922}
+{"qid": "c5q41", "condition": "excerpt", "answer": "Two Jack Russell mixes and two Chihuahua mixes (all mutts).", "input_tokens": 31837}
+{"qid": "c5q41", "condition": "control", "answer": "Two Jack Russell mixes and two Chihuahua mixes (all mutts).", "input_tokens": 31268}
+{"qid": "c5q37", "condition": "control", "answer": "17 October 2023 (approximately; mentioned as \"last week\" from 24 October 2023)", "input_tokens": 31293}
+{"qid": "c5q45", "condition": "control", "answer": "Three pets: Toby, Buddy, and Scout.", "input_tokens": 31612}
+{"qid": "c5q39", "condition": "control", "answer": "Joy, happiness, and unconditional love.", "input_tokens": 32224}
+{"qid": "c5q44", "condition": "excerpt", "answer": "The context does not specify which national park Audrey and Andrew are referring to. They mention visiting \"a national park\" and \"a beautiful national park\" with peaks, lakes, and trails, but no specific park name is given in the conversations.", "input_tokens": 32022}
+{"qid": "c5q4", "condition": "control", "answer": "About 9 April 2023 (she said she made them \"last week\" on 16 April 2023)", "input_tokens": 31383}
+{"qid": "c5q45", "condition": "excerpt", "answer": "Three pets (Toby, Buddy, and Scout - all dogs)", "input_tokens": 32308}
+{"qid": "c5q44", "condition": "control", "answer": "Not specified in the conversations.", "input_tokens": 31774}
+{"qid": "c5q39", "condition": "excerpt", "answer": "Love, happiness, and unconditional love from her dogs. She also got a new house with a bigger backyard, took dog training and grooming courses, and got a tattoo of her four dogs.", "input_tokens": 32780}
+{"qid": "c5q50", "condition": "excerpt", "answer": "Dog grooming", "input_tokens": 29353}
+{"qid": "c5q47", "condition": "excerpt", "answer": "Approximately 1 month (from mid-October 2023 when Buddy was adopted to late November 2023 when Scout was adopted).", "input_tokens": 31925}
+{"qid": "c5q50", "condition": "control", "answer": "Dog grooming", "input_tokens": 28567}
+{"qid": "c5q47", "condition": "control", "answer": "About 1 month (19 October 2023 to 22 November 2023)", "input_tokens": 31714}
+{"qid": "c5q5", "condition": "control", "answer": "Last week (approximately late April 2023)", "input_tokens": 28487}
+{"qid": "c5q4", "condition": "excerpt", "answer": "Around 9 April 2023 (mentioned as \"last week\" on 16 April)", "input_tokens": 31806}
+{"qid": "c5q5", "condition": "excerpt", "answer": "Late April 2023 (the week before 3 May 2023)", "input_tokens": 29086}
+{"qid": "c5q49", "condition": "excerpt", "answer": "Part of her family. She explicitly states: \"I'm so grateful to have them in my life as a part of my family\" and says \"They mean the world to me.\"", "input_tokens": 32856}
+{"qid": "c5q58", "condition": "control", "answer": "Sushi", "input_tokens": 30844}
+{"qid": "c5q58", "condition": "excerpt", "answer": "Sushi", "input_tokens": 31634}
+{"qid": "c5q53", "condition": "control", "answer": "Wildlife biologist or ornithologist (bird specialist).", "input_tokens": 31870}
+{"qid": "c5q49", "condition": "control", "answer": "Her world / family members. She repeatedly says they \"mean the world to me,\" she \"can't live without them,\" and refers to them as her \"little ones,\" \"fur babies,\" and \"fur kids.\"", "input_tokens": 32250}
+{"qid": "c5q62", "condition": "control", "answer": "The peaceful moments out in nature.", "input_tokens": 31753}
+{"qid": "c5q53", "condition": "excerpt", "answer": "Wildlife biologist or ornithologist", "input_tokens": 32632}
+{"qid": "c5q62", "condition": "excerpt", "answer": "The peaceful moments out in nature.", "input_tokens": 32118}
+{"qid": "c5q69", "condition": "control", "answer": "She saw a flyer at her local pet store.", "input_tokens": 28310}
+{"qid": "c5q66", "condition": "control", "answer": "A smaller dog (because he lived in an apartment)", "input_tokens": 31799}
+{"qid": "c5q69", "condition": "excerpt", "answer": "She saw a workshop flyer at her local pet store.", "input_tokens": 29052}
+{"qid": "c5q70", "condition": "control", "answer": "Positive reinforcement training class", "input_tokens": 31034}
+{"qid": "c5q70", "condition": "excerpt", "answer": "Positive reinforcement training class.", "input_tokens": 31842}
+{"qid": "c5q59", "condition": "control", "answer": "About 4.5 months (from 11 July 2023, when Andrew adopted Toby, to November 2023).", "input_tokens": 31700}
+{"qid": "c5q71", "condition": "control", "answer": "So friendly and playful.", "input_tokens": 31499}
+{"qid": "c5q66", "condition": "excerpt", "answer": "A German Shepherd (named Toby). Though initially he said a smaller dog would be best for his apartment living situation, he ultimately adopted Toby, a German Shepherd.", "input_tokens": 32169}
+{"qid": "c5q71", "condition": "excerpt", "answer": "So friendly and playful.", "input_tokens": 32066}
+{"qid": "c5q73", "condition": "control", "answer": "Finding a pet-friendly housing in the city (mentioned from 6 May 2023 onwards)", "input_tokens": 31578}
+{"qid": "c5q82", "condition": "excerpt", "answer": "Max", "input_tokens": 31893}
+{"qid": "c5q85", "condition": "excerpt", "answer": "Agility classes", "input_tokens": 32011}
+{"qid": "c5q82", "condition": "control", "answer": "Max", "input_tokens": 31684}
+{"qid": "c5q73", "condition": "excerpt", "answer": "Finding a pet-friendly place to rent in the city.", "input_tokens": 32303}
+{"qid": "c5q85", "condition": "control", "answer": "Agility classes", "input_tokens": 31276}
+{"qid": "c5q86", "condition": "control", "answer": "Twice a week.", "input_tokens": 28939}
+{"qid": "c5q86", "condition": "excerpt", "answer": "Twice a week", "input_tokens": 29334}
+{"qid": "c5q88", "condition": "control", "answer": "Groom slowly and gently, pay attention to sensitive areas like ears and paws, and stay patient and positive throughout the grooming process.", "input_tokens": 31220}
+{"qid": "c5q88", "condition": "excerpt", "answer": "Groom slowly and gently, pay attention to ears and paws, stay patient and positive.", "input_tokens": 31775}
+{"qid": "c5q59", "condition": "excerpt", "answer": "Approximately 4-5 months. Andrew's first pet, Toby, appeared in conversation on 11 July 2023, and as of November 2023, this would be roughly 4-5 months after adoption.", "input_tokens": 32505}
+{"qid": "c5q90", "condition": "excerpt", "answer": "A doggy playdate", "input_tokens": 32676}
+{"qid": "c5q90", "condition": "control", "answer": "A doggy playdate with the neighbors' dogs.", "input_tokens": 31932}
+{"qid": "c5q97", "condition": "control", "answer": "Biking or using public transport.", "input_tokens": 28277}
+{"qid": "c5q9", "condition": "control", "answer": "Positive reinforcement training workshop, dog training course, agility classes at a dog park, and a dog owners group.", "input_tokens": 31310}
+{"qid": "c5q93", "condition": "control", "answer": "She petted and hugged her, spoke calmly, and slowly walked her to relax.", "input_tokens": 31663}
+{"qid": "c5q93", "condition": "excerpt", "answer": "Petted and hugged her, spoke calmly, and slowly walked her to relax.", "input_tokens": 32423}
+{"qid": "c5q9", "condition": "excerpt", "answer": "Positive reinforcement training workshop, dog training course, agility classes at dog park, and a dog owners group.", "input_tokens": 31732}
+{"qid": "c5q97", "condition": "excerpt", "answer": "Biking or using public transport.", "input_tokens": 28847}
+{"qid": "c5q99", "condition": "control", "answer": "Took them to the beach.", "input_tokens": 31014}
+{"qid": "c5q99", "condition": "excerpt", "answer": "She took them to the beach and they played in the ocean.", "input_tokens": 31341}
+{"qid": "c6q100", "condition": "control", "answer": "No, interview not necessary.", "input_tokens": 28334}
+{"qid": "c6q100", "condition": "excerpt", "answer": "No, there will not be an interview required.", "input_tokens": 28669}
+{"qid": "c6q0", "condition": "excerpt", "answer": "None mentioned in the context.", "input_tokens": 32253}
+{"qid": "c6q0", "condition": "control", "answer": "No health problems mentioned.", "input_tokens": 31556}
+{"qid": "c6q10", "condition": "excerpt", "answer": "Early April 2022 (around April 5-8, 2022)", "input_tokens": 31676}
+{"qid": "c6q10", "condition": "control", "answer": "Early April 2022 (approximately one week before 12 April 2022, when James mentioned adopting Ned \"last week\")", "input_tokens": 31161}
+{"qid": "c6q103", "condition": "excerpt", "answer": "Extreme sports.", "input_tokens": 30775}
+{"qid": "c6q103", "condition": "control", "answer": "Extreme sports (rope jumping and surfing)", "input_tokens": 30102}
+{"qid": "c6q106", "condition": "control", "answer": "Chess", "input_tokens": 31337}
+{"qid": "c6q1", "condition": "control", "answer": "Video games (The Witcher 3)", "input_tokens": 29861}
+{"qid": "c6q106", "condition": "excerpt", "answer": "Chess", "input_tokens": 31598}
+{"qid": "c6q111", "condition": "control", "answer": "The Witcher 3", "input_tokens": 30339}
+{"qid": "c6q111", "condition": "excerpt", "answer": "The Witcher 3", "input_tokens": 31062}
+{"qid": "c6q1", "condition": "excerpt", "answer": "Video games (or gaming)", "input_tokens": 30682}
+{"qid": "c6q120", "condition": "control", "answer": "Sennheiser", "input_tokens": 31616}
+{"qid": "c6q117", "condition": "control", "answer": "Balancing mechanics and ensuring fairness", "input_tokens": 31351}
+{"qid": "c6q120", "condition": "excerpt", "answer": "Sennheiser", "input_tokens": 32044}
+{"qid": "c6q125", "condition": "control", "answer": "An omelette", "input_tokens": 28485}
+{"qid": "c6q115", "condition": "control", "answer": "A gaming night", "input_tokens": 30894}
+{"qid": "c6q117", "condition": "excerpt", "answer": "Balancing mechanics and ensuring fairness.", "input_tokens": 31909}
+{"qid": "c6q112", "condition": "excerpt", "answer": "The ability to make choices that shape the world", "input_tokens": 31548}
+{"qid": "c5q81", "condition": "control", "answer": "Volunteered at a pet shelter", "input_tokens": 31399}
+{"qid": "c6q115", "condition": "excerpt", "answer": "A text-based adventure game to teach them coding.", "input_tokens": 30662}
+{"qid": "c6q126", "condition": "control", "answer": "\"Dungeons of the Dragon\"", "input_tokens": 31271}
+{"qid": "c6q126", "condition": "excerpt", "answer": "Dungeons of the Dragon", "input_tokens": 31862}
+{"qid": "c6q112", "condition": "control", "answer": "The ability to make choices that shape the world, combined with the story and characters.", "input_tokens": 31207}
+{"qid": "c6q125", "condition": "excerpt", "answer": "An omelette (and several simple dishes)", "input_tokens": 29090}
+{"qid": "c6q135", "condition": "control", "answer": "Programming mentor for game developers. He would be teaching coding and assisting with projects.", "input_tokens": 31116}
+{"qid": "c6q135", "condition": "excerpt", "answer": "Programming mentor for game developers, teaching coding and assisting with projects.", "input_tokens": 31555}
+{"qid": "c6q146", "condition": "control", "answer": "FIFA 23", "input_tokens": 28147}
+{"qid": "c6q146", "condition": "excerpt", "answer": "FIFA 23", "input_tokens": 28569}
+{"qid": "c6q148", "condition": "control", "answer": "An online board game.", "input_tokens": 28308}
+{"qid": "c6q148", "condition": "excerpt", "answer": "Online board game", "input_tokens": 28902}
+{"qid": "c6q147", "condition": "control", "answer": "Practice a little first (before playing together)", "input_tokens": 31011}
+{"qid": "c6q149", "condition": "excerpt", "answer": "Luna", "input_tokens": 32015}
+{"qid": "c6q149", "condition": "control", "answer": "Luna", "input_tokens": 31627}
+{"qid": "c6q147", "condition": "excerpt", "answer": "Practice a little first (on FIFA 23)", "input_tokens": 31331}
+{"qid": "c6q27", "condition": "control", "answer": "Gaming and programming course (June 2022), cooking class (September 2022)", "input_tokens": 31424}
+{"qid": "c6q27", "condition": "excerpt", "answer": "Gaming and programming course, cooking class.", "input_tokens": 32089}
+{"qid": "c6q17", "condition": "control", "answer": "Among Us", "input_tokens": 31340}
+{"qid": "c6q28", "condition": "control", "answer": "May 2022", "input_tokens": 30869}
+{"qid": "c6q29", "condition": "excerpt", "answer": "11 July 2022", "input_tokens": 31788}
+{"qid": "c6q28", "condition": "excerpt", "answer": "May 2022", "input_tokens": 31031}
+{"qid": "c6q17", "condition": "excerpt", "answer": "Among Us (or Mafia/Werewolf)\n\nThe conversation doesn't explicitly name the game, but John describes it as \"a game to figure out who the impostors are\" that's fun with friends in large groups.", "input_tokens": 31922}
+{"qid": "c6q29", "condition": "control", "answer": "11 July 2022", "input_tokens": 31234}
+{"qid": "c6q19", "condition": "excerpt", "answer": "Based on the context, it's implied but not explicitly stated. John's comment that he was \"glad you finally found someone other than dogs that brings you joy\" suggests James relied mainly on his dogs for companionship before meeting Samantha, indicating some lack of human connection. However, James doesn't explicitly express feeling lonely in the conversations.", "input_tokens": 30810}
+{"qid": "c6q19", "condition": "control", "answer": "Yes, implied by his reliance on his dogs for emotional support and John's comment about finding \"someone other than dogs that brings you joy.\"", "input_tokens": 30877}
+{"qid": "c6q3", "condition": "control", "answer": "No. James has three dogs (Max, Daisy, and others), but John repeatedly states he doesn't have pets yet and wants to get one someday.", "input_tokens": 28732}
+{"qid": "c6q3", "condition": "excerpt", "answer": "No. James has three dogs (Max, Daisy, and others), but John does not have pets yet\u2014he mentions planning to get one someday.", "input_tokens": 29202}
+{"qid": "c6q30", "condition": "excerpt", "answer": "Canada (Toronto and Vancouver)", "input_tokens": 30550}
+{"qid": "c6q30", "condition": "control", "answer": "Canada (Toronto)", "input_tokens": 30124}
+{"qid": "c6q34", "condition": "control", "answer": "Canada (Toronto and Vancouver)", "input_tokens": 29644}
+{"qid": "c6q32", "condition": "control", "answer": "Traveling to or in Toronto, Canada (left July 11 evening for Toronto).", "input_tokens": 29629}
+{"qid": "c6q36", "condition": "control", "answer": "Jill is John's partner/spouse. James brought her souvenirs from his trip to Nuuk.", "input_tokens": 28826}
+{"qid": "c6q36", "condition": "excerpt", "answer": "John's significant other/partner", "input_tokens": 29009}
+{"qid": "c6q34", "condition": "excerpt", "answer": "Canada (Toronto, Vancouver) and Greenland (Nuuk)", "input_tokens": 30070}
+{"qid": "c5q81", "condition": "excerpt", "answer": "Not mentioned in context.\n\n(The context shows Andrew and his GF volunteered at a pet shelter on Monday, July 24, 2023, but contains no information about July 17, 2023.)", "input_tokens": 31922}
+{"qid": "c6q32", "condition": "excerpt", "answer": "Canada (likely Toronto or en route) \u2014 James left July 11 evening for Toronto and was traveling during this time.", "input_tokens": 30320}
+{"qid": "c6q40", "condition": "control", "answer": "Sit, stay, paw, and rollover.", "input_tokens": 31695}
+{"qid": "c6q37", "condition": "control", "answer": "The context does not show John spending time with his sister and dogs. You may be thinking of James, who spent time with his sister and dogs on 21 July 2022 (mentioned as \"yesterday\" on 22 July 2022).", "input_tokens": 31404}
+{"qid": "c6q38", "condition": "control", "answer": "John got his dream job (starting July 2022), left his IT job after 3 years (by 6 August 2022), and started a portable smokers startup (20 September 2022).", "input_tokens": 30117}
+{"qid": "c6q40", "condition": "excerpt", "answer": "Sit, stay, paw, and rollover.", "input_tokens": 32224}
+{"qid": "c6q38", "condition": "excerpt", "answer": "Got a dream job in June 2022 (starting July), left his IT job after 3 years to pursue gaming tournament organizing.", "input_tokens": 30707}
+{"qid": "c6q4", "condition": "control", "answer": "Late February 2022 (he stated he had been playing for a month as of 27 March 2022).", "input_tokens": 31546}
+{"qid": "c6q44", "condition": "excerpt", "answer": "He wanted to have a beer instead.", "input_tokens": 31498}
+{"qid": "c6q44", "condition": "control", "answer": "He wanted to have a beer instead.", "input_tokens": 30895}
+{"qid": "c6q37", "condition": "excerpt", "answer": "Not mentioned in the context provided.", "input_tokens": 31404}
+{"qid": "c6q50", "condition": "control", "answer": "2 September 2022", "input_tokens": 28425}
+{"qid": "c6q50", "condition": "excerpt", "answer": "2 September 2022", "input_tokens": 28976}
+{"qid": "c6q46", "condition": "control", "answer": "27 August 2022", "input_tokens": 31219}
+{"qid": "c6q46", "condition": "excerpt", "answer": "27 August 2022", "input_tokens": 31795}
+{"qid": "c6q63", "condition": "excerpt", "answer": "4 November 2022", "input_tokens": 31868}
+{"qid": "c6q4", "condition": "excerpt", "answer": "Late February 2022 (based on him stating in March 2022 he'd been playing for a month)", "input_tokens": 31340}
+{"qid": "c6q67", "condition": "control", "answer": "Python and C++", "input_tokens": 28655}
+{"qid": "c6q67", "condition": "excerpt", "answer": "Python and C++", "input_tokens": 28942}
+{"qid": "c6q63", "condition": "control", "answer": "4 November 2022", "input_tokens": 31595}
+{"qid": "c6q51", "condition": "control", "answer": "Dungeons of the Dragon (board game), FIFA 23, an unnamed RPG, and a game about finding impostors.", "input_tokens": 31201}
+{"qid": "c6q70", "condition": "control", "answer": "Bottle caps.", "input_tokens": 31136}
+{"qid": "c6q70", "condition": "excerpt", "answer": "Bottle caps.", "input_tokens": 31778}
+{"qid": "c6q51", "condition": "excerpt", "answer": "Imposter game, strategy and RPG games, Dungeons of the Dragon (board game), FIFA 23", "input_tokens": 31634}
+{"qid": "c6q72", "condition": "excerpt", "answer": "Drums (for about a month)", "input_tokens": 31399}
+{"qid": "c6q77", "condition": "excerpt", "answer": "Communicate correctly with the team and never put your ego above team success.", "input_tokens": 31529}
+{"qid": "c6q77", "condition": "control", "answer": "Communicate correctly with the team and never put your ego above team success.", "input_tokens": 31342}
+{"qid": "c6q53", "condition": "control", "answer": "The context does not explicitly state how long it took James to complete a Witcher-inspired game. He mentions a Witcher 3-inspired virtual world project in April 2022, but no completion date is given. His completed game in September 2022 was a strategy game inspired by Civilization and Total War, not Witcher 3. Best guess: approximately 5 months if the projects are related.", "input_tokens": 31345}
+{"qid": "c6q80", "condition": "control", "answer": "He fell in love at first sight with her and wanted to remember her appearance.", "input_tokens": 30120}
+{"qid": "c6q81", "condition": "excerpt", "answer": "A stranger he encountered during a walk with his dogs; her eyes and appearance amazed him.", "input_tokens": 28359}
+{"qid": "c6q80", "condition": "excerpt", "answer": "He fell in love at first sight with the woman and didn't approach her, so he preserved her appearance in the game character instead.", "input_tokens": 30647}
+{"qid": "c6q53", "condition": "excerpt", "answer": "The context does not explicitly state how long it took James to complete his Witcher-inspired game. Based on the dates mentioned (development appearing to start around April 2022 and release by October 2022), my best guess is approximately 6 months.", "input_tokens": 31583}
+{"qid": "c6q81", "condition": "control", "answer": "A stranger he encountered while walking his dogs in his neighborhood; her appearance and eyes inspired him at first sight.", "input_tokens": 27860}
+{"qid": "c6q83", "condition": "control", "answer": "Megacities, technological advancement, huge screens on buildings, and street food.", "input_tokens": 31081}
+{"qid": "c6q83", "condition": "excerpt", "answer": "The megacities, technological advancement, huge screens on buildings, and street food.", "input_tokens": 30944}
+{"qid": "c6q90", "condition": "excerpt", "answer": "Dog shelter", "input_tokens": 31260}
+{"qid": "c6q92", "condition": "control", "answer": "An inventory management application (smartphone app)", "input_tokens": 28473}
+{"qid": "c6q93", "condition": "control", "answer": "Money and a trophy.", "input_tokens": 28216}
+{"qid": "c6q9", "condition": "control", "answer": "Max, Daisy, and Ned.", "input_tokens": 31533}
+{"qid": "c6q9", "condition": "excerpt", "answer": "Max, Daisy, and Ned.", "input_tokens": 31723}
+{"qid": "c6q93", "condition": "excerpt", "answer": "Money and a trophy.", "input_tokens": 28597}
+{"qid": "c6q92", "condition": "excerpt", "answer": "A smartphone application for inventory management.", "input_tokens": 28604}
+{"qid": "c6q90", "condition": "control", "answer": "To raise money for a dog shelter.", "input_tokens": 30836}
+{"qid": "c6q95", "condition": "control", "answer": "Liverpool", "input_tokens": 31237}
+{"qid": "c6q72", "condition": "control", "answer": "Based on the context provided, John is not learning an instrument as of 27 March 2022. He states \"I play drums too!\" indicating he already plays drums. It is James who is learning an instrument (drums) during this conversation.", "input_tokens": 30498}
+{"qid": "c6q95", "condition": "excerpt", "answer": "Liverpool", "input_tokens": 31053}
+{"qid": "c6q96", "condition": "excerpt", "answer": "Manchester City", "input_tokens": 31338}
+{"qid": "c6q96", "condition": "control", "answer": "Manchester City", "input_tokens": 31018}
+{"qid": "c6q94", "condition": "excerpt", "answer": "Football simulator with player databases.", "input_tokens": 29260}
+{"qid": "c6q94", "condition": "control", "answer": "A computer game based on childhood character sketches he made; later also a football simulator.", "input_tokens": 28352}
+{"qid": "c7q10", "condition": "control", "answer": "1993", "input_tokens": 31711}
+{"qid": "c7q10", "condition": "excerpt", "answer": "1993", "input_tokens": 32330}
+{"qid": "c6q98", "condition": "control", "answer": "Catching frisbees in mid-air, swimming, and playing fetch.", "input_tokens": 31438}
+{"qid": "c6q97", "condition": "control", "answer": "James supports Liverpool and predicts they'll win the championship; John supports Manchester City and believes his team will win. James says Manchester City are in bad form with terrible transfer policy.", "input_tokens": 30916}
+{"qid": "c6q98", "condition": "excerpt", "answer": "Catching frisbees in mid-air", "input_tokens": 31234}
+{"qid": "c7q109", "condition": "excerpt", "answer": "Jolene came up with neat solutions for her engineering project and had ideas about green tech for disadvantaged areas.", "input_tokens": 29117}
+{"qid": "c6q97", "condition": "excerpt", "answer": "James supports Liverpool; John supports Manchester City. They disagree about which team will win the championship and finish higher in the standings.", "input_tokens": 31351}
+{"qid": "c7q109", "condition": "control", "answer": "Accomplished solutions for her engineering project and developed an idea for a volunteer STEM program for underprivileged kids.", "input_tokens": 28417}
+{"qid": "c7q114", "condition": "control", "answer": "They met in an engineering class in college.", "input_tokens": 31096}
+{"qid": "c7q114", "condition": "excerpt", "answer": "They met in an engineering class in college and quickly became friends.", "input_tokens": 31456}
+{"qid": "c7q117", "condition": "excerpt", "answer": "A yellow coffee cup with a handwritten message", "input_tokens": 31763}
+{"qid": "c7q12", "condition": "control", "answer": "26 January 2023", "input_tokens": 31724}
+{"qid": "c7q117", "condition": "control", "answer": "A yellow coffee cup with a handwritten message.", "input_tokens": 31232}
+{"qid": "c7q12", "condition": "excerpt", "answer": "26 January 2023", "input_tokens": 32404}
+{"qid": "c7q124", "condition": "control", "answer": "Gathering information, watching videos, getting a beginners' guide, and finding time/place for a lesson.", "input_tokens": 31435}
+{"qid": "c7q126", "condition": "control", "answer": "Instrumental tracks with mellow melodies and rhythms.", "input_tokens": 31387}
+{"qid": "c7q126", "condition": "excerpt", "answer": "Instrumental tracks with mellow melodies and rhythms. She also mentions listening to an album called \"Sleep\" for meditation and deep relaxation.", "input_tokens": 31593}
+{"qid": "c7q125", "condition": "control", "answer": "Candles (and essential oils)", "input_tokens": 31714}
+{"qid": "c7q127", "condition": "control", "answer": "Nils Frahm and Olafur Arnalds", "input_tokens": 31409}
+{"qid": "c7q124", "condition": "excerpt", "answer": "Gathering information, watching videos, getting a beginners' guide, and finding the right time and place to get a lesson.", "input_tokens": 32024}
+{"qid": "c7q123", "condition": "excerpt", "answer": "The context does not show Jolene and Anna watching the sunset by the sea together. It was Deborah and Anna who watched the sunset by the sea and discussed how they inspire each other.", "input_tokens": 32599}
+{"qid": "c7q125", "condition": "excerpt", "answer": "Candle (and essential oils)", "input_tokens": 31906}
+{"qid": "c7q123", "condition": "control", "answer": "The context does not contain information about Jolene and Anna watching the sunset together by the sea. The context only mentions Deborah and Anna watching the sunset by the sea and discussing how they inspire each other.", "input_tokens": 31792}
+{"qid": "c7q127", "condition": "excerpt", "answer": "Nils Frahm and Olafur Arnalds", "input_tokens": 31829}
+{"qid": "c7q132", "condition": "control", "answer": "Playing video games", "input_tokens": 28625}
+{"qid": "c7q132", "condition": "excerpt", "answer": "Playing video games", "input_tokens": 29202}
+{"qid": "c7q137", "condition": "control", "answer": "A running group.", "input_tokens": 28581}
+{"qid": "c7q14", "condition": "control", "answer": "Reading and travel.", "input_tokens": 32080}
+{"qid": "c7q137", "condition": "excerpt", "answer": "A running group.", "input_tokens": 28912}
+{"qid": "c7q130", "condition": "excerpt", "answer": "It feels like she's still experiencing art with her mom together, even though her mom has passed away. It helps keep her mom's memory alive and provides solace.", "input_tokens": 31837}
+{"qid": "c7q130", "condition": "control", "answer": "Deborah finds it comforting because it allows her to feel connected to her late mother's memory\u2014it's like they're still experiencing the art together, even though her mother is gone.", "input_tokens": 31284}
+{"qid": "c7q14", "condition": "excerpt", "answer": "Reading and travel.", "input_tokens": 32596}
+{"qid": "c7q131", "condition": "control", "answer": "Valuable, calming, and strengthening bonds. Time with snakes teaches her to be in tune with herself; gaming with her partner relaxes her and brings them closer together.", "input_tokens": 31980}
+{"qid": "c7q141", "condition": "excerpt", "answer": "Takes them for a run in the park every morning and evening.", "input_tokens": 30024}
+{"qid": "c7q141", "condition": "control", "answer": "Takes them out for a run in the park every morning and evening.", "input_tokens": 31603}
+{"qid": "c7q148", "condition": "control", "answer": "Bullet journal", "input_tokens": 31705}
+{"qid": "c7q142", "condition": "control", "answer": "Love and gratitude, and how important her snake is to her.", "input_tokens": 32047}
+{"qid": "c7q148", "condition": "excerpt", "answer": "Bullet journal", "input_tokens": 31821}
+{"qid": "c7q156", "condition": "control", "answer": "Savasana (corpse pose)", "input_tokens": 28892}
+{"qid": "c7q142", "condition": "excerpt", "answer": "\"So much love and gratitude\"", "input_tokens": 32577}
+{"qid": "c7q151", "condition": "excerpt", "answer": "Detective games.", "input_tokens": 32552}
+{"qid": "c7q151", "condition": "control", "answer": "Detective games", "input_tokens": 31905}
+{"qid": "c7q157", "condition": "control", "answer": "About 3 years, sporadically.", "input_tokens": 31543}
+{"qid": "c7q156", "condition": "excerpt", "answer": "Savasana (the corpse pose)", "input_tokens": 29311}
+{"qid": "c7q161", "condition": "excerpt", "answer": "Helping others", "input_tokens": 29372}
+{"qid": "c7q157", "condition": "excerpt", "answer": "3 years", "input_tokens": 31289}
+{"qid": "c7q161", "condition": "control", "answer": "Helping others", "input_tokens": 28948}
+{"qid": "c7q131", "condition": "excerpt", "answer": "Jolene describes time with her snakes as valuable, calming, and teaching her to be in tune with herself. Time with her partner playing video games is a great way to relax and brings them closer together.", "input_tokens": 32336}
+{"qid": "c7q164", "condition": "control", "answer": "8 years old.", "input_tokens": 28553}
+{"qid": "c7q164", "condition": "excerpt", "answer": "8 years old.", "input_tokens": 28907}
+{"qid": "c7q162", "condition": "control", "answer": "Renewable energy (solar), clean water access, sustainable initiatives, and social causes projects.", "input_tokens": 28570}
+{"qid": "c7q162", "condition": "excerpt", "answer": "Renewable energy (solar) and clean water access for underserved communities.", "input_tokens": 28759}
+{"qid": "c7q168", "condition": "control", "answer": "As a reminder to nurture herself and embrace fresh starts.", "input_tokens": 30493}
+{"qid": "c7q173", "condition": "control", "answer": "A meditation course at a retreat near a lake.", "input_tokens": 27319}
+{"qid": "c7q173", "condition": "excerpt", "answer": "Meditation course at a retreat near a lake.", "input_tokens": 28055}
+{"qid": "c7q168", "condition": "excerpt", "answer": "As a reminder to nurture herself and embrace fresh starts.", "input_tokens": 31166}
+{"qid": "c7q18", "condition": "control", "answer": "France (in Paris)", "input_tokens": 31655}
+{"qid": "c7q172", "condition": "control", "answer": "Monster Hunter: World", "input_tokens": 31563}
+{"qid": "c7q18", "condition": "excerpt", "answer": "France (Paris)", "input_tokens": 31848}
+{"qid": "c7q172", "condition": "excerpt", "answer": "\"Monster Hunter: World\"", "input_tokens": 32168}
+{"qid": "c7q180", "condition": "control", "answer": "Reminisced and looked through her photos.", "input_tokens": 30219}
+{"qid": "c7q181", "condition": "control", "answer": "At the beach (the specific beach name is not mentioned in the conversation).", "input_tokens": 29088}
+{"qid": "c7q180", "condition": "excerpt", "answer": "Reconnected, reminisced, and looked through her mom's photos together.", "input_tokens": 30834}
+{"qid": "c7q181", "condition": "excerpt", "answer": "At a beach.", "input_tokens": 29274}
+{"qid": "c7q182", "condition": "control", "answer": "Peace and relaxation.", "input_tokens": 30840}
+{"qid": "c7q182", "condition": "excerpt", "answer": "Peace and relaxation; a way to take care of herself.", "input_tokens": 31627}
+{"qid": "c7q20", "condition": "control", "answer": "Detroit, Overcooked 2, and It Takes Two.", "input_tokens": 28515}
+{"qid": "c7q20", "condition": "excerpt", "answer": "Detroit, Overcooked 2, and It Takes Two.", "input_tokens": 28897}
+{"qid": "c7q174", "condition": "excerpt", "answer": "Based on the context, Jolene suggested Friday at 5 PM instead because she needed to sort out books from her bookcase.", "input_tokens": 30809}
+{"qid": "c7q188", "condition": "excerpt", "answer": "Watch the sunrise together.", "input_tokens": 32194}
+{"qid": "c7q21", "condition": "excerpt", "answer": "Next Saturday (4 February 2023)", "input_tokens": 31812}
+{"qid": "c7q188", "condition": "control", "answer": "Watch the sunrise together", "input_tokens": 31731}
+{"qid": "c7q24", "condition": "control", "answer": "Warrior II and Dancer Pose (Natarajasana)", "input_tokens": 31001}
+{"qid": "c7q27", "condition": "control", "answer": "Summer 2022 (last summer from the February 2023 conversation)", "input_tokens": 28949}
+{"qid": "c7q31", "condition": "excerpt", "answer": "Last summer 2022 (during a hike)", "input_tokens": 28932}
+{"qid": "c7q4", "condition": "control", "answer": "2010 in Paris", "input_tokens": 31874}
+{"qid": "c7q24", "condition": "excerpt", "answer": "Warrior II, Dancer Pose (Natarajasana), and Tree Pose.", "input_tokens": 31403}
+{"qid": "c7q27", "condition": "excerpt", "answer": "Summer 2022", "input_tokens": 29504}
+{"qid": "c7q39", "condition": "control", "answer": "Deborah uses daily to-do lists and the Eisenhower Matrix (urgent/important prioritization). Jolene uses the Pomodoro Technique (25-minute work blocks with breaks) and bullet journaling.", "input_tokens": 28569}
+{"qid": "c7q4", "condition": "excerpt", "answer": "2010 in Paris", "input_tokens": 32148}
+{"qid": "c7q21", "condition": "control", "answer": "Next Saturday (4 February 2023)", "input_tokens": 30888}
+{"qid": "c7q39", "condition": "excerpt", "answer": "**Jolene:** Pomodoro Technique (25 min work, 5 min break), bullet journal, routine/schedule\n\n**Deborah:** Daily to-do lists, Eisenhower Matrix, routine with yoga/meditation", "input_tokens": 28982}
+{"qid": "c7q174", "condition": "control", "answer": "Jolene needed to sort out the books from her bookcase.", "input_tokens": 30298}
+{"qid": "c7q31", "condition": "control", "answer": "Last summer (Summer 2022)", "input_tokens": 28765}
+{"qid": "c7q57", "condition": "control", "answer": "17 August 2023", "input_tokens": 30596}
+{"qid": "c7q57", "condition": "excerpt", "answer": "17 August 2023", "input_tokens": 30990}
+{"qid": "c7q59", "condition": "excerpt", "answer": "Play detective games together and spend time outdoors exploring nature.", "input_tokens": 29449}
+{"qid": "c7q59", "condition": "control", "answer": "Play detective games together and spend time outdoors exploring nature.", "input_tokens": 28843}
+{"qid": "c7q52", "condition": "control", "answer": "The context does not specify when Jolene lost a lot of progress in her work. The closest reference is on 13 March 2023, when she mentioned struggling to keep up with her Engineering assignments.", "input_tokens": 28330}
+{"qid": "c7q62", "condition": "excerpt", "answer": "Max came from her mother (when her mother passed away), and Luna came from the shelter.", "input_tokens": 30108}
+{"qid": "c7q53", "condition": "control", "answer": "August 2021", "input_tokens": 28868}
+{"qid": "c7q62", "condition": "control", "answer": "Max from her mother (when she passed away); Luna from the shelter.", "input_tokens": 29756}
+{"qid": "c7q7", "condition": "excerpt", "answer": "France (Paris)", "input_tokens": 32405}
+{"qid": "c7q52", "condition": "excerpt", "answer": "The context does not explicitly mention when Jolene lost progress in her work. My best guess based on the closest reference would be **13 March 2023**, when she mentioned struggling to keep up with her engineering assignments.", "input_tokens": 28910}
+{"qid": "c7q7", "condition": "control", "answer": "France", "input_tokens": 31823}
+{"qid": "c7q53", "condition": "excerpt", "answer": "August 2021 (two years before the August 2023 conversation)", "input_tokens": 29199}
+{"qid": "c7q70", "condition": "control", "answer": "Yes. Deborah states the friend \"will never be able to support me\" and \"I miss him here\" when referring to who wrote the quote.", "input_tokens": 31670}
+{"qid": "c7q70", "condition": "excerpt", "answer": "Yes, Deborah says the friend \"will never be able to support me\" and \"I miss him here,\" indicating he has passed away.", "input_tokens": 32005}
+{"qid": "c7q73", "condition": "control", "answer": "Yes, she taught herself. (Though her parents were supportive and her mom played games with her.)", "input_tokens": 31241}
+{"qid": "c7q73", "condition": "excerpt", "answer": "Yes, she taught herself. Jolene stated: \"I taught myself, but my dad was always supportive and my mom would play games with me.\"", "input_tokens": 31654}
+{"qid": "c7q75", "condition": "excerpt", "answer": "A card game about cats where you take cards from a deck and attack opponents; Deborah doesn't remember the name.", "input_tokens": 31836}
+{"qid": "c7q75", "condition": "control", "answer": "A card game about cats (Deborah doesn't remember the name, but it involves drawing cards and attacking opponents with them\u2014likely Exploding Kittens).", "input_tokens": 31104}
+{"qid": "c7q80", "condition": "control", "answer": "No, not yet. She's started learning and gathering information, but hasn't gone surfing.", "input_tokens": 30603}
+{"qid": "c7q78", "condition": "control", "answer": "Phuket (at a meditation retreat)", "input_tokens": 30970}
+{"qid": "c7q80", "condition": "excerpt", "answer": "No, not yet. She's been gathering information and planning to learn, but hasn't taken a lesson as of 17 September 2023.", "input_tokens": 30238}
+{"qid": "c7q78", "condition": "excerpt", "answer": "Phuket, Thailand (meditation retreat)", "input_tokens": 31369}
+{"qid": "c7q8", "condition": "excerpt", "answer": "Yoga, meditation, memories/photos, time in nature at a special spot, her mom's amulet, and connecting with community and friends.", "input_tokens": 32006}
+{"qid": "c7q91", "condition": "excerpt", "answer": "Deborah listens to instrumental tracks with mellow melodies. Specifically mentioned: a track called \"Savana\" and an album called \"Sleep.\"", "input_tokens": 31506}
+{"qid": "c7q91", "condition": "control", "answer": "\"Savana\" and the album \"Sleep\"", "input_tokens": 31735}
+{"qid": "c7q8", "condition": "control", "answer": "Yoga, nature/special places, photos and memories, keeping mementos, and reconnecting with loved ones' friends and family.", "input_tokens": 31493}
+{"qid": "c7q83", "condition": "excerpt", "answer": "Internships, workshops, networking, and presenting at virtual conferences.", "input_tokens": 32114}
+{"qid": "c7q83", "condition": "control", "answer": "Studying, attending workshops, networking, presenting at conferences, internships at engineering firms, and volunteering to teach STEM.", "input_tokens": 31741}
+{"qid": "c7q95", "condition": "control", "answer": "Luna is 5 years old, and Max is 8 years old.", "input_tokens": 28417}
+{"qid": "c7q95", "condition": "excerpt", "answer": "Max is 8 years old and Luna is 5 years old.", "input_tokens": 29167}
+{"qid": "c7q92", "condition": "control", "answer": "Zelda BOTW, Animal Crossing: New Horizons, and Overcooked 2.", "input_tokens": 31646}
+{"qid": "c7q92", "condition": "excerpt", "answer": "Zelda BOTW, Animal Crossing: New Horizons, and Overcooked 2", "input_tokens": 32191}
+{"qid": "c8q107", "condition": "excerpt", "answer": "Observing nature and painting what they see.", "input_tokens": 30272}
+{"qid": "c7q97", "condition": "control", "answer": "Yes. Jolene recently visited (late August 2023), and Deborah visited three years prior (around 2020).", "input_tokens": 28485}
+{"qid": "c8q107", "condition": "control", "answer": "Observing nature and painting what you see.", "input_tokens": 30038}
+{"qid": "c8q108", "condition": "excerpt", "answer": "Landscapes.", "input_tokens": 30580}
+{"qid": "c7q97", "condition": "excerpt", "answer": "Yes. Jolene in August 2023, Deborah in August 2020.", "input_tokens": 29410}
+{"qid": "c8q108", "condition": "control", "answer": "Landscapes, particularly sunsets and ocean views.", "input_tokens": 30425}
+{"qid": "c7q98", "condition": "control", "answer": "When she was 10 years old", "input_tokens": 31074}
+{"qid": "c8q109", "condition": "control", "answer": "Reading a mystery novel (The Great Gatsby)", "input_tokens": 31559}
+{"qid": "c7q98", "condition": "excerpt", "answer": "When she was 10 years old.", "input_tokens": 31491}
+{"qid": "c8q126", "condition": "excerpt", "answer": "A 1968 Kustom K-200A vintage guitar.", "input_tokens": 32195}
+{"qid": "c8q124", "condition": "control", "answer": "Evan mentions he's \"seeing some gains\" from lifting weights and that he's \"gaining strength\" at the gym.", "input_tokens": 31952}
+{"qid": "c8q12", "condition": "control", "answer": "Around 21 May 2023 (a few days before 24 May 2023)", "input_tokens": 29849}
+{"qid": "c8q126", "condition": "control", "answer": "A 1968 Kustom K-200A vintage guitar", "input_tokens": 31694}
+{"qid": "c8q128", "condition": "control", "answer": "His happy place; serene and calming.", "input_tokens": 31830}
+{"qid": "c8q124", "condition": "excerpt", "answer": "Evan mentions that he started lifting weights one year ago and is seeing gains/gaining strength from his gym progress.", "input_tokens": 32276}
+{"qid": "c8q131", "condition": "excerpt", "answer": "Yoga.", "input_tokens": 30739}
+{"qid": "c8q128", "condition": "excerpt", "answer": "Serene, calming, and his happy place.", "input_tokens": 32383}
+{"qid": "c8q132", "condition": "control", "answer": "Sam offered to give Evan yoga tips.", "input_tokens": 30441}
+{"qid": "c8q133", "condition": "excerpt", "answer": "His partner is pregnant.", "input_tokens": 31469}
+{"qid": "c8q135", "condition": "control", "answer": "\"Bring it on Home\"", "input_tokens": 28758}
+{"qid": "c8q132", "condition": "excerpt", "answer": "Sam offered yoga tips to Evan if he needed them.", "input_tokens": 31052}
+{"qid": "c8q135", "condition": "excerpt", "answer": "\"Bring it on Home\"", "input_tokens": 28758}
+{"qid": "c8q133", "condition": "control", "answer": "His partner is pregnant.", "input_tokens": 30717}
+{"qid": "c8q131", "condition": "control", "answer": "Yoga", "input_tokens": 30739}
+{"qid": "c8q138", "condition": "control", "answer": "Morning running.", "input_tokens": 31614}
+{"qid": "c8q138", "condition": "excerpt", "answer": "Running in the mornings (as of 26 December, 2023)", "input_tokens": 31993}
+{"qid": "c8q139", "condition": "control", "answer": "Put a GPS sensor on them.", "input_tokens": 28416}
+{"qid": "c8q139", "condition": "excerpt", "answer": "Put a GPS sensor on his keys.", "input_tokens": 29133}
+{"qid": "c8q143", "condition": "excerpt", "answer": "Getting married.", "input_tokens": 29135}
+{"qid": "c8q143", "condition": "control", "answer": "Getting married", "input_tokens": 28690}
+{"qid": "c8q146", "condition": "excerpt", "answer": "News of their marriage.", "input_tokens": 31632}
+{"qid": "c8q146", "condition": "control", "answer": "Their marriage", "input_tokens": 31186}
+{"qid": "c8q12", "condition": "excerpt", "answer": "Around 20 May 2023", "input_tokens": 30495}
+{"qid": "c8q15", "condition": "control", "answer": "Soda and candy.", "input_tokens": 31863}
+{"qid": "c8q15", "condition": "excerpt", "answer": "Soda and candy.", "input_tokens": 31301}
+{"qid": "c8q153", "condition": "excerpt", "answer": "A kayak taken from the front of the boat.", "input_tokens": 32366}
+{"qid": "c8q109", "condition": "excerpt", "answer": "Reading \"The Great Gatsby\"", "input_tokens": 32330}
+{"qid": "c8q153", "condition": "control", "answer": "A photo of a kayak (seen from the front of the boat) and a sunset.", "input_tokens": 31989}
+{"qid": "c8q21", "condition": "control", "answer": "Evan describes her as \"awesome,\" \"incredible,\" and says being with her makes him feel \"alive.\" He believes in love at first sight with her, saying \"it was like time stopped and I felt like a spark lit inside me.\"", "input_tokens": 31565}
+{"qid": "c8q20", "condition": "excerpt", "answer": "A fitness watch or smartwatch. Sam explicitly expressed interest in ordering one like Evan's, which Evan found helpful for tracking progress and motivation. Both are actively pursuing health goals and would benefit from this tool.", "input_tokens": 32255}
+{"qid": "c8q20", "condition": "control", "answer": "Fitness trackers or a healthy recipe cookbook. Both are pursuing regular exercise and healthy cooking, so either would reinforce their goals.", "input_tokens": 31844}
+{"qid": "c8q24", "condition": "excerpt", "answer": "Sam started a diet and began a health transformation journey, posting before and after photos to motivate others (shown by early September 2023).", "input_tokens": 31634}
+{"qid": "c8q21", "condition": "excerpt", "answer": "Evan describes her as \"awesome\" and \"incredible,\" saying being with her makes him feel \"alive.\" He experienced \"love at first sight\"\u2014describing it as time stopping with a spark lighting inside him, feeling \"so right.\"", "input_tokens": 32254}
+{"qid": "c8q28", "condition": "control", "answer": "Journal writing and creative writing.", "input_tokens": 31364}
+{"qid": "c8q25", "condition": "excerpt", "answer": "2021", "input_tokens": 31938}
+{"qid": "c8q28", "condition": "excerpt", "answer": "Journal writing and creative writing. Sam described these as therapeutic ways to express his innermost thoughts and feelings and to help him make sense of things.", "input_tokens": 31776}
+{"qid": "c8q24", "condition": "control", "answer": "Sam was dealing with health issues that were limiting their movement and affecting their wellbeing.", "input_tokens": 31107}
+{"qid": "c8q25", "condition": "control", "answer": "2021", "input_tokens": 31465}
+{"qid": "c8q29", "condition": "control", "answer": "A Canadian woman; he came back with her (his new SO/girlfriend).", "input_tokens": 31667}
+{"qid": "c8q22", "condition": "control", "answer": "Information not provided in context. The conversation indicates Evan married his wife around mid-December 2023 and it was love at first sight, but the specific date they met is not mentioned.", "input_tokens": 31100}
+{"qid": "c8q34", "condition": "excerpt", "answer": "Evan's son had a soccer accident with an ankle injury (15 August 2023) and a bike accident where he fell off (17 December 2023).", "input_tokens": 32323}
+{"qid": "c8q29", "condition": "excerpt", "answer": "A Canadian woman; came back with her (his new girlfriend/SO).", "input_tokens": 32129}
+{"qid": "c8q31", "condition": "control", "answer": "Gradual progress, mutual support systems, creative stress relief outlets, and patience with themselves. They view health challenges as catalysts for positive lifestyle changes rather than defeats.", "input_tokens": 30935}
+{"qid": "c8q36", "condition": "control", "answer": "Sam recommended roasted vegetable recipe and grilled chicken and veggie stir-fry with homemade sauce.", "input_tokens": 31499}
+{"qid": "c8q34", "condition": "control", "answer": "Soccer accident with ankle injury (August 2023) and fell off his bike (December 2023).", "input_tokens": 31778}
+{"qid": "c8q35", "condition": "excerpt", "answer": "12 August 2023", "input_tokens": 31836}
+{"qid": "c8q36", "condition": "excerpt", "answer": "Roasted vegetable recipe, grilled chicken and veggie stir-fry with homemade sauce, and grilled salmon with vegetables.", "input_tokens": 31677}
+{"qid": "c8q31", "condition": "excerpt", "answer": "Their health crises (June 2023, October 2023) teach them to approach challenges incrementally, with mutual support and creative outlets (exercise, painting, writing) rather than despair. Both emphasize patience and persistence despite setbacks.", "input_tokens": 31384}
+{"qid": "c8q35", "condition": "control", "answer": "12 August 2023", "input_tokens": 31149}
+{"qid": "c8q56", "condition": "control", "answer": "Navigation app malfunctioning.", "input_tokens": 31305}
+{"qid": "c8q56", "condition": "excerpt", "answer": "Navigation app malfunctions", "input_tokens": 32043}
+{"qid": "c8q39", "condition": "excerpt", "answer": "Approximately 3 months (from late May 2023 to mid-August 2023)", "input_tokens": 31940}
+{"qid": "c8q22", "condition": "excerpt", "answer": "Not specified in context; only that he married her around 19 December 2023.", "input_tokens": 31737}
+{"qid": "c8q37", "condition": "control", "answer": "Grilled salmon with vegetables, roasted vegetables, spinach, avocado, and grilled chicken stir-fry.", "input_tokens": 31703}
+{"qid": "c8q39", "condition": "control", "answer": "Approximately 3 months (late May 2023 to mid-August 2023).", "input_tokens": 31711}
+{"qid": "c8q37", "condition": "excerpt", "answer": "Grilled salmon and vegetables, roasted vegetables, spinach and avocado bowls, and grilled chicken veggie stir-fry.", "input_tokens": 32273}
+{"qid": "c8q61", "condition": "control", "answer": "Health concerns and work stress.", "input_tokens": 27977}
+{"qid": "c8q61", "condition": "excerpt", "answer": "Work stress and health issues (gastritis, weight concerns, phone problems).", "input_tokens": 28550}
+{"qid": "c8q67", "condition": "control", "answer": "9 November 2023", "input_tokens": 31798}
+{"qid": "c8q48", "condition": "control", "answer": "Sam adopted: reduced soda and candy intake (replaced with seltzer water and healthier snacks), started regular exercise and gym workouts (late July 2023), increased vegetable and fruit consumption, took a cooking class for healthy recipes (August 2023), and later added yoga (January 2024).", "input_tokens": 31610}
+{"qid": "c8q48", "condition": "excerpt", "answer": "Reduced soda and candy intake, started regular exercise/gym workouts, took cooking classes for healthy recipes, adopted a nutritious diet with more vegetables and fruits, and began yoga practice.", "input_tokens": 31900}
+{"qid": "c8q7", "condition": "control", "answer": "Painting and kayaking.", "input_tokens": 29101}
+{"qid": "c8q8", "condition": "control", "answer": "Watercolor painting.", "input_tokens": 31570}
+{"qid": "c8q80", "condition": "control", "answer": "9 January 2024", "input_tokens": 30787}
+{"qid": "c8q67", "condition": "excerpt", "answer": "9 November 2023 (planned for next month/December)", "input_tokens": 32241}
+{"qid": "c8q7", "condition": "excerpt", "answer": "Painting (18 May 2023), lifting weights (8 October 2023), and kayaking (14 October 2023)", "input_tokens": 29317}
+{"qid": "c8q80", "condition": "excerpt", "answer": "9 January 2024", "input_tokens": 31364}
+{"qid": "c8q8", "condition": "excerpt", "answer": "Watercolor painting", "input_tokens": 32261}
+{"qid": "c8q76", "condition": "excerpt", "answer": "Around 13-14 December 2023", "input_tokens": 31228}
+{"qid": "c8q76", "condition": "control", "answer": "Around 14-15 December 2023 (he finished it \"a few days\" before December 17, 2023).", "input_tokens": 30842}
+{"qid": "c8q83", "condition": "excerpt", "answer": "A new Prius.", "input_tokens": 31218}
+{"qid": "c8q84", "condition": "excerpt", "answer": "A friend got him into it and gave him advice.", "input_tokens": 29613}
+{"qid": "c8q84", "condition": "control", "answer": "His friend got him into it and gave him advice, and he was hooked right away.", "input_tokens": 29379}
+{"qid": "c8q83", "condition": "control", "answer": "A new Prius", "input_tokens": 30578}
+{"qid": "c8q98", "condition": "control", "answer": "Progress is more important than perfection.", "input_tokens": 31869}
+{"qid": "c8q88", "condition": "control", "answer": "Fresh air, peacefulness, and a cozy cabin surrounded by mountains and forests.", "input_tokens": 31971}
+{"qid": "c8q88", "condition": "excerpt", "answer": "Fresh air, peacefulness, and the cozy cabin surrounded by mountains and forests.", "input_tokens": 32399}
+{"qid": "c8q98", "condition": "excerpt", "answer": "Progress.", "input_tokens": 32217}
+{"qid": "c8q95", "condition": "excerpt", "answer": "The smartwatch helps Evan track his progress on his health goals and serves as a constant reminder to keep going.", "input_tokens": 31659}
+{"qid": "c8q90", "condition": "control", "answer": "Flavored seltzer water instead of soda, and dark chocolate with high cocoa content instead of candy. Later also suggested air-popped popcorn or fruit as healthy snack pairings.", "input_tokens": 31525}
+{"qid": "c8q95", "condition": "control", "answer": "The smartwatch helps Evan track his progress and serves as a motivational reminder for his health goals.", "input_tokens": 31485}
+{"qid": "c9q105", "condition": "control", "answer": "Purple glow", "input_tokens": 31631}
+{"qid": "c9q105", "condition": "excerpt", "answer": "Purple glow.", "input_tokens": 32191}
+{"qid": "c8q90", "condition": "excerpt", "answer": "Flavored seltzer water instead of soda; dark chocolate with high cocoa content instead of candy. Later suggested air-popped popcorn or fruit with the seltzer.", "input_tokens": 31719}
+{"qid": "c9q10", "condition": "control", "answer": "Around 9 May 2023 (mentioned as happening \"last week\" in a conversation on 16 May 2023)", "input_tokens": 31337}
+{"qid": "c9q112", "condition": "excerpt", "answer": "Dave feels that people's reactions to the finished restoration make all the hard work worth it. He finds it satisfying and motivating.", "input_tokens": 31441}
+{"qid": "c9q112", "condition": "control", "answer": "He finds it very satisfying; people's positive reactions make all the hard work worth it.", "input_tokens": 31083}
+{"qid": "c9q113", "condition": "excerpt", "answer": "Feeling the wind in his hair and experiencing the rush of freedom.", "input_tokens": 31886}
+{"qid": "c9q114", "condition": "control", "answer": "\"California Love\" by Tupac and Dr. Dre", "input_tokens": 31129}
+{"qid": "c9q114", "condition": "excerpt", "answer": "California Love", "input_tokens": 31453}
+{"qid": "c9q115", "condition": "excerpt", "answer": "A car (shiny orange car with the hood open)", "input_tokens": 29616}
+{"qid": "c9q110", "condition": "control", "answer": "Calvin will perform at shows in Boston, Dave will attend his performances, they'll explore the city together, grab food at Dave's favorite spots, and check out the music scene and Dave's classic cars.", "input_tokens": 28985}
+{"qid": "c9q113", "condition": "control", "answer": "Feeling the wind through his hair and experiencing freedom while reflecting on life.", "input_tokens": 31522}
+{"qid": "c9q110", "condition": "excerpt", "answer": "Grab food together, explore the city and parks, and Dave will attend Calvin's music performances in Boston.", "input_tokens": 29491}
+{"qid": "c9q10", "condition": "excerpt", "answer": "Early May 2023 (approximately 9-12 May, described as \"last week\" from 16 May conversation).\n\nNote: The context does not explicitly specify the flooding occurred in Tokyo\u2014only that Calvin's place got flooded.", "input_tokens": 31644}
+{"qid": "c9q115", "condition": "control", "answer": "Working on a car (a shiny orange car)", "input_tokens": 29282}
+{"qid": "c9q123", "condition": "control", "answer": "Calvin reminds himself why he's passionate about his goals, relies on helpful people around him, and takes breaks to recharge with his favorite activities.", "input_tokens": 30910}
+{"qid": "c9q122", "condition": "excerpt", "answer": "The Fireworks", "input_tokens": 31491}
+{"qid": "c9q122", "condition": "control", "answer": "The Fireworks", "input_tokens": 31359}
+{"qid": "c9q123", "condition": "excerpt", "answer": "Calvin reminds himself of his passion for his goals, relies on supportive people around him, and takes breaks to recharge with his favorite activities.", "input_tokens": 31289}
+{"qid": "c9q128", "condition": "control", "answer": "Ramen", "input_tokens": 31093}
+{"qid": "c9q128", "condition": "excerpt", "answer": "Ramen.", "input_tokens": 31416}
+{"qid": "c9q130", "condition": "control", "answer": "Calvin takes it one day at a time and relies on a strong support system\u2014his friends and team keep him on track. (From 23 October 2023)", "input_tokens": 31216}
+{"qid": "c9q13", "condition": "control", "answer": "Yes, based on his passion for large crowds and big stages.", "input_tokens": 31277}
+{"qid": "c9q13", "condition": "excerpt", "answer": "Yes. Calvin loves performing live for large crowds and thrives on the energy and connection with audiences\u2014the Hollywood Bowl is a prestigious large venue that matches his stated preferences and ambitions.", "input_tokens": 31881}
+{"qid": "c9q130", "condition": "excerpt", "answer": "Calvin takes it one day at a time and relies on a strong support system of friends and team to keep him on track. He also finds joy in what he does, which helps him push through the demands.", "input_tokens": 31378}
+{"qid": "c9q146", "condition": "control", "answer": "Classic rock", "input_tokens": 31337}
+{"qid": "c9q146", "condition": "excerpt", "answer": "Classic rock.", "input_tokens": 31881}
+{"qid": "c9q132", "condition": "excerpt", "answer": "Calvin describes his music as a way to express himself and work through emotions\u2014like his own form of therapy. He also says he digs deeper into his music to capture the feelings and struggles people go through.", "input_tokens": 31193}
+{"qid": "c9q141", "condition": "control", "answer": "Boston", "input_tokens": 31042}
+{"qid": "c9q132", "condition": "control", "answer": "As therapy to express and work through emotions.", "input_tokens": 30640}
+{"qid": "c9q149", "condition": "excerpt", "answer": "Dave's blog on car mods inspires others to start their own DIY car projects.", "input_tokens": 31514}
+{"qid": "c9q149", "condition": "control", "answer": "Inspires others to start their own DIY projects; people ask him for advice.", "input_tokens": 30991}
+{"qid": "c9q155", "condition": "control", "answer": "Music, art, and their favorite artists.", "input_tokens": 30946}
+{"qid": "c9q141", "condition": "excerpt", "answer": "Boston", "input_tokens": 31416}
+{"qid": "c9q12", "condition": "excerpt", "answer": "Early August 2023", "input_tokens": 28867}
+{"qid": "c9q155", "condition": "excerpt", "answer": "Music, art, and how music connects people.", "input_tokens": 31629}
+{"qid": "c9q157", "condition": "control", "answer": "Its beauty helps us appreciate life when it's tough; like a breath of fresh air.", "input_tokens": 31125}
+{"qid": "c9q157", "condition": "excerpt", "answer": "\"Its beauty helps us appreciate life when it's tough. Like a breath of fresh air.\" Also boosts our spirits in tough times.", "input_tokens": 31609}
+{"qid": "c9q18", "condition": "control", "answer": "Twice\u2014once for a car accident (June 2023) and once for flood damage (May 2023).", "input_tokens": 31464}
+{"qid": "c9q147", "condition": "control", "answer": "Recording studio, collaboration with other artists, supportive friends/team, and live performances.", "input_tokens": 31344}
+{"qid": "c9q22", "condition": "control", "answer": "Yes, Calvin wants to expand his brand worldwide and grow his fanbase. He mentioned this explicitly on 3 August 2023 and reiterated plans to grow his brand after his tour on 13 September 2023.", "input_tokens": 31322}
+{"qid": "c9q12", "condition": "control", "answer": "Around mid-April 2023", "input_tokens": 28412}
+{"qid": "c9q147", "condition": "excerpt", "answer": "Live performances, collaborations with other artists, watching concerts and documentaries, and his recording studio.", "input_tokens": 31864}
+{"qid": "c9q18", "condition": "excerpt", "answer": "Two times\u2014once for a car accident (June 21, 2023) and once for home flooding (May 16, 2023).", "input_tokens": 31798}
+{"qid": "c9q25", "condition": "excerpt", "answer": "18 August 2023", "input_tokens": 31586}
+{"qid": "c9q22", "condition": "excerpt", "answer": "Yes, Calvin explicitly wants to expand his brand worldwide and grow his fanbase. He mentions this goal in conversation session 12 (3 August 2023) and again in session 18 (13 September 2023), where he says he's planning to \"explore and grow my brand.\"", "input_tokens": 31573}
+{"qid": "c9q25", "condition": "control", "answer": "18 August 2023", "input_tokens": 31032}
+{"qid": "c9q26", "condition": "control", "answer": "21 August 2023", "input_tokens": 30796}
+{"qid": "c9q23", "condition": "control", "answer": "Cars / automotive engineering.", "input_tokens": 29428}
+{"qid": "c9q23", "condition": "excerpt", "answer": "Cars and automotive engineering.", "input_tokens": 29706}
+{"qid": "c9q26", "condition": "excerpt", "answer": "21 August 2023", "input_tokens": 31333}
+{"qid": "c9q44", "condition": "control", "answer": "3 October 2023", "input_tokens": 30984}
+{"qid": "c9q44", "condition": "excerpt", "answer": "3 October 2023", "input_tokens": 31528}
+{"qid": "c9q29", "condition": "control", "answer": "Music (jamming with a band), attending concerts, and walks with friends in the park.", "input_tokens": 31308}
+{"qid": "c9q39", "condition": "excerpt", "answer": "Dodge Charger. Dave consistently shows preference for classic and muscle cars (Mustangs, Corvettes), not modern SUVs.", "input_tokens": 31992}
+{"qid": "c9q39", "condition": "control", "answer": "Based on Dave's demonstrated passion for classic and vintage cars, and his specific experience with a Ford Mustang, he would likely prefer working on a Dodge Charger.", "input_tokens": 31559}
+{"qid": "c9q48", "condition": "control", "answer": "Dave went to a car show where he saw awesome cars and worked on car mods.", "input_tokens": 30259}
+{"qid": "c9q29", "condition": "excerpt", "answer": "Walking with friends in parks and playing in a band/jamming with musicians.", "input_tokens": 31487}
+{"qid": "c9q52", "condition": "control", "answer": "November 2023", "input_tokens": 31257}
+{"qid": "c9q27", "condition": "control", "answer": "Tokyo, Japan", "input_tokens": 30418}
+{"qid": "c9q46", "condition": "control", "answer": "Auto engineering and car restoration.", "input_tokens": 28593}
+{"qid": "c9q52", "condition": "excerpt", "answer": "November 2023 (after the tour ends)", "input_tokens": 31765}
+{"qid": "c9q46", "condition": "excerpt", "answer": "Music and auto engineering (fixing/restoring cars).", "input_tokens": 29143}
+{"qid": "c9q60", "condition": "control", "answer": "A diamond pendant necklace (1 May 2023) and a custom octopus guitar from a Japanese artist friend (31 August 2023).", "input_tokens": 31171}
+{"qid": "c9q60", "condition": "excerpt", "answer": "Necklace with diamond pendant, custom octopus guitar from Japanese artist friend", "input_tokens": 31893}
+{"qid": "c9q48", "condition": "excerpt", "answer": "The context does not contain specific information about what Dave was doing on the first weekend of October 2023. My best guess would be working on his car, based on his demonstrated hobbies, but this is not stated in the provided conversations.", "input_tokens": 30935}
+{"qid": "c9q56", "condition": "control", "answer": "San Francisco (early September 2023)", "input_tokens": 30328}
+{"qid": "c9q51", "condition": "excerpt", "answer": "August 2023", "input_tokens": 28768}
+{"qid": "c9q59", "condition": "control", "answer": "1 Ferrari (acquired by late October 2023)", "input_tokens": 31360}
+{"qid": "c9q56", "condition": "excerpt", "answer": "Boston (March 2023), San Francisco (September 2023)", "input_tokens": 30858}
+{"qid": "c9q77", "condition": "control", "answer": "A necklace", "input_tokens": 30791}
+{"qid": "c9q61", "condition": "excerpt", "answer": "The context does not specify how long Dave's work on the Ford Mustang took.", "input_tokens": 31349}
+{"qid": "c9q27", "condition": "excerpt", "answer": "Miami", "input_tokens": 31157}
+{"qid": "c9q62", "condition": "control", "answer": "The context does not specify the duration of the workshop.", "input_tokens": 30855}
+{"qid": "c9q61", "condition": "control", "answer": "The context does not specify how long Dave's Ford Mustang restoration took. The duration is not mentioned in any of the conversations.", "input_tokens": 31400}
+{"qid": "c9q77", "condition": "excerpt", "answer": "A necklace", "input_tokens": 31139}
+{"qid": "c9q66", "condition": "control", "answer": "No. Dave describes car restoration as requiring \"a lot of patience\" and \"attention to detail\" that \"isn't easy.\" He mentions current projects are \"quite a challenge,\" though he does ultimately complete them successfully.", "input_tokens": 31093}
+{"qid": "c9q66", "condition": "excerpt", "answer": "No, not all smoothly. One project is described as \"quite a challenge\" (23 October 2023).", "input_tokens": 31262}
+{"qid": "c9q62", "condition": "excerpt", "answer": "The context does not specify the duration of the San Francisco car workshop. The exact length is not mentioned in the conversations.", "input_tokens": 31199}
+{"qid": "c9q81", "condition": "excerpt", "answer": "His music gear and favorite microphone.", "input_tokens": 31927}
+{"qid": "c9q81", "condition": "control", "answer": "His music gear and favorite microphone", "input_tokens": 31237}
+{"qid": "c9q80", "condition": "control", "answer": "Taking a break from music and exploring other things.", "input_tokens": 31649}
+{"qid": "c9q59", "condition": "excerpt", "answer": "1 (a new Ferrari acquired around mid-October 2023)", "input_tokens": 32046}
+{"qid": "c9q87", "condition": "excerpt", "answer": "Cruise around/get back on the road.", "input_tokens": 31903}
+{"qid": "c9q87", "condition": "control", "answer": "Cruise around / get back on the road.", "input_tokens": 31375}
+{"qid": "c9q80", "condition": "excerpt", "answer": "Take a break from music and explore other things.", "input_tokens": 31900}
+{"qid": "c9q90", "condition": "control", "answer": "Calvin describes adding electronic elements as giving his songs \"a fresh vibe\" and characterizes it as \"an exciting process of self-discovery and growth.\"", "input_tokens": 30759}
+{"qid": "c9q90", "condition": "excerpt", "answer": "He describes it as giving his songs \"a fresh vibe\" and as part of an \"exciting process of self-discovery and growth.\"", "input_tokens": 31235}
+{"qid": "c9q9", "condition": "control", "answer": "Around 9 May 2023", "input_tokens": 30572}
+{"qid": "c9q94", "condition": "control", "answer": "car mod workshop", "input_tokens": 30430}
+{"qid": "c9q94", "condition": "excerpt", "answer": "car mod workshop", "input_tokens": 31045}
+{"qid": "c9q95", "condition": "control", "answer": "Engine swaps, suspension modifications, and body modifications on a classic muscle car.", "input_tokens": 28577}
+{"qid": "c9q91", "condition": "control", "answer": "Ferrari", "input_tokens": 31369}
+{"qid": "c9q91", "condition": "excerpt", "answer": "Ferrari", "input_tokens": 31908}
+{"qid": "c9q9", "condition": "excerpt", "answer": "Early May 2023 (approximately 9 May 2023)", "input_tokens": 30905}
+{"qid": "c9q8", "condition": "control", "answer": "1 May 2023", "input_tokens": 31670}
+{"qid": "c9q95", "condition": "excerpt", "answer": "Engine swaps, suspension modifications, and body modifications on a classic muscle car (silver Corvette).", "input_tokens": 28926}
+{"qid": "c9q8", "condition": "excerpt", "answer": "Late April or 1 May 2023\n\n(Dave announces it in the 1 May conversation as \"finally opened,\" and later references opening it \"last week\" from 16 May, suggesting early May)", "input_tokens": 32001}
+{"qid": "c9q51", "condition": "control", "answer": "August 2022", "input_tokens": 28360}
