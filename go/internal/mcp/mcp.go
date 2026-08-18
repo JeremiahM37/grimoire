@@ -23,6 +23,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 )
@@ -45,6 +46,11 @@ type Server struct {
 	BaseURL string
 	Agent   string
 	Client  *http.Client
+
+	// AuthToken is presented to the API when it is gated by
+	// GRIMOIRE_AUTH_TOKEN. This server is an HTTP client of that API, so
+	// without it every tool call against a gated instance returns 401.
+	AuthToken string
 }
 
 func New(baseURL, agent string) *Server {
@@ -52,9 +58,10 @@ func New(baseURL, agent string) *Server {
 		agent = "agent"
 	}
 	return &Server{
-		BaseURL: strings.TrimRight(baseURL, "/"),
-		Agent:   agent,
-		Client:  &http.Client{Timeout: 120 * time.Second},
+		BaseURL:   strings.TrimRight(baseURL, "/"),
+		Agent:     agent,
+		AuthToken: os.Getenv("GRIMOIRE_AUTH_TOKEN"),
+		Client:    &http.Client{Timeout: 120 * time.Second},
 	}
 }
 
@@ -173,6 +180,9 @@ func (s *Server) api(method, path string, body any) (any, error) {
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	if s.AuthToken != "" {
+		req.Header.Set("Authorization", "Bearer "+s.AuthToken)
+	}
 	resp, err := s.Client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("grimoire unreachable at %s: %w", s.BaseURL, err)

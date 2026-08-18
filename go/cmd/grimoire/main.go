@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -102,6 +103,8 @@ func newEnv(fetchModel bool) (*env, error) {
 		SyncToken:    os.Getenv("GRIMOIRE_SYNC_TOKEN"),
 		SyncInterval: atoiOr(os.Getenv("GRIMOIRE_SYNC_INTERVAL"), 0),
 		WebDir:       envOr("GRIMOIRE_WEB_DIR", ""),
+		AuthToken:    os.Getenv("GRIMOIRE_AUTH_TOKEN"),
+		FrameOptions: envOr("GRIMOIRE_FRAME_OPTIONS", "SAMEORIGIN"),
 		PluginDir:    envOr("GRIMOIRE_PLUGIN_DIR", "plugins"),
 		DailyDir:     envOr("GRIMOIRE_DAILY_DIR", "journal"),
 		InboxDir:     envOr("GRIMOIRE_INBOX_DIR", "inbox"),
@@ -143,6 +146,18 @@ func run(args []string) error {
 	if v, ok := flagValue(args, "--port"); ok {
 		port = v
 	}
+	// GRIMOIRE_HOST has been documented since before the rewrite but was never
+	// read, so the server always bound every interface. That is the wrong
+	// default to pair with an optional auth token: on a machine with any
+	// non-trusted network attached, the secrets routes were reachable from it.
+	host := envOr("GRIMOIRE_HOST", "")
+	if v, ok := flagValue(args, "--host"); ok {
+		host = v
+	}
+	if e.server.AuthToken == "" && host == "" {
+		log.Printf("WARNING: serving on all interfaces with no GRIMOIRE_AUTH_TOKEN — " +
+			"anyone who can reach this port can read notes and drive the secret vault")
+	}
 
 	log.Printf("indexing vault %s with %s", e.vault.Root, e.embedder.Signature())
 	n, err := e.index.Reindex()
@@ -156,9 +171,18 @@ func run(args []string) error {
 	_ = ix
 
 	srv := &http.Server{
-		Addr:              ":" + port,
+		Addr:              net.JoinHostPort(host, port),
 		Handler:           e.handler,
 		ReadHeaderTimeout: 10 * time.Second,
+		// A slow or stalled client must not be able to hold a connection (and,
+		// with SetMaxOpenConns(1) underneath, the database behind it) open
+		// indefinitely. ReadTimeout is generous because vault import and audio
+		// upload send large bodies; there is no streaming response surface, so
+		// WriteTimeout can be bounded too.
+		ReadTimeout:    5 * time.Minute,
+		WriteTimeout:   5 * time.Minute,
+		IdleTimeout:    2 * time.Minute,
+		MaxHeaderBytes: 1 << 20,
 	}
 
 	// Graceful shutdown: an in-flight reindex or write should finish rather

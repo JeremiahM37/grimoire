@@ -80,9 +80,13 @@ and never needs the key. Editing requires an unlocked vault.
   first, then apply a small allowlist of formatting. Wiki-links/images become
   attributes on escaped text; no user markup reaches the DOM as live HTML. The
   CSP is defense-in-depth on top.
-- **Auth token** (optional, `GRIMOIRE_AUTH_TOKEN`): compared with
-  `hmac.compare_digest` (constant-time). Prefer the `Authorization: Bearer`
-  header over `?token=` (the latter can appear in proxy logs).
+- **Auth token** (optional, `GRIMOIRE_AUTH_TOKEN`): gates every route except
+  `/api/health`, compared in constant time over SHA-256 digests (fixed width,
+  so the comparison cannot leak the token's length). Accepted as
+  `Authorization: Bearer`, as a `grimoire_auth` cookie, or once as `?token=` —
+  which is then promoted to an `HttpOnly; SameSite=Strict` cookie so the
+  credential stops travelling in URLs. Empty means open, as it always has.
+  `grimoire-mcp` presents the same token automatically.
 - **Path traversal:** every vault path goes through `safe_path` / `safe_raw_path`,
   which resolve and confine to the vault root and reject `.grimoire`. The
   `/api/file` route and vault export exclude `.grimoire` so the secret store and
@@ -93,6 +97,11 @@ and never needs the key. Editing requires an unlocked vault.
 
 Background auto-sync (`GRIMOIRE_SYNC_PEER`) authenticates to the peer with
 `GRIMOIRE_SYNC_TOKEN` (sent as a Bearer header, so it never appears in a URL/log).
+On the receiving side that token is accepted **only** on the routes a peer
+actually calls (`/api/sync/manifest`, `/api/sync/pull`, `/api/sync/push`,
+`/api/crdt/*`): a credential shared with another machine does not also unlock
+the secret vault. Peer authentication requires `GRIMOIRE_AUTH_TOKEN` to be set,
+since that is what turns the gate on.
 Sync moves plain note files; it never transmits the secret store (`.grimoire/` is
 excluded from every export/sync path). Direction is last-writer-by-mtime, but no
 edit is silently lost — a pull that would overwrite a locally-changed note first

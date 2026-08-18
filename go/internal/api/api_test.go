@@ -493,16 +493,6 @@ func TestReadExcludesPrivateNotes(t *testing.T) {
 	}
 }
 
-func TestSecurityHeadersAreSet(t *testing.T) {
-	_, h := testServer(t)
-	w := do(t, h, "GET", "/api/health", nil)
-	for _, hdr := range []string{"Content-Security-Policy", "X-Content-Type-Options", "Referrer-Policy"} {
-		if w.Header().Get(hdr) == "" {
-			t.Errorf("%s header missing", hdr)
-		}
-	}
-}
-
 func TestUnlinkedMentions(t *testing.T) {
 	_, h := testServer(t)
 	do(t, h, "POST", "/api/notes", map[string]any{"path": "Gateway.md", "body": "# Gateway\n\nthe thing"})

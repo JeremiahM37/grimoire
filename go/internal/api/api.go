@@ -43,6 +43,8 @@ type Server struct {
 	SyncToken    string
 	SyncInterval int
 	WebDir       string
+	AuthToken    string
+	FrameOptions string
 	PluginDir    string
 	DailyDir     string
 	InboxDir     string
@@ -134,21 +136,29 @@ func (s *Server) Routes() http.Handler {
 	if s.WebDir != "" {
 		mux.Handle("/", s.staticHandler())
 	}
-	return securityHeaders(mux)
+	return securityHeaders(s.FrameOptions, s.requireAuth(mux))
 }
 
 // securityHeaders applies the same defence-in-depth headers as the Python app.
 // The strict CSP is why first-party plugins work while remote scripts don't:
 // everything is served same-origin.
-func securityHeaders(next http.Handler) http.Handler {
+func securityHeaders(frameOptions string, next http.Handler) http.Handler {
 	const csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
 		"img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; " +
 		"base-uri 'none'; form-action 'self'"
+	// SECURITY.md documents both of these; neither was actually being sent.
+	// Framing control matters here because the console is same-origin with the
+	// secrets routes, so a clickjacked frame acts with the user's session.
+	if frameOptions == "" {
+		frameOptions = "SAMEORIGIN"
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()
 		h.Set("Content-Security-Policy", csp)
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Referrer-Policy", "no-referrer")
+		h.Set("X-Frame-Options", frameOptions)
+		h.Set("Cross-Origin-Opener-Policy", "same-origin")
 		next.ServeHTTP(w, r)
 	})
 }
