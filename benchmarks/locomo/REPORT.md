@@ -118,60 +118,48 @@ condition `grimoire-local`; every other condition carried forward unchanged.
 indistinguishable from full context (37/44, p = 0.51) — the fully-local,
 no-external-service config now sits at the ceiling too.
 
-## Round 6 — the Go implementation
+## Round 6 — per-note cap and chunk size: both null (2026-08-18)
 
-Same product, reimplemented in Go (`go/`). No retrieval algorithm changed;
-this run exists to answer whether the rewrite kept the numbers. Contexts
-were produced by driving a running Go server over HTTP
-(`retrieve_go.py`), assembling context exactly as the in-process retriever
-does; the reader and judge phases are untouched and shared.
+Two candidates developed against LongMemEval were scored here, plus a control
+that is the decisive row. Full diagnosis in
+[../longmemeval/REPORT.md](../longmemeval/REPORT.md).
 
 | condition | multi-hop | temporal | open-domain | single-hop | **overall** | context tokens* |
 |---|---|---|---|---|---|---|
-| grimoire + model2vec (Python) | 56.5% | 79.8% | 61.3% | 91.6% | **80.8%** | ~6.1k |
-| **grimoire + model2vec (Go)** | 68.5% | 78.8% | 64.5% | 89.0% | **81.6%** | ~7.0k |
+| none | 1.1% | 0.0% | 6.5% | 1.1% | **1.2%** | 0 |
 | full context | 71.7% | 72.1% | 58.1% | 92.3% | **82.2%** | ~24.0k |
+| grimoire-go (round 5 reads) | 68.5% | 78.8% | 64.5% | 89.0% | **81.6%** | ~7.0k |
+| control (identical contexts, re-read) | 55.4% | 76.0% | 61.3% | 88.3% | **78.0%** | ~7.1k |
+| per-note cap | 47.8% | 69.2% | 61.3% | 89.7% | **76.0%** | ~7.1k |
+| chunk 800→400 | 53.3% | 69.2% | 54.8% | 90.1% | **76.8%** | **~5.8k** |
 
-Go vs Python on the same embedder: 30 wins / 26 losses, exact McNemar
-p = 0.69 — **indistinguishable**, which is the result the port was aiming
-for. It is also indistinguishable from full context (39/42, p = 0.82).
-The per-category movement (multi-hop +12, single-hop −2.6) is rank-flip
-noise at these cell sizes, not a retrieval difference: see
-[results/go-port-recall.md](results/go-port-recall.md) for the
-deterministic, LLM-free recall comparison and the float32 root cause.
+\* median reader input tokens minus the `none` baseline.
 
-## Reading the numbers
+**The control row is the finding.** Its contexts are byte-identical to
+`grimoire-go` — verified for all 500 questions — yet it scores 3.6 points
+lower, because 60 of 500 answers (12.0%) flip from reader and judge sampling
+alone. McNemar rates that difference significant (p = 0.027) even though the
+only thing that changed was the sample.
 
-- **Round 4 grimoire + nomic-embed (81.6%) is statistically
-  indistinguishable from the full-context ceiling (82.2%)**: among the 79
-  questions where exactly one of the two was correct, retrieval won 38 and
-  full context won 41 (exact McNemar p = 0.82, n = 500) — while using
-  ~3.9x fewer context tokens per question (~6.2k vs ~24k). The offline
-  default (76.8%) remains measurably below ceiling (p = 0.009): the gap
-  that's left is the hashing embedder's paraphrase blindness.
-- The scored round 3→4 delta (+1.8 offline / +0.8 nomic) is individually
-  inside sampling noise (paired p = 0.69); the evidence that round 4's
-  changes help is the dev split, where recall rose 82.9→85.8 (hashing) and
-  87.8→90.0 (nomic) on n = 1,037 — the scored movement is directionally
-  consistent with that.
-- The `none` floor (1.2%) shows the questions are not guessable; the reader
-  only knows what the condition supplies.
-- Attribution by round: 1→2 (+19.6 / +22.8) the four generic retrieval
-  fixes; 2→3 (+2.6 / +4.0, concentrated in temporal) date-carrying titles;
-  3→4 (+1.8 / +0.8) BM25 + small-to-big.
-- Temporal retrieval (78.8%) now clearly *beats* full context (72.1%) —
-  focused context outperforms a 24k-token transcript there; multi-hop
-  remains retrieval's hardest category (60.9% vs 71.7%), consistent with
-  its lower dev-split evidence recall (~72%).
-- **Tried and rejected across rounds** (dev-gated, reverted):
-  unrestricted neighbor expansion (2.4x context for the recall it bought),
-  pseudo-relevance feedback (±0.2), bigram/sublinear-tf hashing embedder
-  (−0.1), cosine-leg query expansion (0.0). Small-to-big only shipped once
-  capped to the top-3 hits, where it cost +16% context for +2.4 recall.
-- Iteration stopped here: retrieval is a coin flip with the ceiling on the
-  scored set, so further tuning would be fitting noise.
+Measured against that control rather than against the stored round-5 reads:
 
-Caveats: one dataset, one reader model, one judge model; category-5
-(adversarial) questions excluded, following published practice. Numbers
-published by other memory systems on LoCoMo use different readers/judges and
-are not directly comparable to this table.
+- **per-note cap**: −2.0pp, 20 wins / 30 losses, p = 0.203.
+- **chunk 800→400**: −1.2pp, 29 wins / 35 losses, p = 0.532, at 19% less
+  context.
+
+Neither is significant, and the cap's headline −5.6pp against round 5 was
+mostly the re-read effect rather than the change. Multi-hop still moves most
+under the cap (−7.6pp vs control), consistent with the mechanism found by
+reading the questions it lost: allowing a note several slots pulls that
+session's other topics in with the evidence, and LoCoMo's multi-hop questions
+have list answers that a strict judge marks wrong when an extra item is added.
+
+> *What video games does Nate play?* (gold: Valorant, CS:GO, Xenoblade, Street Fighter)
+> control: "Counter-Strike: Global Offensive, Street Fighter, Xenoblade Chronicles" — correct
+> capped: "Counter-Strike: Global Offensive, Street Fighter, **Chess, Catan**, Xenoblade" — wrong
+
+Both changes were reverted. As an incidental but useful check, rebuilding the
+round-5 condition with the current code and the cap disabled reproduced the
+stored contexts **byte-identically for all 500 questions**, which independently
+confirms that this session's retrieval-cache rewrite, BM25 determinism fix and
+`fts_chunks` removal are all output-neutral on real data.

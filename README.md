@@ -254,6 +254,14 @@ vs 68.5%). Full methods, per-category tables, per-question raw data, and
 the honest failure notes: [benchmarks/locomo/](benchmarks/locomo/) ·
 [benchmarks/longmemeval/](benchmarks/longmemeval/).
 
+**Measurement floor** (round 6): re-reading a byte-identical context set with
+the same frozen reader and judge flips 8–12% of answers and moves accuracy by
+1–4 points, so a difference smaller than roughly 5 points between two
+retrieval variants is not resolvable at these sample sizes. The comparisons
+above are either far larger than that (retrieval vs no memory) or are parity
+claims, which sampling noise only makes harder to assert — but any future
+tuning claim needs a same-epoch control, and the harnesses now provide one.
+
 ## Tests
 
 ```bash
