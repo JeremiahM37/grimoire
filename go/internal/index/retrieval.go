@@ -52,7 +52,7 @@ func (ix *Index) Retrieve(query string, k int, includePrivate bool) ([]Hit, erro
 		return nil, nil
 	}
 	qv := ix.Emb.Embed([]string{query})[0]
-	qterms := uniqueTerms(query)
+	qterms := queryTerms(query)
 
 	nChunks := float64(len(rows))
 	var totalLen float64
@@ -65,7 +65,7 @@ func (ix *Index) Retrieve(query string, k int, includePrivate bool) ([]Hit, erro
 	}
 	df := map[string]int{}
 	for _, r := range rows {
-		for t := range qterms {
+		for _, t := range qterms {
 			if r.counts[t] > 0 {
 				df[t]++
 			}
@@ -183,10 +183,10 @@ func (ix *Index) finalize(ranked []Hit, k int) ([]Hit, error) {
 // bm25 scores one chunk: IDF-weighted with term-frequency saturation and length
 // normalization, so a term mentioned three times beats one mentioned once, but
 // thirty mentions don't drown everything else.
-func bm25(terms map[string]bool, r *corpusRow, df map[string]int, nChunks, avglen float64) float64 {
+func bm25(terms []string, r *corpusRow, df map[string]int, nChunks, avglen float64) float64 {
 	norm := bm25K1 * (1 - bm25B + bm25B*float64(r.total)/avglen)
 	score := 0.0
-	for t := range terms {
+	for _, t := range terms {
 		tf := float64(r.counts[t])
 		if tf == 0 || df[t] == 0 {
 			continue
@@ -241,10 +241,28 @@ func termCounts(s string) (map[string]int, int) {
 	return counts, total
 }
 
-func uniqueTerms(s string) map[string]bool {
-	out := map[string]bool{}
+// queryTerms returns the query's distinct terms in sorted order.
+//
+// The order is not cosmetic. BM25 sums one contribution per term, and float64
+// addition is not associative, so iterating a map here made a chunk's score
+// differ in the last bits from one call to the next. RRF then turns scores
+// into RANKS, which amplifies that: two chunks a single ULP apart swap places,
+// every chunk below them shifts, and the fused score changes for the whole
+// tail. Measured on the parity corpus before this was pinned, 8 of 80
+// (query, k, privacy) combinations were unstable, one of them returning 28
+// distinct result sets in 60 identical runs.
+//
+// Sorting costs nothing at query-term scale and makes the summation order a
+// property of the query text alone.
+func queryTerms(s string) []string {
+	seen := make(map[string]bool)
+	out := make([]string, 0, 8)
 	for _, t := range wordRE.FindAllString(strings.ToLower(s), -1) {
-		out[t] = true
+		if !seen[t] {
+			seen[t] = true
+			out = append(out, t)
+		}
 	}
+	sort.Strings(out)
 	return out
 }
