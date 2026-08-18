@@ -95,3 +95,24 @@ reverted and are reported as rejected, per the tuning rule.
   round is reported, including regressions and nulls.
 - Published claims compare only runs executed under this protocol on this
   hardware; numbers from other papers are context, never a comparison row.
+
+---
+
+## Amendment — round 6 (2026-08-18)
+
+Two LongMemEval-derived candidates were scored here because the tuning rule
+requires a re-run of every condition a product change affects. Both were
+reverted; see [REPORT.md](REPORT.md).
+
+The round also adds a **same-epoch control** — a byte-identical copy of an
+existing condition's contexts, re-read and re-judged alongside the candidates.
+It is now required for any comparison between retrieval variants: on identical
+input it flipped 12.0% of answers here and moved accuracy 3.6 points, which is
+larger than either candidate's effect. Comparing a new run against stored reads
+from an earlier round, as rounds 1–5 did, silently includes that variance.
+
+`dev_coverage.py` additionally reports the number of distinct sessions in the
+context. That column exists because its absence cost a scored run: the per-note
+cap left evidence coverage flat on this dataset (84.5% → 84.6%) while costing
+multi-hop accuracy, and breadth was the thing that had moved. Coverage alone is
+not a sufficient gate for LoCoMo.

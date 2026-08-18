@@ -1,0 +1,2 @@
+# rebuildable sweep intermediates — regenerate with the dev harness in the parent dir
+*.jsonl
