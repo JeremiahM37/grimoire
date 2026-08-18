@@ -25,6 +25,16 @@ func Unpack(blob []byte) []float32 {
 	return out
 }
 
+// decodeInto is Unpack without the allocation, for callers that already own
+// the destination — the retrieval cache decodes every stored vector into one
+// contiguous arena, and a per-row temporary there is pure garbage.
+// len(dst) must be len(blob)/4.
+func decodeInto(dst []float32, blob []byte) {
+	for i := range dst {
+		dst[i] = math.Float32frombits(binary.LittleEndian.Uint32(blob[i*4:]))
+	}
+}
+
 // Cosine is the cosine similarity of two vectors. Mismatched lengths score 0,
 // and a zero vector is treated as unit-length so an empty note can't produce
 // NaN and poison a ranking.
