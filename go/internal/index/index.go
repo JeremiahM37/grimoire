@@ -38,6 +38,9 @@ type Index struct {
 	writeMu sync.RWMutex
 	rev     int64
 	revMu   sync.Mutex
+
+	// the retrieval cache, invalidated by rev; see retrieval.go
+	cacheFields
 }
 
 func New(database *db.DB, v *vault.Vault, e Embedder) *Index {
@@ -65,6 +68,13 @@ func (ix *Index) bumpRev() {
 func (ix *Index) Reindex() (int, error) {
 	ix.writeMu.Lock()
 	defer ix.writeMu.Unlock()
+
+	// Bump before the deletes, not only inside writeNoteRows. A rebuild that
+	// ends up writing no notes — an emptied or moved vault — would otherwise
+	// never touch the revision, leaving the retrieval cache holding a corpus
+	// whose rows have all been deleted, and searches answering from it
+	// indefinitely without any error.
+	ix.bumpRev()
 
 	for _, tbl := range []string{"notes", "links", "tags", "fts", "facts", "vectors", "fts_chunks"} {
 		if err := ix.DB.Exec("DELETE FROM " + tbl); err != nil {
