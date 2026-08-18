@@ -38,18 +38,23 @@ injecting the secret into a request header. The response is returned; the secret
 value is not.
 
 - **Scope matching is origin-exact + path-prefix** — it parses both URLs and
-  compares (scheme, host, port) exactly, then checks the path prefix. This blocks
-  the classic prefix bypass (`https://api.github.com` does **not** authorize
-  `https://api.github.com.evil.com`).
+  compares (scheme, host, port) exactly, then checks the path prefix on whole
+  segments (`/v1` does not authorize `/v10`). This blocks the classic prefix
+  bypass (`https://api.github.com` does **not** authorize
+  `https://api.github.com.evil.com`), and the inverse where the scope appears
+  in the *path* of an attacker's URL.
+- **Redirects are re-checked against the scope.** Go strips `Authorization` on
+  a cross-host redirect, but the broker injects whatever header the caller
+  named, and an `X-Api-Key` would otherwise follow a 302 to another host.
 - **SSRF guard:** the target host is resolved and requests to
   private / loopback / link-local / reserved / multicast / unspecified addresses
   are refused. Cloud-metadata & link-local (`169.254.0.0/16`, incl.
   `169.254.169.254`) are **always** refused, even when internal targets are
   enabled. Self-hosters who legitimately broker to LAN services set
   `GRIMOIRE_BROKER_ALLOW_PRIVATE=1` (metadata stays blocked).
-  *Caveat:* DNS is resolved at check time; a determined DNS-rebinding attacker who
-  also controls the vault could still race it — but brokering already requires an
-  unlocked vault, which is the trust boundary.
+  The check runs at CONNECT time on the address the socket is about to use, not
+  on a hostname resolved earlier, so DNS rebinding does not defeat it — and it
+  covers every redirect hop, since each hop dials again.
 - **Every grant and every broker call is written to an append-only audit log.**
 - **Broker requires the vault unlocked** *and* a valid grant — defense in depth: a
   leaked grant token alone cannot broker anything.

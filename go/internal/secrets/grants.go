@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -30,14 +31,29 @@ type Grant struct {
 }
 
 // Broker performs outbound requests with a secret injected.
+//
+// AllowPrivate relaxes the outbound address guard for self-hosters brokering to
+// services on their own network; cloud-metadata and link-local stay refused
+// either way. Replacing Client replaces the guarded transport with it, which is
+// useful in tests and a mistake in production.
 type Broker struct {
-	Vault  *Vault
-	DB     *db.DB
-	Client *http.Client
+	Vault        *Vault
+	DB           *db.DB
+	Client       *http.Client
+	AllowPrivate bool
 }
 
 func NewBroker(v *Vault, database *db.DB) *Broker {
-	return &Broker{Vault: v, DB: database, Client: &http.Client{Timeout: 60 * time.Second}}
+	allowPrivate := allowPrivateFromEnv()
+	return &Broker{
+		Vault:        v,
+		DB:           database,
+		AllowPrivate: allowPrivate,
+		Client: &http.Client{
+			Timeout:   60 * time.Second,
+			Transport: guardedTransport(allowPrivate),
+		},
+	}
 }
 
 func newToken() (string, error) {
@@ -141,10 +157,19 @@ func (b *Broker) Use(token, method, targetURL, header, body string) (map[string]
 		_ = b.DB.Exec("DELETE FROM grants WHERE token=?", token)
 		return nil, errors.New("grant expired")
 	}
-	if g.Scope != "" && !strings.HasPrefix(targetURL, g.Scope) {
-		// the scope is what stops a token for one API being pointed at another
+	// The scope is what stops a token for one API being pointed at another, so
+	// it is compared as an origin rather than as a string prefix. See guard.go.
+	parsed, err := url.Parse(targetURL)
+	if err != nil {
+		return nil, fmt.Errorf("unparseable target url: %w", err)
+	}
+	if err := allowedScheme(parsed); err != nil {
+		b.audit("denied", g.Secret, "url="+targetURL+" reason=scheme")
+		return nil, err
+	}
+	if err := scopeAllows(g.Scope, targetURL); err != nil {
 		b.audit("denied", g.Secret, "url="+targetURL+" scope="+g.Scope)
-		return nil, fmt.Errorf("url outside grant scope %q", g.Scope)
+		return nil, err
 	}
 	value, err := b.Vault.Get(g.Secret)
 	if err != nil {
@@ -170,7 +195,21 @@ func (b *Broker) Use(token, method, targetURL, header, body string) (map[string]
 	if body != "" {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	resp, err := b.Client.Do(req)
+	// Redirects are re-checked rather than trusted. Go strips Authorization on
+	// a cross-host redirect, but the broker injects whatever header the caller
+	// named — an X-Api-Key follows the redirect untouched, so a target that
+	// answers 302 to an attacker would otherwise hand over the credential.
+	client := *b.Client // shallow copy: shares the guarded transport and pool
+	client.CheckRedirect = func(r *http.Request, via []*http.Request) error {
+		if len(via) >= 5 {
+			return errors.New("too many redirects")
+		}
+		if err := allowedScheme(r.URL); err != nil {
+			return err
+		}
+		return scopeAllows(g.Scope, r.URL.String())
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}

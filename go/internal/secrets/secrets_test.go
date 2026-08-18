@@ -20,7 +20,13 @@ func testVault(t *testing.T) (*Vault, *Broker) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { database.Close() })
-	return v, NewBroker(v, database)
+	b := NewBroker(v, database)
+	// Tests broker at httptest servers, which are loopback. That is exactly
+	// what the outbound guard refuses by default, so the fixture takes the
+	// documented self-hoster opt-in. TestBrokerGuard covers the default.
+	b.AllowPrivate = true
+	b.Client = &http.Client{Transport: guardedTransport(true)}
+	return v, b
 }
 
 func TestInitUnlockLockCycle(t *testing.T) {
