@@ -125,3 +125,42 @@ variance. Where an end-to-end number is wanted, the baseline must be re-read
 in the same session as the candidate, as `control-sameepoch` now is. Anything
 smaller than roughly 5 points at these sample sizes should be reported as
 unresolved rather than as a gain.
+
+### Where the retrieval budget actually goes
+
+Measured on the held-out dev split while looking for a larger lever, and worth
+recording because it contradicts where tuning effort had been going. The
+context is assembled from two legs — top-k semantic chunks plus top-n
+`/api/search` note bodies — and the second one carries most of it:
+
+| legs | turn-full coverage | context chars |
+|---|---|---|
+| chunks only (k=10, search=0) | **42.6%** | 10.4k |
+| k=10 + search=5 (shipped) | **75.6%** | 22.4k |
+| k=10 + search=10 | 77.4% | 33.8k |
+
+The semantic chunk leg alone reaches 42.6%; the lexical whole-note leg adds
+33 points. Both rounds of tuning above were aimed at the chunk leg — the minor
+contributor — which is a large part of why their effects were small.
+
+Reallocating the budget between the legs does not help either. At a matched
+~22k characters:
+
+| split | turn-full coverage | context chars |
+|---|---|---|
+| k=6 / search=6 | 75.6% | 21.8k |
+| **k=10 / search=5 (shipped)** | **75.6%** | 22.4k |
+| k=3 / search=7 | 74.8% | 22.2k |
+| k=15 / search=3 | 73.3% | 21.4k |
+
+The shipped split is already at the optimum, and weighting the excerpt
+selector by IDF instead of by how many query terms a passage contains made it
+worse (75.6% → 74.1%), so term coverage is the better signal there too.
+
+Six independent changes were measured across this round — per-note cap,
+chunk size, query expansion, a note-level prior, a wider small-to-big merge,
+and IDF excerpt weighting — and every one was null or negative once both
+datasets were considered. Taken with the error decomposition, which found 28
+of 51 LongMemEval errors were questions full context also fails, the reading
+is that this pipeline is at a local optimum and its remaining errors are not
+mostly retrieval-limited.
