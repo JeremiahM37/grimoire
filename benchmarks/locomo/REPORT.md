@@ -163,3 +163,31 @@ round-5 condition with the current code and the cap disabled reproduced the
 stored contexts **byte-identically for all 500 questions**, which independently
 confirms that this session's retrieval-cache rewrite, BM25 determinism fix and
 `fts_chunks` removal are all output-neutral on real data.
+
+## Round 7 — three further candidates, all null (2026-08-18)
+
+Scored against the same-day control (`probe-nocap`, byte-identical contexts
+re-read alongside). Full table and reasoning in
+[../longmemeval/REPORT.md](../longmemeval/REPORT.md).
+
+| condition | multi-hop | temporal | open-domain | single-hop | **overall** | context tokens* |
+|---|---|---|---|---|---|---|
+| control (identical contexts, re-read) | 55.4% | 76.0% | 61.3% | 88.3% | **78.0%** | ~7.1k |
+| chunk 800→400 | 53.3% | 69.2% | 54.8% | 90.1% | **76.8%** | ~5.8k |
+| within-note excerpt | 50.0% | 74.0% | 64.5% | 88.3% | **76.8%** | ~7.6k |
+| within-note excerpt + relevance gate | 51.1% | 76.9% | 67.7% | 89.4% | **78.6%** | ~7.2k |
+
+\* median reader input tokens minus the `none` baseline.
+
+None is significant (p = 0.53, 0.50, 0.77). The pattern that matters is
+multi-hop: it falls under every change that puts more of one note into the
+response, and recovers when a relevance gate takes that material back out.
+
+**Coverage is not a usable gate on this dataset.** The within-note excerpt
+raised held-out evidence-turn coverage here (84.5% → 85.5%, multi-hop
+45.8% → 48.4%) and still lost accuracy; the per-note cap in round 6 left
+coverage flat and lost 20 points of multi-hop. Twice, by different mechanisms,
+better coverage came with worse answers — because LoCoMo's multi-hop questions
+have list answers, and the extra material is a distractor rather than
+evidence. Future changes here need an answer-precision measure, not just a
+recall one.
