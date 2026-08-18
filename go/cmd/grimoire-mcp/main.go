@@ -7,6 +7,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/JeremiahM37/grimoire/go/internal/mcp"
 )
@@ -17,6 +18,19 @@ func main() {
 		base = "http://127.0.0.1:" + envOr("GRIMOIRE_PORT", "9111")
 	}
 	srv := mcp.New(base, os.Getenv("GRIMOIRE_AGENT_NAME"))
+
+	// stdio is the default because that is what local desktop agents speak.
+	// The http transport is for web and hosted clients; it binds loopback,
+	// since it carries no authentication of its own.
+	if strings.EqualFold(os.Getenv("GRIMOIRE_MCP_TRANSPORT"), "http") {
+		addr := envOr("GRIMOIRE_MCP_ADDR", "127.0.0.1:"+envOr("GRIMOIRE_MCP_PORT", "9112"))
+		fmt.Fprintf(os.Stderr, "grimoire-mcp: serving mcp over http at http://%s/mcp\n", addr)
+		if err := srv.ListenAndServe(addr); err != nil {
+			fmt.Fprintln(os.Stderr, "grimoire-mcp:", err)
+			os.Exit(1)
+		}
+		return
+	}
 	if err := srv.Serve(os.Stdin, os.Stdout); err != nil {
 		fmt.Fprintln(os.Stderr, "grimoire-mcp:", err)
 		os.Exit(1)

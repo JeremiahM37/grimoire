@@ -195,6 +195,8 @@ Everything is environment-driven (same variables bare-metal, systemd, Docker):
 | `GRIMOIRE_VAULT_IDLE_LOCK` | `900` | Credential-vault auto-lock (seconds) |
 | `GRIMOIRE_BROKER_ALLOW_PRIVATE` | `0` | Allow brokered calls to private-range hosts |
 | `GRIMOIRE_FRAME_OPTIONS` | `SAMEORIGIN` | X-Frame-Options (reverse-proxy embedding) |
+| `GRIMOIRE_MCP_TRANSPORT` | `stdio` | `http` serves MCP over streamable-HTTP instead |
+| `GRIMOIRE_MCP_ADDR` / `_PORT` | `127.0.0.1` / `9112` | Bind for the MCP http transport |
 | `GRIMOIRE_NO_WATCHER` | `0` | Disable the filesystem watcher (tests/CI) |
 
 AI/model settings can also be changed live in ⚙ Settings (persisted in the
