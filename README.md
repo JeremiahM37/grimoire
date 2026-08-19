@@ -8,6 +8,7 @@ and your agents' memory, mounted over MCP. With a first-class notes app as the
 human console.
 
 <!-- badges -->
+[![CI](https://github.com/JeremiahM37/grimoire/actions/workflows/ci.yml/badge.svg)](https://github.com/JeremiahM37/grimoire/actions/workflows/ci.yml)
 ![status](https://img.shields.io/badge/status-stable-2ea44f)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 ![go](https://img.shields.io/badge/go-1.26%2B-00add8)

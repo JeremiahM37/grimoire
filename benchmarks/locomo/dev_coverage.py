@@ -30,7 +30,6 @@ from __future__ import annotations
 
 import argparse
 import ast
-import collections
 import json
 import re
 import sys
@@ -95,7 +94,7 @@ def main() -> int:
     ap.add_argument("--tag", default="run")
     a = ap.parse_args()
 
-    scored = {json.loads(l)["qid"] for l in (RESULTS / "questions.jsonl").open()}
+    scored = {json.loads(line)["qid"] for line in (RESULTS / "questions.jsonl").open()}
     data = load_data()
     rows = []
 
