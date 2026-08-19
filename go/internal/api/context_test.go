@@ -125,3 +125,43 @@ func TestWholeCorpusStillExcludesPrivateNotes(t *testing.T) {
 		t.Error("include_private did not include the private note")
 	}
 }
+
+// The whole-corpus path was measured with a reader model consuming the
+// context. The extractive answer is not a reader: it quotes what it is given,
+// so a corpus-sized context makes it quote the vault. This is the regression
+// the browser suite caught — asking about espresso returned an alphabetical
+// list of every note — expressed as a unit test.
+func TestExtractiveAskRanksEvenWhenTheCorpusFits(t *testing.T) {
+	_, h := testServer(t)
+	seedNotes(t, h, 12, "aardvark burrows and termite mounds")
+	do(t, h, "POST", "/api/notes", map[string]any{
+		"path": "zzz-coffee.md",
+		"body": "# Coffee Guide\n\nEspresso is brewed by forcing hot water through fine coffee grounds."})
+
+	w := do(t, h, "POST", "/api/ask", map[string]any{"q": "how is espresso brewed"})
+	if w.Code != http.StatusOK {
+		t.Fatalf("ask = %d: %s", w.Code, w.Body)
+	}
+	var got struct {
+		Answer    string `json:"answer"`
+		Mode      string `json:"mode"`
+		Citations []struct {
+			Path string `json:"path"`
+		} `json:"citations"`
+	}
+	decode(t, w, &got)
+
+	// No LLM is configured in tests, so the answer is extractive and must be
+	// about the question rather than about the vault.
+	if !strings.Contains(strings.ToLower(got.Answer), "espresso") {
+		t.Fatalf("extractive answer did not quote the relevant note: %q", got.Answer)
+	}
+	if len(got.Citations) == 0 || len(got.Citations) > 8 {
+		t.Fatalf("got %d citations; a citation list the size of the vault cites nothing",
+			len(got.Citations))
+	}
+	if got.Citations[0].Path != "zzz-coffee.md" {
+		t.Fatalf("top citation = %q, want the coffee note (it sorts last by path, "+
+			"so document order would have buried it)", got.Citations[0].Path)
+	}
+}
