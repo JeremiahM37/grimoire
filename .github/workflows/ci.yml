@@ -5,12 +5,21 @@ on:
     branches: [main]
   pull_request:
 
+# apt, when Playwright installs browser dependencies, must never be able to
+# open a prompt: a job that stops for an answer nobody can give runs until the
+# six-hour ceiling kills it. Four consecutive pushes were lost that way, which
+# also meant the browser suite gated none of them.
+env:
+  DEBIAN_FRONTEND: noninteractive
+  NEEDRESTART_MODE: a
+
 jobs:
   go:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.26"
           cache-dependency-path: go/go.sum
@@ -25,24 +34,59 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
+    # Generous for ~100 browser flows, and still 24× under the ceiling that
+    # made a hung install cost six hours.
+    timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.26"
           cache-dependency-path: go/go.sum
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
       - name: Build the server
         working-directory: go
         run: go build -o grimoire ./cmd/grimoire
       - name: Install the harness
+        timeout-minutes: 5
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          python -m playwright install --with-deps chromium
+      - name: Cache the browser
+        id: browser-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+      - name: Install the browser
+        timeout-minutes: 8
+        run: |
+          # The dependency half is apt, and apt is what hung: run it as root
+          # with the frontend pinned, so it cannot reach for a prompt through
+          # sudo's stripped environment. The browser half is the cacheable one.
+          sudo env DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a \
+            "$(which python)" -m playwright install-deps chromium
+          python -m playwright install chromium
+      - name: Cache the embedding model
+        uses: actions/cache@v6
+        with:
+          # The server fetches model2vec on first serve. Cached, because the
+          # retrieval gate below is only meaningful against the semantic
+          # embedder — it skips itself on the hashing fallback.
+          path: ~/.cache/huggingface
+          key: model2vec-${{ runner.os }}-potion-base-8M
       - name: Lint the harness
         run: ruff check tests/ benchmarks/
       - name: Real-browser flows against the built binary
+        timeout-minutes: 15
         run: pytest -q tests/e2e
+      - name: Retrieval gate
+        timeout-minutes: 5
+        # Seconds, not an afternoon: 20 questions with known evidence notes,
+        # scored on rank alone. The benchmarks say how good retrieval is; this
+        # says whether the commit changed it.
+        run: pytest -q tests/retrieval -s
