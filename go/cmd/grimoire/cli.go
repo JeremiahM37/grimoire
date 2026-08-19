@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/JeremiahM37/grimoire/go/internal/build"
 	"io"
 	"net/http"
 	"net/url"
@@ -46,6 +47,7 @@ const usage = `grimoire — local-first AI-native notes
   grimoire sync PEER_URL [--watch] [--interval N] [--token T]
   grimoire agent-setup [API_URL]      print MCP + agent-context setup
   grimoire serve [--port N]           run the web app + API (the default)
+  grimoire version                    print the build version
 
 Env: GRIMOIRE_VAULT (default ~/notes)`
 
@@ -59,6 +61,9 @@ func runCLI(args []string) (handled bool, code int) {
 	switch args[0] {
 	case "-h", "--help", "help":
 		fmt.Println(usage)
+		return true, 0
+	case "version", "--version", "-v":
+		fmt.Println("grimoire " + build.String())
 		return true, 0
 	case "serve":
 		return false, 0
