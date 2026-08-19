@@ -4,7 +4,12 @@
 #
 # Configuration is entirely env-driven (see README "Config"): GRIMOIRE_VAULT,
 # GRIMOIRE_PORT/HOST, GRIMOIRE_AUTH_TOKEN, GRIMOIRE_OLLAMA_URL, GRIMOIRE_SYNC_*…
-FROM golang:1.26-alpine AS build
+# The build stage stays on the BUILDER's architecture and cross-compiles, so a
+# multi-arch release does not run a Go toolchain under emulation (minutes
+# versus the better part of an hour for arm64).
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS build
+ARG TARGETOS TARGETARCH
+ARG VERSION=""
 WORKDIR /src
 COPY go/go.mod go/go.sum ./go/
 RUN cd go && go mod download
@@ -12,14 +17,21 @@ COPY go ./go
 # CGO_ENABLED=0 keeps this a static binary: the SQLite driver is pure Go, so
 # the runtime image needs no libc and no toolchain
 RUN cd go \
-    && CGO_ENABLED=0 go build -ldflags="-s -w" -o /out/grimoire ./cmd/grimoire \
-    && CGO_ENABLED=0 go build -ldflags="-s -w" -o /out/grimoire-mcp ./cmd/grimoire-mcp
+    && LD="-s -w -X github.com/JeremiahM37/grimoire/go/internal/build.Version=$VERSION" \
+    && CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
+       go build -ldflags="$LD" -o /out/grimoire ./cmd/grimoire \
+    && CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
+       go build -ldflags="$LD" -o /out/grimoire-mcp ./cmd/grimoire-mcp
 
 # bake the local embedding model into the image (~30 MB): a container that
 # comes up on an air-gapped network should still get semantic retrieval, not
-# silently fall back to the hashing embedder
+# silently fall back to the hashing embedder.
+#
+# The fetch has to RUN a binary, and the ones above may be for another
+# architecture, so this builds a native one purely to download with.
 FROM build AS model
-RUN /out/grimoire fetch-model
+RUN cd go && CGO_ENABLED=0 go build -o /native/grimoire ./cmd/grimoire \
+    && /native/grimoire fetch-model
 
 FROM alpine:3.20
 WORKDIR /app

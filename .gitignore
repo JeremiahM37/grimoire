@@ -16,3 +16,4 @@ tools/node_modules/
 go/grimoire
 go/grimoire-mcp
 .verify-artifacts/
+dist/
