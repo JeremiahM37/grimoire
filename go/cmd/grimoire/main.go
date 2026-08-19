@@ -159,6 +159,24 @@ func run(args []string) error {
 			"anyone who can reach this port can read notes and drive the secret vault")
 	}
 
+	// Unattended unlock, when the deployment has opted into one. Done before
+	// the listener opens so the broker is never briefly locked to an agent
+	// that reconnects the moment the port answers.
+	if path := os.Getenv("GRIMOIRE_VAULT_PASSPHRASE_FILE"); path != "" {
+		switch err := e.server.Secrets.UnlockFromFile(path); {
+		case err == nil:
+			log.Printf("secret vault unlocked from %s", path)
+		case errors.Is(err, secrets.ErrNotInit):
+			log.Printf("GRIMOIRE_VAULT_PASSPHRASE_FILE is set but no vault exists yet — " +
+				"initialize one and it will unlock on the next start")
+		default:
+			// Not fatal: notes must keep serving when only the broker is
+			// misconfigured. Loud, because everything using a credential is
+			// about to fail with 423.
+			log.Printf("WARNING: secret vault auto-unlock failed (%v) — the broker is locked", err)
+		}
+	}
+
 	log.Printf("indexing vault %s with %s", e.vault.Root, e.embedder.Signature())
 	n, err := e.index.Reindex()
 	if err != nil {
