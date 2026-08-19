@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/JeremiahM37/grimoire/go/internal/build"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -277,10 +278,17 @@ func (s *Server) health(w http.ResponseWriter, _ *http.Request) {
 	_ = s.Index.DB.QueryRow("SELECT COALESCE(MAX(updated),'') FROM notes").Scan(&latest)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok":               true,
+		"version":          build.String(),
 		"vault":            s.Vault.Root,
 		"notes":            notes,
 		"tags":             tags,
 		"unresolved_links": unresolved,
+		// which embedding backend the semantic leg actually got. The chain
+		// falls back silently by design — a missing model must degrade
+		// retrieval, not prevent startup — so without this an operator cannot
+		// tell a semantic index from the hashing floor, and neither can a
+		// test that means to gate the shipped configuration.
+		"embedder": s.Index.Emb.Signature(),
 		// cheap change signature the open console polls to notice edits made
 		// outside it (device sync, MCP, another editor)
 		"rev": fmt.Sprintf("%d:%s", notes, latest),

@@ -9,10 +9,21 @@ import (
 	"os"
 	"strings"
 
+	"github.com/JeremiahM37/grimoire/go/internal/build"
 	"github.com/JeremiahM37/grimoire/go/internal/mcp"
 )
 
 func main() {
+	// An agent client that cannot be asked what it is makes every "which
+	// build?" question a guess. stdio servers are launched by other programs,
+	// so this is the only way to ask one.
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "version", "--version", "-v":
+			fmt.Println("grimoire-mcp " + build.String())
+			return
+		}
+	}
 	base := os.Getenv("GRIMOIRE_URL")
 	if base == "" {
 		base = "http://127.0.0.1:" + envOr("GRIMOIRE_PORT", "9111")
