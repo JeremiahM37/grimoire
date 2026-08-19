@@ -87,7 +87,8 @@ func TestToolsListIsComplete(t *testing.T) {
 	for _, want := range []string{
 		"get_briefing", "kb_info", "search_notes", "ask_notes", "read_note",
 		"list_notes", "create_note", "update_note", "append_daily", "backlinks",
-		"list_tags", "get_fact", "remember", "recall", "list_grants", "use_credential",
+		"list_tags", "get_fact", "set_fact", "remember", "recall", "consolidate_memory",
+		"list_grants", "use_credential",
 	} {
 		if !got[want] {
 			t.Errorf("tool %q not advertised", want)

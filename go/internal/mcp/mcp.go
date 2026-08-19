@@ -290,6 +290,21 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 		q.Set("q", str(args, "query"))
 		q.Set("limit", fmt.Sprint(num(args, "limit", 10)))
 		return s.api("GET", "/api/memory?"+q.Encode(), nil)
+	case "set_fact":
+		return s.api("POST", "/api/facts", map[string]any{
+			"note": str(args, "note"), "key": str(args, "key"),
+			"value": str(args, "value"),
+		})
+	case "consolidate_memory":
+		// both fields are optional; an empty body means "every memory note"
+		body := map[string]any{}
+		if t := str(args, "topic"); t != "" {
+			body["topic"] = t
+		}
+		if p := str(args, "path"); p != "" {
+			body["path"] = p
+		}
+		return s.api("POST", "/api/memory/consolidate", body)
 	case "list_grants":
 		return s.api("GET", "/api/grants", nil)
 	case "use_credential":

@@ -104,10 +104,23 @@ desktop assistants, custom agents. Example config:
              "GRIMOIRE_AGENT_NAME": "my-agent" } } } }
 ```
 
-The agent gets: `search_notes` · `ask_notes` · `read_note` · `create_note` ·
-`update_note` · `append_daily` · `backlinks` · `list_tags` · **`remember`** ·
-**`recall`** · **`consolidate_memory`** · **`use_credential`** ·
-**`list_grants`** · **`get_fact`** · **`set_fact`**.
+The agent gets, in one mount:
+
+<!-- tools:begin (checked against the server by a test) -->
+
+| | tools |
+|---|---|
+| **Credentials — use, never read** | **`use_credential`** · **`list_grants`** |
+| **Agent memory** | **`remember`** · **`recall`** · **`consolidate_memory`** |
+| Knowledge | `search_notes` · `ask_notes` · `read_note` · `list_notes` · `backlinks` · `list_tags` |
+| Writing | `create_note` · `update_note` · `append_daily` |
+| Exact values | `get_fact` · **`set_fact`** |
+| Orientation | `get_briefing` · `kb_info` |
+
+<!-- tools:end -->
+
+(That table is checked against the running server by a test, so it cannot drift
+out of date.)
 
 `ask_notes` decomposes multi-hop questions and LLM-reranks the evidence when a
 model is configured. `consolidate_memory` compacts the `memory/` namespace

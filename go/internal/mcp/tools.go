@@ -145,6 +145,31 @@ func Tools() []tool {
 			InputSchema: obj(map[string]any{}),
 		},
 		{
+			Name: "set_fact",
+			Description: "Record a value that must later be recalled EXACTLY — a port, " +
+				"a version, an owner, a decision. Writes `key:: value` into a note, " +
+				"updating the existing line for that key if there is one. Prefer this " +
+				"over burying the value in prose: prose has to be found and paraphrased, " +
+				"a fact is looked up verbatim with get_fact.",
+			InputSchema: obj(map[string]any{
+				"note":  strProp("note path to write the fact into"),
+				"key":   strProp("fact name, e.g. 'port' or 'owner'"),
+				"value": strProp("the exact value to record"),
+			}, "note", "key", "value"),
+		},
+		{
+			Name: "consolidate_memory",
+			Description: "Compact the memory namespace so recall stays sharp as it grows: " +
+				"merges redundant entries and supersedes stale ones. Call it when memories " +
+				"on a topic have accumulated and started to contradict or repeat each " +
+				"other, not after every write. Every note is snapshotted first, so the " +
+				"human can review and roll back what was rewritten.",
+			InputSchema: obj(map[string]any{
+				"topic": strProp("consolidate only this memory topic (optional)"),
+				"path":  strProp("consolidate only this memory note (optional)"),
+			}),
+		},
+		{
 			Name: "use_credential",
 			Description: "Make an authenticated request USING a credential without ever " +
 				"seeing it: the value is injected server-side into the header you choose. " +
