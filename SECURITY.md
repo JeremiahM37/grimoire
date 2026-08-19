@@ -29,6 +29,16 @@ controls that back it. Security-relevant code: `go/internal/crypto`,
   is refused during the window.
 - **Idle auto-lock:** the key is dropped after `GRIMOIRE_VAULT_IDLE_LOCK` seconds of
   inactivity (default 900) to shrink the exposure window.
+- **Unattended unlock is opt-in and named.** `GRIMOIRE_VAULT_PASSPHRASE_FILE`
+  makes the server unlock itself at startup from a local file, which trades the
+  "only a human holds the passphrase" property for a broker that survives a
+  restart. It is off by default; the file must not be readable by group or
+  other, and the server refuses it if it is. It never initializes a vault — an
+  empty store sealed under a passphrase nobody chose is a worse failure than a
+  locked one. Prefer it to the alternative deployments reach for otherwise: a
+  boot-time script that POSTs the passphrase to `/api/vault/unlock` puts the
+  passphrase on the HTTP surface and covers only the first start, so any later
+  restart leaves the broker locked and every call failing.
 
 ## USE-not-READ broker
 
@@ -117,6 +127,9 @@ copied on the peer.
   that leaves your control unless separately encrypted.
 - Choose a strong vault passphrase — Argon2id raises the cost of guessing, but a
   weak passphrase is still the weakest link.
+- Leave `GRIMOIRE_FOLLOW_SYMLINKS` off unless you control everything that lands
+  in the vault. With it on, a symlink written into the vault — by a sync client,
+  a shared folder, another user — decides what the server reads and serves.
 
 ## Reporting
 

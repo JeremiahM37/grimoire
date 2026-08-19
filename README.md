@@ -65,8 +65,23 @@ daily-drive it; the agent substrate is there when you want it.
 ## Quick start
 
 ```bash
-docker compose up -d        # → http://localhost:9111 · notes land in ./vault
+# a released binary — no runtime, no virtualenv, nothing to install alongside it
+curl -sSL https://github.com/JeremiahM37/grimoire/releases/latest/download/grimoire_linux_amd64.tar.gz | tar xz
+GRIMOIRE_VAULT=~/notes ./grimoire            # → http://localhost:9111
+
+# or a container
+docker run -p 9111:9111 -v grimoire-vault:/vault ghcr.io/jeremiahm37/grimoire:latest
+
+# or from source
+go install github.com/JeremiahM37/grimoire/go/cmd/grimoire@latest
 ```
+
+Releases ship both binaries — `grimoire` (server + CLI) and `grimoire-mcp` (the
+agent interface) — for Linux, macOS and Windows on amd64 and arm64, with the
+console and plugins alongside them. `grimoire version` says which build you have.
+
+Prefer compose? `docker compose up -d` serves the same thing with notes in
+`./vault`.
 
 Already have a pile of markdown? Skip the empty-vault cold start:
 
@@ -261,6 +276,7 @@ Everything is environment-driven (same variables bare-metal, systemd, Docker):
 | `GRIMOIRE_DAILY_DIR` / `GRIMOIRE_INBOX_DIR` | `journal` / `inbox` | Vault sub-folders |
 | `GRIMOIRE_SYNC_PEER` / `_TOKEN` / `_INTERVAL` | *(off)* | Background sync with a peer |
 | `GRIMOIRE_VAULT_IDLE_LOCK` | `900` | Credential-vault auto-lock (seconds) |
+| `GRIMOIRE_VAULT_PASSPHRASE_FILE` | *(empty)* | Unlock the credential vault at startup from a `0600` file — for a headless server whose agents need the broker after every restart ([trade-off](#security-posture-short-version)) |
 | `GRIMOIRE_BROKER_ALLOW_PRIVATE` | `0` | Allow brokered calls to private-range hosts |
 | `GRIMOIRE_FRAME_OPTIONS` | `SAMEORIGIN` | X-Frame-Options (reverse-proxy embedding) |
 | `GRIMOIRE_MCP_TRANSPORT` | `stdio` | `http` serves MCP over streamable-HTTP instead |
@@ -270,6 +286,7 @@ Everything is environment-driven (same variables bare-metal, systemd, Docker):
 | `GRIMOIRE_MODEL_DIR` | *(cache dir)* | Where the local embedding model is stored |
 | `GRIMOIRE_EMBED_BASE_URL` / `_API_KEY` | *(empty)* | OpenAI-compatible embeddings endpoint |
 | `GRIMOIRE_CONTEXT_BUDGET` | `100000` | Characters under which `ask`/`/api/context` hand over the WHOLE vault instead of retrieving (0 disables) |
+| `GRIMOIRE_FOLLOW_SYMLINKS` | `0` | Index through directory symlinks, so a folder of markdown that lives elsewhere is part of the vault without being copied into it |
 | `GRIMOIRE_NO_WATCHER` | `0` | Disable the filesystem watcher (tests/CI) |
 
 AI/model settings can also be changed live in ⚙ Settings (persisted in the
@@ -282,6 +299,20 @@ idle auto-lock, passphrase rotation. Broker: origin-exact + path-prefix scopes,
 SSRF-guarded, fully audited; secret values never appear in any response. Private
 notes excluded from retrieval, `/read`, export, transclusion, and queries on
 unauthenticated surfaces. Strict CSP. Full threat model: [SECURITY.md](SECURITY.md).
+
+Two options trade a property for availability, so they are off by default and
+worth naming here rather than in a footnote:
+
+- **`GRIMOIRE_VAULT_PASSPHRASE_FILE`** replaces "only a human unlocks the vault"
+  with "anything running as the service user can". It exists because the
+  alternative in practice is worse: a boot-time script POSTing the passphrase to
+  `/api/vault/unlock`, which puts it on the HTTP surface and still leaves the
+  broker locked after any later restart. The file must not be group- or
+  world-readable and the server refuses it if it is.
+- **`GRIMOIRE_FOLLOW_SYMLINKS`** turns "anyone who can write to the vault" into
+  "anyone who can choose what the server reads". Enable it when you control
+  what lands in the vault; leave it off if the vault is fed by a sync client or
+  shared with other people.
 
 ## Benchmarks
 
@@ -362,10 +393,19 @@ analysis and the rejected experiments: [benchmarks/locomo/](benchmarks/locomo/)
 ## Tests
 
 ```bash
-cd go && go test ./...        # hermetic: 146 unit + api + sync + CLI tests
-.venv/bin/pytest tests/e2e    # 100 real-browser flows against the built binary
-verify run .verify.yaml       # live api + headless-browser smoke (isolated port)
+cd go && go test ./...           # hermetic: unit + api + sync + CLI tests
+.venv/bin/pytest tests/e2e       # 100 real-browser flows against the built binary
+.venv/bin/pytest tests/retrieval # retrieval gate: 20 questions, known evidence, seconds
+verify run .verify.yaml          # live api + headless-browser smoke (isolated port)
 ```
+
+The retrieval gate is the cheap half of the benchmarks below. Those take an
+afternoon and a reader model, so nothing used to stand between a retrieval
+refactor and a silent loss — and one already happened: dropping a search
+fallback cost 6.4 points of LoCoMo recall and was found weeks later. The gate
+runs a fixed corpus with known evidence notes on every push, scores rank only,
+and holds recorded floors. It also checks that those floors would notice half
+the retrieval disappearing, because a gate everything passes is not a gate.
 
 ## Layout
 
