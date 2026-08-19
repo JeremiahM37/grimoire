@@ -33,7 +33,7 @@ jobs:
       - uses: goreleaser/goreleaser-action@v6
         with:
           version: "~> v2"
-          args: release --snapshot --clean --skip=publish --single-target
+          args: release --snapshot --clean --skip=publish
       - name: The archive must be a working install
         run: |
           set -euo pipefail
