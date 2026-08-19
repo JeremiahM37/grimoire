@@ -1,0 +1,81 @@
+# Release builds. `git tag vX.Y.Z && git push --tags` is the whole trigger; the
+# workflow in .github/workflows/release.yml runs this.
+#
+# Two binaries ship, not one: the server/CLI and the MCP server an agent
+# launches. Both are static (pure-Go SQLite, CGO off), so a release is a file
+# you download and run — no runtime, no virtualenv, no package manager.
+version: 2
+
+project_name: grimoire
+
+before:
+  hooks:
+    - go -C go mod tidy
+
+builds:
+  - id: grimoire
+    dir: go
+    main: ./cmd/grimoire
+    binary: grimoire
+    env: [CGO_ENABLED=0]
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w -X github.com/JeremiahM37/grimoire/go/internal/build.Version={{.Version}}
+  - id: grimoire-mcp
+    dir: go
+    main: ./cmd/grimoire-mcp
+    binary: grimoire-mcp
+    env: [CGO_ENABLED=0]
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w -X github.com/JeremiahM37/grimoire/go/internal/build.Version={{.Version}}
+
+archives:
+  # The console and the plugins are served from disk, so an archive without
+  # them is a server that starts and shows nothing. GRIMOIRE_WEB_DIR and
+  # GRIMOIRE_PLUGIN_DIR point at these.
+  #
+  # No version in the archive name, so that /releases/latest/download/<name> is
+  # a stable URL the README can print and a script can fetch.
+  - formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - README.md
+      - LICENSE
+      - SECURITY.md
+      - web/**/*
+      - plugins/**/*
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  # The commit log is the changelog: this project writes one commit per
+  # decision, with the reasoning in the body.
+  use: git
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
+release:
+  draft: false
+  prerelease: auto
+  header: |
+    ## Install
+
+    Download the archive for your platform below, or:
+
+    ```bash
+    go install github.com/JeremiahM37/grimoire/go/cmd/grimoire@{{ .Tag }}
+    docker run -p 9111:9111 -v grimoire-vault:/vault ghcr.io/jeremiahm37/grimoire:{{ .Tag }}
+    ```
