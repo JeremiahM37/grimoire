@@ -18,7 +18,10 @@ jobs:
           fetch-depth: 0   # goreleaser builds the changelog from history
       - uses: actions/setup-go@v6
         with:
-          go-version: "1.26"
+          # The module's own go directive, not a "1.26" that setup-go resolves
+          # to whatever patch it feels like: it picked 1.26.5 for a go.mod that
+          # requires 1.26.6, and the build failed with GOTOOLCHAIN=local.
+          go-version-file: go/go.mod
           cache-dependency-path: go/go.sum
       # A tag that does not build is worse than no tag: the tests run here
       # too, so a release is never the first time this commit was compiled.
