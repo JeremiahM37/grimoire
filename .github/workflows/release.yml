@@ -25,6 +25,30 @@ jobs:
       - name: Tests
         working-directory: go
         run: go test ./...
+      # Build the archive and check it is a working install BEFORE anything is
+      # published. The first v2.0.0 archive shipped a console with no
+      # index.html — a glob matched only nested paths — so it built cleanly,
+      # started cleanly, and served 404 at /. Nothing in the pipeline was
+      # looking at what came out of it.
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: release --snapshot --clean --skip=publish --single-target
+      - name: The archive must be a working install
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/relcheck && tar xzf dist/grimoire_linux_amd64.tar.gz -C /tmp/relcheck
+          cd /tmp/relcheck
+          test -f web/index.html
+          GRIMOIRE_VAULT=$PWD/vault GRIMOIRE_PORT=9911 GRIMOIRE_WEB_DIR=$PWD/web \
+            GRIMOIRE_PLUGIN_DIR=$PWD/plugins GRIMOIRE_LOCAL_EMBED=off ./grimoire &
+          for _ in $(seq 1 30); do curl -sf localhost:9911/api/health >/dev/null && break; sleep 1; done
+          test "$(curl -s -o /dev/null -w '%{http_code}' localhost:9911/)" = 200
+          test "$(curl -s -o /dev/null -w '%{http_code}' localhost:9911/app.js)" = 200
+          curl -s localhost:9911/api/plugins | grep -q '"name"'
+          ./grimoire version
+          kill %1
+
       - uses: goreleaser/goreleaser-action@v6
         with:
           version: "~> v2"

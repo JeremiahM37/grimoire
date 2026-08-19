@@ -48,8 +48,12 @@ archives:
       - README.md
       - LICENSE
       - SECURITY.md
-      - web/**/*
-      - plugins/**/*
+      # Whole directories, not web/**/* — that glob matches only paths with a
+      # directory component, so it shipped web/vendor/editor.js and left out
+      # index.html and every other top-level file. The archive built, the
+      # binary started, and the console answered 404.
+      - web
+      - plugins
 
 checksum:
   name_template: checksums.txt
