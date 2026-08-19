@@ -125,3 +125,11 @@ category 5. It exists because round 6 measured this dataset's noise floor at
 12% of answers, which makes a 1–2 point difference unresolvable at n = 500;
 pooling the two samples gives n = 999. `LOCOMO_RESULTS` overrides the results
 directory so the frozen sample is never touched.
+
+## Amendment — round 9 (2026-08-18)
+
+Adds the `dense-only` and `lexical-only` baselines (see
+[../longmemeval/PROTOCOL.md](../longmemeval/PROTOCOL.md)) and requires that
+every condition in a reported comparison — `full` included — be read and judged
+in the same session as the others. Applying that rule withdrew this study's
+parity-with-full-context claim; see REPORT.md.

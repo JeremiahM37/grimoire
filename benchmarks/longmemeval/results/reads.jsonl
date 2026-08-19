@@ -1998,3 +1998,803 @@
 {"qid": "gpt4_f2262a51", "condition": "grimoire-excerpt-gated", "answer": "3 named doctors (Dr. Patel, Dr. Lee, Dr. Smith) plus 1 unnamed ENT specialist = 4 different doctors total", "input_tokens": 30607}
 {"qid": "gpt4_7abb270c", "condition": "grimoire-excerpt-gated", "answer": "Science Museum (15 January 2023), Museum of History (15 February 2023), Modern Art Museum (20 February 2023), Natural History Museum (4 March 2023), Contemporary Art Museum (15 March 2023), [6th museum unclear from context]", "input_tokens": 31152}
 {"qid": "gpt4_fa19884d", "condition": "grimoire-excerpt-gated", "answer": "A bluegrass band (specific artist name not mentioned in the context).", "input_tokens": 31573}
+{"qid": "01493427", "condition": "lexical-only", "answer": "17 new postcards", "input_tokens": 25612}
+{"qid": "07741c45", "condition": "lexical-only", "answer": "Under your bed.", "input_tokens": 30607}
+{"qid": "07741c45", "condition": "dense-only", "answer": "Under my bed.", "input_tokens": 31242}
+{"qid": "07741c44", "condition": "dense-only", "answer": "Under my bed.", "input_tokens": 30976}
+{"qid": "01493427", "condition": "dense-only", "answer": "25 new postcards", "input_tokens": 31253}
+{"qid": "07741c44", "condition": "lexical-only", "answer": "Under the bed.", "input_tokens": 30867}
+{"qid": "031748ae", "condition": "lexical-only", "answer": "When you just started: 4 engineers. Now: 5 engineers.", "input_tokens": 30078}
+{"qid": "078150f1", "condition": "dense-only", "answer": "$50 more ($250 raised vs. $200 goal)", "input_tokens": 31003}
+{"qid": "078150f1", "condition": "lexical-only", "answer": "$50 more ($250 raised vs. $200 goal)", "input_tokens": 30051}
+{"qid": "031748ae", "condition": "dense-only", "answer": "When you started: 4 engineers. Now (as of late October 2023): 5 engineers.", "input_tokens": 30938}
+{"qid": "099778bb", "condition": "dense-only", "answer": "20 leadership positions held by women (percentage not specified in context).", "input_tokens": 30637}
+{"qid": "09ba9854", "condition": "dense-only", "answer": "$30-$40\n\nBased on Chat session 31 (2023/05/26), a taxi costs around $60 while the train costs $20-$30.", "input_tokens": 30932}
+{"qid": "099778bb", "condition": "lexical-only", "answer": "20 women hold leadership positions (absolute number given; percentage not specified in context).", "input_tokens": 25668}
+{"qid": "09ba9854", "condition": "lexical-only", "answer": "$30-$40 (taxi $60 vs train $20-$30)", "input_tokens": 30314}
+{"qid": "0977f2af", "condition": "lexical-only", "answer": "Not mentioned in the provided context.", "input_tokens": 30707}
+{"qid": "0bb5a684", "condition": "dense-only", "answer": "7 days (workshop on January 10th, team meeting on January 17th)", "input_tokens": 30924}
+{"qid": "0bb5a684", "condition": "lexical-only", "answer": "7 days", "input_tokens": 30503}
+{"qid": "09d032c9", "condition": "dense-only", "answer": "No specific battery tips in the context. Best guess: use a portable charger and enable battery saver mode.", "input_tokens": 30973}
+{"qid": "09d032c9", "condition": "lexical-only", "answer": "Reduce screen brightness, close background apps, turn off location/GPS, and enable battery saver mode. Disable unused WiFi and Bluetooth connections.", "input_tokens": 30636}
+{"qid": "0e5e2d1a", "condition": "dense-only", "answer": "38 subjects", "input_tokens": 30917}
+{"qid": "0e5e2d1a", "condition": "lexical-only", "answer": "38 subjects", "input_tokens": 30322}
+{"qid": "0bc8ad93", "condition": "dense-only", "answer": "No friend mentioned. You attended a lecture at the History Museum alone.", "input_tokens": 31156}
+{"qid": "1192316e", "condition": "lexical-only", "answer": "1 hour 30 minutes (1 hour to get ready, 30 minutes commute)", "input_tokens": 30585}
+{"qid": "1192316e", "condition": "dense-only", "answer": "1 hour 30 minutes (1 hour to get ready + 30 minutes commute)", "input_tokens": 31324}
+{"qid": "10d9b85a", "condition": "dense-only", "answer": "3 days (April 10 for a lecture, and April 17-18 for a 2-day workshop)", "input_tokens": 30897}
+{"qid": "10d9b85a", "condition": "lexical-only", "answer": "3 days (a 2-day workshop on April 17-18, and a lecture on April 10)", "input_tokens": 30714}
+{"qid": "0977f2af", "condition": "dense-only", "answer": "Pressure cooker", "input_tokens": 31395}
+{"qid": "129d1232", "condition": "dense-only", "answer": "$5,850\n\n(Bike-a-Thon: $5,000 + charity walk: $250 + charity yoga event: $600)", "input_tokens": 31171}
+{"qid": "0bc8ad93", "condition": "lexical-only", "answer": "No (or not specified). The context mentions a History Museum lecture \"this month\" (January 2023) but doesn't indicate whether you attended with a friend.", "input_tokens": 30764}
+{"qid": "129d1232", "condition": "lexical-only", "answer": "$5,850 total ($5,000 from Bike-a-Thon, $250 from charity walk, $600 from charity yoga event)", "input_tokens": 30992}
+{"qid": "15745da0", "condition": "dense-only", "answer": "Three months (as of May 21, 2023).", "input_tokens": 30855}
+{"qid": "184da446", "condition": "lexical-only", "answer": "220 pages", "input_tokens": 25673}
+{"qid": "18bc8abd", "condition": "dense-only", "answer": "Kansas City Masterpiece BBQ sauce", "input_tokens": 31338}
+{"qid": "15745da0", "condition": "lexical-only", "answer": "The context does not contain information about how long you've been collecting vintage cameras.", "input_tokens": 25683}
+{"qid": "16c90bf4", "condition": "lexical-only", "answer": "Pilsner or lager.", "input_tokens": 30648}
+{"qid": "18bc8abd", "condition": "lexical-only", "answer": "Kansas City Masterpiece BBQ sauce", "input_tokens": 25862}
+{"qid": "184da446", "condition": "dense-only", "answer": "220 pages (as of May 29, 2023)", "input_tokens": 31033}
+{"qid": "16c90bf4", "condition": "dense-only", "answer": "Pilsner or lager. The assistant specifically suggested these light to medium-bodied beers as good options for the Seco de Cordero recipe.", "input_tokens": 62874}
+{"qid": "19b5f2b3", "condition": "dense-only", "answer": "Two weeks.", "input_tokens": 31677}
+{"qid": "18dcd5a5", "condition": "dense-only", "answer": "4 mummies", "input_tokens": 31925}
+{"qid": "19b5f2b3", "condition": "lexical-only", "answer": "Two weeks", "input_tokens": 30648}
+{"qid": "18dcd5a5", "condition": "lexical-only", "answer": "4 mummies", "input_tokens": 30304}
+{"qid": "1a1907b4", "condition": "lexical-only", "answer": "Pimm's Cup with a Twist with muddled cucumber slices and Ruby Red Grapefruit simple syrup.", "input_tokens": 30074}
+{"qid": "1c0ddc50", "condition": "dense-only", "answer": "Audiobooks, podcasts (like \"How I Built This\"), language learning apps, news updates, or mental preparation for the day.", "input_tokens": 31133}
+{"qid": "1a1907b4", "condition": "dense-only", "answer": "Pimm's Cup with a Twist (with Ruby Red Grapefruit simple syrup, based on your earlier interest from 21 May 2023).", "input_tokens": 30857}
+{"qid": "1e043500", "condition": "dense-only", "answer": "Summer Vibes", "input_tokens": 31094}
+{"qid": "1c0ddc50", "condition": "lexical-only", "answer": "Podcasts (like \"How I Built This\") and other productive options were suggested, including ways to stay entertained during your bike commute.", "input_tokens": 26462}
+{"qid": "1cea1afa", "condition": "lexical-only", "answer": "Not mentioned in the context provided.", "input_tokens": 25707}
+{"qid": "1e043500", "condition": "lexical-only", "answer": "Summer Vibes", "input_tokens": 30492}
+{"qid": "21436231", "condition": "dense-only", "answer": "12 largemouth bass", "input_tokens": 31224}
+{"qid": "1cea1afa", "condition": "dense-only", "answer": "Not mentioned in the provided context.", "input_tokens": 31048}
+{"qid": "1d4e3b97", "condition": "lexical-only", "answer": "Chain and cassette replacement on February 1st.", "input_tokens": 30281}
+{"qid": "21436231", "condition": "lexical-only", "answer": "12 largemouth bass", "input_tokens": 30385}
+{"qid": "1d4e3b97", "condition": "dense-only", "answer": "Group motivation and drafting benefits.", "input_tokens": 31311}
+{"qid": "2318644b", "condition": "dense-only", "answer": "About $270 more per night ($300 in Maui vs. $30 in Tokyo).", "input_tokens": 31252}
+{"qid": "21d02d0d", "condition": "dense-only", "answer": "2 (March 5th and March 26th)", "input_tokens": 30924}
+{"qid": "25e5aa4f", "condition": "lexical-only", "answer": "UCLA", "input_tokens": 30313}
+{"qid": "2318644b", "condition": "lexical-only", "answer": "Over $270 per night (Maui resort at $300+ vs Tokyo hostel at $30)", "input_tokens": 30632}
+{"qid": "28dc39ac", "condition": "dense-only", "answer": "40 hours (30 hours on The Last of Us Part II, 10 hours on Celeste)", "input_tokens": 31232}
+{"qid": "2788b940", "condition": "lexical-only", "answer": "5 fitness classes per week (Zumba on Tuesdays and Thursdays, BodyPump on Mondays, Hip Hop Abs on Saturdays, and Yoga on Sundays).", "input_tokens": 30352}
+{"qid": "25e5aa4f", "condition": "dense-only", "answer": "UCLA", "input_tokens": 30971}
+{"qid": "21d02d0d", "condition": "lexical-only", "answer": "1 (on March 5th)", "input_tokens": 30299}
+{"qid": "2788b940", "condition": "dense-only", "answer": "At least 3 classes per week: yoga (Sundays), BodyPump (Mondays), and Hip Hop Abs (Saturdays). The user also mentions attending Zumba and other classes, so possibly more.", "input_tokens": 31097}
+{"qid": "2a1811e2", "condition": "dense-only", "answer": "21 days", "input_tokens": 31154}
+{"qid": "3249768e", "condition": "dense-only", "answer": "Absinthe", "input_tokens": 31402}
+{"qid": "3249768e", "condition": "lexical-only", "answer": "Absinthe.", "input_tokens": 30744}
+{"qid": "2a1811e2", "condition": "lexical-only", "answer": "21 days", "input_tokens": 30512}
+{"qid": "352ab8bd", "condition": "dense-only", "answer": "Approximately 20%", "input_tokens": 30976}
+{"qid": "352ab8bd", "condition": "lexical-only", "answer": "Approximately 20%", "input_tokens": 30519}
+{"qid": "35a27287", "condition": "dense-only", "answer": "Information not available in context.", "input_tokens": 31282}
+{"qid": "37d43f65", "condition": "dense-only", "answer": "16GB", "input_tokens": 31081}
+{"qid": "37d43f65", "condition": "lexical-only", "answer": "16GB", "input_tokens": 30984}
+{"qid": "370a8ff4", "condition": "dense-only", "answer": "Approximately 11 weeks (from January 19 to April 10, 2023).", "input_tokens": 31037}
+{"qid": "35a27287", "condition": "lexical-only", "answer": "No location provided; can't recommend.", "input_tokens": 30376}
+{"qid": "370a8ff4", "condition": "lexical-only", "answer": "Approximately 11 weeks (or 81 days, from January 19 to April 10, 2023)", "input_tokens": 30570}
+{"qid": "3fe836c9", "condition": "dense-only", "answer": "$25,000", "input_tokens": 31355}
+{"qid": "4100d0a0", "condition": "dense-only", "answer": "Irish and Italian", "input_tokens": 31109}
+{"qid": "38146c39", "condition": "dense-only", "answer": "Add spices like cinnamon or nutmeg, nuts like pecans or hazelnuts, or a pinch of sea salt to enhance the flavor.", "input_tokens": 31318}
+{"qid": "4100d0a0", "condition": "lexical-only", "answer": "Irish and Italian.", "input_tokens": 26173}
+{"qid": "3a704032", "condition": "dense-only", "answer": "Based on the context provided, I cannot find a clear answer about how many plants were acquired in the last month. The most recent acquisition mentioned is a snake plant from your sister, but that was stated as \"last month\" during a May 25th conversation, which would place it in April. Without explicit dates for other plant acquisitions, I cannot give a definitive number.", "input_tokens": 31312}
+{"qid": "3fe836c9", "condition": "lexical-only", "answer": "$25,000 ($350,000 pre-approval minus $325,000 final sale price)", "input_tokens": 30672}
+{"qid": "42ec0761", "condition": "lexical-only", "answer": "Yes, you picked one up when you organized your computer desk.", "input_tokens": 25772}
+{"qid": "3a704032", "condition": "lexical-only", "answer": "2 plants (peace lily and succulent, bought around 6 May 2023)", "input_tokens": 30469}
+{"qid": "42ec0761", "condition": "dense-only", "answer": "Yes, you have one. You picked it up when organizing your computer desk.", "input_tokens": 31236}
+{"qid": "38146c39", "condition": "lexical-only", "answer": "Try sea salt, espresso powder, or cinnamon for depth. Brown sugar and vanilla also help enhance chocolate flavor.", "input_tokens": 30772}
+{"qid": "28dc39ac", "condition": "lexical-only", "answer": "Approximately 115 hours.\n\n(70 hours AC Odyssey + 30 hours The Last of Us Part II + 5 hours Hyper Light Drifter + 10 hours Celeste)", "input_tokens": 30688}
+{"qid": "488d3006", "condition": "lexical-only", "answer": "GR-90", "input_tokens": 30528}
+{"qid": "488d3006", "condition": "dense-only", "answer": "GR-90", "input_tokens": 31166}
+{"qid": "4baee567", "condition": "dense-only", "answer": "12 games", "input_tokens": 31770}
+{"qid": "4b24c848", "condition": "lexical-only", "answer": "Five tops from H&M.", "input_tokens": 30399}
+{"qid": "46a3abf7", "condition": "dense-only", "answer": "2 tanks: a 20-gallon community tank and a 1-gallon tank for your friend's kid.", "input_tokens": 31030}
+{"qid": "4baee567", "condition": "lexical-only", "answer": "12 games", "input_tokens": 30487}
+{"qid": "46a3abf7", "condition": "lexical-only", "answer": "2 tanks currently \u2014 the 1-gallon tank for your friend's kid, and the 20-gallon \"Amazonia\" community tank.", "input_tokens": 30710}
+{"qid": "4c36ccef", "condition": "dense-only", "answer": "Roscioli", "input_tokens": 31447}
+{"qid": "4b24c848", "condition": "dense-only", "answer": "Five tops.", "input_tokens": 31297}
+{"qid": "4c36ccef", "condition": "lexical-only", "answer": "Roscioli", "input_tokens": 30823}
+{"qid": "4d6b87c8", "condition": "dense-only", "answer": "25 titles (as of 22 May 2023)", "input_tokens": 31153}
+{"qid": "4d6b87c8", "condition": "lexical-only", "answer": "25 titles (as of 2023/05/22)", "input_tokens": 30763}
+{"qid": "4fd1909e", "condition": "lexical-only", "answer": "Xfinity Center", "input_tokens": 30381}
+{"qid": "4dfccbf8", "condition": "dense-only", "answer": "Started taking ukulele lessons with Rachel on 1 February 2023.", "input_tokens": 31443}
+{"qid": "4dfccbf8", "condition": "lexical-only", "answer": "Started taking ukulele lessons with Rachel on 1 February 2023.", "input_tokens": 30421}
+{"qid": "4dfccbf7", "condition": "lexical-only", "answer": "24 days", "input_tokens": 30484}
+{"qid": "4fd1909e", "condition": "dense-only", "answer": "Xfinity Center on 15 June 2023", "input_tokens": 30900}
+{"qid": "545bd2b5", "condition": "dense-only", "answer": "2 hours per day", "input_tokens": 31270}
+{"qid": "545bd2b5", "condition": "lexical-only", "answer": "2 hours per day", "input_tokens": 30384}
+{"qid": "4dfccbf7", "condition": "dense-only", "answer": "24 days", "input_tokens": 31233}
+{"qid": "505af2f5", "condition": "lexical-only", "answer": "Try adding spices like cinnamon or nutmeg, use cashew or oat milk for creamier texture, or experiment with different flavor extracts (almond, coconut, hazelnut).", "input_tokens": 30569}
+{"qid": "561fabcd", "condition": "lexical-only", "answer": "Fissionator.", "input_tokens": 30588}
+{"qid": "561fabcd", "condition": "dense-only", "answer": "Fissionator", "input_tokens": 31157}
+{"qid": "577d4d32", "condition": "lexical-only", "answer": "7 pm", "input_tokens": 29937}
+{"qid": "577d4d32", "condition": "dense-only", "answer": "7 pm", "input_tokens": 30716}
+{"qid": "505af2f5", "condition": "dense-only", "answer": "Try coconut cream or oat milk base with stevia, monk fruit sweetener, or MCT oil and collagen peptides for added nutrition.", "input_tokens": 31380}
+{"qid": "5809eb10", "condition": "dense-only", "answer": "2014", "input_tokens": 31472}
+{"qid": "58bf7951", "condition": "dense-only", "answer": "The Glass Menagerie", "input_tokens": 31302}
+{"qid": "5831f84d", "condition": "lexical-only", "answer": "15 Crash Course videos", "input_tokens": 26373}
+{"qid": "58bf7951", "condition": "lexical-only", "answer": "The Glass Menagerie", "input_tokens": 25628}
+{"qid": "5809eb10", "condition": "lexical-only", "answer": "The context does not contain information about when construction of the house began.", "input_tokens": 30306}
+{"qid": "5831f84d", "condition": "dense-only", "answer": "15 videos", "input_tokens": 30847}
+{"qid": "58ef2f1c", "condition": "lexical-only", "answer": "February 2023", "input_tokens": 30170}
+{"qid": "59524333", "condition": "lexical-only", "answer": "Usually at 6:00 pm.", "input_tokens": 26379}
+{"qid": "58ef2f1c", "condition": "dense-only", "answer": "February 2023", "input_tokens": 31151}
+{"qid": "5d3d2817", "condition": "lexical-only", "answer": "Marketing specialist at a small startup", "input_tokens": 30340}
+{"qid": "5e1b23de", "condition": "dense-only", "answer": "3 months ago (November 2023)", "input_tokens": 31137}
+{"qid": "5c40ec5b", "condition": "lexical-only", "answer": "Twice (plus the initial meeting at a music festival).", "input_tokens": 30589}
+{"qid": "59524333", "condition": "dense-only", "answer": "7:00 pm on Mondays, Wednesdays, and Fridays", "input_tokens": 31259}
+{"qid": "5e1b23de", "condition": "lexical-only", "answer": "3 months ago", "input_tokens": 30175}
+{"qid": "5c40ec5b", "condition": "dense-only", "answer": "Three times (twice already met by 2023/09/30, plus planning a third meetup in Berlin).", "input_tokens": 31299}
+{"qid": "60d45044", "condition": "dense-only", "answer": "Japanese short-grain rice", "input_tokens": 31567}
+{"qid": "60bf93ed", "condition": "dense-only", "answer": "5 days (purchased 1/15, arrived 1/20)", "input_tokens": 31173}
+{"qid": "5d3d2817", "condition": "dense-only", "answer": "Not stated in the provided context.", "input_tokens": 31425}
+{"qid": "60d45044", "condition": "lexical-only", "answer": "Japanese short-grain rice", "input_tokens": 31379}
+{"qid": "60bf93ed", "condition": "lexical-only", "answer": "5 days (purchased 1/15, arrived 1/20)", "input_tokens": 30979}
+{"qid": "61f8c8f8", "condition": "dense-only", "answer": "10 minutes faster (35 minutes vs 45 minutes)", "input_tokens": 31633}
+{"qid": "61f8c8f8", "condition": "lexical-only", "answer": "10 minutes faster (45 minutes \u2192 35 minutes)", "input_tokens": 30488}
+{"qid": "66f24dbb", "condition": "lexical-only", "answer": "A yellow dress and matching earrings.", "input_tokens": 25800}
+{"qid": "66f24dbb", "condition": "dense-only", "answer": "A yellow dress and matching earrings.", "input_tokens": 31419}
+{"qid": "681a1674", "condition": "lexical-only", "answer": "1", "input_tokens": 25727}
+{"qid": "60159905", "condition": "dense-only", "answer": "Based on the chat history, you attended approximately 4-5 dinner parties/social meals in the past month:\n\n1. BBQ at Mike's place (~May 7)\n2. Birthday party at David's (~May 13)\n3. Italian feast at Sarah's (~May 15)\n4. Potluck at Alex's place (May 20)\n5. Family reunion at aunt's house (May 13-14 or 20-21)\n\nSome may overlap, so likely **4 distinct events**.", "input_tokens": 31481}
+{"qid": "69fee5aa", "condition": "dense-only", "answer": "37 coins.", "input_tokens": 31079}
+{"qid": "69fee5aa", "condition": "lexical-only", "answer": "37 coins", "input_tokens": 26478}
+{"qid": "60159905", "condition": "lexical-only", "answer": "3 (Sarah's Italian feast around May 15, Mike's BBQ around May 7, Alex's potluck on May 20)", "input_tokens": 30651}
+{"qid": "681a1674", "condition": "dense-only", "answer": "2 Marvel movies (Spider-Man: No Way Home and Avengers: Endgame)", "input_tokens": 31334}
+{"qid": "6aeb4375", "condition": "dense-only", "answer": "4 Korean restaurants", "input_tokens": 31253}
+{"qid": "6cb6f249", "condition": "dense-only", "answer": "17 days total (7-day break in mid-January, 10-day break in mid-February)", "input_tokens": 31104}
+{"qid": "6a1eabeb", "condition": "dense-only", "answer": "27:12", "input_tokens": 31373}
+{"qid": "6aeb4375", "condition": "lexical-only", "answer": "Four Korean restaurants.", "input_tokens": 26231}
+{"qid": "6cb6f249", "condition": "lexical-only", "answer": "10 days (mid-February 2023)", "input_tokens": 30796}
+{"qid": "6a1eabeb", "condition": "lexical-only", "answer": "27:12", "input_tokens": 26350}
+{"qid": "6f9b354f", "condition": "lexical-only", "answer": "A lighter shade of gray.", "input_tokens": 30748}
+{"qid": "6e984302", "condition": "dense-only", "answer": "Polymer clay and resin", "input_tokens": 31252}
+{"qid": "6f9b354f", "condition": "dense-only", "answer": "A lighter shade of gray.", "input_tokens": 31133}
+{"qid": "71017276", "condition": "dense-only", "answer": "4 weeks ago, on 4 March 2023.", "input_tokens": 31565}
+{"qid": "71017276", "condition": "lexical-only", "answer": "4 weeks ago (on 4 March 2023)", "input_tokens": 30961}
+{"qid": "7024f17c", "condition": "lexical-only", "answer": "No specific data provided in the chat history for last week's exercise hours.", "input_tokens": 30501}
+{"qid": "6e984301", "condition": "dense-only", "answer": "About 6 weeks.", "input_tokens": 30928}
+{"qid": "7024f17c", "condition": "dense-only", "answer": "Based on the context provided, there is insufficient information. The only specific workout mentioned is a 30-minute jog on Saturday, May 20. While yoga sessions were scheduled for Monday, Wednesday, and Friday mornings, no confirmation of actual completion is provided in the context.\n\nBest guess: Approximately 0.5 hours jogging; yoga hours unclear.", "input_tokens": 31441}
+{"qid": "6e984302", "condition": "lexical-only", "answer": "Sculpting materials or supplies for the art competition.", "input_tokens": 30084}
+{"qid": "71017277", "condition": "dense-only", "answer": "The context does not contain information about receiving a piece of jewelry last Saturday.", "input_tokens": 31716}
+{"qid": "720133ac", "condition": "dense-only", "answer": "$75 ($50 vet visit + $25 flea medication)", "input_tokens": 31466}
+{"qid": "726462e0", "condition": "lexical-only", "answer": "10% discount", "input_tokens": 31014}
+{"qid": "720133ac", "condition": "lexical-only", "answer": "$75 ($50 vet consultation + $25 flea medication)", "input_tokens": 30649}
+{"qid": "726462e0", "condition": "dense-only", "answer": "10% discount", "input_tokens": 31464}
+{"qid": "72e3ee87", "condition": "dense-only", "answer": "50 episodes", "input_tokens": 30960}
+{"qid": "71017277", "condition": "lexical-only", "answer": "aunt", "input_tokens": 30728}
+{"qid": "72e3ee87", "condition": "lexical-only", "answer": "50 episodes", "input_tokens": 30426}
+{"qid": "73d42213", "condition": "dense-only", "answer": "Around 9 AM (left home at 7 AM, two-hour drive).", "input_tokens": 31486}
+{"qid": "76d63226", "condition": "lexical-only", "answer": "55 inches", "input_tokens": 25656}
+{"qid": "76d63226", "condition": "dense-only", "answer": "55 inches", "input_tokens": 31370}
+{"qid": "73d42213", "condition": "lexical-only", "answer": "Approximately 9:00 AM (left home at 7 AM, took 2 hours to reach clinic).", "input_tokens": 30589}
+{"qid": "830ce83f", "condition": "dense-only", "answer": "Chicago.", "input_tokens": 31024}
+{"qid": "830ce83f", "condition": "lexical-only", "answer": "Back to the suburbs", "input_tokens": 30629}
+{"qid": "6e984301", "condition": "lexical-only", "answer": "About 9 weeks.", "input_tokens": 30382}
+{"qid": "80ec1f4f", "condition": "dense-only", "answer": "Based on the context, you mentioned visiting The Art Cube on 15th February (though it was later noted as fictional). That's **1** museum/gallery visit mentioned for February.", "input_tokens": 30769}
+{"qid": "778164c6", "condition": "lexical-only", "answer": "Escovitch Fish", "input_tokens": 30514}
+{"qid": "852ce960", "condition": "dense-only", "answer": "$350,000", "input_tokens": 31613}
+{"qid": "853b0a1d", "condition": "lexical-only", "answer": "18 years old.", "input_tokens": 30388}
+{"qid": "852ce960", "condition": "lexical-only", "answer": "$350,000", "input_tokens": 26306}
+{"qid": "778164c6", "condition": "dense-only", "answer": "Escovitch Fish", "input_tokens": 31262}
+{"qid": "853b0a1d", "condition": "dense-only", "answer": "18 years old.", "input_tokens": 31295}
+{"qid": "80ec1f4f", "condition": "lexical-only", "answer": "Based on the context provided, only 1 museum or gallery visit in February is explicitly mentioned: The Art Cube on February 15.", "input_tokens": 30091}
+{"qid": "89527b6b", "condition": "dense-only", "answer": "Blue", "input_tokens": 31232}
+{"qid": "89527b6b", "condition": "lexical-only", "answer": "Blue", "input_tokens": 30549}
+{"qid": "8979f9ec", "condition": "dense-only", "answer": "8 meals\n\n(3 from chicken fajitas + 5 from lentil soup)", "input_tokens": 31855}
+{"qid": "8979f9ec", "condition": "lexical-only", "answer": "8 lunch meals total (5 from lentil soup, 3 from chicken fajitas)", "input_tokens": 31175}
+{"qid": "8aef76bc", "condition": "lexical-only", "answer": "Mod Podge or another sealant.", "input_tokens": 30113}
+{"qid": "8aef76bc", "condition": "dense-only", "answer": "Mod Podge", "input_tokens": 31088}
+{"qid": "8752c811", "condition": "dense-only", "answer": "The context does not contain the 27th parameter from that list, as the numbered items jump from 14 to 85 with \"[\u2026]\" indicating omitted content.", "input_tokens": 31417}
+{"qid": "8b9d4367", "condition": "dense-only", "answer": "Jaipur Rugs", "input_tokens": 30761}
+{"qid": "8b9d4367", "condition": "lexical-only", "answer": "Jaipur Rugs", "input_tokens": 30573}
+{"qid": "8cf51dda", "condition": "dense-only", "answer": "The three objectives were:\n1. Identify molecular subtypes of endometrial cancer\n2. Investigate clinical and biological significance\n3. Develop biomarkers for early detection and prognosis", "input_tokens": 31378}
+{"qid": "8cf51dda", "condition": "lexical-only", "answer": "1. Identify molecular subtypes using genomic and transcriptomic approaches\n2. Investigate clinical and biological significance of identified subtypes\n3. Develop biomarkers for early detection and prognosis", "input_tokens": 30352}
+{"qid": "88432d0a", "condition": "lexical-only", "answer": "Based on the chat history, at least 5-6 times:\n- Sourdough bread (Tuesday, May 16)\n- Cookies (Thursday, May 18)\n- Whole wheat baguette (Saturday, May 20)\n- Blue Cheese Chocolate Chip Cookies (May 23)\n- Chocolate cake (date unspecified but recent)\n- Cookies again (Thursday, May 25)", "input_tokens": 30634}
+{"qid": "8fb83627", "condition": "dense-only", "answer": "5 issues", "input_tokens": 30869}
+{"qid": "8752c811", "condition": "lexical-only", "answer": "I don't see the 27th parameter in the provided context\u2014the list jumps from item 14 (Conflict) directly to item 30 (Camera angles). Based on the pattern of narrative elements shown, my best guess would be **Atmosphere** or **Theme**.", "input_tokens": 30750}
+{"qid": "8fb83627", "condition": "lexical-only", "answer": "Five issues.", "input_tokens": 30187}
+{"qid": "9bbe84a2", "condition": "dense-only", "answer": "Level 100", "input_tokens": 31165}
+{"qid": "9bbe84a2", "condition": "lexical-only", "answer": "Level 100", "input_tokens": 30551}
+{"qid": "95228167", "condition": "dense-only", "answer": "Based on the provided context, there is no specific information about what to look for in a new guitar. However, a best guess would be: check body style, playability, sound quality, and budget fit.", "input_tokens": 31365}
+{"qid": "982b5123", "condition": "dense-only", "answer": "About 5 months ago (around December 2022).", "input_tokens": 31466}
+{"qid": "9ee3ecd6", "condition": "dense-only", "answer": "300 points", "input_tokens": 31230}
+{"qid": "95228167", "condition": "lexical-only", "answer": "Based on the chat history, focus on tone quality, features like coil-tapping, playability, and whether it suits your intended music genre/style.", "input_tokens": 30589}
+{"qid": "982b5123", "condition": "lexical-only", "answer": "About 5 months ago.", "input_tokens": 30830}
+{"qid": "88432d0a", "condition": "dense-only", "answer": "4 times\n\n(Sourdough bread on May 16, cookies on May 18, chocolate cake before May 21, and cookies on May 25)", "input_tokens": 31474}
+{"qid": "a08a253f", "condition": "dense-only", "answer": "3 days a week (Tuesday, Thursday, Saturday)", "input_tokens": 31128}
+{"qid": "9ee3ecd6", "condition": "lexical-only", "answer": "300 points", "input_tokens": 30554}
+{"qid": "a08a253f", "condition": "lexical-only", "answer": "3 days a week (Tuesday, Thursday, and Saturday)", "input_tokens": 30500}
+{"qid": "a1cc6108", "condition": "dense-only", "answer": "You were about 11 years old when Alex was born.", "input_tokens": 31283}
+{"qid": "a1eacc2a", "condition": "lexical-only", "answer": "Four.", "input_tokens": 25632}
+{"qid": "a1eacc2a", "condition": "dense-only", "answer": "7 short stories (as of 2023/05/30)", "input_tokens": 30949}
+{"qid": "a1cc6108", "condition": "lexical-only", "answer": "The context does not contain information about your birth date or Alex's birth date, so this cannot be determined from the provided chat history.", "input_tokens": 30641}
+{"qid": "a3332713", "condition": "lexical-only", "answer": "$200 ($100 for your brother's graduation gift, $100 for your coworker's baby shower gift)", "input_tokens": 30630}
+{"qid": "a3332713", "condition": "dense-only", "answer": "$200 ($100 for brother's graduation gift card + $100 for coworker's baby shower gift)", "input_tokens": 31289}
+{"qid": "a3045048", "condition": "dense-only", "answer": "7 days", "input_tokens": 31540}
+{"qid": "a4996e51", "condition": "dense-only", "answer": "Up to 50 hours per week during peak campaign seasons.", "input_tokens": 31069}
+{"qid": "a3045048", "condition": "lexical-only", "answer": "7 days\n\n(Ordered April 15th, party was April 22nd)", "input_tokens": 30259}
+{"qid": "ac031881", "condition": "dense-only", "answer": "LIV", "input_tokens": 31281}
+{"qid": "ac031881", "condition": "lexical-only", "answer": "LIV (Roman numeral for 54)", "input_tokens": 25682}
+{"qid": "a4996e51", "condition": "lexical-only", "answer": "50 hours per week", "input_tokens": 30971}
+{"qid": "b01defab", "condition": "lexical-only", "answer": "Yes, you finished it recently (before 30 March 2023).", "input_tokens": 25696}
+{"qid": "b01defab", "condition": "dense-only", "answer": "Yes, you finished it by 30 March 2023.", "input_tokens": 31502}
+{"qid": "b0479f84", "condition": "dense-only", "answer": "Try **Planet Earth**, **Dynasties**, or **Chasing Coral** on Netflix\u2014all similar to shows you enjoyed a couple days ago.", "input_tokens": 31285}
+{"qid": "afdc33df", "condition": "lexical-only", "answer": "Use dividers to organize items, assign homes for utensils, and clean spills immediately.", "input_tokens": 30741}
+{"qid": "b29f3365", "condition": "dense-only", "answer": "4 weeks", "input_tokens": 30921}
+{"qid": "b0479f84", "condition": "lexical-only", "answer": "Based on your recent interest, try \"Dynasties\" or \"Chasing Coral\" for nature content, or \"Fyre\" if you want something entertaining and dramatic.", "input_tokens": 30457}
+{"qid": "b320f3f8", "condition": "dense-only", "answer": "Rare blue Snaggletooth action figure", "input_tokens": 31448}
+{"qid": "b320f3f8", "condition": "lexical-only", "answer": "A rare blue Snaggletooth action figure", "input_tokens": 30913}
+{"qid": "afdc33df", "condition": "dense-only", "answer": "Regular cleaning, organize items, wipe surfaces, put away after use.", "input_tokens": 30993}
+{"qid": "bb7c3b45", "condition": "dense-only", "answer": "$300 (paid $200 at outlet mall, original retail $500)", "input_tokens": 31449}
+{"qid": "ba358f49", "condition": "dense-only", "answer": "The context does not provide your birth date or current age, so I cannot calculate this. Based on Rachel getting married \"next year\" (2023) from the September 2022 conversation date, you would be your current age plus approximately 0-1 year, but the exact number cannot be determined from the given information.", "input_tokens": 31083}
+{"qid": "bbf86515", "condition": "dense-only", "answer": "4 days before (June 14th vs June 18th)", "input_tokens": 31700}
+{"qid": "ba358f49", "condition": "lexical-only", "answer": "Unable to determine - the context doesn't provide your birth date or current age.", "input_tokens": 30356}
+{"qid": "bbf86515", "condition": "lexical-only", "answer": "4 days (June 14 to June 18)", "input_tokens": 31026}
+{"qid": "bb7c3b45", "condition": "lexical-only", "answer": "The context does not specify how much you saved on the Jimmy Choo heels. You mentioned the original retail price was $500, but there's no record of what you actually paid for them.", "input_tokens": 30741}
+{"qid": "bc149d6b", "condition": "dense-only", "answer": "70 pounds (50 pounds layer feed + 20 pounds scratch grains)", "input_tokens": 31419}
+{"qid": "bcbe585f", "condition": "dense-only", "answer": "4 weeks ago (attended on 1 April 2023)", "input_tokens": 31013}
+{"qid": "c19f7a0b", "condition": "lexical-only", "answer": "Around 6:30 pm on weekdays.", "input_tokens": 25600}
+{"qid": "bc149d6b", "condition": "lexical-only", "answer": "70 pounds (50 pounds of layer feed and 20 pounds of organic scratch grains, both purchased 22 May 2023)", "input_tokens": 30185}
+{"qid": "c19f7a0b", "condition": "dense-only", "answer": "Around 6:30 pm on weekdays.", "input_tokens": 31191}
+{"qid": "b29f3365", "condition": "lexical-only", "answer": "About 4 weeks (or roughly a month).", "input_tokens": 30297}
+{"qid": "bcbe585f", "condition": "lexical-only", "answer": "About 4 weeks ago (on 1 April 2023).", "input_tokens": 30717}
+{"qid": "c5e8278d", "condition": "lexical-only", "answer": "Johnson", "input_tokens": 26776}
+{"qid": "c5e8278d", "condition": "dense-only", "answer": "Johnson", "input_tokens": 31102}
+{"qid": "c4a1ceb8", "condition": "lexical-only", "answer": "One (orange)", "input_tokens": 25649}
+{"qid": "c4ea545c", "condition": "dense-only", "answer": "Yes, from 3 to 4 times weekly (as of 15 Aug 2023).", "input_tokens": 31190}
+{"qid": "c6853660", "condition": "dense-only", "answer": "Increased to two cups (2023/05/26).", "input_tokens": 31296}
+{"qid": "c6853660", "condition": "lexical-only", "answer": "Increased to two cups on 26 May 2023.", "input_tokens": 30276}
+{"qid": "c8f1aeed", "condition": "dense-only", "answer": "Pennsylvania", "input_tokens": 30890}
+{"qid": "c7dc5443", "condition": "dense-only", "answer": "5-2 (Net Ninjas)", "input_tokens": 30859}
+{"qid": "c8f1aeed", "condition": "lexical-only", "answer": "Pennsylvania", "input_tokens": 30427}
+{"qid": "c7dc5443", "condition": "lexical-only", "answer": "5-2 (Net Ninjas)", "input_tokens": 30254}
+{"qid": "c4ea545c", "condition": "lexical-only", "answer": "No information in context provided.", "input_tokens": 30218}
+{"qid": "c4a1ceb8", "condition": "dense-only", "answer": "Based on the chat history, you've used 3 different types of citrus fruits: orange (in homemade bitters and Sangria), lime (in Daiquiri), and lemon (in Sangria).", "input_tokens": 31280}
+{"qid": "c9f37c46", "condition": "dense-only", "answer": "About 2 months", "input_tokens": 31176}
+{"qid": "caf9ead2", "condition": "lexical-only", "answer": "5 hours", "input_tokens": 25728}
+{"qid": "caf9ead2", "condition": "dense-only", "answer": "5 hours", "input_tokens": 31263}
+{"qid": "caf03d32", "condition": "dense-only", "answer": "This specific question isn't in the provided context. Based on the earlier slow cooker conversation from that day (30 May 2023), likely advice would include: follow recipes carefully, don't lift the lid frequently, adjust liquid ratios, and use proper cooking times for your ingredients.", "input_tokens": 31503}
+{"qid": "cc06de0d", "condition": "dense-only", "answer": "$6 more expensive (taxi was $12, train fare is $6)", "input_tokens": 31103}
+{"qid": "c9f37c46", "condition": "lexical-only", "answer": "About 2 months", "input_tokens": 30457}
+{"qid": "ccb36322", "condition": "dense-only", "answer": "Spotify", "input_tokens": 30562}
+{"qid": "caf03d32", "condition": "lexical-only", "answer": "Use a thermometer for accurate temperature control. Follow recipes carefully and adjust ingredients to taste.", "input_tokens": 30667}
+{"qid": "cc06de0d", "condition": "lexical-only", "answer": "$6 more expensive. The taxi cost $12, and the daily train fare is $6.", "input_tokens": 30706}
+{"qid": "ccb36322", "condition": "lexical-only", "answer": "Spotify", "input_tokens": 30770}
+{"qid": "d52b4f67", "condition": "dense-only", "answer": "Grand Ballroom", "input_tokens": 30972}
+{"qid": "d52b4f67", "condition": "lexical-only", "answer": "The Grand Ballroom", "input_tokens": 30788}
+{"qid": "d6062bb9", "condition": "lexical-only", "answer": "1,998 views (542 on YouTube, 1,456 on TikTok)", "input_tokens": 30428}
+{"qid": "d6062bb9", "condition": "dense-only", "answer": "1,456 views on TikTok; YouTube view count not mentioned in context.", "input_tokens": 31160}
+{"qid": "d23cf73b", "condition": "dense-only", "answer": "5 different cuisines: Korean (bibimbap), Indian (chicken tikka masala), Vegan (lasagna), Thai, and Ethiopian.", "input_tokens": 31264}
+{"qid": "d7c942c3", "condition": "dense-only", "answer": "Yes, she is\u2014as of 30 April 2023, the user mentioned their mom was using the same grocery list app.", "input_tokens": 31376}
+{"qid": "d7c942c3", "condition": "lexical-only", "answer": "Yes, she's using the same grocery list app.", "input_tokens": 25725}
+{"qid": "d6233ab6", "condition": "lexical-only", "answer": "The context doesn't directly address this. Based on your nostalgic mood and mentioned high school friends, attending could be worthwhile.", "input_tokens": 30466}
+{"qid": "d23cf73b", "condition": "lexical-only", "answer": "5-6 different cuisines (Ethiopian, Thai, Korean, Indian, Japanese, and Vegan)", "input_tokens": 30792}
+{"qid": "db467c8c", "condition": "lexical-only", "answer": "Nine months", "input_tokens": 25667}
+{"qid": "d6233ab6", "condition": "dense-only", "answer": "Yes, could be a great opportunity.", "input_tokens": 31149}
+{"qid": "dc439ea3", "condition": "dense-only", "answer": "Hoop Dance", "input_tokens": 30778}
+{"qid": "db467c8c", "condition": "dense-only", "answer": "Nine months (as of 2023/10/20)", "input_tokens": 30720}
+{"qid": "dc439ea3", "condition": "lexical-only", "answer": "Hoop Dance", "input_tokens": 29814}
+{"qid": "e47becba", "condition": "dense-only", "answer": "Business Administration", "input_tokens": 31299}
+{"qid": "e47becba", "condition": "lexical-only", "answer": "Business Administration", "input_tokens": 30642}
+{"qid": "e3fc4d6e", "condition": "dense-only", "answer": "Dr. Arati Prabhakar", "input_tokens": 30953}
+{"qid": "e3fc4d6e", "condition": "lexical-only", "answer": "Dr. Arati Prabhakar", "input_tokens": 30207}
+{"qid": "e3038f8c", "condition": "lexical-only", "answer": "99 rare items total (5 books + 25 coins + 12 figurines + 57 records)", "input_tokens": 30328}
+{"qid": "e3038f8c", "condition": "dense-only", "answer": "57 rare records (plus other collections not quantified)", "input_tokens": 30950}
+{"qid": "e61a7584", "condition": "lexical-only", "answer": "About 9 months.", "input_tokens": 26544}
+{"qid": "e61a7584", "condition": "dense-only", "answer": "About 9 months (as of 30 November 2023)", "input_tokens": 31285}
+{"qid": "e4e14d04", "condition": "dense-only", "answer": "About 2 weeks.\n\n(Joined three weeks before 28 May, attended meetup \"last week\" before that date.)", "input_tokens": 30794}
+{"qid": "e8a79c70", "condition": "dense-only", "answer": "3 large eggs", "input_tokens": 31507}
+{"qid": "e8a79c70", "condition": "lexical-only", "answer": "3 large eggs", "input_tokens": 31403}
+{"qid": "e9327a54", "condition": "dense-only", "answer": "The Sugar Factory at Icon Park (21 May 2023)", "input_tokens": 31347}
+{"qid": "e9327a54", "condition": "lexical-only", "answer": "The Sugar Factory at Icon Park (mentioned 21 May 2023).", "input_tokens": 30831}
+{"qid": "e4e14d04", "condition": "lexical-only", "answer": "About 2 weeks.", "input_tokens": 30321}
+{"qid": "eaca4986", "condition": "lexical-only", "answer": "C D E F G A B A G F E D C", "input_tokens": 30754}
+{"qid": "edced276", "condition": "lexical-only", "answer": "Based on the context, you spent 5 days in New York City. However, the duration of your Hawaii trip is not specified in the chat history.", "input_tokens": 30580}
+{"qid": "edced276", "condition": "dense-only", "answer": "5 days in NYC; Hawaii duration not mentioned in the context.", "input_tokens": 31273}
+{"qid": "eeda8a6d", "condition": "lexical-only", "answer": "17 fish total (16 in the 20-gallon tank: 10 neon tetras, 5 golden honey gouramis, 1 pleco; 1 betta in the 10-gallon tank).", "input_tokens": 30500}
+{"qid": "eeda8a6d", "condition": "dense-only", "answer": "Cannot determine from context; insufficient specific numbers provided. Mentions Bubbles (1 betta), gouramis (unspecified quantity), and neon tetras (unspecified quantity) in two tanks, but no total count given.", "input_tokens": 30828}
+{"qid": "dd2973ad", "condition": "lexical-only", "answer": "The context does not contain this information.", "input_tokens": 30561}
+{"qid": "ef66a6e5", "condition": "lexical-only", "answer": "2 (tennis and swimming)", "input_tokens": 30296}
+{"qid": "efc3f7c2", "condition": "dense-only", "answer": "30 minutes earlier. You wake up at 6:00 AM on Fridays versus 6:30 AM on other weekdays.", "input_tokens": 31284}
+{"qid": "ef66a6e5", "condition": "dense-only", "answer": "2 (tennis in high school, swimming in college)", "input_tokens": 30802}
+{"qid": "eaca4986", "condition": "dense-only", "answer": "C D E F G A B A G F E D C", "input_tokens": 31609}
+{"qid": "efc3f7c2", "condition": "lexical-only", "answer": "30 minutes earlier (6:00 AM on Fridays vs 6:30 AM on other weekdays)", "input_tokens": 30699}
+{"qid": "f0853d11", "condition": "dense-only", "answer": "14 days", "input_tokens": 31004}
+{"qid": "f0e564bc", "condition": "lexical-only", "answer": "$1,300 ($500 skincare + $800 Coach handbag)", "input_tokens": 30344}
+{"qid": "f35224e0", "condition": "dense-only", "answer": "27 episodes total (12 from \"My Favorite Murder\" and 15 from \"How I Built This\")", "input_tokens": 31245}
+{"qid": "f8c5f88b", "condition": "dense-only", "answer": "A sports store downtown.", "input_tokens": 31088}
+{"qid": "f35224e0", "condition": "lexical-only", "answer": "27 episodes total (12 from \"My Favorite Murder,\" 15 from \"How I Built This\")", "input_tokens": 30478}
+{"qid": "f0853d11", "condition": "lexical-only", "answer": "14 days", "input_tokens": 30600}
+{"qid": "f8c5f88b", "condition": "lexical-only", "answer": "A sports store downtown.", "input_tokens": 30496}
+{"qid": "f9e8c073", "condition": "dense-only", "answer": "Three sessions.", "input_tokens": 27908}
+{"qid": "f0e564bc", "condition": "dense-only", "answer": "$500 (skincare only specified)", "input_tokens": 31003}
+{"qid": "f9e8c073", "condition": "lexical-only", "answer": "Five sessions.", "input_tokens": 30102}
+{"qid": "fca762bc", "condition": "dense-only", "answer": "Memrise. It uses mnemonics to help memorize words, phrases, and grammatical concepts.", "input_tokens": 31442}
+{"qid": "fca70973", "condition": "dense-only", "answer": "Halloween Time (Disneyland mid-September), Knott's Scary Farm (fall), or holiday events (late November).", "input_tokens": 31452}
+{"qid": "fca762bc", "condition": "lexical-only", "answer": "Memrise", "input_tokens": 30776}
+{"qid": "fca70973", "condition": "lexical-only", "answer": "Based on the chat history, the assistant recommended visiting LA-area theme parks with Halloween-themed events: Disneyland, Knott's Berry Farm, Six Flags Magic Mountain, and Universal Studios Hollywood, with special focus on their Halloween food experiences and Universal's VIP Behind-the-Scenes Tour.", "input_tokens": 30755}
+{"qid": "gpt4_1d4ab0c9", "condition": "dense-only", "answer": "24 days (from March 22 to April 15, 2023)", "input_tokens": 31271}
+{"qid": "gpt4_1916e0ea", "condition": "lexical-only", "answer": "54 days (from 5 January 2023 to 28 February 2023)", "input_tokens": 30482}
+{"qid": "gpt4_1d80365e", "condition": "dense-only", "answer": "Approximately 2 days (started May 15, got back May 17, 2023).", "input_tokens": 31371}
+{"qid": "gpt4_1d4ab0c9", "condition": "lexical-only", "answer": "24 days (from 22 March 2023 to 15 April 2023)", "input_tokens": 30652}
+{"qid": "gpt4_1d80365e", "condition": "lexical-only", "answer": "2 days (May 15-17, 2023)", "input_tokens": 30527}
+{"qid": "gpt4_1916e0ea", "condition": "dense-only", "answer": "0 days (same day)", "input_tokens": 31469}
+{"qid": "gpt4_1e4a8aec", "condition": "lexical-only", "answer": "The context does not contain any mention of gardening-related activities.", "input_tokens": 30840}
+{"qid": "dd2973ad", "condition": "dense-only", "answer": "2 AM", "input_tokens": 31220}
+{"qid": "gpt4_2312f94c", "condition": "lexical-only", "answer": "Samsung Galaxy S22 (20 February 2023)", "input_tokens": 30871}
+{"qid": "gpt4_2312f94c", "condition": "dense-only", "answer": "The Samsung Galaxy S22 (February 20th), before the Dell XPS 13 (February 25th).", "input_tokens": 31794}
+{"qid": "gpt4_2ba83207", "condition": "dense-only", "answer": "Walmart ($120)", "input_tokens": 31224}
+{"qid": "gpt4_2d58bcd6", "condition": "dense-only", "answer": "'The Hate U Give' (around 16 May 2023)", "input_tokens": 31463}
+{"qid": "gpt4_2ba83207", "condition": "lexical-only", "answer": "Thrive Market ($150)", "input_tokens": 30784}
+{"qid": "gpt4_2d58bcd6", "condition": "lexical-only", "answer": "'The Hate U Give' was finished first (around May 16, 2023, before the book club meeting).", "input_tokens": 30889}
+{"qid": "gpt4_385a5000", "condition": "dense-only", "answer": "Tomatoes were started first on February 20th, before the marigolds on March 3rd.", "input_tokens": 31374}
+{"qid": "gpt4_385a5000", "condition": "lexical-only", "answer": "The tomatoes were started first on February 20th. The marigolds arrived and were started on March 3rd.", "input_tokens": 30422}
+{"qid": "gpt4_4929293a", "condition": "dense-only", "answer": "Michael's engagement party (5 May 2023)", "input_tokens": 30936}
+{"qid": "gpt4_4929293a", "condition": "lexical-only", "answer": "Michael's engagement party happened first (6 May 2023), followed by the cousin's wedding (15 June 2023).", "input_tokens": 30349}
+{"qid": "gpt4_4cd9eba1", "condition": "dense-only", "answer": "1 week", "input_tokens": 30833}
+{"qid": "gpt4_483dd43c", "condition": "dense-only", "answer": "Game of Thrones (started around late April 2023, about a month before May 29).", "input_tokens": 31345}
+{"qid": "gpt4_483dd43c", "condition": "lexical-only", "answer": "Game of Thrones (started about a month before the 29th, so late April 2023).", "input_tokens": 30484}
+{"qid": "gpt4_4929293b", "condition": "dense-only", "answer": "cousin's wedding", "input_tokens": 31066}
+{"qid": "gpt4_4cd9eba1", "condition": "lexical-only", "answer": "1 week", "input_tokens": 29839}
+{"qid": "gpt4_59149c77", "condition": "dense-only", "answer": "7 days (from 8 January to 15 January 2023)", "input_tokens": 31153}
+{"qid": "gpt4_4929293b", "condition": "lexical-only", "answer": "Not found in the provided context.", "input_tokens": 30426}
+{"qid": "gpt4_1e4a8aec", "condition": "dense-only", "answer": "Watered tomato plants during a dry spell", "input_tokens": 31080}
+{"qid": "gpt4_59149c77", "condition": "lexical-only", "answer": "7 days (January 8 to January 15, 2023)", "input_tokens": 30563}
+{"qid": "gpt4_68e94288", "condition": "lexical-only", "answer": "#PlankChallenge", "input_tokens": 30213}
+{"qid": "gpt4_68e94288", "condition": "dense-only", "answer": "#PlankChallenge", "input_tokens": 31299}
+{"qid": "gpt4_59149c78", "condition": "dense-only", "answer": "Metropolitan Museum of Art", "input_tokens": 30782}
+{"qid": "gpt4_70e84552", "condition": "dense-only", "answer": "Fixing the fence (May 4, 2023) was completed first, before trimming the goats' hooves (May 11, 2023).", "input_tokens": 31002}
+{"qid": "gpt4_70e84552", "condition": "lexical-only", "answer": "Fixing the fence (approximately 11 May 2023, versus hoof trimming around 18 May 2023).", "input_tokens": 30086}
+{"qid": "gpt4_59149c78", "condition": "lexical-only", "answer": "Not specified in context. The museum visit with water lily paintings is mentioned, but no location is given.", "input_tokens": 30438}
+{"qid": "gpt4_731e37d7", "condition": "dense-only", "answer": "$200 (writing workshop in November)", "input_tokens": 30952}
+{"qid": "gpt4_74aed68e", "condition": "dense-only", "answer": "29 days (from 14 February 2023 to 15 March 2023)", "input_tokens": 31308}
+{"qid": "gpt4_78cf46a3", "condition": "dense-only", "answer": "The narrator received their new phone case first (about a month before 26 May 2023), then lost their phone charger (about two weeks before 26 May 2023).", "input_tokens": 31106}
+{"qid": "gpt4_731e37d7", "condition": "lexical-only", "answer": "$200 (writing workshop in November)", "input_tokens": 30234}
+{"qid": "gpt4_78cf46a3", "condition": "lexical-only", "answer": "The new phone case was received first (around 26 April 2023), then the phone charger was lost (around 12 May 2023).", "input_tokens": 30521}
+{"qid": "gpt4_74aed68e", "condition": "lexical-only", "answer": "29 days (from February 14 to March 15, 2023)", "input_tokens": 30487}
+{"qid": "gpt4_7a0daae1", "condition": "lexical-only", "answer": "1 week\n\n(Bought on 10 March 2023, received on 17 March 2023)", "input_tokens": 30576}
+{"qid": "gpt4_7de946e7", "condition": "lexical-only", "answer": "The persistent cough came first. You visited Dr. Smith for it on February 10th, while the skin tag removal was on February 22nd.", "input_tokens": 30330}
+{"qid": "gpt4_7de946e7", "condition": "dense-only", "answer": "Persistent cough (bronchitis antibiotics finished 20 Feb, skin tag removed 22 Feb)", "input_tokens": 31062}
+{"qid": "gpt4_8279ba02", "condition": "dense-only", "answer": "10 days ago (on 15 March 2023)", "input_tokens": 31469}
+{"qid": "gpt4_8279ba03", "condition": "dense-only", "answer": "A smoker", "input_tokens": 31708}
+{"qid": "gpt4_8279ba02", "condition": "lexical-only", "answer": "The context does not contain information about when you bought a smoker. No answer can be determined from the provided chat history.", "input_tokens": 30312}
+{"qid": "gpt4_7abb270c", "condition": "lexical-only", "answer": "Based on the context provided, I can only identify three clear museum visits with dates:\n\n1. Science Museum (Space Exploration) - 15 Jan 2023\n2. Modern Art Museum (Evolution of Abstract Expressionism) - ~20 Feb 2023\n3. Natural History Museum (Dinosaur Fossils) - 4 Mar 2023\n\nThe context does not contain evidence of six museum visits.", "input_tokens": 30542}
+{"qid": "gpt4_85da3956", "condition": "dense-only", "answer": "Approximately 6 weeks", "input_tokens": 31325}
+{"qid": "gpt4_8279ba03", "condition": "lexical-only", "answer": "The context does not contain information about a kitchen appliance purchase 10 days ago. No appliance purchase is mentioned in any of the chat sessions provided.", "input_tokens": 30673}
+{"qid": "gpt4_88806d6e", "condition": "dense-only", "answer": "Tom. He was met \"a few months ago\" at a charity event, while Mark and Sarah were met \"about a month ago\" on a beach trip.", "input_tokens": 31436}
+{"qid": "gpt4_8e165409", "condition": "dense-only", "answer": "14 days (March 4 to March 18, 2023)", "input_tokens": 31427}
+{"qid": "gpt4_88806d6e", "condition": "lexical-only", "answer": "Tom (met at a charity event a few months ago vs. Mark and Sarah met on a beach trip about a month ago)", "input_tokens": 30544}
+{"qid": "gpt4_7a0daae1", "condition": "dense-only", "answer": "0 weeks (same day) \u2014 both purchase and receipt occurred on 17 March 2023.", "input_tokens": 31223}
+{"qid": "gpt4_8e165409", "condition": "lexical-only", "answer": "14 days (March 4 to March 18, 2023)", "input_tokens": 30118}
+{"qid": "gpt4_a2d1d1f6", "condition": "lexical-only", "answer": "3 days ago (on 15 April 2023)", "input_tokens": 30631}
+{"qid": "gpt4_a2d1d1f6", "condition": "dense-only", "answer": "3 days ago (15 April 2023)", "input_tokens": 31268}
+{"qid": "gpt4_a56e767c", "condition": "dense-only", "answer": "3 festivals\n\n(AFI Fest, Portland Film Festival, Austin Film Festival)", "input_tokens": 31032}
+{"qid": "gpt4_9a159967", "condition": "lexical-only", "answer": "United Airlines", "input_tokens": 30730}
+{"qid": "gpt4_85da3956", "condition": "lexical-only", "answer": "About 3 weeks ago", "input_tokens": 30538}
+{"qid": "gpt4_a56e767c", "condition": "lexical-only", "answer": "The context doesn't mention movie festivals. Best guess: 0.", "input_tokens": 25725}
+{"qid": "gpt4_7f6b06db", "condition": "lexical-only", "answer": "Big Sur and Monterey (20 April 2023), Japan trip (29 April 2023), Yosemite (15 May 2023)", "input_tokens": 30597}
+{"qid": "gpt4_af6db32f", "condition": "dense-only", "answer": "17 days ago (watched on February 12th, 2023)", "input_tokens": 31595}
+{"qid": "gpt4_b5700ca9", "condition": "dense-only", "answer": "4 days ago (6 April 2023)", "input_tokens": 31408}
+{"qid": "gpt4_af6db32f", "condition": "lexical-only", "answer": "17 days ago (2023/02/12)", "input_tokens": 31000}
+{"qid": "gpt4_b5700ca9", "condition": "lexical-only", "answer": "4 days ago (on 6 April 2023)", "input_tokens": 30262}
+{"qid": "gpt4_9a159967", "condition": "dense-only", "answer": "United Airlines (4 flights to Chicago in March)", "input_tokens": 31395}
+{"qid": "gpt4_c27434e8", "condition": "dense-only", "answer": "The Japanese Zero fighter plane (started about a month before 29 May 2023, around late April).", "input_tokens": 31646}
+{"qid": "gpt4_ab202e7f", "condition": "lexical-only", "answer": "4 kitchen items (shelves fixed, toaster replaced, kitchen mat replaced, kitchen faucet replaced)", "input_tokens": 31070}
+{"qid": "gpt4_c27434e8", "condition": "lexical-only", "answer": "The Japanese Zero fighter plane\u2014started about a month before the Ferrari 288 GTO (which was started three weeks before 29 May 2023).", "input_tokens": 30641}
+{"qid": "gpt4_d12ceb0e", "condition": "dense-only", "answer": "Average age: 59.6 years old\n\n(32 + 55 + 58 + 75 + 78) \u00f7 5 = 59.6", "input_tokens": 30834}
+{"qid": "gpt4_cd90e484", "condition": "lexical-only", "answer": "About 2 weeks", "input_tokens": 30376}
+{"qid": "gpt4_cd90e484", "condition": "dense-only", "answer": "About 2 weeks", "input_tokens": 31037}
+{"qid": "gpt4_d12ceb0e", "condition": "lexical-only", "answer": "Approximately 60 years old.\n\n(User: 32, Mom: 55, Dad: 58, Grandma: 75, Grandpa: 78)", "input_tokens": 30179}
+{"qid": "gpt4_7f6b06db", "condition": "dense-only", "answer": "Yosemite solo camping, Big Sur and Monterey road trip (20 April 2023), Yosemite solo camping (15 May 2023)", "input_tokens": 31298}
+{"qid": "gpt4_7abb270c", "condition": "dense-only", "answer": "Science Museum (15 Jan 2023), Museum of History (15 Feb 2023), Contemporary Art Museum (15 Feb 2023), Modern Art Gallery (17 Feb 2023), Modern Art Museum (20 Feb 2023), Natural History Museum (4 Mar 2023)", "input_tokens": 30824}
+{"qid": "gpt4_ec93e27f", "condition": "lexical-only", "answer": "A train.", "input_tokens": 25631}
+{"qid": "gpt4_e05b82a6", "condition": "dense-only", "answer": "9 times \u2014 3 at SeaWorld San Diego (July), 3 at Disneyland (September 24), 3 at Universal Studios Hollywood (October 15).", "input_tokens": 31217}
+{"qid": "gpt4_f2262a51", "condition": "dense-only", "answer": "3 doctors: Dr. Patel, Dr. Lee, and Dr. Smith", "input_tokens": 30958}
+{"qid": "gpt4_ec93e27f", "condition": "dense-only", "answer": "A train on 3 March 2023.", "input_tokens": 31040}
+{"qid": "gpt4_ab202e7f", "condition": "dense-only", "answer": "4 kitchen items\n\n(Kitchen shelves fixed, toaster replaced, kitchen mat replaced, kitchen faucet replaced)", "input_tokens": 31486}
+{"qid": "gpt4_f2262a51", "condition": "lexical-only", "answer": "3 different doctors: Dr. Patel (ENT), Dr. Lee (dermatologist), and Dr. Smith (primary care physician).", "input_tokens": 30976}
+{"qid": "gpt4_fe651585", "condition": "dense-only", "answer": "Alex became a parent first. Alex adopted a baby girl in January 2023, while Rachel's twins were born on February 12th, 2023.", "input_tokens": 31053}
+{"qid": "gpt4_e05b82a6", "condition": "lexical-only", "answer": "10 rollercoaster rides.\n\n(3 at SeaWorld in July + 3 at Disneyland on September 24 + 3 at Universal Studios Halloween Horror Nights + 1 at Knott's on October 8)", "input_tokens": 30667}
+{"qid": "gpt4_fe651585", "condition": "lexical-only", "answer": "Rachel became a parent first. She has twins (Jackson and Julia) born on February 12th.", "input_tokens": 30503}
+{"qid": "gpt4_fa19884d", "condition": "dense-only", "answer": "A bluegrass band with a banjo player (specific name not mentioned in context)", "input_tokens": 31314}
+{"qid": "gpt4_fa19884d", "condition": "lexical-only", "answer": "A bluegrass band", "input_tokens": 30330}
+{"qid": "07741c44", "condition": "hybrid-matched", "answer": "Under the bed.", "input_tokens": 30407}
+{"qid": "078150f1", "condition": "hybrid-matched", "answer": "$50 more ($250 raised vs $200 goal)", "input_tokens": 30443}
+{"qid": "0e5e2d1a", "condition": "hybrid-matched", "answer": "38 subjects", "input_tokens": 30398}
+{"qid": "01493427", "condition": "hybrid-matched", "answer": "25 new postcards", "input_tokens": 28456}
+{"qid": "0bb5a684", "condition": "hybrid-matched", "answer": "7 days", "input_tokens": 30269}
+{"qid": "099778bb", "condition": "hybrid-matched", "answer": "Women occupy 20 of the leadership positions (absolute number given; percentage not specified in the context).", "input_tokens": 28350}
+{"qid": "031748ae", "condition": "hybrid-matched", "answer": "When just started (May 2023): 4 engineers. Now (October 2023): 5 engineers.", "input_tokens": 30348}
+{"qid": "09ba9854", "condition": "hybrid-matched", "answer": "$30-40 savings (taxi $60 vs. train/subway $20-30)", "input_tokens": 30705}
+{"qid": "07741c45", "condition": "hybrid-matched", "answer": "In a shoe rack in your closet (you were planning to move them there from under your bed as of late May).", "input_tokens": 30940}
+{"qid": "09d032c9", "condition": "hybrid-matched", "answer": "No direct answer in the provided chat history. Based on the assistant's style in other conversations, likely tips would include: reduce screen brightness, close background apps, enable battery saver mode, disable location services, or update software.", "input_tokens": 30752}
+{"qid": "1192316e", "condition": "hybrid-matched", "answer": "1 hour 30 minutes (60 minutes to get ready + 30 minutes commute)", "input_tokens": 30826}
+{"qid": "129d1232", "condition": "hybrid-matched", "answer": "$5,850 total ($250 charity walk + $600 yoga event + $5,000 bike-a-thon)", "input_tokens": 30518}
+{"qid": "10d9b85a", "condition": "hybrid-matched", "answer": "3 days: April 10, 2023 (lecture), April 17-18, 2023 (2-day workshop)", "input_tokens": 30509}
+{"qid": "0977f2af", "condition": "hybrid-matched", "answer": "Based on the provided context, there is no mention of another kitchen gadget purchased before the Air Fryer. The Air Fryer (acquired around May 20, 2023) is the only kitchen gadget specifically discussed as a recent purchase in these chat sessions.", "input_tokens": 31057}
+{"qid": "18dcd5a5", "condition": "hybrid-matched", "answer": "4 mummies", "input_tokens": 31130}
+{"qid": "0bc8ad93", "condition": "hybrid-matched", "answer": "No, you attended the History Museum lecture alone (no friend mentioned).", "input_tokens": 30434}
+{"qid": "184da446", "condition": "hybrid-matched", "answer": "Page 220 (as of 2023/05/29).", "input_tokens": 28498}
+{"qid": "16c90bf4", "condition": "hybrid-matched", "answer": "Pilsner or lager (or a local beer from Ancash for authenticity).", "input_tokens": 30979}
+{"qid": "15745da0", "condition": "hybrid-matched", "answer": "Three months (as of late May 2023)", "input_tokens": 28474}
+{"qid": "19b5f2b3", "condition": "hybrid-matched", "answer": "Two weeks", "input_tokens": 30968}
+{"qid": "1e043500", "condition": "hybrid-matched", "answer": "Summer Vibes", "input_tokens": 30791}
+{"qid": "21436231", "condition": "hybrid-matched", "answer": "12 largemouth bass", "input_tokens": 30601}
+{"qid": "1a1907b4", "condition": "hybrid-matched", "answer": "Pimm's Cup with a Twist using Hendrick's gin and muddled cucumber slices.", "input_tokens": 30561}
+{"qid": "1cea1afa", "condition": "hybrid-matched", "answer": "Not mentioned in the provided chat history.", "input_tokens": 28379}
+{"qid": "18bc8abd", "condition": "hybrid-matched", "answer": "Kansas City Masterpiece BBQ sauce", "input_tokens": 29234}
+{"qid": "1d4e3b97", "condition": "hybrid-matched", "answer": "Chain and cassette upgrade (Feb 1st) or group ride motivation boost.", "input_tokens": 30600}
+{"qid": "25e5aa4f", "condition": "hybrid-matched", "answer": "UCLA", "input_tokens": 30361}
+{"qid": "1c0ddc50", "condition": "hybrid-matched", "answer": "Audiobooks, podcasts (like \"How I Built This\"), language learning apps, news updates, and mental preparation for the day.", "input_tokens": 28692}
+{"qid": "2318644b", "condition": "hybrid-matched", "answer": "Over $270 per night", "input_tokens": 30929}
+{"qid": "21d02d0d", "condition": "hybrid-matched", "answer": "2 fun runs (March 5th and March 26th)", "input_tokens": 30607}
+{"qid": "352ab8bd", "condition": "hybrid-matched", "answer": "Approximately 20%", "input_tokens": 30580}
+{"qid": "37d43f65", "condition": "hybrid-matched", "answer": "16GB", "input_tokens": 30908}
+{"qid": "2a1811e2", "condition": "hybrid-matched", "answer": "21 days", "input_tokens": 30538}
+{"qid": "28dc39ac", "condition": "hybrid-matched", "answer": "115 hours\n\n(The Last of Us Part II: 30 hours + Celeste: 10 hours + Assassin's Creed Odyssey: 70 hours + Hyper Light Drifter: 5 hours)", "input_tokens": 30769}
+{"qid": "3249768e", "condition": "hybrid-matched", "answer": "Absinthe", "input_tokens": 31221}
+{"qid": "2788b940", "condition": "hybrid-matched", "answer": "Based on the chat history, approximately 5 fitness classes per week: Zumba (Tuesdays and Thursdays), BodyPump (Monday), Hip Hop Abs (Saturday), and Yoga (Sunday).", "input_tokens": 30804}
+{"qid": "4100d0a0", "condition": "hybrid-matched", "answer": "Irish and Italian", "input_tokens": 28878}
+{"qid": "3fe836c9", "condition": "hybrid-matched", "answer": "$25,000", "input_tokens": 31197}
+{"qid": "35a27287", "condition": "hybrid-matched", "answer": "Unable to determine without your location; try Eventbrite, Meetup, or local cultural organizations.", "input_tokens": 30575}
+{"qid": "488d3006", "condition": "hybrid-matched", "answer": "GR-90", "input_tokens": 30577}
+{"qid": "42ec0761", "condition": "hybrid-matched", "answer": "Yes, you have a spare screwdriver that you picked up when organizing your computer desk.", "input_tokens": 28808}
+{"qid": "4baee567", "condition": "hybrid-matched", "answer": "12 games", "input_tokens": 30940}
+{"qid": "38146c39", "condition": "hybrid-matched", "answer": "Add flaky sea salt, cinnamon, espresso powder, or nuts (like pecans or hazelnuts) to enhance the chocolate flavor.", "input_tokens": 30863}
+{"qid": "4c36ccef", "condition": "hybrid-matched", "answer": "Roscioli", "input_tokens": 31235}
+{"qid": "4b24c848", "condition": "hybrid-matched", "answer": "Five tops from H&M.", "input_tokens": 31019}
+{"qid": "545bd2b5", "condition": "hybrid-matched", "answer": "2 hours per day", "input_tokens": 30713}
+{"qid": "4dfccbf7", "condition": "hybrid-matched", "answer": "24 days", "input_tokens": 30815}
+{"qid": "4fd1909e", "condition": "hybrid-matched", "answer": "Xfinity Center on June 15th", "input_tokens": 30394}
+{"qid": "577d4d32", "condition": "hybrid-matched", "answer": "7 pm", "input_tokens": 30243}
+{"qid": "4dfccbf8", "condition": "hybrid-matched", "answer": "Started ukulele lessons with Rachel.", "input_tokens": 30669}
+{"qid": "5809eb10", "condition": "hybrid-matched", "answer": "2014", "input_tokens": 30543}
+{"qid": "3a704032", "condition": "hybrid-matched", "answer": "3 plants (snake plant from sister, peace lily, and succulent from nursery)", "input_tokens": 30709}
+{"qid": "370a8ff4", "condition": "hybrid-matched", "answer": "Approximately 12 weeks (or 11 weeks and 4 days).\n\nThe user recovered from the flu on January 19, 2023, and went on their 10th jog outdoors on April 10, 2023.", "input_tokens": 30950}
+{"qid": "58bf7951", "condition": "hybrid-matched", "answer": "The Glass Menagerie", "input_tokens": 28692}
+{"qid": "4d6b87c8", "condition": "hybrid-matched", "answer": "25 titles (as of May 22)", "input_tokens": 30763}
+{"qid": "561fabcd", "condition": "hybrid-matched", "answer": "Fissionator", "input_tokens": 30659}
+{"qid": "505af2f5", "condition": "hybrid-matched", "answer": "Try oat milk with cardamom and monk fruit sweetener, or cashew milk with cinnamon and vanilla extract. Previously discussed on 21 May 2023.", "input_tokens": 31083}
+{"qid": "5831f84d", "condition": "hybrid-matched", "answer": "15 Crash Course videos", "input_tokens": 29050}
+{"qid": "46a3abf7", "condition": "hybrid-matched", "answer": "2 tanks \u2014 the 20-gallon \"Amazonia\" community tank and the 1-gallon tank for your friend's kid.", "input_tokens": 30656}
+{"qid": "5e1b23de", "condition": "hybrid-matched", "answer": "3 months ago (November 1, 2023)", "input_tokens": 30475}
+{"qid": "60d45044", "condition": "hybrid-matched", "answer": "Japanese short-grain rice", "input_tokens": 31391}
+{"qid": "66f24dbb", "condition": "hybrid-matched", "answer": "A yellow dress and matching earrings.", "input_tokens": 28830}
+{"qid": "61f8c8f8", "condition": "hybrid-matched", "answer": "10 minutes faster (35 minutes vs. 45 minutes)", "input_tokens": 30917}
+{"qid": "5c40ec5b", "condition": "hybrid-matched", "answer": "Twice (as of 2023/09/30)", "input_tokens": 30374}
+{"qid": "58ef2f1c", "condition": "hybrid-matched", "answer": "February 2023", "input_tokens": 30284}
+{"qid": "69fee5aa", "condition": "hybrid-matched", "answer": "37 coins", "input_tokens": 28611}
+{"qid": "59524333", "condition": "hybrid-matched", "answer": "7:00 pm on Mondays, Wednesdays, and Fridays.", "input_tokens": 29447}
+{"qid": "681a1674", "condition": "hybrid-matched", "answer": "2 Marvel movies (Spider-Man: No Way Home and Avengers: Endgame)", "input_tokens": 28949}
+{"qid": "60bf93ed", "condition": "hybrid-matched", "answer": "5 days (purchased 1/15, arrived 1/20)", "input_tokens": 30843}
+{"qid": "6aeb4375", "condition": "hybrid-matched", "answer": "Four restaurants.", "input_tokens": 28868}
+{"qid": "6f9b354f", "condition": "hybrid-matched", "answer": "Lighter shade of gray", "input_tokens": 30464}
+{"qid": "6cb6f249", "condition": "hybrid-matched", "answer": "17 days total\n\n(7-day break in mid-January + 10-day break in mid-February)", "input_tokens": 31231}
+{"qid": "5d3d2817", "condition": "hybrid-matched", "answer": "Not mentioned in provided context.", "input_tokens": 31010}
+{"qid": "71017276", "condition": "hybrid-matched", "answer": "4 weeks ago (received on 4 March 2023)", "input_tokens": 31137}
+{"qid": "60159905", "condition": "hybrid-matched", "answer": "Based on the chat history, approximately 3-4 dinner parties: Sarah's Italian feast (mid-May), Mike's BBQ (early May), Alex's potluck (May 20), and David's birthday party (mid-May).", "input_tokens": 30845}
+{"qid": "726462e0", "condition": "hybrid-matched", "answer": "10%", "input_tokens": 31251}
+{"qid": "7024f17c", "condition": "hybrid-matched", "answer": "No data provided in context for that week.", "input_tokens": 30676}
+{"qid": "76d63226", "condition": "hybrid-matched", "answer": "55 inches", "input_tokens": 28670}
+{"qid": "72e3ee87", "condition": "hybrid-matched", "answer": "50 episodes", "input_tokens": 30883}
+{"qid": "73d42213", "condition": "hybrid-matched", "answer": "Around 9 AM (left at 7 AM, took 2 hours to travel)", "input_tokens": 30246}
+{"qid": "6a1eabeb", "condition": "hybrid-matched", "answer": "27:12", "input_tokens": 29298}
+{"qid": "71017277", "condition": "hybrid-matched", "answer": "From my aunt (crystal chandelier)", "input_tokens": 30826}
+{"qid": "853b0a1d", "condition": "hybrid-matched", "answer": "18 years old", "input_tokens": 30552}
+{"qid": "720133ac", "condition": "hybrid-matched", "answer": "$75 ($50 vet visit + $25 flea/tick medication)", "input_tokens": 30844}
+{"qid": "852ce960", "condition": "hybrid-matched", "answer": "$400,000", "input_tokens": 29769}
+{"qid": "6e984302", "condition": "hybrid-matched", "answer": "Art materials (polymer clay/resin) for a sculpture competition", "input_tokens": 30613}
+{"qid": "830ce83f", "condition": "hybrid-matched", "answer": "Back to the suburbs (near Tampa, Florida area)", "input_tokens": 30544}
+{"qid": "89527b6b", "condition": "hybrid-matched", "answer": "Blue", "input_tokens": 30678}
+{"qid": "778164c6", "condition": "hybrid-matched", "answer": "Grilled Snapper with Mango Salsa", "input_tokens": 30707}
+{"qid": "8979f9ec", "condition": "hybrid-matched", "answer": "8 lunches (3 from chicken fajitas + 5 from lentil soup)", "input_tokens": 31583}
+{"qid": "8aef76bc", "condition": "hybrid-matched", "answer": "Mod Podge or another sealant.", "input_tokens": 30263}
+{"qid": "8b9d4367", "condition": "hybrid-matched", "answer": "Jaipur Rugs", "input_tokens": 30246}
+{"qid": "8cf51dda", "condition": "hybrid-matched", "answer": "1. Identify molecular subtypes using genomic and transcriptomic approaches\n2. Investigate clinical and biological significance of subtypes\n3. Develop biomarkers for early detection and prognosis", "input_tokens": 30314}
+{"qid": "88432d0a", "condition": "hybrid-matched", "answer": "3 times: Tuesday 5/16 (sourdough bread), Saturday 5/20 (whole wheat baguette), Thursday 5/25 (cookies).", "input_tokens": 31006}
+{"qid": "80ec1f4f", "condition": "hybrid-matched", "answer": "1 (The Art Cube on February 15)", "input_tokens": 30244}
+{"qid": "8fb83627", "condition": "hybrid-matched", "answer": "5 issues", "input_tokens": 30198}
+{"qid": "a08a253f", "condition": "hybrid-matched", "answer": "3 days a week (Tuesday, Thursday, and Saturday)", "input_tokens": 30634}
+{"qid": "9ee3ecd6", "condition": "hybrid-matched", "answer": "300 points", "input_tokens": 30769}
+{"qid": "9bbe84a2", "condition": "hybrid-matched", "answer": "Level 100 before the end of the year (mentioned on 16 June 2023)", "input_tokens": 30907}
+{"qid": "a1cc6108", "condition": "hybrid-matched", "answer": "The context does not contain your age or Alex's birth date, so I cannot determine how old you were when Alex was born.", "input_tokens": 30777}
+{"qid": "a1eacc2a", "condition": "hybrid-matched", "answer": "7 short stories (as of 2023/05/30)", "input_tokens": 28356}
+{"qid": "a3045048", "condition": "hybrid-matched", "answer": "7 days\n\n(Ordered April 15th, party was April 22nd)", "input_tokens": 30672}
+{"qid": "982b5123", "condition": "hybrid-matched", "answer": "About 5 months ago (booked around December 21, 2022, for a trip taken exactly 2 months ago, 3 months after booking).", "input_tokens": 31090}
+{"qid": "a3332713", "condition": "hybrid-matched", "answer": "$200 ($100 for brother's graduation gift card, $100 for coworker's baby shower gift)", "input_tokens": 30673}
+{"qid": "8752c811", "condition": "hybrid-matched", "answer": "Lighting (e.g., bright, dim, natural, artificial, etc.)", "input_tokens": 31208}
+{"qid": "6e984301", "condition": "hybrid-matched", "answer": "About 3 weeks.", "input_tokens": 30600}
+{"qid": "a4996e51", "condition": "hybrid-matched", "answer": "Up to 50 hours per week.", "input_tokens": 30891}
+{"qid": "ac031881", "condition": "hybrid-matched", "answer": "LIV (the Roman numeral for 54)", "input_tokens": 28494}
+{"qid": "b320f3f8", "condition": "hybrid-matched", "answer": "Rare blue Snaggletooth action figure", "input_tokens": 30643}
+{"qid": "bb7c3b45", "condition": "hybrid-matched", "answer": "$300 (bought for $200, original retail $500)", "input_tokens": 30851}
+{"qid": "95228167", "condition": "hybrid-matched", "answer": "Test playability, sound quality, and comfort before buying.", "input_tokens": 30884}
+{"qid": "b01defab", "condition": "hybrid-matched", "answer": "Yes, you finished it by 30 March 2023.", "input_tokens": 28832}
+{"qid": "b0479f84", "condition": "hybrid-matched", "answer": "Based on your recent interests, try **Planet Earth**, **Dynasties**, or **Chasing Coral** on Netflix\u2014nature docs like you've been enjoying. Or **Fyre** if you want something lighter.", "input_tokens": 30767}
+{"qid": "afdc33df", "condition": "hybrid-matched", "answer": "Organize utensils with dividers, assign designated spots, clean your utensil holder regularly to remove food residue and debris, and use small plates and napkins to contain messes.", "input_tokens": 30782}
+{"qid": "bbf86515", "condition": "hybrid-matched", "answer": "4 days", "input_tokens": 30684}
+{"qid": "c19f7a0b", "condition": "hybrid-matched", "answer": "Around 6:30 pm", "input_tokens": 27747}
+{"qid": "ba358f49", "condition": "hybrid-matched", "answer": "Information not available in context. Rachel's wedding is in 2023, but your birth date is not mentioned.", "input_tokens": 30631}
+{"qid": "bcbe585f", "condition": "hybrid-matched", "answer": "Approximately 4 weeks ago (on 1 April 2023).", "input_tokens": 30287}
+{"qid": "b29f3365", "condition": "hybrid-matched", "answer": "4 weeks (or about a month)", "input_tokens": 30756}
+{"qid": "bc149d6b", "condition": "hybrid-matched", "answer": "70 pounds (50 pounds layer feed + 20 pounds scratch grains)", "input_tokens": 30823}
+{"qid": "c5e8278d", "condition": "hybrid-matched", "answer": "Johnson", "input_tokens": 29730}
+{"qid": "c4a1ceb8", "condition": "hybrid-matched", "answer": "4 types: orange, lemon, lime, and grapefruit", "input_tokens": 28912}
+{"qid": "c8f1aeed", "condition": "hybrid-matched", "answer": "Pennsylvania", "input_tokens": 30359}
+{"qid": "c4ea545c", "condition": "hybrid-matched", "answer": "Yes, from 3 times to 4 times per week (between June and August 2023).", "input_tokens": 30725}
+{"qid": "c6853660", "condition": "hybrid-matched", "answer": "Increased to two cups (2023/05/26).", "input_tokens": 30635}
+{"qid": "caf9ead2", "condition": "hybrid-matched", "answer": "5 hours", "input_tokens": 28734}
+{"qid": "c7dc5443", "condition": "hybrid-matched", "answer": "5-2 record (Net Ninjas team)", "input_tokens": 30587}
+{"qid": "cc06de0d", "condition": "hybrid-matched", "answer": "The taxi ride ($12) was $6 more expensive than the daily train fare ($6).", "input_tokens": 30669}
+{"qid": "ccb36322", "condition": "hybrid-matched", "answer": "Spotify", "input_tokens": 31065}
+{"qid": "d52b4f67", "condition": "hybrid-matched", "answer": "Grand Ballroom", "input_tokens": 30482}
+{"qid": "d6062bb9", "condition": "hybrid-matched", "answer": "1,998 views (Luna TikTok: 1,456 + YouTube analytics tutorial: 542)", "input_tokens": 30510}
+{"qid": "d7c942c3", "condition": "hybrid-matched", "answer": "Yes, your mom is using the same grocery list app as you (as of 30 Apr 2023).", "input_tokens": 27970}
+{"qid": "c9f37c46", "condition": "hybrid-matched", "answer": "About 2 months", "input_tokens": 30812}
+{"qid": "caf03d32", "condition": "hybrid-matched", "answer": "Use a thermometer for accurate temperature control; adjust ingredients and seasonings to your taste; follow recipe steps carefully.", "input_tokens": 31100}
+{"qid": "dc439ea3", "condition": "hybrid-matched", "answer": "Hoop Dance", "input_tokens": 30908}
+{"qid": "db467c8c", "condition": "hybrid-matched", "answer": "Nine months", "input_tokens": 28452}
+{"qid": "d23cf73b", "condition": "hybrid-matched", "answer": "5-6 cuisines: Korean, Ethiopian, Indian, Thai, Vietnamese, and vegan/plant-based cooking.", "input_tokens": 31144}
+{"qid": "e3fc4d6e", "condition": "hybrid-matched", "answer": "Dr. Arati Prabhakar", "input_tokens": 30424}
+{"qid": "e47becba", "condition": "hybrid-matched", "answer": "Business Administration", "input_tokens": 30670}
+{"qid": "e3038f8c", "condition": "hybrid-matched", "answer": "99 items (57 records + 5 books + 25 coins + 12 figurines)", "input_tokens": 30490}
+{"qid": "e61a7584", "condition": "hybrid-matched", "answer": "About 9 months", "input_tokens": 29396}
+{"qid": "e9327a54", "condition": "hybrid-matched", "answer": "The Sugar Factory at Icon Park.", "input_tokens": 31040}
+{"qid": "d6233ab6", "condition": "hybrid-matched", "answer": "Yes, you have old high school friends who could reconnect with you there.", "input_tokens": 30488}
+{"qid": "eaca4986", "condition": "hybrid-matched", "answer": "C D E F G A B A G F E D C", "input_tokens": 31130}
+{"qid": "e8a79c70", "condition": "hybrid-matched", "answer": "3 large eggs", "input_tokens": 31768}
+{"qid": "ef66a6e5", "condition": "hybrid-matched", "answer": "2 sports (tennis in high school, swimming in college)", "input_tokens": 30387}
+{"qid": "edced276", "condition": "hybrid-matched", "answer": "5 days in New York City; Hawaii duration not specified in the context.", "input_tokens": 30877}
+{"qid": "efc3f7c2", "condition": "hybrid-matched", "answer": "30 minutes earlier (6:00 AM on Fridays vs. 6:30 AM on other weekdays)", "input_tokens": 31217}
+{"qid": "f35224e0", "condition": "hybrid-matched", "answer": "27 episodes total (12 from \"My Favorite Murder\" and 15 from \"How I Built This\")", "input_tokens": 30630}
+{"qid": "f8c5f88b", "condition": "hybrid-matched", "answer": "A sports store downtown.", "input_tokens": 30685}
+{"qid": "f9e8c073", "condition": "hybrid-matched", "answer": "Five sessions.", "input_tokens": 30095}
+{"qid": "fca762bc", "condition": "hybrid-matched", "answer": "Memrise \u2014 it uses mnemonics to help learners memorize words and phrases.", "input_tokens": 30922}
+{"qid": "f0e564bc", "condition": "hybrid-matched", "answer": "$1,300 ($500 skincare + $800 Coach handbag)", "input_tokens": 30319}
+{"qid": "eeda8a6d", "condition": "hybrid-matched", "answer": "17 fish total. 16 in the 20-gallon tank (10 neon tetras, 5 golden honey gouramis, 1 pleco catfish) and 1 betta fish (Bubbles) in the 10-gallon tank.", "input_tokens": 30620}
+{"qid": "e4e14d04", "condition": "hybrid-matched", "answer": "About 2 weeks (joined around May 7, attended meetup around May 21)", "input_tokens": 30421}
+{"qid": "gpt4_2312f94c", "condition": "hybrid-matched", "answer": "Samsung Galaxy S22 (20 February 2023)", "input_tokens": 31088}
+{"qid": "f0853d11", "condition": "hybrid-matched", "answer": "14 days", "input_tokens": 30603}
+{"qid": "fca70973", "condition": "hybrid-matched", "answer": "Based on the previous conversation, consider **Halloween Time at Disneyland** (starting mid-September) or **Knott's Scary Farm** (fall). Also mentioned were the **Universal Studios Hollywood VIP Experience** with Behind-the-Scenes Tour and gourmet dining, plus **Holiday Season events** starting in November.", "input_tokens": 31149}
+{"qid": "gpt4_1d80365e", "condition": "hybrid-matched", "answer": "Based on the chat history, the trip started on 15 May 2023 and you returned on 17 May 2023 \u2014 approximately 2-3 days.", "input_tokens": 30942}
+{"qid": "gpt4_1d4ab0c9", "condition": "hybrid-matched", "answer": "24 days\n\n(Started watering on March 22, harvested on April 15)", "input_tokens": 31222}
+{"qid": "gpt4_1916e0ea", "condition": "hybrid-matched", "answer": "Based on the context provided, the specific date of the FarmFresh subscription cancellation is not stated. The Instacart shopping occurred on 2023/02/28, but the FarmFresh cancellation date is not given, so I cannot calculate the exact number of days between these events.", "input_tokens": 30714}
+{"qid": "gpt4_385a5000", "condition": "hybrid-matched", "answer": "The tomatoes were started first (February 20th vs. March 3rd for the marigolds).", "input_tokens": 31112}
+{"qid": "gpt4_4929293a", "condition": "hybrid-matched", "answer": "Michael's engagement party (5 May 2023)", "input_tokens": 30281}
+{"qid": "gpt4_59149c77", "condition": "hybrid-matched", "answer": "7 days (between 8 January and 15 January 2023)", "input_tokens": 30571}
+{"qid": "gpt4_4cd9eba1", "condition": "hybrid-matched", "answer": "1 week (accepted March 20, started orientation March 27)", "input_tokens": 30865}
+{"qid": "gpt4_2d58bcd6", "condition": "hybrid-matched", "answer": "\"The Hate U Give\"", "input_tokens": 30880}
+{"qid": "gpt4_2ba83207", "condition": "hybrid-matched", "answer": "Thrive Market - $150", "input_tokens": 30826}
+{"qid": "gpt4_4929293b", "condition": "hybrid-matched", "answer": "Cousin's wedding (as a bridesmaid)", "input_tokens": 30817}
+{"qid": "gpt4_68e94288", "condition": "hybrid-matched", "answer": "#PlankChallenge", "input_tokens": 30321}
+{"qid": "dd2973ad", "condition": "hybrid-matched", "answer": "Not mentioned in the context provided.", "input_tokens": 30760}
+{"qid": "gpt4_483dd43c", "condition": "hybrid-matched", "answer": "Game of Thrones (started about a month before The Crown)", "input_tokens": 30595}
+{"qid": "gpt4_70e84552", "condition": "hybrid-matched", "answer": "Fixing the fence (approximately 4 May 2023, before hoof trimming around 11 May 2023).", "input_tokens": 30432}
+{"qid": "gpt4_78cf46a3", "condition": "hybrid-matched", "answer": "The narrator received their new phone case first (about a month before 26 May 2023), then lost their phone charger (about two weeks before 26 May 2023).", "input_tokens": 30962}
+{"qid": "gpt4_8279ba02", "condition": "hybrid-matched", "answer": "10 days ago (15 March 2023)", "input_tokens": 30837}
+{"qid": "gpt4_74aed68e", "condition": "hybrid-matched", "answer": "29 days (February 14 to March 15, 2023)", "input_tokens": 30613}
+{"qid": "gpt4_731e37d7", "condition": "hybrid-matched", "answer": "$200 (from a writing workshop in November)", "input_tokens": 30449}
+{"qid": "gpt4_59149c78", "condition": "hybrid-matched", "answer": "Metropolitan Museum of Art", "input_tokens": 30412}
+{"qid": "gpt4_7de946e7", "condition": "hybrid-matched", "answer": "The persistent cough (February 10th visit to Dr. Smith), before the skin tag removal on February 22nd.", "input_tokens": 30580}
+{"qid": "gpt4_88806d6e", "condition": "hybrid-matched", "answer": "Tom first. He was met \"a few months ago\" at a charity event, while Mark and Sarah were met \"about a month ago\" on a beach trip.", "input_tokens": 30805}
+{"qid": "gpt4_8e165409", "condition": "hybrid-matched", "answer": "14 days (March 4 to March 18, 2023)", "input_tokens": 30734}
+{"qid": "gpt4_a2d1d1f6", "condition": "hybrid-matched", "answer": "3 days ago (15 April 2023)", "input_tokens": 30817}
+{"qid": "gpt4_a56e767c", "condition": "hybrid-matched", "answer": "3 festivals: AFI Fest (LA), Portland Film Festival, and Austin Film Festival.", "input_tokens": 28404}
+{"qid": "gpt4_85da3956", "condition": "hybrid-matched", "answer": "Approximately 6 weeks ago (around 24 June 2023).", "input_tokens": 30711}
+{"qid": "gpt4_8279ba03", "condition": "hybrid-matched", "answer": "Based on the provided context, there is no mention of a kitchen appliance purchase around March 15, 2023 (10 days before March 25). The context does not contain this information.", "input_tokens": 30992}
+{"qid": "gpt4_1e4a8aec", "condition": "hybrid-matched", "answer": "Attended a gardening workshop.", "input_tokens": 30637}
+{"qid": "gpt4_7f6b06db", "condition": "hybrid-matched", "answer": "Muir Woods (10 March 2023), Big Sur and Monterey (20 April 2023), Yosemite (15 May 2023)", "input_tokens": 30656}
+{"qid": "gpt4_7a0daae1", "condition": "hybrid-matched", "answer": "Based on the context, you bought your tennis racket online on **2023/03/10** (Chat session 10) and received it on **2023/03/17** (Chat session 13).\n\n**1 week** passed between purchase and receipt.", "input_tokens": 30805}
+{"qid": "gpt4_b5700ca9", "condition": "hybrid-matched", "answer": "4 days ago (on 6 April 2023)", "input_tokens": 30612}
+{"qid": "gpt4_d12ceb0e", "condition": "hybrid-matched", "answer": "59.6 years old\n\n(User: 32, Mom: 55, Dad: 58, Grandma: 75, Grandpa: 78)", "input_tokens": 30579}
+{"qid": "gpt4_c27434e8", "condition": "hybrid-matched", "answer": "The Japanese Zero fighter plane (started about a month before late May 2023, versus the Ferrari which was started about 3 weeks before).", "input_tokens": 30811}
+{"qid": "gpt4_7abb270c", "condition": "hybrid-matched", "answer": "I can only identify 3 museum visits in the context:\n\n1. Science Museum (15 January 2023)\n2. Modern Art Museum (20 February 2023)\n3. Natural History Museum (4 March 2023)\n\nThe context does not mention six distinct museum visits.", "input_tokens": 30194}
+{"qid": "gpt4_9a159967", "condition": "hybrid-matched", "answer": "United Airlines", "input_tokens": 30898}
+{"qid": "gpt4_af6db32f", "condition": "hybrid-matched", "answer": "17 days ago (watched it on 12 February 2023)", "input_tokens": 30846}
+{"qid": "gpt4_ec93e27f", "condition": "hybrid-matched", "answer": "A train (on 3 March 2023).", "input_tokens": 28460}
+{"qid": "gpt4_e05b82a6", "condition": "hybrid-matched", "answer": "10 rollercoaster rides (3 in July, 3 in September, 4 in October)", "input_tokens": 31326}
+{"qid": "gpt4_fe651585", "condition": "hybrid-matched", "answer": "Alex became a parent first (January 2023, via adoption), before Rachel (February 12, 2023, twins born).", "input_tokens": 30593}
+{"qid": "gpt4_cd90e484", "condition": "hybrid-matched", "answer": "2 weeks", "input_tokens": 30582}
+{"qid": "gpt4_fa19884d", "condition": "hybrid-matched", "answer": "A bluegrass band with a banjo player.", "input_tokens": 30649}
+{"qid": "gpt4_f2262a51", "condition": "hybrid-matched", "answer": "4 different doctors (Dr. Patel, Dr. Lee, Dr. Smith, and an unnamed ENT specialist)", "input_tokens": 30884}
+{"qid": "gpt4_ab202e7f", "condition": "hybrid-matched", "answer": "4 items\n\n(Kitchen shelves fixed; toaster, kitchen mat, and kitchen faucet replaced)", "input_tokens": 31029}
+{"qid": "0e5e2d1a", "condition": "full-sameepoch", "answer": "38 subjects", "input_tokens": 142677}
+{"qid": "099778bb", "condition": "full-sameepoch", "answer": "Not provided in the context.", "input_tokens": 142963}
+{"qid": "0bb5a684", "condition": "full-sameepoch", "answer": "7 days", "input_tokens": 143424}
+{"qid": "07741c45", "condition": "full-sameepoch", "answer": "Under the bed.", "input_tokens": 140421}
+{"qid": "09d032c9", "condition": "full-sameepoch", "answer": "Enable battery saver mode, reduce screen brightness, close background apps, disable Bluetooth/WiFi when not needed.", "input_tokens": 140832}
+{"qid": "09ba9854", "condition": "full-sameepoch", "answer": "Approximately $30-35 (or \u00a53,000-4,000 if comparing Haneda taxi at ~$60 to train at ~$25-30).", "input_tokens": 139229}
+{"qid": "0bc8ad93", "condition": "full-sameepoch", "answer": "Yes, with their dad at the Natural History Museum.", "input_tokens": 140841}
+{"qid": "129d1232", "condition": "full-sameepoch", "answer": "$5,250", "input_tokens": 140396}
+{"qid": "01493427", "condition": "full-sameepoch", "answer": "25 new postcards", "input_tokens": 141682}
+{"qid": "1192316e", "condition": "full-sameepoch", "answer": "Approximately 1 hour 30 minutes (1 hour to get ready + 30 minutes commute)", "input_tokens": 141379}
+{"qid": "0977f2af", "condition": "full-sameepoch", "answer": "Information not in context.", "input_tokens": 141951}
+{"qid": "031748ae", "condition": "full-sameepoch", "answer": "Started: 4 engineers. Now: 5 engineers.", "input_tokens": 144109}
+{"qid": "07741c44", "condition": "full-sameepoch", "answer": "In the closet, taking up space.", "input_tokens": 140964}
+{"qid": "18bc8abd", "condition": "full-sameepoch", "answer": "Kansas City Masterpiece BBQ sauce", "input_tokens": 140450}
+{"qid": "10d9b85a", "condition": "full-sameepoch", "answer": "3 days (April 10th lecture and April 17-18 workshop)", "input_tokens": 142810}
+{"qid": "18dcd5a5", "condition": "full-sameepoch", "answer": "Four mummies.", "input_tokens": 142694}
+{"qid": "184da446", "condition": "full-sameepoch", "answer": "220 pages", "input_tokens": 140469}
+{"qid": "16c90bf4", "condition": "full-sameepoch", "answer": "Pilsner or Lager", "input_tokens": 140109}
+{"qid": "1cea1afa", "condition": "full-sameepoch", "answer": "600 followers.", "input_tokens": 142990}
+{"qid": "21436231", "condition": "full-sameepoch", "answer": "12 largemouth bass", "input_tokens": 141578}
+{"qid": "1a1907b4", "condition": "full-sameepoch", "answer": "Pimm's Cup with a Twist or Gin-Gin Mule would be great choices for a get-together.", "input_tokens": 142526}
+{"qid": "1c0ddc50", "condition": "full-sameepoch", "answer": "Listen to podcasts, audiobooks, or music during your commute.", "input_tokens": 142647}
+{"qid": "1d4e3b97", "condition": "full-sameepoch", "answer": "Chain and cassette replacement on 1 February 2024.", "input_tokens": 142094}
+{"qid": "1e043500", "condition": "full-sameepoch", "answer": "Summer Vibes", "input_tokens": 142558}
+{"qid": "19b5f2b3", "condition": "full-sameepoch", "answer": "Two weeks.", "input_tokens": 140240}
+{"qid": "25e5aa4f", "condition": "full-sameepoch", "answer": "UCLA (University of California, Los Angeles)", "input_tokens": 142682}
+{"qid": "2318644b", "condition": "full-sameepoch", "answer": "Over $270 more per night", "input_tokens": 138932}
+{"qid": "21d02d0d", "condition": "full-sameepoch", "answer": "1 fun run (on March 5th)", "input_tokens": 144198}
+{"qid": "2788b940", "condition": "full-sameepoch", "answer": "5 classes per week: BodyPump (Monday), Zumba (Tuesday & Thursday), Hip Hop Abs (Saturday), and Yoga (Sunday)", "input_tokens": 140572}
+{"qid": "352ab8bd", "condition": "full-sameepoch", "answer": "Approximately 20% average improvement in framerate when using the HAMT agent.", "input_tokens": 142991}
+{"qid": "35a27287", "condition": "full-sameepoch", "answer": "I don't have information about your location or local events this weekend (3-4 June 2023). Check local event websites or Meetup.com.", "input_tokens": 139687}
+{"qid": "2a1811e2", "condition": "full-sameepoch", "answer": "21 days", "input_tokens": 144242}
+{"qid": "3249768e", "condition": "full-sameepoch", "answer": "Absinthe", "input_tokens": 143749}
+{"qid": "37d43f65", "condition": "full-sameepoch", "answer": "16GB", "input_tokens": 142417}
+{"qid": "370a8ff4", "condition": "full-sameepoch", "answer": "8 weeks", "input_tokens": 142171}
+{"qid": "38146c39", "condition": "full-sameepoch", "answer": "Add sea salt, brown butter, or quality chocolate chunks.", "input_tokens": 142769}
+{"qid": "46a3abf7", "condition": "full-sameepoch", "answer": "3 tanks total: 5-gallon (Finley), 20-gallon (Amazonia), and 1-gallon (friend's kid)", "input_tokens": 142382}
+{"qid": "3fe836c9", "condition": "full-sameepoch", "answer": "$25,000 more", "input_tokens": 142498}
+{"qid": "4100d0a0", "condition": "full-sameepoch", "answer": "Irish and Italian (mixed ethnicity)", "input_tokens": 140409}
+{"qid": "42ec0761", "condition": "full-sameepoch", "answer": "Yes, you picked one up when you organized your computer desk.", "input_tokens": 141449}
+{"qid": "488d3006", "condition": "full-sameepoch", "answer": "GR-90", "input_tokens": 143970}
+{"qid": "3a704032", "condition": "full-sameepoch", "answer": "Based on the context, you acquired **2 plants** in the last month\u2014a peace lily and a succulent, both around early May.", "input_tokens": 142603}
+{"qid": "28dc39ac", "condition": "full-sameepoch", "answer": "110 hours\n\n(Hyper Light Drifter: 5 hours; Celeste: 10 hours; Assassin's Creed Odyssey: 70 hours; The Last of Us Part II: 25 hours)", "input_tokens": 143286}
+{"qid": "4baee567", "condition": "full-sameepoch", "answer": "12 games", "input_tokens": 139234}
+{"qid": "4c36ccef", "condition": "full-sameepoch", "answer": "Roscioli", "input_tokens": 142453}
+{"qid": "545bd2b5", "condition": "full-sameepoch", "answer": "2 hours per day for the past two weeks", "input_tokens": 139838}
+{"qid": "4d6b87c8", "condition": "full-sameepoch", "answer": "Approximately 27 titles (started with 25, added Amistad and Hotel Rwanda).", "input_tokens": 139670}
+{"qid": "4dfccbf8", "condition": "full-sameepoch", "answer": "Took ukulele lessons with Rachel.", "input_tokens": 142420}
+{"qid": "577d4d32", "condition": "full-sameepoch", "answer": "7 pm", "input_tokens": 141222}
+{"qid": "4fd1909e", "condition": "full-sameepoch", "answer": "Xfinity Center on 15 June 2023", "input_tokens": 143670}
+{"qid": "4b24c848", "condition": "full-sameepoch", "answer": "Five tops from H&M.", "input_tokens": 141674}
+{"qid": "561fabcd", "condition": "full-sameepoch", "answer": "Fissionator.", "input_tokens": 142780}
+{"qid": "58bf7951", "condition": "full-sameepoch", "answer": "The Glass Menagerie", "input_tokens": 142272}
+{"qid": "5809eb10", "condition": "full-sameepoch", "answer": "2014", "input_tokens": 140777}
+{"qid": "15745da0", "condition": "full-sameepoch", "answer": "A few months (or recently)", "input_tokens": 144024}
+{"qid": "078150f1", "condition": "full-sameepoch", "answer": "$50 more.\n\n(Initial goal: $200; Amount raised: $250)", "input_tokens": 282056}
+{"qid": "505af2f5", "condition": "full-sameepoch", "answer": "Homemade almond milk creamer with vanilla extract and honey, or try cashew/oat milk with stevia and cinnamon for variety.", "input_tokens": 144397}
+{"qid": "59524333", "condition": "full-sameepoch", "answer": "6:00 pm", "input_tokens": 141304}
+{"qid": "5c40ec5b", "condition": "full-sameepoch", "answer": "You've met up with Alex twice already.", "input_tokens": 141465}
+{"qid": "5831f84d", "condition": "full-sameepoch", "answer": "15 Crash Course videos (as of August 13, 2023)", "input_tokens": 140633}
+{"qid": "60d45044", "condition": "full-sameepoch", "answer": "Japanese short-grain rice", "input_tokens": 143669}
+{"qid": "5d3d2817", "condition": "full-sameepoch", "answer": "Based on the context, in your previous role you managed a team of interns at a startup.", "input_tokens": 142377}
+{"qid": "60bf93ed", "condition": "full-sameepoch", "answer": "5 days (purchased 1/15, arrived 1/20)", "input_tokens": 141066}
+{"qid": "61f8c8f8", "condition": "full-sameepoch", "answer": "Not mentioned in the context provided.", "input_tokens": 142811}
+{"qid": "66f24dbb", "condition": "full-sameepoch", "answer": "Yellow dress and matching earrings.", "input_tokens": 140655}
+{"qid": "5e1b23de", "condition": "full-sameepoch", "answer": "Approximately 3 months ago (attended 1 November 2023).", "input_tokens": 141052}
+{"qid": "69fee5aa", "condition": "full-sameepoch", "answer": "37 coins.", "input_tokens": 141585}
+{"qid": "681a1674", "condition": "full-sameepoch", "answer": "1 Marvel movie (Spider-Man: No Way Home)", "input_tokens": 143108}
+{"qid": "58ef2f1c", "condition": "full-sameepoch", "answer": "February 14, 2023", "input_tokens": 139783}
+{"qid": "6aeb4375", "condition": "full-sameepoch", "answer": "Four Korean restaurants", "input_tokens": 139572}
+{"qid": "6cb6f249", "condition": "full-sameepoch", "answer": "17 days (7 days in mid-January + 10 days in mid-February)", "input_tokens": 141909}
+{"qid": "6a1eabeb", "condition": "full-sameepoch", "answer": "25:50", "input_tokens": 140422}
+{"qid": "71017276", "condition": "full-sameepoch", "answer": "About 4 weeks ago (3 March 2023)", "input_tokens": 140877}
+{"qid": "6e984302", "condition": "full-sameepoch", "answer": "Sculpting tools (modeling tool set, wire cutter, and sculpting mat)", "input_tokens": 139888}
+{"qid": "6f9b354f", "condition": "full-sameepoch", "answer": "Light gray", "input_tokens": 143060}
+{"qid": "60159905", "condition": "full-sameepoch", "answer": "Based on the context provided, I cannot find clear evidence of specific dinner parties attended in the past month. The context mentions planning dinner parties and a family reunion at an aunt's house around late May, but does not explicitly document attendance at formal dinner parties during this period.\n\n**Best guess: 1**", "input_tokens": 144867}
+{"qid": "71017277", "condition": "full-sameepoch", "answer": "I cannot find this information in the provided context.", "input_tokens": 143125}
+{"qid": "72e3ee87", "condition": "full-sameepoch", "answer": "50 episodes", "input_tokens": 141085}
+{"qid": "7024f17c", "condition": "full-sameepoch", "answer": "The context does not contain specific information about jogging and yoga hours completed last week. Based on the sessions, you mentioned planning to do yoga 3 times per week, but were uncertain about your actual completion.", "input_tokens": 142117}
+{"qid": "726462e0", "condition": "full-sameepoch", "answer": "10% discount", "input_tokens": 142629}
+{"qid": "76d63226", "condition": "full-sameepoch", "answer": "55 inches.", "input_tokens": 140977}
+{"qid": "830ce83f", "condition": "full-sameepoch", "answer": "Chicago", "input_tokens": 281386}
+{"qid": "73d42213", "condition": "full-sameepoch", "answer": "Not mentioned in the context.", "input_tokens": 140232}
+{"qid": "778164c6", "condition": "full-sameepoch", "answer": "Grilled Snapper with Mango Salsa", "input_tokens": 138662}
+{"qid": "853b0a1d", "condition": "full-sameepoch", "answer": "18 years old, on your birthday.", "input_tokens": 141188}
+{"qid": "89527b6b", "condition": "full-sameepoch", "answer": "Blue", "input_tokens": 142821}
+{"qid": "852ce960", "condition": "full-sameepoch", "answer": "$350,000", "input_tokens": 140948}
+{"qid": "8aef76bc", "condition": "full-sameepoch", "answer": "Mod Podge", "input_tokens": 143375}
+{"qid": "8752c811", "condition": "full-sameepoch", "answer": "Sound effects", "input_tokens": 141008}
+{"qid": "8b9d4367", "condition": "full-sameepoch", "answer": "Jaipur Rugs", "input_tokens": 141589}
+{"qid": "8979f9ec", "condition": "full-sameepoch", "answer": "8 meals (3 from chicken fajitas, 5 from lentil soup)", "input_tokens": 142577}
+{"qid": "8cf51dda", "condition": "full-sameepoch", "answer": "1. Identify molecular subtypes using genomic and transcriptomic approaches\n2. Investigate clinical and biological significance of subtypes\n3. Develop biomarkers for early detection and prognosis", "input_tokens": 142552}
+{"qid": "95228167", "condition": "full-sameepoch", "answer": "Check action and tone, test playability, inspect for damage, and consider your budget.", "input_tokens": 141127}
+{"qid": "6e984301", "condition": "full-sameepoch", "answer": "About 10 weeks (or approximately 9-10 weeks)", "input_tokens": 142754}
+{"qid": "8fb83627", "condition": "full-sameepoch", "answer": "5 issues", "input_tokens": 140106}
+{"qid": "9bbe84a2", "condition": "full-sameepoch", "answer": "Level 100 before the end of the year", "input_tokens": 141424}
+{"qid": "9ee3ecd6", "condition": "full-sameepoch", "answer": "300 points.", "input_tokens": 141764}
+{"qid": "a08a253f", "condition": "full-sameepoch", "answer": "4 days a week (Zumba on Tuesday and Thursday, weightlifting on Saturday, and yoga on Wednesday).", "input_tokens": 138817}
+{"qid": "982b5123", "condition": "full-sameepoch", "answer": "Approximately 5 months ago (booked in mid-December 2022 for a mid-March 2023 trip).", "input_tokens": 144105}
+{"qid": "a1cc6108", "condition": "full-sameepoch", "answer": "The context does not contain this information.", "input_tokens": 139854}
+{"qid": "a1eacc2a", "condition": "full-sameepoch", "answer": "7 short stories", "input_tokens": 142094}
+{"qid": "a3332713", "condition": "full-sameepoch", "answer": "$200 ($100 for brother's graduation gift + $100 for coworker's baby shower gift)", "input_tokens": 141992}
+{"qid": "ac031881", "condition": "full-sameepoch", "answer": "LIV (Roman numeral 54)", "input_tokens": 139719}
+{"qid": "720133ac", "condition": "full-sameepoch", "answer": "$75 ($50 vet consultation + $25 flea medication)", "input_tokens": 143694}
+{"qid": "afdc33df", "condition": "full-sameepoch", "answer": "Clean as you cook, wipe spills immediately, organize regularly, designate storage spots.", "input_tokens": 143378}
+{"qid": "a4996e51", "condition": "full-sameepoch", "answer": "50 hours per week (increases by 10 hours weekly)", "input_tokens": 143439}
+{"qid": "80ec1f4f", "condition": "full-sameepoch", "answer": "2 museums/galleries\n\nNatural History Museum (2/8) and The Art Cube (2/15)", "input_tokens": 141016}
+{"qid": "b320f3f8", "condition": "full-sameepoch", "answer": "Rare blue Snaggletooth action figure", "input_tokens": 141605}
+{"qid": "b01defab", "condition": "full-sameepoch", "answer": "Yes, you finished it by late March 2023.", "input_tokens": 142449}
+{"qid": "b0479f84", "condition": "full-sameepoch", "answer": "Try \"Dynasties\" or \"Chasing Coral\" on Netflix.", "input_tokens": 141035}
+{"qid": "b29f3365", "condition": "full-sameepoch", "answer": "4 weeks", "input_tokens": 142694}
+{"qid": "bbf86515", "condition": "full-sameepoch", "answer": "4 days", "input_tokens": 142044}
+{"qid": "bc149d6b", "condition": "full-sameepoch", "answer": "70 pounds", "input_tokens": 140587}
+{"qid": "c19f7a0b", "condition": "full-sameepoch", "answer": "Around 6:30 pm on weekdays.", "input_tokens": 142270}
+{"qid": "bcbe585f", "condition": "full-sameepoch", "answer": "4 weeks ago", "input_tokens": 142124}
+{"qid": "c5e8278d", "condition": "full-sameepoch", "answer": "Johnson", "input_tokens": 142512}
+{"qid": "c4a1ceb8", "condition": "full-sameepoch", "answer": "3 types: lime, lemon, and orange", "input_tokens": 142057}
+{"qid": "4dfccbf7", "condition": "full-sameepoch", "answer": "Looking through the provided context:\n\n- Ukulele lessons with Rachel started on **2023/01/22** (Session 40)\n- Guitar taken to Joe's shop for servicing on **2023/02/25** (Session 43)\n\n**34 days**", "input_tokens": 141455}
+{"qid": "c4ea545c", "condition": "full-sameepoch", "answer": "Cannot determine from context; you mention 4x weekly consistently.", "input_tokens": 141837}
+{"qid": "c8f1aeed", "condition": "full-sameepoch", "answer": "Pennsylvania", "input_tokens": 141050}
+{"qid": "a3045048", "condition": "full-sameepoch", "answer": "7 days\n\n(Ordered April 15th, birthday party April 22nd)", "input_tokens": 141268}
+{"qid": "c7dc5443", "condition": "full-sameepoch", "answer": "5-2 record (Net Ninjas)", "input_tokens": 141875}
+{"qid": "bb7c3b45", "condition": "full-sameepoch", "answer": "$300 (originally $500, purchased at outlet mall for $200)", "input_tokens": 140921}
+{"qid": "c6853660", "condition": "full-sameepoch", "answer": "Increased to two cups (by 26 May 2023).", "input_tokens": 142028}
+{"qid": "cc06de0d", "condition": "full-sameepoch", "answer": "$6 more expensive ($12 taxi vs. $6 train fare)", "input_tokens": 142016}
+{"qid": "caf03d32", "condition": "full-sameepoch", "answer": "Use a thermometer for accurate temperatures, experiment with spices and seasonings, and monitor consistency throughout cooking.", "input_tokens": 143133}
+{"qid": "ccb36322", "condition": "full-sameepoch", "answer": "Spotify", "input_tokens": 143624}
+{"qid": "caf9ead2", "condition": "full-sameepoch", "answer": "5 hours", "input_tokens": 141331}
+{"qid": "d6233ab6", "condition": "full-sameepoch", "answer": "It could be rewarding if you want to reconnect with old friends.", "input_tokens": 142941}
+{"qid": "d7c942c3", "condition": "full-sameepoch", "answer": "Yes, the same grocery list app.", "input_tokens": 143952}
+{"qid": "d52b4f67", "condition": "full-sameepoch", "answer": "The Grand Ballroom", "input_tokens": 142187}
+{"qid": "dc439ea3", "condition": "full-sameepoch", "answer": "Hoop Dance", "input_tokens": 143241}
+{"qid": "db467c8c", "condition": "full-sameepoch", "answer": "Nine months (or approximately 9 months as of October 2023)", "input_tokens": 141192}
+{"qid": "88432d0a", "condition": "full-sameepoch", "answer": "4 or 5 times. You baked: sourdough bread (17 May), cookies with convection (18 May), a whole wheat baguette (20 May), a chocolate cake for your sister (20-21 May), and attempted sourdough bread again (23 May).", "input_tokens": 142491}
+{"qid": "d6062bb9", "condition": "full-sameepoch", "answer": "Based on the context provided, your most popular TikTok video (Luna chasing a laser pointer) has 1,456 views, and your most popular YouTube video (social media analytics tutorial) has 542 views, for a total of 1,998 views.", "input_tokens": 141902}
+{"qid": "e3fc4d6e", "condition": "full-sameepoch", "answer": "Dr. Arati Prabhakar", "input_tokens": 140447}
+{"qid": "e47becba", "condition": "full-sameepoch", "answer": "Business Administration", "input_tokens": 141875}
+{"qid": "d23cf73b", "condition": "full-sameepoch", "answer": "5 cuisines: Thai, Ethiopian, Indian, Korean, and Vegan/plant-based.", "input_tokens": 141397}
+{"qid": "e9327a54", "condition": "full-sameepoch", "answer": "The Sugar Factory (mentioned 25 May 2023)", "input_tokens": 142075}
+{"qid": "e8a79c70", "condition": "full-sameepoch", "answer": "2-3 eggs", "input_tokens": 144182}
+{"qid": "e4e14d04", "condition": "full-sameepoch", "answer": "About 2 weeks.", "input_tokens": 142644}
+{"qid": "eaca4986", "condition": "full-sameepoch", "answer": "C D E F G A B A G F E D C", "input_tokens": 140489}
+{"qid": "c9f37c46", "condition": "full-sameepoch", "answer": "About 2 months.", "input_tokens": 140860}
+{"qid": "e61a7584", "condition": "full-sameepoch", "answer": "About 9-10 months (6 months as of August 2023)", "input_tokens": 143092}
+{"qid": "ef66a6e5", "condition": "full-sameepoch", "answer": "2 sports - tennis (high school) and swimming (college)", "input_tokens": 140972}
+{"qid": "eeda8a6d", "condition": "full-sameepoch", "answer": "17 fish total: 10 neon tetras, 5 golden honey gouramis, 1 pleco in the 20-gallon tank, and Bubbles the betta in the 10-gallon tank.", "input_tokens": 142738}
+{"qid": "ba358f49", "condition": "full-sameepoch", "answer": "33 years old", "input_tokens": 141420}
+{"qid": "edced276", "condition": "full-sameepoch", "answer": "5 days in New York City (solo trip); Hawaii trip duration not specified in the context.", "input_tokens": 142025}
+{"qid": "efc3f7c2", "condition": "full-sameepoch", "answer": "30 minutes to 1 hour earlier (wakes at 6:00 AM on Fridays)", "input_tokens": 142812}
+{"qid": "f0e564bc", "condition": "full-sameepoch", "answer": "$1,300 ($800 handbag + $500 skincare products)", "input_tokens": 139469}
+{"qid": "f0853d11", "condition": "full-sameepoch", "answer": "14 days", "input_tokens": 140470}
+{"qid": "fca762bc", "condition": "full-sameepoch", "answer": "Memrise.", "input_tokens": 143660}
+{"qid": "f8c5f88b", "condition": "full-sameepoch", "answer": "A sports store downtown.", "input_tokens": 141822}
+{"qid": "dd2973ad", "condition": "full-sameepoch", "answer": "2 AM (on Wednesday 2023/05/24)", "input_tokens": 141662}
+{"qid": "f35224e0", "condition": "full-sameepoch", "answer": "Approximately 27 episodes (12 from \"My Favorite Murder\" and 15 from \"How I Built This\").", "input_tokens": 143289}
+{"qid": "fca70973", "condition": "full-sameepoch", "answer": "Visit during Halloween events (mid-September through early November) at Disneyland, Knott's Berry Farm, Six Flags Magic Mountain, or Universal Studios Hollywood. Book VIP Experience packages in advance as they sell out quickly.", "input_tokens": 141560}
+{"qid": "gpt4_1916e0ea", "condition": "full-sameepoch", "answer": "Approximately 28 days (from 11 January 2023 to 8 February 2023)", "input_tokens": 142188}
+{"qid": "gpt4_1e4a8aec", "condition": "full-sameepoch", "answer": "Planted 12 tomato saplings", "input_tokens": 142783}
+{"qid": "gpt4_2ba83207", "condition": "full-sameepoch", "answer": "Walmart ($120)", "input_tokens": 143582}
+{"qid": "gpt4_1d80365e", "condition": "full-sameepoch", "answer": "The context does not specify the duration of the Yosemite camping trip. Best guess: several days to a week.", "input_tokens": 142311}
+{"qid": "gpt4_483dd43c", "condition": "full-sameepoch", "answer": "Game of Thrones", "input_tokens": 142488}
+{"qid": "gpt4_2312f94c", "condition": "full-sameepoch", "answer": "Samsung Galaxy S22 (February 20th, before Dell XPS 13 on February 25th)", "input_tokens": 141975}
+{"qid": "gpt4_385a5000", "condition": "full-sameepoch", "answer": "Tomatoes (February 20th, 2023)", "input_tokens": 140268}
+{"qid": "gpt4_4cd9eba1", "condition": "full-sameepoch", "answer": "1 week", "input_tokens": 144013}
+{"qid": "gpt4_1d4ab0c9", "condition": "full-sameepoch", "answer": "0 days (same day)", "input_tokens": 141324}
+{"qid": "gpt4_2d58bcd6", "condition": "full-sameepoch", "answer": "\"The Hate U Give\" was finished first, approximately two weeks before the Nightingale.", "input_tokens": 140992}
+{"qid": "gpt4_4929293b", "condition": "full-sameepoch", "answer": "Being a bridesmaid at cousin's wedding", "input_tokens": 142401}
+{"qid": "gpt4_59149c78", "condition": "full-sameepoch", "answer": "City Art Museum", "input_tokens": 141995}
+{"qid": "gpt4_74aed68e", "condition": "full-sameepoch", "answer": "29 days", "input_tokens": 142726}
+{"qid": "gpt4_68e94288", "condition": "full-sameepoch", "answer": "#PlankChallenge participation", "input_tokens": 142448}
+{"qid": "gpt4_70e84552", "condition": "full-sameepoch", "answer": "Fixing the fence was completed first (about 3 weeks before May 25, 2023), followed by trimming the goats' hooves (about 2 weeks before May 25, 2023).", "input_tokens": 142037}
+{"qid": "gpt4_7a0daae1", "condition": "full-sameepoch", "answer": "The context does not contain information about when the tennis racket was received, only that it was purchased online on March 17, 2023.", "input_tokens": 143691}
+{"qid": "gpt4_7de946e7", "condition": "full-sameepoch", "answer": "Persistent cough (February 10th)", "input_tokens": 141668}
+{"qid": "gpt4_4929293a", "condition": "full-sameepoch", "answer": "Michael's engagement party (5 May 2023)", "input_tokens": 141630}
+{"qid": "gpt4_59149c77", "condition": "full-sameepoch", "answer": "4 days (between 11 January and 15 January 2023)", "input_tokens": 139642}
+{"qid": "gpt4_8279ba03", "condition": "full-sameepoch", "answer": "A smoker", "input_tokens": 142145}
+{"qid": "gpt4_8279ba02", "condition": "full-sameepoch", "answer": "Information not found in context.", "input_tokens": 140381}
+{"qid": "gpt4_731e37d7", "condition": "full-sameepoch", "answer": "Based on the context, approximately $700. This includes the $200 writing workshop (November), $500 digital marketing workshop (March), and a free photography workshop (February 22).", "input_tokens": 142025}
+{"qid": "e3038f8c", "condition": "full-sameepoch", "answer": "87 rare items total (25 coins, 5 books, 57 records)", "input_tokens": 140264}
+{"qid": "f9e8c073", "condition": "full-sameepoch", "answer": "Five sessions", "input_tokens": 141778}
+{"qid": "gpt4_a2d1d1f6", "condition": "full-sameepoch", "answer": "3 days ago (April 15, 2023)", "input_tokens": 143528}
+{"qid": "gpt4_78cf46a3", "condition": "full-sameepoch", "answer": "The narrator receiving their new phone case happened first (approximately late April 2023, about a month before the session date). The narrator lost their phone charger later (approximately mid-May 2023, about two weeks before the session date).", "input_tokens": 141723}
+{"qid": "gpt4_7abb270c", "condition": "full-sameepoch", "answer": "Based on the context, I can only identify 5 museums explicitly visited:\n\n1. 22 January 2023 - Museum of Contemporary Art\n2. 13 February 2023 - Science Museum\n3. 15 February 2023 - Metropolitan Museum of Art\n4. 17 February 2023 - Modern Art Museum\n5. 4 March 2023 - Natural History Museum\n\nThe context does not mention a sixth museum visit.", "input_tokens": 140730}
+{"qid": "gpt4_88806d6e", "condition": "full-sameepoch", "answer": "Tom. He was met at a charity event a few months before (around Feb/March 2023), while Mark and Sarah were met on a beach trip about a month before (around late April 2023).", "input_tokens": 143437}
+{"qid": "gpt4_a56e767c", "condition": "full-sameepoch", "answer": "4 film festivals (Austin Film Festival, Portland Film Festival, Seattle International Film Festival, AFI Fest)", "input_tokens": 142064}
+{"qid": "gpt4_9a159967", "condition": "full-sameepoch", "answer": "American Airlines", "input_tokens": 142959}
+{"qid": "gpt4_ab202e7f", "condition": "full-sameepoch", "answer": "3 main kitchen items: faucet, toaster/toaster oven, and coffee maker/espresso machine. (Plus pet bowls and litter supplies if counting those.)", "input_tokens": 143768}
+{"qid": "gpt4_8e165409", "condition": "full-sameepoch", "answer": "13 days\n\n(Between March 4 when the spider plant was repotted and March 17 when cuttings were given to Mrs. Johnson)", "input_tokens": 140471}
+{"qid": "gpt4_85da3956", "condition": "full-sameepoch", "answer": "Approximately 6 weeks ago (late June 2023).", "input_tokens": 140182}
+{"qid": "gpt4_af6db32f", "condition": "full-sameepoch", "answer": "17 days ago (watched on 12 February 2023)", "input_tokens": 142576}
+{"qid": "gpt4_b5700ca9", "condition": "full-sameepoch", "answer": "4 days ago (6 April 2023)", "input_tokens": 140326}
+{"qid": "gpt4_c27434e8", "condition": "full-sameepoch", "answer": "Japanese Zero fighter plane, about a month before the Ferrari.", "input_tokens": 143444}
+{"qid": "gpt4_d12ceb0e", "condition": "full-sameepoch", "answer": "Cannot calculate precisely\u2014parents' ages not provided in context. Based on available data (you: 32, grandma: 75, grandpa: 78), rough estimate with typical parent ages would be around 60-62 years old.", "input_tokens": 142799}
+{"qid": "gpt4_f2262a51", "condition": "full-sameepoch", "answer": "3 doctors: Dr. Patel, Dr. Lee, and Dr. Smith.", "input_tokens": 140932}
+{"qid": "gpt4_ec93e27f", "condition": "full-sameepoch", "answer": "Train (on March 3rd to visit family)", "input_tokens": 142184}
+{"qid": "gpt4_e05b82a6", "condition": "full-sameepoch", "answer": "4 rollercoaster rides (3 in July, 1 in October)", "input_tokens": 142783}
+{"qid": "gpt4_cd90e484", "condition": "full-sameepoch", "answer": "Two weeks", "input_tokens": 142191}
+{"qid": "gpt4_fe651585", "condition": "full-sameepoch", "answer": "Alex became a parent first (January 2023 vs. February 12, 2023).", "input_tokens": 139648}
+{"qid": "gpt4_7f6b06db", "condition": "full-sameepoch", "answer": "1. Yosemite camping trip (late February/early March 2023)\n2. Big Sur and Monterey road trip (4 March 2023)\n3. Muir Woods day hike (9 March 2023)", "input_tokens": 140864}
+{"qid": "gpt4_fa19884d", "condition": "full-sameepoch", "answer": "Bluegrass music/a bluegrass band", "input_tokens": 142526}

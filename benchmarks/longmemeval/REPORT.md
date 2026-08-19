@@ -288,3 +288,51 @@ worry was the small-sample noise this study now knows to expect.
 
 **Result: +4.3 points on LongMemEval at p = 0.0045, no measurable change on
 LoCoMo at n = 999.** Shipped.
+
+## Round 9 — baselines, and every row in one session (2026-08-18)
+
+Two problems with every table above this one: no reference point a reader
+already has intuitions about, and rows compared across read epochs. Both are
+fixed here. `dense-only` and `lexical-only` are the standard IR baselines run
+inside this harness at a matched context budget, and `full-sameepoch` is the
+full-context condition re-read alongside everything else.
+
+| method | knowledge-update | multi-session | ss-assistant | ss-preference | ss-user | temporal | **overall** | ctx tokens |
+|---|---|---|---|---|---|---|---|---|
+| no memory | 3.2% | 0.0% | 20.8% | 7.7% | 7.4% | 7.4% | **6.5%** | 0 |
+| dense only (embeddings) | 67.7% | 52.9% | 87.5% | 7.7% | 92.6% | 79.6% | **69.0%** | 7,189 |
+| lexical only (BM25) | 71.0% | 54.9% | 83.3% | 15.4% | 92.6% | 79.6% | **70.0%** | 6,443 |
+| hybrid, matched budget | 83.9% | 60.8% | 95.8% | 23.1% | 92.6% | 87.0% | **77.5%** | 6,612 |
+| hybrid as shipped | 83.9% | 66.7% | 91.7% | 23.1% | 92.6% | 83.3% | **77.5%** | 7,563 |
+| full context | 71.0% | 51.0% | 100.0% | 23.1% | 96.3% | 68.5% | **69.0%** | 117,981 |
+
+Paired against the shipped hybrid (exact McNemar, n = 200):
+
+| comparison | delta | W/L | p |
+|---|---|---|---|
+| vs dense only | **+8.5pp** | 20/3 | **0.0005** |
+| vs lexical only | **+7.5pp** | 22/7 | **0.0081** |
+| vs full context | **+8.5pp** | 30/13 | **0.0137** |
+
+### What is new here
+
+- **The fusion is worth 7.5–8.5 points over either leg alone**, and it is not
+  a budget effect: the matched-budget hybrid spends 6,612 tokens — less than
+  dense-only's 7,189 — and still scores 77.5%.
+- **Beating full context is now significant** (p = 0.0137). Round 5 reported
+  this as a directional trend at p = 0.26; that comparison crossed read epochs,
+  and the same-session measurement is both larger and significant.
+- **Re-reading full context changed its score** from 70.5% (July) to 69.0%
+  (now) on identical contexts — the measurement floor from round 6, visible
+  again.
+- Dense and lexical are statistically indistinguishable from each other here
+  (70.0% vs 69.0%). Neither leg is carrying the result; the fusion is.
+
+### Harness
+
+`retrieve_baselines.py` builds a context from one leg or both, filling to a
+**character** budget rather than to a fixed k, because a comparison at equal k
+compares budgets rather than methods. Each leg gets its own share of that
+budget in the hybrid condition. The first version filled first-come-first-
+served, which silently turned "hybrid" into dense-only — it scored identically,
+down to the token count, and that run was discarded rather than reported.

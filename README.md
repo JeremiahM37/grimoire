@@ -14,8 +14,8 @@ human console.
 ![docker](https://img.shields.io/badge/docker-ready-2496ed)
 ![MCP](https://img.shields.io/badge/MCP-first--class-5b4bff)
 ![PWA](https://img.shields.io/badge/console-offline%20PWA-19c37d)
-[![LoCoMo](https://img.shields.io/badge/LoCoMo-81.6%25%20vs%20full--context%2082.2%25-2ea44f)](benchmarks/locomo/)
-[![LongMemEval](https://img.shields.io/badge/LongMemEval-75.0%25%20%40%2020×%20fewer%20tokens-2ea44f)](benchmarks/longmemeval/)
+[![LoCoMo](https://img.shields.io/badge/LoCoMo-hybrid%20%2B5.4pp%20vs%20BM25-2ea44f)](benchmarks/locomo/)
+[![LongMemEval](https://img.shields.io/badge/LongMemEval-77.5%25%20vs%20full--context%2069.0%25-2ea44f)](benchmarks/longmemeval/)
 
 ![Grimoire console](docs/screenshots/hero.png)
 
@@ -150,6 +150,57 @@ proxy — `GRIMOIRE_MCP_TRANSPORT=http ./grimoire-mcp` serves at
 > CLAUDE.md/AGENTS.md snippet** that tells agents to call `get_briefing` first
 > and consult the KB before assuming project facts.
 
+## Credentials your agent can use but never read
+
+Giving an agent an API key means the key is in its context — and therefore in
+the transcript, the logs, and whatever the model provider retains. Revoking it
+means rotating the key everywhere. Grimoire's answer is to never hand it over:
+
+```
+you                     grimoire                          the API
+ │  mint a grant ───────►│
+ │  (secret, origin,     │
+ │   TTL, grantee)       │
+                         │
+agent ── use_credential ►│── injects the secret ──────────►│
+        (grant, url)     │                                 │
+        ◄── response ────│◄────────────────────────────────│
+        (never the key)  │  writes an audit row
+```
+
+The agent holds a **grant** — a random token bound to one secret, one origin,
+a path prefix and an expiry — not the credential. It names a URL; Grimoire
+makes the call with the secret injected into a header and returns the
+**response**. The value never enters the agent's context, so it cannot be
+logged, memorised, or exfiltrated by a prompt injection, and revoking a grant
+is one row, not a key rotation.
+
+```bash
+# you, once, at the console (requires the vault unlocked)
+curl -X POST localhost:9111/api/secrets -d '{"name":"gh","value":"ghp_..."}'
+curl -X POST localhost:9111/api/secrets/gh/grant \
+     -d '{"grantee":"research-agent","scope":"https://api.github.com/repos","ttl_seconds":3600}'
+# → {"grant":"kQ7…","expires_in":3600}   ← the grant is what the agent gets
+
+# the agent, over MCP: use_credential{token, url, method, header}
+# → the JSON the API returned. Never "ghp_...".
+```
+
+What the boundary actually enforces — each of these is a test, and the
+reasoning is in [SECURITY.md](SECURITY.md):
+
+| control | why it exists |
+|---|---|
+| **origin-exact scope** | a grant for `https://api.github.com` does **not** authorize `https://api.github.com.evil.example`; scheme, host and port must match and the path prefix is compared on whole segments, so `/v1` does not authorize `/v10` |
+| **redirect re-check** | Go strips `Authorization` across hosts, but the broker injects whatever header you named — an `X-Api-Key` would otherwise follow a 302 to an attacker |
+| **SSRF guard at connect time** | the address the socket is about to use is checked, not a hostname resolved earlier, so DNS rebinding does not defeat it; cloud-metadata and link-local are refused even with `GRIMOIRE_BROKER_ALLOW_PRIVATE=1` |
+| **unlocked vault required** | a leaked grant token alone brokers nothing |
+| **expiry + revocation** | grants are time-boxed, listable (`list_grants`) and individually revocable; there is also a revoke-all |
+| **append-only audit** | every grant and every brokered call is recorded — secret name, grantee, URL, status — and never the value |
+
+The console shows the same thing to the human: which agent holds what, against
+which origin, for how long, and what it has done with it.
+
 **The 60-second demo:** ask your agent to research something → it `ask`s your
 notes (you can inspect exactly what it retrieved) → it calls an API with
 `use_credential` (the key never enters its context) → it `remember`s what it
@@ -229,59 +280,69 @@ unauthenticated surfaces. Strict CSP. Full threat model: [SECURITY.md](SECURITY.
 
 ## Benchmarks
 
-Grimoire's retrieval is measured on the two public long-conversation memory
-benchmarks the agent-memory field uses — [LoCoMo](https://github.com/snap-research/locomo)
-(ACL 2024) and [LongMemEval](https://github.com/xiaowu0162/LongMemEval)
-(ICLR 2025) — under pre-registered protocols with all baselines run under
-identical conditions: stratified question samples, conversations ingested as
-plain session notes, questions asked verbatim against the same retrieval
-code the MCP tools serve, fixed reader (`claude-haiku-4-5`), strict blind
-LLM judge (`claude-sonnet-5`).
+Measured on the two public long-conversation memory benchmarks the agent-memory
+field uses — [LoCoMo](https://github.com/snap-research/locomo) (ACL 2024) and
+[LongMemEval](https://github.com/xiaowu0162/LongMemEval) (ICLR 2025) — under
+pre-registered protocols. Stratified question samples, conversations ingested
+as plain session notes, questions asked verbatim against the same retrieval
+code the MCP tools serve, fixed reader (`claude-haiku-4-5`), strict blind judge
+(`claude-sonnet-5`).
 
-**LoCoMo** (500 questions, ~24k-token conversations):
+**Every row below was retrieved, read and judged in a single session.** That
+matters more than it sounds: re-reading a byte-identical context set flips
+8–12% of answers and moves accuracy by 1–4 points, so comparing a new run
+against numbers stored from an earlier one measures the sampling as much as the
+change. Earlier rounds of this study did exactly that; these tables do not.
 
-| context given to the reader | accuracy | context tokens / question |
+**LongMemEval** — 200 questions, each with its own ~50-session, ~118k-token
+haystack. All conditions share the questions, the ingestion, the reader and the
+judge; only the retrieval method differs, at a matched context budget:
+
+| method | overall | context tokens |
 |---|---|---|
-| nothing | 1.2% | 0 |
-| grimoire retrieval, zero-dependency default | 76.8% | ~6.2k |
-| grimoire retrieval + the local model (default) | 81.6% | ~7.0k |
-| grimoire retrieval + nomic-embed (Ollama) | **81.6%** | ~6.2k |
-| entire conversation in context | 82.2% | ~24k |
+| no memory | 6.5% | 0 |
+| dense only (embeddings) | 69.0% | 7.2k |
+| lexical only (BM25) | 70.0% | 6.4k |
+| **hybrid — what Grimoire ships** | **77.5%** | 7.6k |
+| entire haystack in context | 69.0% | 118.0k |
 
-**LongMemEval** (200 questions, ~117k-token haystacks of ~50 chat sessions):
+Hybrid beats **dense-only by 8.5 points** (p = 0.0005), **BM25-only by 7.5**
+(p = 0.0081) and **full context by 8.5** (p = 0.0137, exact McNemar, n = 200) —
+the last at **15× fewer tokens**. Fusing the two legs is not a budget effect:
+at a *smaller* budget than dense-only (6.6k), hybrid still scores 77.5%.
 
-| context given to the reader | accuracy | context tokens / question |
+**LoCoMo** — 500 questions over ~24k-token conversations:
+
+| method | overall | context tokens |
 |---|---|---|
-| nothing | 6.5% | 0 |
-| grimoire retrieval + the local model (default) | **74.5%** | ~6.8k |
-| grimoire retrieval + nomic-embed (Ollama) | 73.0% | ~5.8k |
-| entire haystack in context | 70.5% | ~117k |
+| no memory | 1.2% | 0 |
+| lexical only (BM25) | 71.4% | 6.1k |
+| dense only (embeddings) | 77.4% | 6.9k |
+| **hybrid — what Grimoire ships** | 76.8% | 7.6k |
+| entire conversation in context | **82.3%** | 25.0k |
 
-On LoCoMo, retrieval is statistically indistinguishable from stuffing the
-whole conversation into context (McNemar p = 0.82 nomic / p = 0.51
-model2vec, n = 500) at ~4× fewer tokens. On LongMemEval's much larger
-haystacks, retrieval **matches and directionally beats** full context
-(p = 0.26) at ~20× fewer tokens — long-context needle-finding degrades
-where focused retrieval doesn't, especially on temporal reasoning (81.5%
-vs 68.5%). Full methods, per-category tables, per-question raw data, and
-the honest failure notes: [benchmarks/locomo/](benchmarks/locomo/) ·
-[benchmarks/longmemeval/](benchmarks/longmemeval/).
+Here hybrid beats BM25-only by 5.4 points (p = 0.0036) but is indistinguishable
+from dense-only (−0.6, p = 0.81), and **full context wins by 5.5 points**
+(p = 0.0015). An earlier round reported parity with full context on this
+dataset; that comparison crossed read epochs, and the honest same-session
+number is a loss.
 
-**Round 8** — `finalize` now expands each top hit into a query-focused excerpt
-of its note (its other high-scoring chunks, in document order) instead of
-merging the hit with its immediate neighbours. Measured against a same-epoch
-control, replicated on the questions the study had never scored, and pooled:
-**LongMemEval +4.3 points (72.3% → 76.6%, n = 470, exact McNemar p = 0.0045)**
-with **no measurable change on LoCoMo** (−0.3 points, n = 999, p = 0.84). Still
-~15× fewer tokens than full context. Details: [benchmarks/longmemeval/REPORT.md](benchmarks/longmemeval/REPORT.md).
+**What the two together say.** Retrieval's advantage is a function of whether
+the corpus fits in the window. LoCoMo's conversations do — at 24k tokens the
+reader can simply have all of it, and does better. LongMemEval's 118k haystacks
+do not: needle-finding degrades, and focused retrieval beats reading everything
+by 8.5 points while spending 1/15th of the context. Grimoire is built for the
+second case, which is also the case a real vault is in.
 
-**Measurement floor** (round 6): re-reading a byte-identical context set with
-the same frozen reader and judge flips 8–12% of answers and moves accuracy by
-1–4 points, so a difference smaller than roughly 5 points between two
-retrieval variants is not resolvable at these sample sizes. The comparisons
-above are either far larger than that (retrieval vs no memory) or are parity
-claims, which sampling noise only makes harder to assert — but any future
-tuning claim needs a same-epoch control, and the harnesses now provide one.
+**Not leaderboard-comparable, deliberately.** The judge here is not
+LongMemEval's official one, so these numbers cannot be read against the paper's
+table or against vendors' published figures. That is exactly why the baselines
+above are run *inside* this harness: a comparison is only meaningful when every
+condition shares the questions, the reader and the judge, and these do.
+
+Full methods, per-category tables, per-question raw data, the measurement-floor
+analysis and the rejected experiments: [benchmarks/locomo/](benchmarks/locomo/)
+· [benchmarks/longmemeval/](benchmarks/longmemeval/).
 
 ## Tests
 
