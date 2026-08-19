@@ -21,7 +21,10 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
         with:
-          go-version: "1.26"
+          # The module's own go directive, not a "1.26" that setup-go resolves
+          # to whatever patch it feels like: it picked 1.26.5 for a go.mod that
+          # requires 1.26.6, and the build failed with GOTOOLCHAIN=local.
+          go-version-file: go/go.mod
           cache-dependency-path: go/go.sum
       - name: Format
         run: test -z "$(gofmt -l go/)" || { gofmt -l go/; exit 1; }
@@ -41,7 +44,10 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
         with:
-          go-version: "1.26"
+          # The module's own go directive, not a "1.26" that setup-go resolves
+          # to whatever patch it feels like: it picked 1.26.5 for a go.mod that
+          # requires 1.26.6, and the build failed with GOTOOLCHAIN=local.
+          go-version-file: go/go.mod
           cache-dependency-path: go/go.sum
       - uses: actions/setup-python@v6
         with:
