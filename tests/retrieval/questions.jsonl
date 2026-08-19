@@ -1,0 +1,20 @@
+{"q": "how is espresso brewed", "expect": "kitchen/espresso.md", "kind": "lexical"}
+{"q": "sourdough starter feeding", "expect": "kitchen/sourdough.md", "kind": "lexical"}
+{"q": "blossom end rot tomatoes", "expect": "garden/tomatoes.md", "kind": "lexical"}
+{"q": "compost brown to green ratio", "expect": "garden/compost.md", "kind": "lexical"}
+{"q": "boiler pressure gauge bar", "expect": "home/boiler.md", "kind": "lexical"}
+{"q": "on-call pager escalation", "expect": "work/oncall.md", "kind": "lexical"}
+{"q": "self assessment deadline", "expect": "money/tax.md", "kind": "lexical"}
+{"q": "postgres unused index cost", "expect": "code/postgres.md", "kind": "lexical"}
+{"q": "what temperature does the heap reach", "expect": "garden/compost.md", "kind": "paraphrase"}
+{"q": "my shot runs through quickly and tastes sharp", "expect": "kitchen/espresso.md", "kind": "paraphrase"}
+{"q": "can I put the blade in the dishwasher", "expect": "kitchen/knife-care.md", "kind": "paraphrase"}
+{"q": "how many days do I get between the cold snaps", "expect": "garden/frost-dates.md", "kind": "paraphrase"}
+{"q": "how fast should my easy miles feel", "expect": "health/running.md", "kind": "paraphrase"}
+{"q": "is an afternoon coffee going to keep me awake", "expect": "health/sleep.md", "kind": "paraphrase"}
+{"q": "how much extra can I repay before a penalty applies", "expect": "money/mortgage.md", "kind": "paraphrase"}
+{"q": "how do we handle things after an outage", "expect": "work/incident-review.md", "kind": "paraphrase"}
+{"q": "where do I turn the power off", "expect": "home/electrics.md", "kind": "paraphrase"}
+{"q": "when should I go to see the maple leaves", "expect": "travel/kyoto.md", "kind": "paraphrase"}
+{"q": "how do I make sure a concurrent routine can be shut down", "expect": "code/go.md", "kind": "paraphrase"}
+{"q": "when do the wires on my acoustic need changing", "expect": "music/guitar.md", "kind": "paraphrase"}
