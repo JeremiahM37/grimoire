@@ -227,3 +227,57 @@ func TestPackUnpackRoundTrip(t *testing.T) {
 		}
 	}
 }
+
+// Re-indexing a note must replace its full-text row, not add another.
+//
+// The row is deleted through fts_map because fts.path is UNINDEXED, and a map
+// that does not match leaves the old row in place: search then answers from
+// both the old and new text, which for an encrypted note means answering with
+// the plaintext it was just sealed to hide.
+func TestFTSRowIsReplacedNotDuplicated(t *testing.T) {
+	ix := testIndex(t)
+	write(t, ix, "note.md", "# Note\n\noriginal body zarquon")
+	if _, err := ix.Upsert("note.md"); err != nil {
+		t.Fatal(err)
+	}
+	write(t, ix, "note.md", "# Note\n\nrewritten body")
+	if _, err := ix.Upsert("note.md"); err != nil {
+		t.Fatal(err)
+	}
+
+	rows, err := ix.DB.Count("SELECT COUNT(*) FROM fts WHERE path=?", "note.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rows != 1 {
+		t.Fatalf("%d full-text rows for one note, want 1", rows)
+	}
+	stale, err := ix.DB.Count("SELECT COUNT(*) FROM fts WHERE body LIKE '%zarquon%'")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stale != 0 {
+		t.Fatal("the superseded text is still searchable")
+	}
+	mapped, err := ix.DB.Count("SELECT COUNT(*) FROM fts_map WHERE path=?", "note.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mapped != 1 {
+		t.Fatalf("%d map entries for one note, want 1", mapped)
+	}
+
+	// and removing the note takes both with it
+	if err := ix.Remove("note.md"); err != nil {
+		t.Fatal(err)
+	}
+	for _, q := range []string{"SELECT COUNT(*) FROM fts", "SELECT COUNT(*) FROM fts_map"} {
+		n, err := ix.DB.Count(q)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if n != 0 {
+			t.Fatalf("%s = %d after removing the only note", q, n)
+		}
+	}
+}

@@ -76,7 +76,7 @@ func (ix *Index) Reindex() (int, error) {
 	// indefinitely without any error.
 	ix.bumpRev()
 
-	for _, tbl := range []string{"notes", "links", "tags", "fts", "facts", "vectors"} {
+	for _, tbl := range []string{"notes", "links", "tags", "fts", "fts_map", "facts", "vectors"} {
 		if err := ix.DB.Exec("DELETE FROM " + tbl); err != nil {
 			return 0, err
 		}
@@ -123,13 +123,38 @@ func (ix *Index) Upsert(rel string) (*vault.Note, error) {
 	return note, nil
 }
 
+// The full-text row for a path is addressed through fts_map rather than by
+// path, because fts.path is UNINDEXED: "DELETE FROM fts WHERE path=?" scans
+// the whole FTS index, which is once per note on every write and once per note
+// on every rebuild. That single statement is what made both quadratic — 22.4s
+// to insert 16k notes against 442ms without it. RETURNING gets the new rowid
+// in the same statement, so nothing depends on last_insert_rowid() surviving
+// whatever else shares the connection.
+
+func (ix *Index) dropFTS(rel string) error {
+	if err := ix.DB.Exec(
+		"DELETE FROM fts WHERE rowid IN (SELECT rid FROM fts_map WHERE path=?)", rel); err != nil {
+		return err
+	}
+	return ix.DB.Exec("DELETE FROM fts_map WHERE path=?", rel)
+}
+
+func (ix *Index) insertFTS(rel, title, body string) error {
+	var rid int64
+	if err := ix.DB.QueryRow(
+		"INSERT INTO fts_map(path) VALUES(?) RETURNING rid", rel).Scan(&rid); err != nil {
+		return err
+	}
+	return ix.DB.Exec("INSERT INTO fts(rowid,path,title,body) VALUES(?,?,?,?)",
+		rid, rel, title, body)
+}
+
 // Remove drops a note from the index.
 func (ix *Index) Remove(rel string) error {
 	ix.writeMu.Lock()
 	defer ix.writeMu.Unlock()
 	for _, stmt := range []string{
 		"DELETE FROM notes WHERE path=?",
-		"DELETE FROM fts WHERE path=?",
 		"DELETE FROM links WHERE src=?",
 		"DELETE FROM tags WHERE note=?",
 		"DELETE FROM vectors WHERE note=?",
@@ -138,6 +163,9 @@ func (ix *Index) Remove(rel string) error {
 		if err := ix.DB.Exec(stmt, rel); err != nil {
 			return err
 		}
+	}
+	if err := ix.dropFTS(rel); err != nil {
+		return err
 	}
 	ix.bumpRev()
 	return ix.resolveAll()
@@ -148,7 +176,6 @@ func (ix *Index) writeNoteRows(note *vault.Note) error {
 	rel := note.Path
 	for _, stmt := range []string{
 		"DELETE FROM notes WHERE path=?",
-		"DELETE FROM fts WHERE path=?",
 		"DELETE FROM links WHERE src=?",
 		"DELETE FROM tags WHERE note=?",
 		"DELETE FROM vectors WHERE note=?",
@@ -157,6 +184,9 @@ func (ix *Index) writeNoteRows(note *vault.Note) error {
 		if err := ix.DB.Exec(stmt, rel); err != nil {
 			return err
 		}
+	}
+	if err := ix.dropFTS(rel); err != nil {
+		return err
 	}
 	if !note.Encrypted {
 		if err := ix.embedNote(note); err != nil {
@@ -184,8 +214,7 @@ func (ix *Index) writeNoteRows(note *vault.Note) error {
 	if note.Encrypted {
 		ftsBody = ""
 	}
-	if err := ix.DB.Exec("INSERT INTO fts(path,title,body) VALUES(?,?,?)",
-		rel, note.Title, ftsBody); err != nil {
+	if err := ix.insertFTS(rel, note.Title, ftsBody); err != nil {
 		return err
 	}
 	for _, l := range note.Links {

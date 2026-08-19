@@ -47,6 +47,19 @@ CREATE TABLE IF NOT EXISTS vectors(
   private INTEGER DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_vectors_note ON vectors(note);
+-- fts.path is UNINDEXED, so "DELETE FROM fts WHERE path=?" scans every row of
+-- the FTS index. That delete runs once per note on every write and once per
+-- note during a rebuild, which made both quadratic: inserting notes one at a
+-- time took 400ms at 2k, 5.7s at 8k and 22.4s at 16k, against 52ms/213ms/442ms
+-- with the delete removed. This map holds each path's fts rowid so the delete
+-- can be a rowid lookup instead.
+--
+-- rid is the map's OWN rowid, handed to fts as an explicit one. It cannot be
+-- read back from the fts insert: RETURNING rowid on an FTS5 virtual table
+-- yields -1, so a map built that way matches nothing, every delete misses, and
+-- both copies of a note stay searchable — which showed up as an encrypted
+-- note's plaintext still answering a search.
+CREATE TABLE IF NOT EXISTS fts_map(rid INTEGER PRIMARY KEY, path TEXT NOT NULL UNIQUE);
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE IF NOT EXISTS grants(
   token TEXT PRIMARY KEY, secret TEXT, grantee TEXT, scope TEXT,
@@ -72,6 +85,15 @@ const migrations = `
 -- because FTS5 defers index merging, part of that cost was paid later by
 -- whichever statement ran next rather than by the write itself.
 DROP TABLE IF EXISTS fts_chunks;
+
+-- Backfill fts_map for an index built before it existed. Deleting by rowid
+-- against an empty map would leave the old row behind and search would answer
+-- from both copies, so this runs before any write can. MAX(rowid) per path
+-- picks the newest of any duplicates a pre-map build could have left, and the
+-- rest are dropped.
+INSERT OR REPLACE INTO fts_map(rid, path)
+  SELECT MAX(rowid), path FROM fts GROUP BY path;
+DELETE FROM fts WHERE rowid NOT IN (SELECT rid FROM fts_map);
 `
 
 // DB wraps the index connection.
