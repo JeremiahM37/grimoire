@@ -243,12 +243,23 @@ func (s *Server) ask(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	_ = mode
+	// Citing every note is citing nothing. In full mode the CONTEXT is the
+	// whole corpus — that is the measured win — but the citations a person
+	// clicks, and the ones that make a generated answer checkable, still have
+	// to be the passages that bear on the question. So they are always ranked.
+	cited := hits
+	if mode == "full" {
+		if ranked, rerr := s.smartRetrieve(q, k, in.IncludePrivate, smart); rerr == nil && len(ranked) > 0 {
+			cited = ranked
+		}
+	}
 	citations := []map[string]any{}
-	contexts := make([]ai.Context, 0, len(hits))
-	for _, h := range hits {
+	for _, h := range cited {
 		citations = append(citations, map[string]any{
 			"path": h.Path, "title": h.Title, "score": h.Score})
+	}
+	contexts := make([]ai.Context, 0, len(hits))
+	for _, h := range hits {
 		contexts = append(contexts, ai.Context{Path: h.Path, Title: h.Title, Chunk: h.Chunk})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -258,7 +269,14 @@ func (s *Server) ask(w http.ResponseWriter, r *http.Request) {
 // askContext is bestContext with the answering path's smarter retrieval on the
 // branch where ranking is actually needed.
 func (s *Server) askContext(q string, k int, includePrivate, smart bool) ([]index.Hit, string, error) {
-	if budget := contextBudget(); budget > 0 {
+	// Reading the whole corpus beats ranking it only when something actually
+	// READS it. The extractive answer has no reader — it quotes the passages
+	// it is handed, in the order it is handed them — so handing it the vault
+	// turns "answer" into "dump", and the citation list into a table of
+	// contents. The result that motivated this path measured a reader model
+	// consuming the context; with no LLM configured, the ranking IS the
+	// answer, so the size check does not apply.
+	if budget := contextBudget(); budget > 0 && s.AI.Available() {
 		_, _, chars, err := s.Index.CorpusStats(includePrivate)
 		if err != nil {
 			return nil, "", err
