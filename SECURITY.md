@@ -113,7 +113,7 @@ copied on the peer.
 - Front grimoire with your own authenticated reverse proxy (the homelab uses
   Authelia + a Tailscale-gated network). The optional `GRIMOIRE_AUTH_TOKEN` is a
   second factor, not the primary gate.
-- Keep `.grimoire/` (which holds `secrets.enc` and the index) off any sync/backup
+- Keep `.grimoire/` (which holds `secrets.json` and the index) off any sync/backup
   that leaves your control unless separately encrypted.
 - Choose a strong vault passphrase — Argon2id raises the cost of guessing, but a
   weak passphrase is still the weakest link.

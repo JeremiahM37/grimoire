@@ -6,6 +6,12 @@
 
 Status: v0.1–v0.9 shipped · Started 2026-07-16 · Lives at `/home/admin/projects/grimoire/`
 
+> **What this document is.** The design record: what was intended and why,
+> kept because the reasoning is worth more than a snapshot of the code. It is
+> NOT the current contract — where a detail here disagrees with the running
+> system, the README (surfaces, settings, tool list) and SECURITY.md (threat
+> model) are authoritative, and both are checked against the code by tests.
+
 ---
 
 ## 1. Vision & why it's different
@@ -93,7 +99,7 @@ Not a cloud SaaS. Not a proprietary format (everything is markdown + a rebuildab
 - **Ask your notes:** retrieval over the vector table → answer with citations (which notes). Pluggable model backend: **local Ollama** (default, private) or Claude (via a vault secret). Reuses the homelab's doc-rag + Ollama-native-Anthropic-endpoint knowledge. Private notes are excluded from RAG unless explicitly opted in per query.
 
 ### 4.4 Secret vault (the differentiator)
-- **At rest:** secrets encrypted with a master key derived from a passphrase (Argon2id → key; libsodium/`age` sealed boxes). The `.grimoire/secrets.age` blob is useless without the passphrase; the passphrase is never stored. Vault unlocks per-session (kept in memory only).
+- **At rest:** secrets encrypted with a master key derived from a passphrase (Argon2id → key; Fernet, i.e. AES-128-CBC + HMAC-SHA256, implemented in-tree rather than pulled in). The `.grimoire/secrets.json` envelope holds the salt, the KDF name and the ciphertext, and is useless without the passphrase; the passphrase is never stored. Vault unlocks per-session (kept in memory only).
 - **In notes:** reference by handle `{{secret:name}}` — renders as `••••` in the UI, never as plaintext, never indexed, never in RAG context.
 - **AI use, not AI read:** an agent never receives a raw secret. It requests a **grant** ("use `gh-token` against the GitHub MCP"); grimoire brokers the call or injects the secret into a scoped subprocess/MCP session, time-boxed, and logs it to the **audit** table. Revocable. This makes grimoire the trusted secret broker between your notes and your AI — the thing that lets an agent actually *do* things safely.
 - Threat model documented explicitly (§10): what a compromised session can and cannot reach.
@@ -106,7 +112,7 @@ Not a cloud SaaS. Not a proprietary format (everything is markdown + a rebuildab
 - **Devices table** tracks each client for sync state + per-device revoke.
 
 ### 4.6 AI-native surface (MCP in and out)
-- **grimoire as MCP server:** exposes tools — `search_notes`, `read_note`, `write_note`, `append_daily`, `list_backlinks`, `ask_notes`, `create_note`, `link_notes`, `list_tags`. Any MCP client (Claude Code, claude.ai bridge, homelab Discord bot, agentdeck agents) can read/query/write your notes. This is how "easily incorporates AI" is delivered — not a chat box, a protocol.
+- **grimoire as MCP server:** exposes tools — the shipped list is in the README and is checked against the server by a test; this line records the original intent, and some names moved (`write_note` shipped as `update_note`, `list_backlinks` as `backlinks`, and `link_notes` was dropped). Any MCP client (Claude Code, claude.ai bridge, homelab Discord bot, agentdeck agents) can read/query/write your notes. This is how "easily incorporates AI" is delivered — not a chat box, a protocol.
 - **grimoire as MCP client / secret broker:** using vault secrets + grants, grimoire can call *other* MCP servers or services on the AI's behalf (scoped, audited).
 - Inline AI actions in the editor (summarize, expand, link-suggest, tag-suggest) route through the same backend.
 
