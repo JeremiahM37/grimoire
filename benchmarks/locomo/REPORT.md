@@ -271,3 +271,41 @@ easiest way to make these numbers useless.
 Fusion still earns its place against the classical baseline (+5.4pp over BM25,
 p = 0.0036), though on this dataset the dense leg alone is as good as the
 fusion — the mirror image of LongMemEval, where neither leg alone comes close.
+
+## Round 10 — check the size before retrieving (2026-08-18)
+
+Round 9 established that full context beats retrieval on this dataset by 5.5
+points. That is a fact about the corpus, not about the retrieval: LoCoMo's
+conversations are ~24k tokens and fit a reader's window, so there is nothing to
+leave out and leaving anything out can only lose information. `/api/context`
+now checks that before it ranks.
+
+| method | multi-hop | temporal | open-domain | single-hop | **overall** | ctx tokens |
+|---|---|---|---|---|---|---|
+| hybrid retrieval | 50.0% | 74.0% | 64.5% | 88.3% | **76.8%** | 7,559 |
+| **corpus-fits** | **68.5%** | 75.0% | 64.5% | **90.8%** | **82.1%** | 29,513 |
+| full context | 66.3% | 75.0% | 61.3% | 93.0% | **82.4%** | 25,011 |
+
+| comparison | delta | W/L | p |
+|---|---|---|---|
+| corpus-fits vs hybrid retrieval | **+5.3pp** | 59/32 | **0.0061** |
+| corpus-fits vs full context | −0.3pp | 35/36 | 1.000 |
+
+It recovers the gap and lands statistically on top of full context, which is
+the ceiling for this dataset. Multi-hop moves most — 50.0% → 68.5% — which is
+what you would expect from questions that need evidence scattered across
+sessions: ranking was dropping the sessions, and now nothing is dropped.
+
+The cost is honest and visible: 29.5k context tokens against 7.6k. That is
+what reading everything costs, and it is only spent when everything is small
+enough to be worth reading. All 500 questions chose the `full` branch here.
+
+### The control
+
+On LongMemEval the same code must do nothing, because ~118k-token haystacks are
+far over any sane budget. Verified without a reader or a judge: across all 200
+questions the endpoint chose `retrieved` every time, and the context it
+returned was **byte-identical to plain retrieval for 200/200** — median 13k
+characters against a 150k budget. Identical strings produce identical scores,
+so that dataset's numbers are unchanged by construction rather than by
+re-measurement.
