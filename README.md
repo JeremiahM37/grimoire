@@ -269,6 +269,7 @@ Everything is environment-driven (same variables bare-metal, systemd, Docker):
 | `GRIMOIRE_PLUGIN_DIR` | `plugins` | Where plugin bundles are loaded from |
 | `GRIMOIRE_MODEL_DIR` | *(cache dir)* | Where the local embedding model is stored |
 | `GRIMOIRE_EMBED_BASE_URL` / `_API_KEY` | *(empty)* | OpenAI-compatible embeddings endpoint |
+| `GRIMOIRE_CONTEXT_BUDGET` | `100000` | Characters under which `ask`/`/api/context` hand over the WHOLE vault instead of retrieving (0 disables) |
 | `GRIMOIRE_NO_WATCHER` | `0` | Disable the filesystem watcher (tests/CI) |
 
 AI/model settings can also be changed live in ⚙ Settings (persisted in the
@@ -314,6 +315,16 @@ Hybrid beats **dense-only by 8.5 points** (p = 0.0005), **BM25-only by 7.5**
 (p = 0.0081) and **full context by 8.5** (p = 0.0137, exact McNemar, n = 200) —
 the last at **15× fewer tokens**. Fusing the two legs is not a budget effect:
 at a *smaller* budget than dense-only (6.6k), hybrid still scores 77.5%.
+
+**Reading beats ranking when the corpus fits.** `/api/context` checks the size
+of your vault before it retrieves: under the budget it hands over everything,
+over it, it retrieves. On LoCoMo — whose conversations fit — that recovers the
+entire gap, **76.8% → 82.1% (+5.3, p = 0.0061, n = 500)**, statistically
+identical to full context (−0.3, p = 1.00). On LongMemEval it never fires: all
+200 haystacks are far over budget and the contexts come back byte-identical to
+plain retrieval, so those numbers are unchanged by construction. Retrieval
+exists to choose what to leave out; when nothing has to be left out, choosing
+can only lose information.
 
 **LoCoMo** — 500 questions over ~24k-token conversations:
 

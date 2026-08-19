@@ -6998,3 +6998,503 @@
 {"qid": "c9q86", "condition": "full-sameepoch", "answer": "Skiing", "input_tokens": 49033}
 {"qid": "c9q93", "condition": "full-sameepoch", "answer": "Keep pursuing your passion, stay true to yourself, and never give up on your dreams.", "input_tokens": 49029}
 {"qid": "c9q116", "condition": "full-sameepoch", "answer": "Ford Mustang", "input_tokens": 49030}
+{"qid": "c0q0", "condition": "corpus-fits", "answer": "7 May 2023", "input_tokens": 46286}
+{"qid": "c0q107", "condition": "corpus-fits", "answer": "To de-stress and clear her mind.", "input_tokens": 46285}
+{"qid": "c0q110", "condition": "corpus-fits", "answer": "A cup with a dog face on it.", "input_tokens": 46287}
+{"qid": "c0q106", "condition": "corpus-fits", "answer": "Running.", "input_tokens": 46286}
+{"qid": "c0q118", "condition": "corpus-fits", "answer": "Perseid meteor shower", "input_tokens": 46289}
+{"qid": "c0q127", "condition": "corpus-fits", "answer": "A stained glass window", "input_tokens": 46282}
+{"qid": "c0q121", "condition": "corpus-fits", "answer": "Matt Patterson", "input_tokens": 46287}
+{"qid": "c0q11", "condition": "corpus-fits", "answer": "Sweden", "input_tokens": 46284}
+{"qid": "c0q122", "condition": "corpus-fits", "answer": "To catch the eye and make people smile.", "input_tokens": 46289}
+{"qid": "c0q134", "condition": "corpus-fits", "answer": "Research, find an adoption agency or lawyer, gather documents (references, financial info, medical checks), prepare emotionally for the wait.", "input_tokens": 46284}
+{"qid": "c0q133", "condition": "corpus-fits", "answer": "A sign posted on a door stating someone is not being able to leave.", "input_tokens": 46287}
+{"qid": "c0q141", "condition": "corpus-fits", "answer": "Freedom and being real; a reminder to stay true to herself and embrace her womanhood.", "input_tokens": 46283}
+{"qid": "c0q1", "condition": "corpus-fits", "answer": "Last year (2022)", "input_tokens": 46282}
+{"qid": "c0q124", "condition": "corpus-fits", "answer": "A dog named Oliver and two cats named Luna and Bailey.", "input_tokens": 46281}
+{"qid": "c0q137", "condition": "corpus-fits", "answer": "A sunset painting with a pink sky, and an abstract painting with a blue background.", "input_tokens": 46291}
+{"qid": "c0q140", "condition": "corpus-fits", "answer": "\"trans lives matter\"", "input_tokens": 46284}
+{"qid": "c0q144", "condition": "corpus-fits", "answer": "He was okay\u2014he wasn't seriously injured in the accident.", "input_tokens": 46284}
+{"qid": "c0q142", "condition": "corpus-fits", "answer": "Mutual support, growth, and empowerment through acceptance, art, and self-discovery. May 8 to October 22, 2023.", "input_tokens": 46287}
+{"qid": "c0q151", "condition": "corpus-fits", "answer": "Went hiking/walking on a trail with her family.", "input_tokens": 46287}
+{"qid": "c0q22", "condition": "corpus-fits", "answer": "Yes, likely. Caroline mentioned having \"classics\" and \"educational books\" in her children's library (6 July 2023), and Dr. Seuss fits both categories.", "input_tokens": 46289}
+{"qid": "c0q2", "condition": "corpus-fits", "answer": "Counseling, mental health, psychology", "input_tokens": 46286}
+{"qid": "c0q30", "condition": "corpus-fits", "answer": "No, there is no evidence she is.", "input_tokens": 46289}
+{"qid": "c0q34", "condition": "corpus-fits", "answer": "Mentorship program for LGBTQ youth (17 July 2023), volunteered at LGBTQ+ youth center (28 August 2023), planning youth center talent show.", "input_tokens": 46283}
+{"qid": "c0q44", "condition": "corpus-fits", "answer": "13 August 2023", "input_tokens": 46283}
+{"qid": "c0q31", "condition": "corpus-fits", "answer": "Around June 20, 2023 (referred to as \"last week\" when discussing June 27)", "input_tokens": 46283}
+{"qid": "c0q38", "condition": "corpus-fits", "answer": "Camping, hiking, beach trips, museum visits, pottery workshops, painting together, roasting marshmallows, picnics, playing games, swimming, family concerts, road trips to Grand Canyon, volunteering at homeless shelter.", "input_tokens": 46284}
+{"qid": "c0q41", "condition": "corpus-fits", "answer": "18 July 2023", "input_tokens": 46282}
+{"qid": "c0q37", "condition": "corpus-fits", "answer": "A sunset with a pink sky (13 October 2023).", "input_tokens": 46281}
+{"qid": "c0q33", "condition": "corpus-fits", "answer": "Late June 2023 (the week before 3 July 2023)", "input_tokens": 46285}
+{"qid": "c0q28", "condition": "corpus-fits", "answer": "14 July 2023", "input_tokens": 46282}
+{"qid": "c0q50", "condition": "corpus-fits", "answer": "Progressive/liberal. Caroline actively advocates for LGBTQ+ rights, inclusivity, and social justice throughout the conversations, and is involved in activism work.", "input_tokens": 46283}
+{"qid": "c0q52", "condition": "corpus-fits", "answer": "Luna, Oliver, and Bailey", "input_tokens": 46283}
+{"qid": "c0q48", "condition": "corpus-fits", "answer": "A cup with a dog face on it (from a pottery workshop on 15 July 2023).", "input_tokens": 46286}
+{"qid": "c0q40", "condition": "corpus-fits", "answer": "At least 2 times (camping at the beach in July, and another beach visit later in July).", "input_tokens": 46289}
+{"qid": "c0q53", "condition": "corpus-fits", "answer": "Week of 23 August 2023", "input_tokens": 46281}
+{"qid": "c0q60", "condition": "corpus-fits", "answer": "Clarinet.", "input_tokens": 46281}
+{"qid": "c0q61", "condition": "corpus-fits", "answer": "Matt Patterson (14 August 2023) and Summer Sounds (28 August 2023)", "input_tokens": 46284}
+{"qid": "c0q47", "condition": "corpus-fits", "answer": "Friends, family, and mentors.", "input_tokens": 46283}
+{"qid": "c0q43", "condition": "corpus-fits", "answer": "Paintings, drawings, and stained glass windows. She also plays guitar.", "input_tokens": 46281}
+{"qid": "c0q64", "condition": "corpus-fits", "answer": "Yes, likely. She enjoys classical music like Bach and Mozart.", "input_tokens": 46292}
+{"qid": "c0q59", "condition": "corpus-fits", "answer": "Likely not, or unclear. She wears a cross necklace with \"faith\" meaning from her grandmother, and created stained glass for a church, but these are the only religious references. She had a negative encounter with \"religious conservatives\" on a hike, which might suggest she's secular or not aligned with organized religion.", "input_tokens": 46279}
+{"qid": "c0q72", "condition": "corpus-fits", "answer": "Last year (approximately 2022, relative to October 2023)", "input_tokens": 46284}
+{"qid": "c0q62", "condition": "corpus-fits", "answer": "27 August 2023", "input_tokens": 46283}
+{"qid": "c0q83", "condition": "corpus-fits", "answer": "Self-care is really important; taking care of herself helps her better care for her family.", "input_tokens": 46284}
+{"qid": "c0q78", "condition": "corpus-fits", "answer": "Pink sneakers (12 July 2023), wooden figurines (22 October 2023)", "input_tokens": 46281}
+{"qid": "c0q65", "condition": "corpus-fits", "answer": "Loss of some friendships, mental health struggles, found acceptance through support systems, developed resilience, explored identity through art, stronger genuine relationships with accepting people.", "input_tokens": 46285}
+{"qid": "c0q8", "condition": "corpus-fits", "answer": "Early June 2023 (approximately 2-3 June 2023, described as \"last week\" before 9 June 2023)", "input_tokens": 46283}
+{"qid": "c0q91", "condition": "corpus-fits", "answer": "Love, faith and strength.", "input_tokens": 46283}
+{"qid": "c0q84", "condition": "corpus-fits", "answer": "Melanie prioritizes self-care through creative outlets (pottery, painting, violin), running, reading, and family time.", "input_tokens": 46284}
+{"qid": "c0q90", "condition": "corpus-fits", "answer": "5 years (as of June 2023)", "input_tokens": 46284}
+{"qid": "c1q14", "condition": "corpus-fits", "answer": "3 April 2023", "input_tokens": 41494}
+{"qid": "c0q66", "condition": "corpus-fits", "answer": "Explore nature and enjoy the views.", "input_tokens": 46286}
+{"qid": "c0q85", "condition": "corpus-fits", "answer": "Explore nature with Melanie and organize an LGBTQ art show.", "input_tokens": 46282}
+{"qid": "c1q10", "condition": "corpus-fits", "answer": "8 February 2023", "input_tokens": 41498}
+{"qid": "c0q73", "condition": "corpus-fits", "answer": "Last month before 13 October 2023 (September 2023, specific date not provided)", "input_tokens": 46281}
+{"qid": "c0q9", "condition": "corpus-fits", "answer": "Around June 2-3, 2023", "input_tokens": 46288}
+{"qid": "c1q2", "condition": "corpus-fits", "answer": "Dancing.", "input_tokens": 41495}
+{"qid": "c0q97", "condition": "corpus-fits", "answer": "LGBTQ+ counseling workshop (around 23 June 2023)", "input_tokens": 46280}
+{"qid": "c1q39", "condition": "corpus-fits", "answer": "Contemporary dance.", "input_tokens": 41493}
+{"qid": "c1q37", "condition": "corpus-fits", "answer": "23 July 2023", "input_tokens": 41496}
+{"qid": "c1q28", "condition": "corpus-fits", "answer": "Jon was in Rome the week before 19 June 2023 (approximately mid-June 2023).", "input_tokens": 41488}
+{"qid": "c1q34", "condition": "corpus-fits", "answer": "Early July 2023 (mentioned on 9 July 2023 as having happened \"last week\")", "input_tokens": 41494}
+{"qid": "c1q29", "condition": "corpus-fits", "answer": "Paris and Rome", "input_tokens": 41488}
+{"qid": "c1q32", "condition": "corpus-fits", "answer": "Around 14 June 2023 (last week before 21 June conversation)", "input_tokens": 41495}
+{"qid": "c1q42", "condition": "corpus-fits", "answer": "\"Finding Freedom\" - a contemporary piece.", "input_tokens": 41499}
+{"qid": "c1q41", "condition": "corpus-fits", "answer": "Winning first place at regionals at age fifteen with a contemporary piece called \"Finding Freedom.\"", "input_tokens": 41492}
+{"qid": "c1q49", "condition": "corpus-fits", "answer": "Comfortable, inviting, cozy\u2014like they were in a cool oasis.", "input_tokens": 41496}
+{"qid": "c1q4", "condition": "corpus-fits", "answer": "Passion for dancing since childhood; lost his banking job and wanted to pursue his dream of teaching and sharing the joy of dance with others.", "input_tokens": 41492}
+{"qid": "c1q61", "condition": "corpus-fits", "answer": "A trophy", "input_tokens": 41493}
+{"qid": "c1q33", "condition": "corpus-fits", "answer": "20 June 2023 (the day before the conversation on 21 June 2023, when Jon mentioned \"Yesterday I chose to go to networking events\")", "input_tokens": 41492}
+{"qid": "c1q67", "condition": "corpus-fits", "answer": "Jon uses it to stay organized and motivated\u2014to set goals, track achievements, and identify areas to improve.", "input_tokens": 41496}
+{"qid": "c1q62", "condition": "corpus-fits", "answer": "Gina stays confident by reminding herself of her successes and progress, having a good support system, and focusing on why she started\u2014because she loves it.", "input_tokens": 41493}
+{"qid": "c1q66", "condition": "corpus-fits", "answer": "Dance classes, workshops, and one-on-one mentoring and training.", "input_tokens": 41494}
+{"qid": "c1q50", "condition": "corpus-fits", "answer": "Jon praised Gina's store, saying it looked great and her commitment and effort were paying off.", "input_tokens": 41496}
+{"qid": "c1q78", "condition": "corpus-fits", "answer": "His positivity and determination.", "input_tokens": 41497}
+{"qid": "c1q77", "condition": "corpus-fits", "answer": "Hoodies", "input_tokens": 41494}
+{"qid": "c1q69", "condition": "corpus-fits", "answer": "To clear his mind while working on his business.", "input_tokens": 41492}
+{"qid": "c1q63", "condition": "corpus-fits", "answer": "Fashion internship", "input_tokens": 41503}
+{"qid": "c1q72", "condition": "corpus-fits", "answer": "Excited, can't wait, ready to savor the moment (19 June 2023)", "input_tokens": 41495}
+{"qid": "c1q73", "condition": "corpus-fits", "answer": "Stress relief; worries vanish. Also describes it as \"like air\"\u2014essential and vital to her.", "input_tokens": 41494}
+{"qid": "c2q110", "condition": "corpus-fits", "answer": "Maria joined a gym.", "input_tokens": 55663}
+{"qid": "c2q103", "condition": "corpus-fits", "answer": "Max", "input_tokens": 55671}
+{"qid": "c2q104", "condition": "corpus-fits", "answer": "10 years", "input_tokens": 55658}
+{"qid": "c2q117", "condition": "corpus-fits", "answer": "Marching event for veterans' rights (3 July 2023)", "input_tokens": 55661}
+{"qid": "c2q111", "condition": "corpus-fits", "answer": "Kundalini yoga", "input_tokens": 55662}
+{"qid": "c1q76", "condition": "corpus-fits", "answer": "Extremely excited and enthusiastic; both express high anticipation for the 20 June 2023 grand opening.", "input_tokens": 41493}
+{"qid": "c2q113", "condition": "corpus-fits", "answer": "Self-doubt", "input_tokens": 55664}
+{"qid": "c2q12", "condition": "corpus-fits", "answer": "Military aptitude test", "input_tokens": 55655}
+{"qid": "c2q118", "condition": "corpus-fits", "answer": "His respect for the military and desire to show his support for what he believes in.", "input_tokens": 55661}
+{"qid": "c2q134", "condition": "corpus-fits", "answer": "They were awestruck and humbled.", "input_tokens": 55660}
+{"qid": "c2q120", "condition": "corpus-fits", "answer": "A flood.", "input_tokens": 55665}
+{"qid": "c2q142", "condition": "corpus-fits", "answer": "Maria received a medal from the homeless shelter.", "input_tokens": 55662}
+{"qid": "c2q135", "condition": "corpus-fits", "answer": "To remember and appreciate those who served.", "input_tokens": 55663}
+{"qid": "c2q139", "condition": "corpus-fits", "answer": "Helped renovate a rundown community center back home.", "input_tokens": 55661}
+{"qid": "c2q122", "condition": "corpus-fits", "answer": "A nasty flood hit John's old area last week, damaging homes due to poor infrastructure.", "input_tokens": 55669}
+{"qid": "c2q146", "condition": "corpus-fits", "answer": "He doesn't feel like he's making much of an impact (11 August 2023).", "input_tokens": 55661}
+{"qid": "c2q149", "condition": "corpus-fits", "answer": "John is volunteering as a mentor for a local school and is part of the fire-fighting brigade.", "input_tokens": 55661}
+{"qid": "c2q17", "condition": "corpus-fits", "answer": "Mechanical engineering (based on his work at a mechanical engineering company and having mechanical skills)", "input_tokens": 55655}
+{"qid": "c2q19", "condition": "corpus-fits", "answer": "Broken windshield (9 January 2023); car breakdown (10 April 2023)", "input_tokens": 55656}
+{"qid": "c2q21", "condition": "corpus-fits", "answer": "Pacific Northwest, California, East Coast (planning), West County (hometown)", "input_tokens": 55666}
+{"qid": "c2q20", "condition": "corpus-fits", "answer": "The context does not specify an exact date. John mentions taking a road trip to the Pacific Northwest \"last year\" during a conversation on 10 April 2023, indicating it occurred sometime in 2022, but no specific date is provided.", "input_tokens": 55659}
+{"qid": "c2q22", "condition": "corpus-fits", "answer": "March 2023", "input_tokens": 55657}
+{"qid": "c2q25", "condition": "corpus-fits", "answer": "Spain and England (specifically London).", "input_tokens": 55655}
+{"qid": "c2q115", "condition": "corpus-fits", "answer": "A beach vacation in California with his wife and kids.", "input_tokens": 55663}
+{"qid": "c2q28", "condition": "corpus-fits", "answer": "Education, infrastructure, veterans' support, and community improvement.", "input_tokens": 55656}
+{"qid": "c1q44", "condition": "corpus-fits", "answer": "She says they're graceful (or \"so graceful\").", "input_tokens": 41495}
+{"qid": "c2q148", "condition": "corpus-fits", "answer": "Very well; full of energy, learning commands and house training, gets along with other dog.", "input_tokens": 55661}
+{"qid": "c2q2", "condition": "corpus-fits", "answer": "Kickboxing and taekwondo.", "input_tokens": 55654}
+{"qid": "c2q29", "condition": "corpus-fits", "answer": "Ring-toss tournament and chili cook-off", "input_tokens": 55660}
+{"qid": "c2q46", "condition": "corpus-fits", "answer": "Around 15-16 July 2023 (the weekend before 22 July 2023)", "input_tokens": 55657}
+{"qid": "c2q27", "condition": "corpus-fits", "answer": "19 May 2023", "input_tokens": 55656}
+{"qid": "c2q30", "condition": "corpus-fits", "answer": "A homeless shelter and a local dog shelter.", "input_tokens": 55655}
+{"qid": "c2q44", "condition": "corpus-fits", "answer": "Picnic with games (charades, scavenger hunt) on 17 July 2023; hiking on 22 July 2023.", "input_tokens": 55657}
+{"qid": "c2q3", "condition": "corpus-fits", "answer": "Homeless shelter volunteering. Maria volunteered regularly at the homeless shelter throughout the conversations, and John participated in activities there including giving out food and supplies and organizing food drives.", "input_tokens": 55659}
+{"qid": "c2q35", "condition": "corpus-fits", "answer": "Florida and Oregon", "input_tokens": 55656}
+{"qid": "c2q47", "condition": "corpus-fits", "answer": "Kickboxing, boot camps (3x/week with family), beginner yoga, weight training, rock climbing, taekwondo, and circuit training.", "input_tokens": 55653}
+{"qid": "c2q65", "condition": "corpus-fits", "answer": "Education and infrastructure", "input_tokens": 55657}
+{"qid": "c2q53", "condition": "corpus-fits", "answer": "Last year (approximately 2022) \u2014 John mentions it during the August 5, 2023 conversation but doesn't give a specific date.", "input_tokens": 55658}
+{"qid": "c2q54", "condition": "corpus-fits", "answer": "4 August 2023", "input_tokens": 55659}
+{"qid": "c2q57", "condition": "corpus-fits", "answer": "Veterans, homeless/food assistance, domestic abuse, fire department/community safety", "input_tokens": 55655}
+{"qid": "c2q73", "condition": "corpus-fits", "answer": "Her aunt, who volunteered and helped Maria's family when they were struggling.", "input_tokens": 55655}
+{"qid": "c2q81", "condition": "corpus-fits", "answer": "A trip to England (specifically London) a few years ago, where she was mesmerized by the castles.", "input_tokens": 55662}
+{"qid": "c2q133", "condition": "corpus-fits", "answer": "Visited a military memorial with his kids", "input_tokens": 55666}
+{"qid": "c2q51", "condition": "corpus-fits", "answer": "Around August 2022 (she stated \"about a year ago\" in August 2023)", "input_tokens": 55658}
+{"qid": "c2q69", "condition": "corpus-fits", "answer": "The context does not contain information about December 2023, as the latest conversation session is from 16 August, 2023. Based on the pattern shown, my best guess would be: baked goods or food items.", "input_tokens": 55661}
+{"qid": "c2q86", "condition": "corpus-fits", "answer": "His car broke down and he needed to get it fixed.", "input_tokens": 55659}
+{"qid": "c2q9", "condition": "corpus-fits", "answer": "Her auntie (aunt)", "input_tokens": 55666}
+{"qid": "c2q88", "condition": "corpus-fits", "answer": "Politics and the government, specifically education reform and infrastructure development.", "input_tokens": 55657}
+{"qid": "c3q110", "condition": "corpus-fits", "answer": "Bright, bold, and to stand out.", "input_tokens": 52936}
+{"qid": "c3q103", "condition": "corpus-fits", "answer": "\"Little Women\"", "input_tokens": 52946}
+{"qid": "c3q1", "condition": "corpus-fits", "answer": "Movies, cooking/desserts (especially dairy-free), creative projects, books, and nature.", "input_tokens": 52938}
+{"qid": "c3q106", "condition": "corpus-fits", "answer": "Personal experiences and her own journey of self-discovery.", "input_tokens": 52942}
+{"qid": "c2q84", "condition": "corpus-fits", "answer": "5K charity run for a homeless shelter", "input_tokens": 55663}
+{"qid": "c2q95", "condition": "corpus-fits", "answer": "Made dinner together (May 4, 2023)", "input_tokens": 55662}
+{"qid": "c2q85", "condition": "corpus-fits", "answer": "A donation drive for the fire department, collecting canned food, toiletries, and clothes.", "input_tokens": 55656}
+{"qid": "c3q115", "condition": "corpus-fits", "answer": "Dramas and romantic comedies. She loves getting immersed in feelings and plots, and also enjoys emotionally-driven films and superhero movies.", "input_tokens": 52934}
+{"qid": "c3q107", "condition": "corpus-fits", "answer": "Nate likes turtles because they're calming and peaceful. Their slow pace provides a nice escape from life's rush, they're low-maintenance, and they remind him to appreciate life's small things.", "input_tokens": 52936}
+{"qid": "c3q128", "condition": "corpus-fits", "answer": "Spider-Man", "input_tokens": 52935}
+{"qid": "c3q130", "condition": "corpus-fits", "answer": "Quotes, photos, and little keepsakes.", "input_tokens": 52939}
+{"qid": "c3q132", "condition": "corpus-fits", "answer": "Vegan ice cream", "input_tokens": 52939}
+{"qid": "c3q131", "condition": "corpus-fits", "answer": "The love and encouragement from her family.", "input_tokens": 52939}
+{"qid": "c3q121", "condition": "corpus-fits", "answer": "Joanna invited Nate to join her on the trails sometime.", "input_tokens": 52937}
+{"qid": "c3q138", "condition": "corpus-fits", "answer": "A book from the 1900s with stories and sketches about the town.", "input_tokens": 52939}
+{"qid": "c3q145", "condition": "corpus-fits", "answer": "An online blog post about a hard moment in her life.", "input_tokens": 52941}
+{"qid": "c3q140", "condition": "corpus-fits", "answer": "Road trip to Woodhaven and an old 1900s book she found there about the town's history and people.", "input_tokens": 52938}
+{"qid": "c3q116", "condition": "corpus-fits", "answer": "Video games and movies", "input_tokens": 52937}
+{"qid": "c3q143", "condition": "corpus-fits", "answer": "Touched and excited; it reminded her of the power of her words and why she loves writing.", "input_tokens": 52942}
+{"qid": "c3q155", "condition": "corpus-fits", "answer": "Coconut milk ice cream.", "input_tokens": 52939}
+{"qid": "c3q156", "condition": "corpus-fits", "answer": "Dairy-free chocolate mousse.", "input_tokens": 52944}
+{"qid": "c3q136", "condition": "corpus-fits", "answer": "By July 10, 2022, Nate has won 4 video game tournaments.", "input_tokens": 52943}
+{"qid": "c3q161", "condition": "corpus-fits", "answer": "A bookmark", "input_tokens": 52940}
+{"qid": "c3q158", "condition": "corpus-fits", "answer": "Dairy-free chocolate cake with raspberries", "input_tokens": 52947}
+{"qid": "c3q142", "condition": "corpus-fits", "answer": "Video gaming/esports tournaments", "input_tokens": 52939}
+{"qid": "c3q148", "condition": "corpus-fits", "answer": "Nate felt it was \"fun and rewarding\" to share his love for dairy-free desserts with Joanna. He expressed he was \"always happy to share\" and wanted to \"spread the joy of dairy-free options.\"", "input_tokens": 52945}
+{"qid": "c3q159", "condition": "corpus-fits", "answer": "Blueberries and coconut milk.", "input_tokens": 52960}
+{"qid": "c3q176", "condition": "corpus-fits", "answer": "A movie script", "input_tokens": 52950}
+{"qid": "c3q180", "condition": "corpus-fits", "answer": "Vegetables, fruits, and insects.", "input_tokens": 52938}
+{"qid": "c3q179", "condition": "corpus-fits", "answer": "Surreal, amazing, and awesome. She said seeing her characters \"jump off the page and become real\" was her favorite part.", "input_tokens": 52950}
+{"qid": "c3q171", "condition": "corpus-fits", "answer": "She keeps grinding and moving ahead; doesn't give up on her dreams.", "input_tokens": 52939}
+{"qid": "c3q194", "condition": "corpus-fits", "answer": "He saw another turtle at a pet store and had to get it; the tank was big enough for three, so he figured why not.", "input_tokens": 52934}
+{"qid": "c3q191", "condition": "corpus-fits", "answer": "Watch other people's videos first to understand what the audience likes so the videos don't flop.", "input_tokens": 52940}
+{"qid": "c3q173", "condition": "corpus-fits", "answer": "\"Rejections suck, but don't forget they don't define you. Keep at it and you'll find the perfect opportunity... You got this, and don't ever forget that you have people cheering you on from the sidelines wherever you go.\"", "input_tokens": 52941}
+{"qid": "c3q166", "condition": "corpus-fits", "answer": "The story was gripping and the actors were great; she rated it 9 or 10 out of 10.", "input_tokens": 52936}
+{"qid": "c3q197", "condition": "corpus-fits", "answer": "They make him feel calm and remind him to slow down and appreciate the small things in life.", "input_tokens": 52937}
+{"qid": "c3q20", "condition": "corpus-fits", "answer": "Around 20 May 2022 (or shortly before)", "input_tokens": 52932}
+{"qid": "c3q3", "condition": "corpus-fits", "answer": "January 2022 (approximately mid-January)", "input_tokens": 52936}
+{"qid": "c3q35", "condition": "corpus-fits", "answer": "22 August 2022 (that weekend)", "input_tokens": 52939}
+{"qid": "c3q30", "condition": "corpus-fits", "answer": "Joanna writes screenplays, movie scripts, books, and blog posts. Her screenplays often feature themes of drama, romance, self-discovery, loss, and redemption. Several of her scripts have been produced and shown on screen.", "input_tokens": 52934}
+{"qid": "c3q49", "condition": "corpus-fits", "answer": "2 rejections are explicitly mentioned (3 June 2022 and 21 October 2022).", "input_tokens": 52936}
+{"qid": "c3q5", "condition": "corpus-fits", "answer": "Writing, reading, watching movies, hiking, baking, and exploring nature.", "input_tokens": 52934}
+{"qid": "c3q40", "condition": "corpus-fits", "answer": "Week of 7 September 2022 (mentioned as \"last week\" on 14 September 2022)", "input_tokens": 52933}
+{"qid": "c3q195", "condition": "corpus-fits", "answer": "Watch one of her movies together or go to the park.", "input_tokens": 52943}
+{"qid": "c3q23", "condition": "corpus-fits", "answer": "The context does not specify which screenplay(s) were rejected. Joanna mentions receiving rejections from production companies in June 2022 and October 2022, but the specific screenplays are never identified by name or number.", "input_tokens": 52937}
+{"qid": "c3q51", "condition": "corpus-fits", "answer": "25 May 2022", "input_tokens": 52938}
+{"qid": "c3q45", "condition": "corpus-fits", "answer": "Late September 2022", "input_tokens": 52937}
+{"qid": "c3q29", "condition": "corpus-fits", "answer": "Late June 2022 (the weekend after 24 June, 2022).", "input_tokens": 52942}
+{"qid": "c3q57", "condition": "corpus-fits", "answer": "5 November 2022", "input_tokens": 52942}
+{"qid": "c3q59", "condition": "corpus-fits", "answer": "She writes down her favorite memories.", "input_tokens": 52935}
+{"qid": "c3q55", "condition": "corpus-fits", "answer": "Nature, personal experiences, real-life stories, her emotions, dreams, and people she knows.", "input_tokens": 52932}
+{"qid": "c3q64", "condition": "corpus-fits", "answer": "5 November 2022", "input_tokens": 52938}
+{"qid": "c3q53", "condition": "corpus-fits", "answer": "2 times - once on October 25, 2022, and once to the beach in Tampa on November 10-11, 2022.", "input_tokens": 52940}
+{"qid": "c3q63", "condition": "corpus-fits", "answer": "CS:GO, Street Fighter, Valorant, Cyberpunk 2077, Xenoblade Chronicles, and Catan (board game)", "input_tokens": 52933}
+{"qid": "c3q65", "condition": "corpus-fits", "answer": "Valorant tournament", "input_tokens": 52942}
+{"qid": "c3q62", "condition": "corpus-fits", "answer": "One letter (from a reader of her blog post, mentioned on 14 August, 2022)", "input_tokens": 52935}
+{"qid": "c3q6", "condition": "corpus-fits", "answer": "3 years (as of January 2022)", "input_tokens": 52938}
+{"qid": "c3q56", "condition": "corpus-fits", "answer": "Turtles", "input_tokens": 52937}
+{"qid": "c3q87", "condition": "corpus-fits", "answer": "Florida", "input_tokens": 52932}
+{"qid": "c3q60", "condition": "corpus-fits", "answer": "Nintendo (Switch). He mentions being \"a big fan of Nintendo games\" and plays Xenoblade Chronicles.", "input_tokens": 52932}
+{"qid": "c3q97", "condition": "corpus-fits", "answer": "Her first full screenplay (and printed it)", "input_tokens": 52943}
+{"qid": "c3q68", "condition": "corpus-fits", "answer": "At least 4 hikes (mentioned in April, May, June 2022, and near Fort Wayne last summer).", "input_tokens": 52935}
+{"qid": "c3q96", "condition": "corpus-fits", "answer": "Action and sci-fi movies", "input_tokens": 52937}
+{"qid": "c3q58", "condition": "corpus-fits", "answer": "Coconut milk ice cream recipes, dairy-free chocolate cake, vegan ice cream recipe, movies (\"Little Women,\" \"Inception,\" fantasy films), book series, video game (\"Cyberpunk 2077\"), dairy-free baking tips, going hiking together.", "input_tokens": 52938}
+{"qid": "c3q84", "condition": "corpus-fits", "answer": "No. Joanna's laptop crashed and she lost all her writing work (major setback), while Nate had a tournament loss but got a cooking show opportunity (mixed).", "input_tokens": 52954}
+{"qid": "c4q0", "condition": "corpus-fits", "answer": "Win a championship; improve shooting; be a consistent performer; help his team; inspire others through charity work and build his brand.", "input_tokens": 55796}
+{"qid": "c4q100", "condition": "corpus-fits", "answer": "Four years in high school", "input_tokens": 55797}
+{"qid": "c3q92", "condition": "corpus-fits", "answer": "The context does not specify what kind of lighting Nate has in his gaming room. Based on typical gaming setups, it likely has RGB or LED lighting, but this is not stated in the conversation.", "input_tokens": 52937}
+{"qid": "c3q71", "condition": "corpus-fits", "answer": "Nature.", "input_tokens": 52939}
+{"qid": "c4q107", "condition": "corpus-fits", "answer": "Edinburgh, Scotland", "input_tokens": 55798}
+{"qid": "c3q77", "condition": "corpus-fits", "answer": "Late April 2022 (Nate said \"last week\" on May 2, 2022)", "input_tokens": 52934}
+{"qid": "c3q73", "condition": "corpus-fits", "answer": "The context does not contain information about Joanna visiting any state in summer 2021. The conversations only begin in January 2022. \n\nMichigan (best guess based on her mentioning having a dog there previously)", "input_tokens": 52937}
+{"qid": "c4q111", "condition": "corpus-fits", "answer": "A greenhouse.", "input_tokens": 55799}
+{"qid": "c4q1", "condition": "corpus-fits", "answer": "Charity work, brand building through endorsements, mentoring youth athletes, and starting a foundation to help underprivileged kids access sports programs.", "input_tokens": 55801}
+{"qid": "c4q101", "condition": "corpus-fits", "answer": "Amazing\u2014found lots to explore, great food and culture, described it as a must-visit.", "input_tokens": 55794}
+{"qid": "c4q118", "condition": "corpus-fits", "answer": "A trophy", "input_tokens": 55797}
+{"qid": "c4q126", "condition": "corpus-fits", "answer": "Motivational quotes and strategies to help him stay focused and push through tough workouts.", "input_tokens": 55798}
+{"qid": "c4q11", "condition": "corpus-fits", "answer": "Surfing and hiking.", "input_tokens": 55792}
+{"qid": "c4q119", "condition": "corpus-fits", "answer": "Smoky Mountains", "input_tokens": 55798}
+{"qid": "c4q133", "condition": "corpus-fits", "answer": "Spectacular.", "input_tokens": 55801}
+{"qid": "c4q117", "condition": "corpus-fits", "answer": "Facing tough opponents and backing each other up (team support).", "input_tokens": 55798}
+{"qid": "c4q138", "condition": "corpus-fits", "answer": "Physical therapy, rest, and strength training.", "input_tokens": 55795}
+{"qid": "c4q122", "condition": "corpus-fits", "answer": "John has helped the younger players achieve personal growth, improvement, confidence, and reach their goals.", "input_tokens": 55796}
+{"qid": "c4q14", "condition": "corpus-fits", "answer": "Fantasy novels and literary articles about fantasy books.", "input_tokens": 55792}
+{"qid": "c4q113", "condition": "corpus-fits", "answer": "The context does not explicitly state which basketball team Tim supports. Tim admires LeBron James and watched his famous block in the 2016 Finals, but no specific team affiliation is mentioned.", "input_tokens": 55791}
+{"qid": "c4q154", "condition": "corpus-fits", "answer": "Really electric and intense.", "input_tokens": 55800}
+{"qid": "c4q159", "condition": "corpus-fits", "answer": "Sports and marketing seminars", "input_tokens": 55793}
+{"qid": "c4q13", "condition": "corpus-fits", "answer": "Reading fantasy books and novels.", "input_tokens": 55792}
+{"qid": "c4q151", "condition": "corpus-fits", "answer": "Basketball career-high assists and English literature class struggles", "input_tokens": 55804}
+{"qid": "c4q173", "condition": "corpus-fits", "answer": "Galway", "input_tokens": 55798}
+{"qid": "c4q170", "condition": "corpus-fits", "answer": "stay true and be a leader", "input_tokens": 55803}
+{"qid": "c4q169", "condition": "corpus-fits", "answer": "A painting of Aragorn (from Lord of the Rings)", "input_tokens": 55798}
+{"qid": "c4q176", "condition": "corpus-fits", "answer": "It felt crazy; he felt all his hard work paid off.", "input_tokens": 55800}
+{"qid": "c4q172", "condition": "corpus-fits", "answer": "Ireland (Galway)", "input_tokens": 55794}
+{"qid": "c4q168", "condition": "corpus-fits", "answer": "He's brave, selfless, down-to-earth, never gives up, and always stands up for justice.", "input_tokens": 55798}
+{"qid": "c4q165", "condition": "corpus-fits", "answer": "The context does not specify. (It was John, not Tim, who got a book in Italy for cooking inspiration, but the title is never mentioned.)", "input_tokens": 55797}
+{"qid": "c4q22", "condition": "corpus-fits", "answer": "15 August 2023", "input_tokens": 55796}
+{"qid": "c4q31", "condition": "corpus-fits", "answer": "September 2023", "input_tokens": 55795}
+{"qid": "c4q24", "condition": "corpus-fits", "answer": "Chicago", "input_tokens": 55800}
+{"qid": "c4q23", "condition": "corpus-fits", "answer": "September 2023 (planned for next month from August 17, 2023)", "input_tokens": 55792}
+{"qid": "c4q29", "condition": "corpus-fits", "answer": "Schools not specified in context; 4 years in high school", "input_tokens": 55804}
+{"qid": "c4q46", "condition": "corpus-fits", "answer": "UK (visiting a castle)", "input_tokens": 55799}
+{"qid": "c4q32", "condition": "corpus-fits", "answer": "Florida", "input_tokens": 55806}
+{"qid": "c4q37", "condition": "corpus-fits", "answer": "Week of 6 October 2023", "input_tokens": 55797}
+{"qid": "c4q52", "condition": "corpus-fits", "answer": "Yoga and strength training.", "input_tokens": 55794}
+{"qid": "c4q148", "condition": "corpus-fits", "answer": "About four months (as of early December 2023, having started learning in late August 2023).", "input_tokens": 55801}
+{"qid": "c4q64", "condition": "corpus-fits", "answer": "December 2023", "input_tokens": 55791}
+{"qid": "c4q20", "condition": "corpus-fits", "answer": "Seattle", "input_tokens": 55794}
+{"qid": "c4q62", "condition": "corpus-fits", "answer": "John does seminars and helps people with their sports and marketing.", "input_tokens": 55793}
+{"qid": "c4q5", "condition": "corpus-fits", "answer": "Strand Bookstore", "input_tokens": 55804}
+{"qid": "c4q72", "condition": "corpus-fits", "answer": "Shooting guard", "input_tokens": 55796}
+{"qid": "c4q65", "condition": "corpus-fits", "answer": "Lord of the Rings and Star Wars", "input_tokens": 55791}
+{"qid": "c4q4", "condition": "corpus-fits", "answer": "Harry Potter series, Game of Thrones series (including \"A Storm of Swords\" and \"A Dance with Dragons\"), \"The Name of the Wind\" by Patrick Rothfuss, Lord of the Rings, The Hobbit, books on personal development and psychology.", "input_tokens": 55790}
+{"qid": "c4q63", "condition": "corpus-fits", "answer": "Summer 2023", "input_tokens": 55794}
+{"qid": "c4q58", "condition": "corpus-fits", "answer": "August 2023", "input_tokens": 55794}
+{"qid": "c4q81", "condition": "corpus-fits", "answer": "Five years.", "input_tokens": 55792}
+{"qid": "c4q83", "condition": "corpus-fits", "answer": "Fantasy novels, characters, themes, and book recommendations.", "input_tokens": 55798}
+{"qid": "c4q57", "condition": "corpus-fits", "answer": "Piano and violin", "input_tokens": 55790}
+{"qid": "c4q98", "condition": "corpus-fits", "answer": "Home Alone", "input_tokens": 55796}
+{"qid": "c4q96", "condition": "corpus-fits", "answer": "Harry Potter and the Philosopher's Stone", "input_tokens": 55798}
+{"qid": "c5q108", "condition": "corpus-fits", "answer": "They hate it; they were confused by snow last winter and prefer sunny days.", "input_tokens": 55633}
+{"qid": "c4q9", "condition": "corpus-fits", "answer": "Nike, Gatorade, Under Armour, and a beverage company.", "input_tokens": 55793}
+{"qid": "c5q114", "condition": "corpus-fits", "answer": "Picnic date with his girlfriend.", "input_tokens": 55630}
+{"qid": "c5q112", "condition": "corpus-fits", "answer": "Sushi", "input_tokens": 55633}
+{"qid": "c4q99", "condition": "corpus-fits", "answer": "Prepping the feast and talking about what they're thankful for, plus watching movies afterwards.", "input_tokens": 55795}
+{"qid": "c5q116", "condition": "corpus-fits", "answer": "The autumn colors.", "input_tokens": 55629}
+{"qid": "c5q111", "condition": "corpus-fits", "answer": "Checking out new hiking trails and exploring nature.", "input_tokens": 55631}
+{"qid": "c5q121", "condition": "corpus-fits", "answer": "Take them to a nearby park.", "input_tokens": 55637}
+{"qid": "c4q75", "condition": "corpus-fits", "answer": "A fantasy literature forum (mentioned on 15 June 2023 as something he had just joined).", "input_tokens": 55791}
+{"qid": "c5q102", "condition": "corpus-fits", "answer": "To show her love of creativity and sustainability while reducing waste.", "input_tokens": 55633}
+{"qid": "c4q66", "condition": "corpus-fits", "answer": "\"Heir to the Empire\" by Timothy Zahn", "input_tokens": 55795}
+{"qid": "c5q20", "condition": "corpus-fits", "answer": "Chicken", "input_tokens": 55632}
+{"qid": "c5q2", "condition": "corpus-fits", "answer": "Board games, wine tasting, trying new cafes", "input_tokens": 55632}
+{"qid": "c5q40", "condition": "corpus-fits", "answer": "Dog park.", "input_tokens": 55636}
+{"qid": "c5q36", "condition": "corpus-fits", "answer": "Chicken Pot Pie, Roasted Chicken, and Sushi. She also loves using garlic as her go-to ingredient in cooking.", "input_tokens": 55631}
+{"qid": "c5q25", "condition": "corpus-fits", "answer": "Weekend of 19 August 2023", "input_tokens": 55629}
+{"qid": "c5q27", "condition": "corpus-fits", "answer": "Stressful and tough; it's been piling up and preventing him from outdoor activities he enjoys.", "input_tokens": 55629}
+{"qid": "c5q48", "condition": "corpus-fits", "answer": "Family members. He states \"pets bring such joy and feel like family\" and refers to dogs as \"amazing furry friends as family member.\"", "input_tokens": 55628}
+{"qid": "c5q15", "condition": "corpus-fits", "answer": "Finding dog-friendly housing in the city.", "input_tokens": 55636}
+{"qid": "c5q32", "condition": "corpus-fits", "answer": "Tattoo of her four dogs on her arm; also has a tattoo of a dog and sunflowers.", "input_tokens": 55634}
+{"qid": "c5q60", "condition": "corpus-fits", "answer": "Three dogs: Toby (German Shepherd), Buddy, and Scout.", "input_tokens": 55627}
+{"qid": "c5q52", "condition": "corpus-fits", "answer": "Visit local city parks during lunch breaks.", "input_tokens": 55642}
+{"qid": "c5q64", "condition": "corpus-fits", "answer": "Sunflowers", "input_tokens": 55634}
+{"qid": "c5q63", "condition": "corpus-fits", "answer": "Croissants, muffins, and tarts", "input_tokens": 55635}
+{"qid": "c5q54", "condition": "corpus-fits", "answer": "Fetch and frisbee", "input_tokens": 55636}
+{"qid": "c5q65", "condition": "corpus-fits", "answer": "Plays fetch with a ball or frisbee, chats with other dog owners.", "input_tokens": 55635}
+{"qid": "c5q46", "condition": "corpus-fits", "answer": "One pet (Toby, a German Shepherd).", "input_tokens": 55634}
+{"qid": "c5q75", "condition": "corpus-fits", "answer": "Kayaking and bungee jumping.", "input_tokens": 55634}
+{"qid": "c5q7", "condition": "corpus-fits", "answer": "Approximately 3 years. Audrey had Pepper, Precious, and Panda for 3 years as of March 27, 2023, and adopted Pixie around April 2, 2023.", "input_tokens": 55639}
+{"qid": "c5q76", "condition": "corpus-fits", "answer": "About an hour, though it varies depending on the day.", "input_tokens": 55632}
+{"qid": "c5q72", "condition": "corpus-fits", "answer": "She didn't want to hurt or punish her dogs; she believed punishment was harmful and not the proper way to train pets.", "input_tokens": 55635}
+{"qid": "c5q87", "condition": "corpus-fits", "answer": "Two hours", "input_tokens": 55639}
+{"qid": "c5q83", "condition": "corpus-fits", "answer": "Long neighborhood walks exploring paths, sharing worries and hopes with him, playing fetch together.", "input_tokens": 55635}
+{"qid": "c5q84", "condition": "corpus-fits", "answer": "Relaxed/wise, playful/game-ready, naughty/cuddly, and energetic/adventurous (described 27 July 2023).", "input_tokens": 55635}
+{"qid": "c5q91", "condition": "corpus-fits", "answer": "Got new beds for them.", "input_tokens": 55639}
+{"qid": "c5q89", "condition": "corpus-fits", "answer": "Regular grooming, daily brushing, regular baths, and nail trims.", "input_tokens": 55635}
+{"qid": "c6q104", "condition": "corpus-fits", "answer": "Vancouver", "input_tokens": 53483}
+{"qid": "c5q95", "condition": "corpus-fits", "answer": "Peruvian Lilies", "input_tokens": 55632}
+{"qid": "c5q96", "condition": "corpus-fits", "answer": "He learned about animals, plants, and ecosystems, and how they all work together.", "input_tokens": 55631}
+{"qid": "c5q80", "condition": "corpus-fits", "answer": "Roasted Chicken", "input_tokens": 55650}
+{"qid": "c6q101", "condition": "corpus-fits", "answer": "Reading books, entering imaginative worlds of authors.", "input_tokens": 53493}
+{"qid": "c5q28", "condition": "corpus-fits", "answer": "Party hats", "input_tokens": 55635}
+{"qid": "c6q105", "condition": "corpus-fits", "answer": "July 20", "input_tokens": 53488}
+{"qid": "c6q119", "condition": "corpus-fits", "answer": "Basic games and stories.", "input_tokens": 53484}
+{"qid": "c6q110", "condition": "corpus-fits", "answer": "Strategy and RPG games", "input_tokens": 53486}
+{"qid": "c6q108", "condition": "corpus-fits", "answer": "Fortnite", "input_tokens": 53487}
+{"qid": "c6q107", "condition": "corpus-fits", "answer": "He wanted something that made a difference and aligned with his values and passions, specifically to pursue work in the gaming industry organizing esports tournaments.", "input_tokens": 53482}
+{"qid": "c6q113", "condition": "corpus-fits", "answer": "Samantha's phone number.", "input_tokens": 53487}
+{"qid": "c6q130", "condition": "corpus-fits", "answer": "Guitar.", "input_tokens": 53486}
+{"qid": "c6q122", "condition": "corpus-fits", "answer": "$10 per class", "input_tokens": 53483}
+{"qid": "c6q128", "condition": "corpus-fits", "answer": "Medieval castle with a labyrinth full of puzzles and traps.", "input_tokens": 53483}
+{"qid": "c6q12", "condition": "corpus-fits", "answer": "No, James did not have a girlfriend during April 2022. He met Samantha in August 2022 and asked her to be his girlfriend in early September 2022.", "input_tokens": 53485}
+{"qid": "c6q136", "condition": "corpus-fits", "answer": "Excited and inspired; finds it rewarding to help others reach their potential.", "input_tokens": 53490}
+{"qid": "c6q137", "condition": "corpus-fits", "answer": "RPGs (role-playing games), specifically Cyberpunk 2077.", "input_tokens": 53489}
+{"qid": "c6q139", "condition": "corpus-fits", "answer": "Super Mario and The Legend of Zelda on Nintendo.", "input_tokens": 53487}
+{"qid": "c6q145", "condition": "corpus-fits", "answer": "They love spending time there together.", "input_tokens": 53490}
+{"qid": "c6q143", "condition": "corpus-fits", "answer": "Move in together.", "input_tokens": 53493}
+{"qid": "c6q14", "condition": "corpus-fits", "answer": "26 April 2022", "input_tokens": 53484}
+{"qid": "c5q16", "condition": "corpus-fits", "answer": "Saturday (late October 2023), likely 4 November 2023", "input_tokens": 55632}
+{"qid": "c6q142", "condition": "corpus-fits", "answer": "To raise money for a children's hospital.", "input_tokens": 53495}
+{"qid": "c6q16", "condition": "corpus-fits", "answer": "UNO", "input_tokens": 53490}
+{"qid": "c6q140", "condition": "corpus-fits", "answer": "A video game (at a big reveal)", "input_tokens": 53487}
+{"qid": "c6q42", "condition": "corpus-fits", "answer": "9 August 2022", "input_tokens": 53487}
+{"qid": "c6q24", "condition": "corpus-fits", "answer": "Strategy games (like Civilization) and games inspired by Witcher 3.", "input_tokens": 53484}
+{"qid": "c6q47", "condition": "corpus-fits", "answer": "3 September 2022", "input_tokens": 53486}
+{"qid": "c6q22", "condition": "corpus-fits", "answer": "Dog shelter, homeless people, and children's hospital", "input_tokens": 53490}
+{"qid": "c6q43", "condition": "corpus-fits", "answer": "Next month (September 2022) - mentioned on 21 August 2022, but no specific date given.", "input_tokens": 53485}
+{"qid": "c6q45", "condition": "corpus-fits", "answer": "Stout, light beers, and lager.", "input_tokens": 53485}
+{"qid": "c6q31", "condition": "corpus-fits", "answer": "9 days (July 11-20)", "input_tokens": 53488}
+{"qid": "c6q41", "condition": "corpus-fits", "answer": "9 August 2022", "input_tokens": 53482}
+{"qid": "c6q21", "condition": "corpus-fits", "answer": "7 May 2022", "input_tokens": 53486}
+{"qid": "c6q39", "condition": "corpus-fits", "answer": "August 2019 (approximately - he left after 3 years in August 2022)", "input_tokens": 53483}
+{"qid": "c6q6", "condition": "corpus-fits", "answer": "Likely yes\u2014he adopted a dog from a shelter in Stamford (Connecticut).", "input_tokens": 53480}
+{"qid": "c6q57", "condition": "corpus-fits", "answer": "19 October 2022", "input_tokens": 53485}
+{"qid": "c6q71", "condition": "corpus-fits", "answer": "Help find the perfect pet.", "input_tokens": 53485}
+{"qid": "c6q58", "condition": "corpus-fits", "answer": "20 October 2022", "input_tokens": 53488}
+{"qid": "c6q55", "condition": "corpus-fits", "answer": "Early October 2022 (approximately 6 October 2022)", "input_tokens": 53487}
+{"qid": "c6q5", "condition": "corpus-fits", "answer": "James: The Witcher 3, Apex Legends, strategy games (Civilization)\n\nJohn: CS:GO, The Witcher 3, FIFA 23", "input_tokens": 53483}
+{"qid": "c6q68", "condition": "corpus-fits", "answer": "Dog walking and pet care app", "input_tokens": 53487}
+{"qid": "c6q61", "condition": "corpus-fits", "answer": "The context does not contain information about October 2023. The provided conversations end in November 2022. In October 2022, James and Samantha decided to move in together.", "input_tokens": 53490}
+{"qid": "c6q75", "condition": "corpus-fits", "answer": "Apex Legends", "input_tokens": 53490}
+{"qid": "c6q85", "condition": "corpus-fits", "answer": "Labrador", "input_tokens": 53487}
+{"qid": "c6q79", "condition": "corpus-fits", "answer": "Ned", "input_tokens": 53488}
+{"qid": "c6q65", "condition": "corpus-fits", "answer": "During the road trip starting 4 November 2022 (exact date not specified, but before 7 November 2022).", "input_tokens": 53485}
+{"qid": "c6q87", "condition": "corpus-fits", "answer": "Hawaiian pizza", "input_tokens": 53483}
+{"qid": "c6q52", "condition": "corpus-fits", "answer": "June 2022", "input_tokens": 53488}
+{"qid": "c7q100", "condition": "corpus-fits", "answer": "Electrical engineering project", "input_tokens": 53539}
+{"qid": "c7q103", "condition": "corpus-fits", "answer": "At yoga in the park.", "input_tokens": 53531}
+{"qid": "c7q102", "condition": "corpus-fits", "answer": "A robotics project for her engineering class.", "input_tokens": 53539}
+{"qid": "c7q105", "condition": "corpus-fits", "answer": "Designed and built a sustainable water purifier for a rural community in need.", "input_tokens": 53538}
+{"qid": "c7q107", "condition": "corpus-fits", "answer": "An amulet/pendant from her mom.", "input_tokens": 53537}
+{"qid": "c6q84", "condition": "corpus-fits", "answer": "A coding project involving an algorithm that he was trying to make work better.", "input_tokens": 53487}
+{"qid": "c7q11", "condition": "corpus-fits", "answer": "Yes, she is married.", "input_tokens": 53526}
+{"qid": "c7q106", "condition": "corpus-fits", "answer": "\"Sapiens\"", "input_tokens": 53541}
+{"qid": "c7q119", "condition": "corpus-fits", "answer": "A desk with a notebook and computer monitor (8 March 2023)", "input_tokens": 53533}
+{"qid": "c7q118", "condition": "corpus-fits", "answer": "Lasagna", "input_tokens": 53531}
+{"qid": "c7q129", "condition": "corpus-fits", "answer": "An art show", "input_tokens": 53541}
+{"qid": "c7q146", "condition": "corpus-fits", "answer": "Gentle flow focusing on breathing and grounding.", "input_tokens": 53535}
+{"qid": "c7q159", "condition": "corpus-fits", "answer": "Thrilled and rewarded.", "input_tokens": 53535}
+{"qid": "c7q144", "condition": "corpus-fits", "answer": "She adopted Susie two years ago when she was feeling lonely and wanted some company.", "input_tokens": 53535}
+{"qid": "c7q13", "condition": "corpus-fits", "answer": "Her mom's old house (especially the window bench), parks with forest trails, beaches, yoga studios, and nature spots by water.", "input_tokens": 53528}
+{"qid": "c7q136", "condition": "corpus-fits", "answer": "Dancer Pose (Natarajasana)", "input_tokens": 53533}
+{"qid": "c7q165", "condition": "corpus-fits", "answer": "Yoga classes", "input_tokens": 53550}
+{"qid": "c7q170", "condition": "corpus-fits", "answer": "She attended Deborah's classes with her and was her biggest fan and source of motivation.", "input_tokens": 53536}
+{"qid": "c7q108", "condition": "corpus-fits", "answer": "Greater confidence in her abilities and a desire to help disadvantaged communities through engineering.", "input_tokens": 53542}
+{"qid": "c7q175", "condition": "corpus-fits", "answer": "Phuket, Thailand", "input_tokens": 53539}
+{"qid": "c7q15", "condition": "corpus-fits", "answer": "Jolene has two pet snakes: Susie and Seraphim.", "input_tokens": 53528}
+{"qid": "c7q16", "condition": "corpus-fits", "answer": "Susie and Seraphim", "input_tokens": 53532}
+{"qid": "c7q183", "condition": "corpus-fits", "answer": "A \"little haven for peace and rest\" - the perfect spot to relax and recharge after a busy day.", "input_tokens": 53530}
+{"qid": "c7q171", "condition": "corpus-fits", "answer": "Nintendo Wii", "input_tokens": 53539}
+{"qid": "c7q177", "condition": "corpus-fits", "answer": "Jolene experienced \"a new level of joy and happiness\" from practicing mindfulness and gratitude (12 September 2023).", "input_tokens": 53537}
+{"qid": "c7q184", "condition": "corpus-fits", "answer": "A free gardening class for the community.", "input_tokens": 53544}
+{"qid": "c7q186", "condition": "corpus-fits", "answer": "Pineapple birthday cakes", "input_tokens": 53535}
+{"qid": "c7q187", "condition": "corpus-fits", "answer": "Chocolate chip cookies.", "input_tokens": 53538}
+{"qid": "c7q17", "condition": "corpus-fits", "answer": "January 2022 (approximately one year before she mentioned it on 27 January 2023)", "input_tokens": 53533}
+{"qid": "c7q178", "condition": "corpus-fits", "answer": "She found inner peace and learned to appreciate the present moment instead of just focusing on achieving goals (meditation retreat, 12 September 2023).", "input_tokens": 53532}
+{"qid": "c7q185", "condition": "corpus-fits", "answer": "Travel, cooking, art, and reading.", "input_tokens": 53530}
+{"qid": "c7q25", "condition": "corpus-fits", "answer": "\"Sapiens\" and \"Avalanche\" by Neal Stephenson", "input_tokens": 53529}
+{"qid": "c7q35", "condition": "corpus-fits", "answer": "24 February 2023", "input_tokens": 53537}
+{"qid": "c7q23", "condition": "corpus-fits", "answer": "Jolene was busy with engineering studies, exams, and deadlines, which made it hard to find time for yoga. She also prioritized spending time with her partner over yoga.", "input_tokens": 53531}
+{"qid": "c7q19", "condition": "corpus-fits", "answer": "At least 2 times (2010 and around 2022)", "input_tokens": 53531}
+{"qid": "c7q42", "condition": "corpus-fits", "answer": "Instrumental tracks like \"Savana\" and the album \"Sleep\"", "input_tokens": 53534}
+{"qid": "c7q33", "condition": "corpus-fits", "answer": "Three years (as of February 2023)", "input_tokens": 53532}
+{"qid": "c7q3", "condition": "corpus-fits", "answer": "The context does not specify when Jolene's mother passed away. Jolene mentions her mother's values and influence throughout the conversations but never provides a specific date of death.", "input_tokens": 53531}
+{"qid": "c7q40", "condition": "corpus-fits", "answer": "Closer to the beach. She frequently mentions a nearby beach she loves and visits regularly for yoga and reflection.", "input_tokens": 53533}
+{"qid": "c7q22", "condition": "corpus-fits", "answer": "31 January 2023 (at yoga in the park)", "input_tokens": 53528}
+{"qid": "c7q5", "condition": "corpus-fits", "answer": "France", "input_tokens": 53534}
+{"qid": "c7q47", "condition": "corpus-fits", "answer": "5 June 2023 (yesterday morning before the conversation on 6 June 2023)", "input_tokens": 53534}
+{"qid": "c7q44", "condition": "corpus-fits", "answer": "9 April 2023", "input_tokens": 53533}
+{"qid": "c7q50", "condition": "corpus-fits", "answer": "2020", "input_tokens": 53530}
+{"qid": "c7q45", "condition": "corpus-fits", "answer": "The context does not specify when Jolene finished the robotics project. She mentions receiving it in early February 2023, but there is no explicit mention of its completion date.", "input_tokens": 53531}
+{"qid": "c7q38", "condition": "corpus-fits", "answer": "Early March 2023 (she mentions hosting a class on Friday in a conversation on 13 March, suggesting she started shortly before that date)", "input_tokens": 53533}
+{"qid": "c7q58", "condition": "corpus-fits", "answer": "Zelda BOTW, Animal Crossing: New Horizons, and Overcooked 2", "input_tokens": 53532}
+{"qid": "c7q63", "condition": "corpus-fits", "answer": "Max is 8 years old and Luna is 5 years old.", "input_tokens": 53529}
+{"qid": "c7q43", "condition": "corpus-fits", "answer": "Early April 2023 (mentioned as \"last week\" on 9 April 2023)", "input_tokens": 53533}
+{"qid": "c7q179", "condition": "corpus-fits", "answer": "Battlefield 1", "input_tokens": 53535}
+{"qid": "c7q64", "condition": "corpus-fits", "answer": "Yes, she explicitly states \"I really love cats\" and owns two cats (Luna and Max).", "input_tokens": 53527}
+{"qid": "c7q54", "condition": "corpus-fits", "answer": "Susie (adopted first, around August-September 2021; Seraphim was bought about a year later in early 2022).", "input_tokens": 53538}
+{"qid": "c7q68", "condition": "corpus-fits", "answer": "Approximately August 2020 (three years before the conversation on 30 August 2023).", "input_tokens": 53528}
+{"qid": "c7q71", "condition": "corpus-fits", "answer": "1 September 2023", "input_tokens": 53532}
+{"qid": "c7q69", "condition": "corpus-fits", "answer": "Yes. Jolene went with her partner in August 2023. Deborah visited three years prior (around 2020).", "input_tokens": 53534}
+{"qid": "c7q72", "condition": "corpus-fits", "answer": "When she was 10 years old (no specific date provided)", "input_tokens": 53532}
+{"qid": "c7q74", "condition": "corpus-fits", "answer": "Fresh pastries and coffee.", "input_tokens": 53540}
+{"qid": "c7q9", "condition": "corpus-fits", "answer": "25 January 2023", "input_tokens": 53530}
+{"qid": "c7q81", "condition": "corpus-fits", "answer": "Next month (October 2023) - no specific date was set.", "input_tokens": 53536}
+{"qid": "c7q84", "condition": "corpus-fits", "answer": "Robotics project, sustainable water purifier for rural communities, solar-powered vehicle, and aerial surveillance system prototype.", "input_tokens": 53532}
+{"qid": "c7q96", "condition": "corpus-fits", "answer": "Checking out yoga classes and visiting cafes.", "input_tokens": 53534}
+{"qid": "c7q82", "condition": "corpus-fits", "answer": "Neighborhood yoga studio, her favorite yoga studio (with bench and window), the beach, a care home, and parks/nature retreats.", "input_tokens": 53531}
+{"qid": "c7q94", "condition": "corpus-fits", "answer": "Max from her mother (when she passed away), Luna from the shelter.", "input_tokens": 53529}
+{"qid": "c7q86", "condition": "corpus-fits", "answer": "A letter from group members, a bouquet of flowers from a friend, and a vegan stir-fry from Anna.", "input_tokens": 53528}
+{"qid": "c7q88", "condition": "corpus-fits", "answer": "Running, biking, gardening, surfing, attending art shows and music festivals, meditating, teaching workshops, community cleanup projects, gaming, reading, and spending time with pets and community.", "input_tokens": 53533}
+{"qid": "c8q0", "condition": "corpus-fits", "answer": "Prius", "input_tokens": 47945}
+{"qid": "c8q10", "condition": "corpus-fits", "answer": "Camping trips in the outdoors", "input_tokens": 47961}
+{"qid": "c8q117", "condition": "corpus-fits", "answer": "Journal writing and creative writing.", "input_tokens": 47949}
+{"qid": "c8q106", "condition": "corpus-fits", "answer": "Watercolor painting", "input_tokens": 47954}
+{"qid": "c8q1", "condition": "corpus-fits", "answer": "Priuses (old one broke down, new one broke down and got into a minor accident)", "input_tokens": 47946}
+{"qid": "c7q93", "condition": "corpus-fits", "answer": "Based on the context, Jolene's main future projects include developing renewable energy solutions (solar) for communities and creating clean water supply systems for areas with limited access. She also previously mentioned a STEM volunteer program idea for teaching underprivileged kids, though detailed planning wasn't finalized.", "input_tokens": 53531}
+{"qid": "c8q129", "condition": "corpus-fits", "answer": "He relied on it for his active lifestyle and road trips.", "input_tokens": 47956}
+{"qid": "c8q121", "condition": "corpus-fits", "answer": "Lake Tahoe", "input_tokens": 47948}
+{"qid": "c8q115", "condition": "corpus-fits", "answer": "Watercolor painting", "input_tokens": 47951}
+{"qid": "c8q120", "condition": "corpus-fits", "answer": "Find a trainer to help with good form and technique, start with something small, then increase intensity gradually.", "input_tokens": 47953}
+{"qid": "c8q11", "condition": "corpus-fits", "answer": "High weight / obesity (identified at doctor's check-up, 24 May 2023)", "input_tokens": 47950}
+{"qid": "c8q13", "condition": "corpus-fits", "answer": "Late May 2023 (around 30-31 May 2023)", "input_tokens": 47954}
+{"qid": "c8q140", "condition": "corpus-fits", "answer": "Joy and freedom.", "input_tokens": 47953}
+{"qid": "c8q137", "condition": "corpus-fits", "answer": "A close friend", "input_tokens": 47948}
+{"qid": "c8q148", "condition": "corpus-fits", "answer": "Snowshoeing", "input_tokens": 47951}
+{"qid": "c8q130", "condition": "corpus-fits", "answer": "Sometimes these setbacks lead to new opportunities.", "input_tokens": 47953}
+{"qid": "c8q142", "condition": "corpus-fits", "answer": "With spontaneous strokes, bold colors, joy and freedom, embracing the creative process without restraint in a playful, liberated mood.", "input_tokens": 47954}
+{"qid": "c8q147", "condition": "corpus-fits", "answer": "Two ginger snaps a day.", "input_tokens": 47948}
+{"qid": "c8q151", "condition": "corpus-fits", "answer": "The Godfather", "input_tokens": 47951}
+{"qid": "c8q152", "condition": "corpus-fits", "answer": "Yoga", "input_tokens": 47946}
+{"qid": "c7q28", "condition": "corpus-fits", "answer": "Unknown. The context contains no information about Jolene's location during summer 2022, as all conversations begin in January 2023.", "input_tokens": 53533}
+{"qid": "c8q145", "condition": "corpus-fits", "answer": "Recipes for cookies and energy balls.", "input_tokens": 47952}
+{"qid": "c8q155", "condition": "corpus-fits", "answer": "Truly unforgettable and so peaceful.", "input_tokens": 47954}
+{"qid": "c8q17", "condition": "corpus-fits", "answer": "21 July 2023", "input_tokens": 47948}
+{"qid": "c8q4", "condition": "corpus-fits", "answer": "Painting", "input_tokens": 47948}
+{"qid": "c8q150", "condition": "corpus-fits", "answer": "Swimming, yoga, and walking.", "input_tokens": 47948}
+{"qid": "c8q23", "condition": "corpus-fits", "answer": "28 July 2023", "input_tokens": 47946}
+{"qid": "c8q32", "condition": "corpus-fits", "answer": "Losing his keys (weekly occurrence)", "input_tokens": 47945}
+{"qid": "c8q26", "condition": "corpus-fits", "answer": "His family, a health scare (heart palpitation), adventure/hiking, and fitness tracking tools.", "input_tokens": 47948}
+{"qid": "c8q42", "condition": "corpus-fits", "answer": "A friend inspired him and gave him a painting as a gift (18 May 2023 / 19 August 2023).", "input_tokens": 47944}
+{"qid": "c8q43", "condition": "corpus-fits", "answer": "Infrequently; mentions checkups in May 2023 and October 2023, but says in January 2024 he \"hasn't seen a doctor in a while.\"", "input_tokens": 47945}
+{"qid": "c8q53", "condition": "corpus-fits", "answer": "11 September 2023", "input_tokens": 47947}
+{"qid": "c8q5", "condition": "corpus-fits", "answer": "The Rockies (specific country not stated in the context).", "input_tokens": 47948}
+{"qid": "c8q41", "condition": "corpus-fits", "answer": "Painting classes (watercolor painting)", "input_tokens": 47950}
+{"qid": "c8q54", "condition": "corpus-fits", "answer": "Heart palpitations (6 June 2023), twisted knee (27 August 2023), knee injury from basketball (6 October 2023), hospital scare with suspicious finding (21 November 2023).", "input_tokens": 47949}
+{"qid": "c8q59", "condition": "corpus-fits", "answer": "14 October 2023", "input_tokens": 47948}
+{"qid": "c8q51", "condition": "corpus-fits", "answer": "Sam faces weight issues, cravings for sugary foods (starting 24 May 2023), breaking habits, body discomfort, and motivation challenges. He addresses them through cooking classes (15 August 2023), structured diet/exercise routines (27 August 2023), hiking trips (31 December 2023), becoming a Weight Watchers coach (9 November 2023), trying yoga and low-impact exercises, seeking medical advice, and using nature/hobbies for stress relief instead of comfort eating.", "input_tokens": 47957}
+{"qid": "c8q79", "condition": "corpus-fits", "answer": "February 2024", "input_tokens": 47951}
+{"qid": "c8q71", "condition": "corpus-fits", "answer": "Christmas / Late December", "input_tokens": 47949}
+{"qid": "c8q70", "condition": "corpus-fits", "answer": "Approximately 5 months (late July 2023 to mid-December 2023)", "input_tokens": 47949}
+{"qid": "c8q58", "condition": "corpus-fits", "answer": "October 2022", "input_tokens": 47944}
+{"qid": "c8q87", "condition": "corpus-fits", "answer": "Jasper.", "input_tokens": 47957}
+{"qid": "c8q75", "condition": "corpus-fits", "answer": "5 January 2024", "input_tokens": 47948}
+{"qid": "c8q45", "condition": "corpus-fits", "answer": "The context does not specify which Canadian places Evan visited in July 2023. Based on later conversations mentioning a Canada trip and skiing in Banff, it may have been the Rocky Mountains/Banff area, but the exact July 2023 locations are not stated.", "input_tokens": 47950}
+{"qid": "c8q81", "condition": "corpus-fits", "answer": "Watercolor painting; also driving and spending time in nature.", "input_tokens": 47946}
+{"qid": "c8q3", "condition": "corpus-fits", "answer": "2 or possibly 3 Priuses (an old one that broke down, and a new one from May 2023, with possibly another by December 2023)", "input_tokens": 47946}
+{"qid": "c8q72", "condition": "corpus-fits", "answer": "Running (morning runs)", "input_tokens": 47952}
+{"qid": "c8q9", "condition": "corpus-fits", "answer": "Last weekend before 24 May 2023 (around 20-21 May 2023)", "input_tokens": 47949}
+{"qid": "c8q91", "condition": "corpus-fits", "answer": "Flavored seltzer water instead of soda, and dark chocolate with high cocoa content instead of candy.", "input_tokens": 47949}
+{"qid": "c8q97", "condition": "corpus-fits", "answer": "It symbolizes strength and resilience, and motivates him through tough times.", "input_tokens": 47949}
+{"qid": "c8q93", "condition": "corpus-fits", "answer": "\"The Great Gatsby\"", "input_tokens": 47948}
+{"qid": "c8q92", "condition": "corpus-fits", "answer": "Self-checkout machines were broken.", "input_tokens": 47948}
+{"qid": "c9q104", "condition": "corpus-fits", "answer": "He wanted a unique look that matched his style.", "input_tokens": 53537}
+{"qid": "c8q89", "condition": "corpus-fits", "answer": "Reducing soda and candy intake.", "input_tokens": 47948}
+{"qid": "c9q111", "condition": "corpus-fits", "answer": "Ratatouille", "input_tokens": 53535}
+{"qid": "c8q55", "condition": "corpus-fits", "answer": "Helping lost tourists find their way / giving unexpected city tours", "input_tokens": 47947}
+{"qid": "c9q108", "condition": "corpus-fits", "answer": "Boston", "input_tokens": 53540}
+{"qid": "c9q109", "condition": "corpus-fits", "answer": "Going to Tokyo and exploring the city, trying food, and visiting places like Shibuya Crossing and Shinjuku.", "input_tokens": 53532}
+{"qid": "c9q127", "condition": "corpus-fits", "answer": "Shibuya Crossing and Shinjuku", "input_tokens": 53536}
+{"qid": "c9q125", "condition": "corpus-fits", "answer": "At a music festival in Tokyo.", "input_tokens": 53536}
+{"qid": "c9q119", "condition": "corpus-fits", "answer": "Therapy, purpose, and transformation. For Dave, working on cars is a therapeutic escape, provides a sense of achievement and fulfillment, and represents transforming broken things into something beautiful\u2014similar to how he finds meaning in giving old cars \"a second chance.\"", "input_tokens": 53532}
+{"qid": "c9q134", "condition": "corpus-fits", "answer": "Patience and attention to detail.", "input_tokens": 53537}
+{"qid": "c9q144", "condition": "corpus-fits", "answer": "Blog on car mods", "input_tokens": 53535}
+{"qid": "c9q117", "condition": "corpus-fits", "answer": "Transforming broken cars back to life and the sense of accomplishment it brings.", "input_tokens": 53535}
+{"qid": "c9q133", "condition": "corpus-fits", "answer": "His dad took him to a car show at age 10, and he was fascinated with how machines work.", "input_tokens": 53531}
+{"qid": "c9q148", "condition": "corpus-fits", "answer": "Car modifications - specifically how he made cars look like a \"beast\"", "input_tokens": 53544}
+{"qid": "c9q142", "condition": "corpus-fits", "answer": "Threw a party for his album release (2 November 2023)", "input_tokens": 53533}
+{"qid": "c9q139", "condition": "corpus-fits", "answer": "Music is his passion and purpose.", "input_tokens": 53535}
+{"qid": "c9q120", "condition": "corpus-fits", "answer": "Dave aims to restore classic cars, build custom vehicles from scratch, and share his passion with others through blogging and helping people with their own car projects.", "input_tokens": 53535}
+{"qid": "c9q152", "condition": "corpus-fits", "answer": "Vintage camera (November 2023)", "input_tokens": 53531}
+{"qid": "c9q124", "condition": "corpus-fits", "answer": "Being in a rock band / performing live music", "input_tokens": 53540}
+{"qid": "c9q153", "condition": "corpus-fits", "answer": "Nature \u2013 sunsets, beaches, waves, and peaceful scenic spots.", "input_tokens": 53537}
+{"qid": "c9q140", "condition": "corpus-fits", "answer": "Hard work and dedication pay off; pursuing their passions brings fulfillment and satisfaction from creating/transforming things.", "input_tokens": 53535}
+{"qid": "c9q116", "condition": "corpus-fits", "answer": "Ford Mustang", "input_tokens": 53535}
+{"qid": "c9q16", "condition": "corpus-fits", "answer": "July 2023 (booked on 9 June 2023 for \"next month\")", "input_tokens": 53534}
+{"qid": "c9q20", "condition": "corpus-fits", "answer": "His dad. Dave's father took him to his first car show at age 10, which sparked his fascination with cars and car engineering.", "input_tokens": 53532}
+{"qid": "c9q38", "condition": "corpus-fits", "answer": "14 September 2023", "input_tokens": 53535}
+{"qid": "c9q24", "condition": "corpus-fits", "answer": "Yes, Dave works on engines. He runs a car maintenance shop, does engine swaps, restorations, and is an automotive engineer.", "input_tokens": 53529}
+{"qid": "c9q40", "condition": "corpus-fits", "answer": "Tupac and Dr. Dre (\"California Love\")", "input_tokens": 53538}
+{"qid": "c9q37", "condition": "corpus-fits", "answer": "Yes, Calvin loves music tours.", "input_tokens": 53529}
+{"qid": "c9q57", "condition": "corpus-fits", "answer": "Photography", "input_tokens": 53535}
+{"qid": "c9q53", "condition": "corpus-fits", "answer": "His friends and team", "input_tokens": 53530}
+{"qid": "c9q19", "condition": "corpus-fits", "answer": "Music festival (met Frank Ocean), concert performances, Shibuya Crossing, Shinjuku, Japanese mansion/studio", "input_tokens": 53533}
+{"qid": "c9q50", "condition": "corpus-fits", "answer": "Around 8 October 2023 (last week from 15 October 2023)", "input_tokens": 53531}
+{"qid": "c9q31", "condition": "corpus-fits", "answer": "Based on the context provided, there is no explicit mention of where Dave was during the last two weeks of August 2023. The only activity mentioned is a card-night with friends on around 18 August, but no location is specified. My best guess would be: **Boston** (his home base where his car shop is located).", "input_tokens": 53537}
+{"qid": "c9q65", "condition": "corpus-fits", "answer": "September 2023 (last month from the October 29, 2023 conversation)", "input_tokens": 53535}
+{"qid": "c9q70", "condition": "corpus-fits", "answer": "16 November 2023", "input_tokens": 53533}
+{"qid": "c9q69", "condition": "corpus-fits", "answer": "November 2023", "input_tokens": 53531}
+{"qid": "c9q2", "condition": "corpus-fits", "answer": "19 March 2023", "input_tokens": 53534}
+{"qid": "c9q75", "condition": "corpus-fits", "answer": "Car maintenance shop", "input_tokens": 53541}
+{"qid": "c9q76", "condition": "corpus-fits", "answer": "All kinds of cars, including classic cars and restorations.", "input_tokens": 53535}
+{"qid": "c9q58", "condition": "corpus-fits", "answer": "His father took him to a car show at age 10, he spent childhood in his father's garage, and he restored an old car he found in a neighbor's garage.", "input_tokens": 53537}
+{"qid": "c9q82", "condition": "corpus-fits", "answer": "A car maintenance shop (on 1 May 2023).", "input_tokens": 53533}
+{"qid": "c9q83", "condition": "corpus-fits", "answer": "Fixing and restoring cars", "input_tokens": 53533}
+{"qid": "c9q98", "condition": "corpus-fits", "answer": "Everyone sang along and was into it\u2014magical moment.", "input_tokens": 53538}
+{"qid": "c9q68", "condition": "corpus-fits", "answer": "Late October 2023 (he found it \"last week\" before the 2 November 2023 conversation)", "input_tokens": 53539}
+{"qid": "c9q96", "condition": "corpus-fits", "answer": "Silver corvette / classic muscle car", "input_tokens": 53535}
+{"qid": "c9q88", "condition": "corpus-fits", "answer": "Regular walks together in the park.", "input_tokens": 53535}
+{"qid": "c9q86", "condition": "corpus-fits", "answer": "Skiing", "input_tokens": 53538}
+{"qid": "c9q93", "condition": "corpus-fits", "answer": "Keep pushing and stay true to yourself.", "input_tokens": 53534}
+{"qid": "c9q151", "condition": "corpus-fits", "answer": "Working on cars", "input_tokens": 53531}

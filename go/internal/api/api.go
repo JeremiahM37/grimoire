@@ -69,6 +69,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("DELETE /api/notes/{path...}", s.deleteNote)
 	mux.HandleFunc("GET /api/search", s.search)
 	mux.HandleFunc("GET /api/retrieve", s.retrieve)
+	mux.HandleFunc("GET /api/context", s.contextEndpoint)
 	mux.HandleFunc("GET /api/tags", s.tags)
 	mux.HandleFunc("GET /api/templates", s.listTemplates)
 	mux.HandleFunc("POST /api/templates/apply", s.applyTemplate)

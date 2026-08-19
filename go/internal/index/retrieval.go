@@ -102,6 +102,10 @@ type corpusCache struct {
 	// is the order the original summed them in.
 	nAll, nPublic     int
 	lenAll, lenPublic float64
+
+	// character totals, for callers deciding whether the whole corpus fits a
+	// budget rather than which parts of it to rank
+	charsAll, charsPublic int64
 }
 
 func (c *corpusCache) count(includePrivate bool) int {
@@ -308,9 +312,11 @@ func (ix *Index) buildCache(rev int64) (*corpusCache, error) {
 		})
 		c.nAll++
 		c.lenAll += float64(total)
+		c.charsAll += int64(len(chunk))
 		if !isPrivate {
 			c.nPublic++
 			c.lenPublic += float64(total)
+			c.charsPublic += int64(len(chunk))
 		}
 	}
 	if err := rows.Err(); err != nil {
@@ -338,6 +344,58 @@ func (ix *Index) noteTitles() (map[string]string, error) {
 			return nil, err
 		}
 		out[path] = title
+	}
+	return out, rows.Err()
+}
+
+// CorpusStats reports the size of the retrievable corpus: how many chunks and
+// notes it holds and how many characters of chunk text that is. Cheap — the
+// character total is accumulated when the cache is built.
+func (ix *Index) CorpusStats(includePrivate bool) (chunks, notes int, chars int64, err error) {
+	c, err := ix.corpusCacheFor()
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	seen := make(map[int32]bool, len(c.notes))
+	for i := range c.rows {
+		if !includePrivate && c.rows[i].private {
+			continue
+		}
+		chunks++
+		seen[c.rows[i].note] = true
+	}
+	if includePrivate {
+		return chunks, len(seen), c.charsAll, nil
+	}
+	return chunks, len(seen), c.charsPublic, nil
+}
+
+// WholeCorpus returns every retrievable chunk in document order.
+//
+// For a corpus small enough to fit a caller's budget this is a better context
+// than any ranking of it: retrieval exists to choose what to leave out, and
+// when nothing has to be left out, choosing can only lose information. The
+// benchmarks show exactly that — on LoCoMo, whose conversations fit a reader's
+// window, handing over the whole transcript beats retrieving from it by 5.5
+// points.
+func (ix *Index) WholeCorpus(includePrivate bool) ([]Hit, error) {
+	q := "SELECT v.note, n.title, v.chunk FROM vectors v JOIN notes n ON n.path=v.note"
+	if !includePrivate {
+		q += " WHERE v.private=0"
+	}
+	q += " ORDER BY v.note, v.chunk_idx"
+	rows, err := ix.DB.Query(q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Hit
+	for rows.Next() {
+		var h Hit
+		if err := rows.Scan(&h.Path, &h.Title, &h.Chunk); err != nil {
+			return nil, err
+		}
+		out = append(out, h)
 	}
 	return out, rows.Err()
 }

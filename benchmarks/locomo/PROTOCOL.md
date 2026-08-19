@@ -133,3 +133,16 @@ Adds the `dense-only` and `lexical-only` baselines (see
 every condition in a reported comparison — `full` included — be read and judged
 in the same session as the others. Applying that rule withdrew this study's
 parity-with-full-context claim; see REPORT.md.
+
+## Amendment — round 10 (2026-08-18)
+
+Adds the `corpus-fits` condition: contexts from `/api/context`, which returns
+the whole corpus when it is under a character budget and retrieves when it is
+not. Budget 150,000 characters for the scored run, chosen to sit above LoCoMo's
+conversations (~96k) and far below LongMemEval's haystacks (~470k), so the same
+binary exercises both branches.
+
+The LongMemEval side is verified by CONTEXT IDENTITY rather than by scoring:
+if the endpoint returns byte-identical strings to plain retrieval, the reader
+and judge cannot produce different numbers, and re-running them would only add
+sampling noise to a comparison that is already exact.

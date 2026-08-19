@@ -235,11 +235,15 @@ func (s *Server) ask(w http.ResponseWriter, r *http.Request) {
 		k = 6
 	}
 	smart := in.Smart == nil || *in.Smart
-	hits, err := s.smartRetrieve(q, k, in.IncludePrivate, smart)
+	// If the whole corpus fits the context budget, read it rather than rank
+	// it: decomposition and reranking exist to choose what to leave out, and
+	// there is nothing to leave out. See internal/api/context.go.
+	hits, mode, err := s.askContext(q, k, in.IncludePrivate, smart)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	_ = mode
 	citations := []map[string]any{}
 	contexts := make([]ai.Context, 0, len(hits))
 	for _, h := range hits {
@@ -248,7 +252,24 @@ func (s *Server) ask(w http.ResponseWriter, r *http.Request) {
 		contexts = append(contexts, ai.Context{Path: h.Path, Title: h.Title, Chunk: h.Chunk})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"answer": s.AI.Answer(q, contexts), "citations": citations})
+		"answer": s.AI.Answer(q, contexts), "citations": citations, "mode": mode})
+}
+
+// askContext is bestContext with the answering path's smarter retrieval on the
+// branch where ranking is actually needed.
+func (s *Server) askContext(q string, k int, includePrivate, smart bool) ([]index.Hit, string, error) {
+	if budget := contextBudget(); budget > 0 {
+		_, _, chars, err := s.Index.CorpusStats(includePrivate)
+		if err != nil {
+			return nil, "", err
+		}
+		if chars > 0 && chars <= int64(budget) {
+			hits, err := s.Index.WholeCorpus(includePrivate)
+			return hits, "full", err
+		}
+	}
+	hits, err := s.smartRetrieve(q, k, includePrivate, smart)
+	return hits, "retrieved", err
 }
 
 // smartRetrieve is retrieval for ANSWERING, as opposed to /api/retrieve: with
