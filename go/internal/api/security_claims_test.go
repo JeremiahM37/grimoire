@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/JeremiahM37/grimoire/go/internal/crypto"
+	"github.com/JeremiahM37/grimoire/go/internal/secrets"
 )
 
 // SECURITY.md makes specific, falsifiable promises. This file turns the ones
@@ -32,7 +33,7 @@ func TestArgon2ParametersMatchTheDocumentedOnes(t *testing.T) {
 	}
 }
 
-// "Keep .grimoire/ (which holds secrets.enc and the index) off any sync/backup"
+// "Keep .grimoire/ (which holds secrets.json and the index) off any sync/backup"
 // and "the /api/file route and vault export exclude .grimoire so the secret
 // store and index never leave."
 //
@@ -48,7 +49,7 @@ func TestVaultExportNeverShipsTheSecretStore(t *testing.T) {
 		t.Fatal(err)
 	}
 	const canary = "SECRET-STORE-CANARY-do-not-export"
-	if err := os.WriteFile(filepath.Join(gdir, "secrets.enc"), []byte(canary), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(gdir, "secrets.json"), []byte(canary), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	// .md inside .grimoire too: the walk filters by extension as well as by
@@ -157,5 +158,21 @@ func TestEncryptedNoteBodyReachesNoRetrievalSurface(t *testing.T) {
 		if got := do(t, h, "GET", path, nil).Body.String(); strings.Contains(got, secret) {
 			t.Errorf("%s leaked the sealed plaintext", path)
 		}
+	}
+}
+
+// The secret store's filename appears in SECURITY.md's deployment guidance
+// ("keep .grimoire/ off any backup that leaves your control"), and it was
+// wrong: the docs said secrets.enc and two design notes said secrets.age,
+// while the code has always written secrets.json. Someone following that
+// guidance literally would have excluded a file that does not exist.
+func TestSecretStoreFilenameIsTheDocumentedOne(t *testing.T) {
+	dir := t.TempDir()
+	v := secrets.New(dir)
+	if got := filepath.Base(v.Path); got != "secrets.json" {
+		t.Errorf("secret store is %q; SECURITY.md documents secrets.json", got)
+	}
+	if filepath.Dir(v.Path) != dir {
+		t.Errorf("secret store lives at %q, expected it inside %q", v.Path, dir)
 	}
 }
