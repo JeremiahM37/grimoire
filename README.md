@@ -42,8 +42,11 @@ agent ──MCP──►  knowledge (your markdown)  retrieval (RAG + citations)
   a deterministic offline fallback). Always auditable: *"what would the agent
   see for X?"* shows the exact retrieved chunks.
 - **Credentials** — an encrypted vault (Argon2id + Fernet) whose secrets your
-  agent can **use but never read**: you mint a scoped, time-boxed grant; the
-  server injects the value into the outbound call; every use is audited.
+  agent can **use but never read**: you mint a scoped, time-boxed grant, the
+  server injects the value into the outbound call, and the agent gets the
+  response. The key never enters its context, so it cannot be logged,
+  memorised, or extracted by a prompt injection — and revoking access is one
+  row, not a key rotation. [How it works ↓](#credentials-your-agent-can-use-but-never-read)
 - **Agent memory** — `remember`/`recall` tools writing to a `memory/` namespace
   of ordinary notes with provenance (which agent, when, from what task). You
   read, edit, diff, and **roll back** your agent's memory like any note.
