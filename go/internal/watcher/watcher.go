@@ -93,7 +93,10 @@ func (w *Watcher) Start() error {
 }
 
 func (w *Watcher) addTree(root string) error {
-	return filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+	// Following the same links the indexer follows: a linked directory whose
+	// edits are never noticed is worse than one that is not indexed at all,
+	// because search would keep answering from a stale copy.
+	return vault.WalkTree(root, w.vault.Follow, func(path string, d os.DirEntry, err error) error {
 		if err != nil || !d.IsDir() {
 			return nil
 		}

@@ -174,7 +174,7 @@ func (v *Vault) Rename(oldRel, newRel string) (string, error) {
 // Walk lists every indexable .md file, excluding reserved directories.
 func (v *Vault) Walk() ([]string, error) {
 	var out []string
-	err := filepath.WalkDir(v.Root, func(path string, d fs.DirEntry, err error) error {
+	err := WalkTree(v.Root, v.Follow, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil // an unreadable subtree must not abort the whole walk
 		}

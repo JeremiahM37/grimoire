@@ -34,7 +34,12 @@ var (
 )
 
 // Vault is a rooted store. Root must already be absolute and resolved.
-type Vault struct{ Root string }
+type Vault struct {
+	Root string
+	// Follow enables descent into directory symlinks; see walk.go for why it
+	// is off unless the deployment asks for it.
+	Follow bool
+}
 
 func New(root string) (*Vault, error) {
 	abs, err := filepath.Abs(root)
@@ -45,7 +50,7 @@ func New(root string) (*Vault, error) {
 	if err != nil {
 		resolved = abs // vault may not exist yet; confinement still applies
 	}
-	return &Vault{Root: resolved}, nil
+	return &Vault{Root: resolved, Follow: followSymlinks()}, nil
 }
 
 // SafePath resolves a vault-relative note path, rejecting anything that escapes
