@@ -48,7 +48,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import collections
 import json
 import re
 import sys
@@ -160,7 +159,7 @@ def main() -> int:
     a = ap.parse_args()
 
     data = load_data()
-    scored = {json.loads(l)["qid"] for l in (RESULTS / "questions.jsonl").open()}
+    scored = {json.loads(line)["qid"] for line in (RESULTS / "questions.jsonl").open()}
     dev = [(i, x) for i, x in enumerate(data)
            if not str(x["question_id"]).endswith("_abs")
            and x["question_id"] not in scored]
@@ -175,7 +174,7 @@ def main() -> int:
 
     def sweep(base: str):
         t0 = time.monotonic()
-        for n, (idx, inst) in enumerate(dev, 1):
+        for n, (_idx, inst) in enumerate(dev, 1):
             build_vault(Path(a.vault), inst)
             api(base, "/api/reindex", {})
             ctx = context_for(base, inst["question"], a.k, a.search_limit)
