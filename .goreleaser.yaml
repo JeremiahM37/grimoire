@@ -76,6 +76,8 @@ release:
     Download the archive for your platform below, or:
 
     ```bash
-    go install github.com/JeremiahM37/grimoire/go/cmd/grimoire@{{ .Tag }}
-    docker run -p 9111:9111 -v grimoire-vault:/vault ghcr.io/jeremiahm37/grimoire:{{ .Tag }}
+    # @latest, not @{{ .Tag }}: the module lives in the go/ subdirectory, so Go
+    # resolves version tags as go/vX.Y.Z rather than vX.Y.Z
+    go install github.com/JeremiahM37/grimoire/go/cmd/grimoire@latest
+    docker run -p 9111:9111 -v grimoire-vault:/vault ghcr.io/jeremiahm37/grimoire:{{ .Version }}
     ```
