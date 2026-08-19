@@ -225,3 +225,49 @@ This is also the round's methodological lesson repeating. A 1.2-point
 "regression" at n = 500 sat inside the noise this study measured in round 6,
 and doubling the sample dissolved it. Effects of that size need roughly a
 thousand questions here, not five hundred.
+
+## Round 9 — baselines, and a corrected full-context claim (2026-08-18)
+
+Standard IR baselines run inside this harness at a matched budget, with every
+row — including full context — read and judged in one session.
+
+| method | multi-hop | temporal | open-domain | single-hop | **overall** | ctx tokens |
+|---|---|---|---|---|---|---|
+| no memory | 1.1% | 0.0% | 6.5% | 1.1% | **1.2%** | 0 |
+| lexical only (BM25) | 42.4% | 65.4% | 67.7% | 83.9% | **71.4%** | 6,126 |
+| dense only (embeddings) | 53.3% | 76.0% | 64.5% | 87.5% | **77.4%** | 6,923 |
+| hybrid as shipped | 50.0% | 74.0% | 64.5% | 88.3% | **76.8%** | 7,559 |
+| full context | 66.3% | 75.0% | 61.3% | 92.3% | **82.3%** | 25,011 |
+
+Paired against the shipped hybrid (exact McNemar, n = 500):
+
+| comparison | delta | W/L | p |
+|---|---|---|---|
+| vs lexical only | **+5.4pp** | 54/27 | **0.0036** |
+| vs dense only | −0.6pp | 33/36 | 0.810 |
+| vs full context | **−5.5pp** | 23/51 | **0.0015** |
+
+### A published claim, corrected
+
+Rounds 1–5 reported retrieval as *statistically indistinguishable* from full
+context on this dataset (p = 0.82 / 0.51). Measured in one session, it is not:
+**full context wins by 5.5 points at p = 0.0015.** The earlier comparison put a
+fresh retrieval run against `full` reads stored from a previous epoch, and
+round 6 established that the re-read alone moves this dataset by 3.6 points.
+The parity claim was an artifact of that gap and is withdrawn.
+
+This is not a regression in the product — the retrieval numbers are what they
+were. It is a correction to what they were being compared against.
+
+### What it means
+
+LoCoMo's conversations are ~24k tokens: they fit in the reader's window, so
+reading all of it beats retrieving from it. That is the expected result for a
+corpus that fits, and it is the opposite of LongMemEval's 118k haystacks, where
+the same retrieval beats full context by 8.5 points. The two datasets bracket
+the regime change, and quoting only the flattering side of it would be the
+easiest way to make these numbers useless.
+
+Fusion still earns its place against the classical baseline (+5.4pp over BM25,
+p = 0.0036), though on this dataset the dense leg alone is as good as the
+fusion — the mirror image of LongMemEval, where neither leg alone comes close.

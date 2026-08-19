@@ -135,3 +135,17 @@ on that choice: two chunks per hit also improved dev coverage (75.6% → 78.1%).
 
 `LME_RESULTS` overrides the results directory so a second sample can be scored
 without touching the frozen one.
+
+## Amendment — round 9 (2026-08-18)
+
+**Baseline conditions.** `dense-only` and `lexical-only` isolate the two legs
+of retrieval, built by `retrieve_baselines.py` at a matched CHARACTER budget
+(not a matched k, which would compare budgets rather than methods). In the
+hybrid condition each leg gets its own share of that budget; filling
+first-come-first-served makes "hybrid" collapse into whichever leg is asked
+first, which happened and was discarded rather than reported.
+
+**Same-session requirement.** Every condition in a reported comparison must be
+read and judged in one session, `full` included. Round 6 measured the cost of
+not doing this at 8-12% of answers; round 9 re-read full context and it moved
+1.5 points on identical input.
