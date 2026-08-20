@@ -68,6 +68,9 @@ func (ix *Index) bumpRev() {
 func (ix *Index) Reindex() (int, error) {
 	ix.writeMu.Lock()
 	defer ix.writeMu.Unlock()
+	// Patching per note would cost more than the one rebuild this replaces.
+	defer ix.endBulk()
+	ix.beginBulk()
 
 	// Bump before the deletes, not only inside writeNoteRows. A rebuild that
 	// ends up writing no notes — an emptied or moved vault — would otherwise
@@ -176,7 +179,11 @@ func (ix *Index) removeRows(rel string) error {
 			return err
 		}
 	}
-	return ix.dropFTS(rel)
+	if err := ix.dropFTS(rel); err != nil {
+		return err
+	}
+	ix.patchNote(rel)
+	return nil
 }
 
 func (ix *Index) writeNoteRows(note *vault.Note) error {
@@ -246,6 +253,11 @@ func (ix *Index) writeNoteRows(note *vault.Note) error {
 			}
 		}
 	}
+	// The retrieval cache is patched with this note's rows rather than thrown
+	// away. Discarding it makes the next query rebuild the whole corpus —
+	// 2.2s on a 50,000-note vault — which under continuous writes is a cost
+	// paid by everyone, forever. See internal/index/cachepatch.go.
+	ix.patchNote(rel)
 	return nil
 }
 

@@ -103,6 +103,10 @@ func (ix *Index) Sync() (SyncStats, error) {
 
 	ix.writeMu.Lock()
 	defer ix.writeMu.Unlock()
+	// A sync may touch nothing or everything; either way one rebuild at the
+	// end beats patching per note.
+	defer ix.endBulk()
+	ix.beginBulk()
 
 	changed := false
 	for _, rel := range rels {

@@ -2,6 +2,7 @@ package index
 
 import (
 	"database/sql"
+	"errors"
 	"math"
 	"regexp"
 	"slices"
@@ -51,6 +52,35 @@ type noteMeta struct {
 	title string
 }
 
+// The ordering view: row positions in corpus order — by note path, then chunk
+// index — which is the order a freshly built cache already holds them in.
+//
+// Ranking breaks every tie by candidate position, so that order is part of the
+// output, not an implementation detail. Once the cache can be patched in place
+// a new note's rows land at the end of the arena rather than in their sorted
+// place, so the arena stops being the corpus order. sorted keeps it, and
+// Retrieve walks that instead. A cache built by a rebuild leaves it nil, where
+// the identity order is the corpus order and costs nothing.
+
+// order returns row positions in corpus order. Read-only: it is called with
+// the cache read lock held, concurrently, so it cannot materialize anything.
+func (c *corpusCache) order() []int32 {
+	if c.sorted != nil {
+		return c.sorted
+	}
+	return c.identity
+}
+
+// beforeRow reports whether row a sorts before row b in corpus order.
+func (c *corpusCache) beforeRow(a, b int32) bool {
+	ra, rb := &c.rows[a], &c.rows[b]
+	pa, pb := c.notes[ra.note].path, c.notes[rb.note].path
+	if pa != pb {
+		return pa < pb
+	}
+	return ra.ci < rb.ci
+}
+
 // cachedRow is one chunk, reduced to what ranking actually reads. Note the
 // absence of the chunk TEXT: scoring never looks at it, only the handful of
 // rows that survive into the response do, and those are cheap to fetch by
@@ -60,7 +90,12 @@ type cachedRow struct {
 	note    int32 // index into corpusCache.notes
 	ci      int32 // chunk_idx within the note
 	total   int32 // token count, for BM25 length normalization
+	chars   int32 // chunk length, so a removal can undo its corpus-size total
 	private bool
+	// dead marks a row whose note has been rewritten or deleted since the
+	// cache was built. Rows are tombstoned rather than removed because the
+	// postings lists address rows by position; compaction is a rebuild.
+	dead bool
 }
 
 // posting is one (term, chunk) occurrence with its term frequency.
@@ -96,6 +131,20 @@ type corpusCache struct {
 	norms []float64 // ||v|| per row, pre-zero-guard
 
 	postings map[string][]posting
+
+	// Where each note's rows live, so a write can find and tombstone them
+	// without scanning the corpus.
+	byNote  map[string][]int32
+	noteIdx map[string]int32
+	// dead rows accumulate with churn; past a threshold the cache is dropped
+	// and rebuilt compactly rather than carrying them forever.
+	deadRows int
+
+	// sorted is the corpus-order view of rows, materialized only once the
+	// arena stops being in corpus order — which happens the first time a note
+	// is patched in. identity is the 0..n-1 view a freshly built cache uses.
+	sorted   []int32
+	identity []int32
 
 	// Corpus statistics, kept for both visibilities so a query never has to
 	// sweep the corpus just to learn its size. Accumulated in row order, which
@@ -167,8 +216,11 @@ func (ix *Index) corpusCacheFor() (*corpusCache, error) {
 	rev := ix.Rev()
 	ix.cacheMu.RLock()
 	c := ix.cache
+	// c.rev is read under the lock: a patch updates it in place, so reading it
+	// afterwards races with the write that made the cache current.
+	current := c != nil && c.rev == rev
 	ix.cacheMu.RUnlock()
-	if c != nil && c.rev == rev {
+	if current {
 		return c, nil
 	}
 
@@ -184,6 +236,40 @@ func (ix *Index) corpusCacheFor() (*corpusCache, error) {
 	}
 	ix.cache = built
 	return built, nil
+}
+
+// errCacheContended means a write landed between every attempt to read a
+// current cache. Reported rather than served from a stale one: eight
+// consecutive losses is a symptom worth seeing, not something to paper over.
+var errCacheContended = errors.New("retrieval cache could not be read: writes are landing faster than it can be built")
+
+// withCache runs fn against a current cache, holding the READ lock for the
+// whole of it.
+//
+// Holding it for the duration is what the in-place patching costs: a writer
+// mutates the arena, the postings and the corpus statistics, and a reader
+// midway through a ranking must not see half of that. Readers still run
+// concurrently with each other — the lock is only exclusive while a write
+// patches — and a patch touches one note's rows rather than rebuilding
+// everything, so the window it holds is short.
+func (ix *Index) withCache(fn func(*corpusCache) error) error {
+	for attempt := 0; attempt < 8; attempt++ {
+		if _, err := ix.corpusCacheFor(); err != nil {
+			return err
+		}
+		ix.cacheMu.RLock()
+		c := ix.cache
+		if c == nil || c.rev != ix.Rev() {
+			// A write landed between building and reading. Rebuild and retry
+			// rather than answer from a cache that is already stale.
+			ix.cacheMu.RUnlock()
+			continue
+		}
+		err := fn(c)
+		ix.cacheMu.RUnlock()
+		return err
+	}
+	return errCacheContended
 }
 
 // buildCache materializes the cache from SQLite.
@@ -222,7 +308,8 @@ func (ix *Index) buildCache(rev int64) (*corpusCache, error) {
 	}
 	defer rows.Close()
 
-	c := &corpusCache{rev: rev, postings: make(map[string][]posting)}
+	c := &corpusCache{rev: rev, postings: make(map[string][]posting),
+		byNote: make(map[string][]int32), noteIdx: make(map[string]int32)}
 	if n > 0 {
 		c.rows = make([]cachedRow, 0, n)
 		c.norms = make([]float64, 0, n)
@@ -261,6 +348,7 @@ func (ix *Index) buildCache(rev int64) (*corpusCache, error) {
 			}
 			ni = int32(len(c.notes))
 			noteIdx[path] = ni
+			c.noteIdx[path] = ni
 			c.notes = append(c.notes, noteMeta{path: path, title: title})
 		}
 
@@ -307,8 +395,10 @@ func (ix *Index) buildCache(rev int64) (*corpusCache, error) {
 		}
 
 		isPrivate := private != 0
+		c.byNote[c.notes[ni].path] = append(c.byNote[c.notes[ni].path], rowIdx)
 		c.rows = append(c.rows, cachedRow{
-			note: ni, ci: int32(ci), total: total, private: isPrivate,
+			note: ni, ci: int32(ci), total: total,
+			chars: int32(len(chunk)), private: isPrivate,
 		})
 		c.nAll++
 		c.lenAll += float64(total)
@@ -325,6 +415,10 @@ func (ix *Index) buildCache(rev int64) (*corpusCache, error) {
 	// Postings are appended in row order, so each list is already ascending by
 	// row; accumulation order over a row's terms is fixed by the sorted term
 	// loop in Retrieve, not by this.
+	c.identity = make([]int32, len(c.rows))
+	for i := range c.identity {
+		c.identity[i] = int32(i)
+	}
 	return c, nil
 }
 
@@ -352,22 +446,29 @@ func (ix *Index) noteTitles() (map[string]string, error) {
 // notes it holds and how many characters of chunk text that is. Cheap — the
 // character total is accumulated when the cache is built.
 func (ix *Index) CorpusStats(includePrivate bool) (chunks, notes int, chars int64, err error) {
-	c, err := ix.corpusCacheFor()
-	if err != nil {
-		return 0, 0, 0, err
-	}
+	err = ix.withCache(func(c *corpusCache) error {
+		chunks, notes, chars = c.stats(includePrivate)
+		return nil
+	})
+	return chunks, notes, chars, err
+}
+
+func (c *corpusCache) stats(includePrivate bool) (chunks, notes int, chars int64) {
 	seen := make(map[int32]bool, len(c.notes))
 	for i := range c.rows {
-		if !includePrivate && c.rows[i].private {
+		// Tombstoned rows belong to notes that have since been rewritten or
+		// deleted; counting them would report a corpus larger than the one
+		// that can be retrieved, and the corpus-fits decision reads this.
+		if c.rows[i].dead || (!includePrivate && c.rows[i].private) {
 			continue
 		}
 		chunks++
 		seen[c.rows[i].note] = true
 	}
 	if includePrivate {
-		return chunks, len(seen), c.charsAll, nil
+		return chunks, len(seen), c.charsAll
 	}
-	return chunks, len(seen), c.charsPublic, nil
+	return chunks, len(seen), c.charsPublic
 }
 
 // WholeCorpus returns every retrievable chunk in document order.
@@ -428,10 +529,17 @@ func (ix *Index) CacheStats() (chunks, notes, terms int, vectorBytes int64) {
 // includePrivate is set — the default has to be exclusion, since this feeds
 // surfaces that are not necessarily authenticated.
 func (ix *Index) Retrieve(query string, k int, includePrivate bool) ([]Hit, error) {
-	c, err := ix.corpusCacheFor()
-	if err != nil {
-		return nil, err
-	}
+	var hits []Hit
+	err := ix.withCache(func(c *corpusCache) error {
+		var err error
+		hits, err = ix.rank(c, query, k, includePrivate)
+		return err
+	})
+	return hits, err
+}
+
+// rank is Retrieve's body, run with the cache read lock held.
+func (ix *Index) rank(c *corpusCache, query string, k int, includePrivate bool) ([]Hit, error) {
 	n := c.count(includePrivate)
 	if n == 0 || strings.TrimSpace(query) == "" {
 		return nil, nil
@@ -447,7 +555,9 @@ func (ix *Index) Retrieve(query string, k int, includePrivate bool) ([]Hit, erro
 	// visible subset only, because BM25 IDF depends on corpus composition: a
 	// private note must not shift the scores of public results, or the private
 	// corpus would be observable through the ranking of the public one.
-	visible := func(r *cachedRow) bool { return includePrivate || !r.private }
+	visible := func(r *cachedRow) bool {
+		return !r.dead && (includePrivate || !r.private)
+	}
 
 	// --- lexical leg: BM25 over the inverted index ---
 	lex := make([]float64, len(c.rows))
@@ -488,12 +598,18 @@ func (ix *Index) Retrieve(query string, k int, includePrivate bool) ([]Hit, erro
 	// candidate is a value type in one contiguous slice: the original allocated
 	// a *scored per candidate, which at 50k chunks was 50k pointer-chased
 	// objects per query.
+	// Iterated in CORPUS order — by note path, then chunk index — not in the
+	// order rows happen to sit in the arena. For a freshly built cache those
+	// are the same thing; for one that has been patched in place they are not,
+	// and every tie below is broken by candidate position. Going through the
+	// ordering view is what makes a patched cache rank identically to a
+	// rebuilt one, which is the property the golden digest pins.
 	cands := make([]candidate, 0, 256)
-	for i := range c.rows {
+	for _, i := range c.order() {
 		if !visible(&c.rows[i]) {
 			continue
 		}
-		cos := c.cosine(i, qv, qnorm)
+		cos := c.cosine(int(i), qv, qnorm)
 		// A NaN would make the comparator non-transitive and hand pdqsort an
 		// ordering it is entitled to resolve arbitrarily. Cosine's zero-norm
 		// guards mean one should not arise; clamping makes that a property of
@@ -502,7 +618,7 @@ func (ix *Index) Retrieve(query string, k int, includePrivate bool) ([]Hit, erro
 			cos = 0
 		}
 		if cos > 0 || lex[i] > 0 {
-			cands = append(cands, candidate{row: int32(i), cos: cos, lex: lex[i]})
+			cands = append(cands, candidate{row: i, cos: cos, lex: lex[i]})
 		}
 	}
 	if len(cands) == 0 {
@@ -797,4 +913,8 @@ func queryTerms(s string) []string {
 type cacheFields struct {
 	cacheMu sync.RWMutex
 	cache   *corpusCache
+	// bulk suppresses per-note cache patching during a rebuild or a sync,
+	// where dropping the cache once is far cheaper than patching every note.
+	// Guarded by the index write lock, which every bulk operation holds.
+	bulk bool
 }
