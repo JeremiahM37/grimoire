@@ -1,0 +1,29 @@
+[project]
+name = "grimoire-client"
+version = "1.0.0"
+description = "Python client for Grimoire — self-hosted memory, knowledge and credentials for AI agents"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Jeremiah Mackey" }]
+requires-python = ">=3.11"
+keywords = ["grimoire", "agent-memory", "llm", "mcp", "self-hosted", "rag"]
+# No dependencies, deliberately: the server is one static binary, and a client
+# that drags in a stack to reach it undoes the property people install it for.
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+# The LangGraph store adapter. Optional: the client itself stays
+# dependency-free, and the adapter is only imported when you ask for it.
+langgraph = ["langgraph>=0.2"]
+
+[project.urls]
+Homepage = "https://github.com/JeremiahM37/grimoire"
+Source = "https://github.com/JeremiahM37/grimoire/tree/main/clients/python"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["grimoire_client*"]

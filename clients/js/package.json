@@ -1,0 +1,21 @@
+{
+  "name": "@jeremiahm37/grimoire",
+  "version": "1.0.0",
+  "description": "Client for Grimoire — self-hosted memory, knowledge and credentials for AI agents",
+  "license": "MIT",
+  "author": "Jeremiah Mackey",
+  "type": "module",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": { ".": { "types": "./index.d.ts", "default": "./index.js" } },
+  "files": ["index.js", "index.d.ts", "README.md"],
+  "engines": { "node": ">=18" },
+  "scripts": { "test": "node --test test/" },
+  "keywords": ["grimoire", "agent-memory", "llm", "mcp", "self-hosted", "rag"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JeremiahM37/grimoire.git",
+    "directory": "clients/js"
+  },
+  "homepage": "https://github.com/JeremiahM37/grimoire/tree/main/clients/js"
+}
