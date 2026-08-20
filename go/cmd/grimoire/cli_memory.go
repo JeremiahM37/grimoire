@@ -1,0 +1,204 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/url"
+	"strings"
+)
+
+// The terminal half of agent memory.
+//
+// Memory is written by agents over MCP and read by them over HTTP, which
+// leaves the person whose memory it is with a web console and a text editor.
+// These commands are the third way in: check what an agent believes, correct
+// it, and retract something, from the shell — without a server running, since
+// they go through the same handlers in process.
+
+func cmdRemember(args []string) int {
+	text := strings.TrimSpace(stdinOrArgs(positional(args)))
+	if text == "" {
+		return fail("usage: grimoire remember TEXT [--topic T] [--session S] " +
+			"[--category C] [--expires-in 72h] [--immutable]")
+	}
+	e, err := openEnv()
+	if err != nil {
+		return fail("%v", err)
+	}
+	defer e.close()
+
+	body := map[string]any{"text": text, "agent": flagOr(args, "--agent", "cli")}
+	for flag, field := range map[string]string{
+		"--topic": "topic", "--task": "task", "--session": "session",
+		"--category": "category", "--expires-in": "expires_in",
+	} {
+		if v, ok := flagValue(args, flag); ok {
+			body[field] = v
+		}
+	}
+	if hasFlag(args, "--immutable") {
+		body["immutable"] = true
+	}
+	if hasFlag(args, "--verbatim") {
+		body["infer"] = false
+	}
+	status, raw := e.callBody("POST", "/api/memory", body)
+	if status != http.StatusCreated {
+		return fail("remember failed: %s", raw)
+	}
+	var out struct {
+		Path    string `json:"path"`
+		Results []struct {
+			Op, ID, Text, Target, Why string
+		} `json:"results"`
+	}
+	if err := json.Unmarshal([]byte(raw), &out); err != nil {
+		return fail("%v", err)
+	}
+	// The operation is the interesting part: a write that superseded an older
+	// belief, or that changed nothing, should not read as a plain success.
+	for _, r := range out.Results {
+		switch r.Op {
+		case "NOOP":
+			fmt.Printf("unchanged  already recorded — %s\n", r.Why)
+		case "DELETE":
+			fmt.Printf("retracted  %s\n", r.Why)
+		case "UPDATE":
+			fmt.Printf("superseded %s\n           %s [%s]\n", r.Why, out.Path, r.ID)
+		default:
+			fmt.Printf("remembered %s [%s]\n", out.Path, r.ID)
+		}
+	}
+	return 0
+}
+
+func cmdRecall(args []string) int {
+	e, err := openEnv()
+	if err != nil {
+		return fail("%v", err)
+	}
+	defer e.close()
+
+	q := url.Values{}
+	q.Set("limit", flagOr(args, "--limit", "20"))
+	if query := strings.TrimSpace(strings.Join(positional(args), " ")); query != "" {
+		q.Set("q", query)
+	}
+	for flag, param := range map[string]string{
+		"--agent": "agent", "--session": "session", "--category": "category",
+		"--as-of": "as_of",
+	} {
+		if v, ok := flagValue(args, flag); ok {
+			q.Set(param, v)
+		}
+	}
+	if hasFlag(args, "--all") {
+		q.Set("include_superseded", "1")
+		q.Set("include_expired", "1")
+	}
+	explain := hasFlag(args, "--why")
+	if explain {
+		q.Set("explain", "1")
+	}
+	status, raw := e.call("GET", "/api/memory?"+q.Encode())
+	if status != http.StatusOK {
+		return fail("recall failed: %s", raw)
+	}
+	var facts []struct {
+		ID, Text, Path, Agent, Session, Category, Stamp string
+		SupersededBy                                    string `json:"superseded_by"`
+		Score                                           float64
+		Scores                                          map[string]float64
+	}
+	if err := json.Unmarshal([]byte(raw), &facts); err != nil {
+		return fail("%v", err)
+	}
+	if len(facts) == 0 {
+		fmt.Println("nothing recorded")
+		return 0
+	}
+	for _, f := range facts {
+		mark := " "
+		if f.SupersededBy != "" {
+			mark = "×" // replaced later; shown only with --all
+		}
+		fmt.Printf("%s %-12s %s\n", mark, f.ID, f.Text)
+		meta := []string{f.Stamp}
+		for _, s := range []string{f.Agent, f.Session, f.Category} {
+			if s != "" {
+				meta = append(meta, s)
+			}
+		}
+		fmt.Printf("  %-12s %s · %s\n", "", strings.Join(meta, " · "), f.Path)
+		if explain {
+			fmt.Printf("  %-12s score %.3f (semantic %.2f · keyword %.2f · entity %.2f · recency %.2f)\n",
+				"", f.Score, f.Scores["semantic"], f.Scores["keyword"],
+				f.Scores["entity"], f.Scores["recency"])
+		}
+	}
+	return 0
+}
+
+func cmdForget(args []string) int {
+	pos := positional(args)
+	if len(pos) < 2 {
+		return fail("usage: grimoire forget PATH ID [--hard]   (ids come from `grimoire recall`)")
+	}
+	e, err := openEnv()
+	if err != nil {
+		return fail("%v", err)
+	}
+	defer e.close()
+
+	q := url.Values{}
+	q.Set("path", pos[0])
+	q.Set("id", pos[1])
+	q.Set("agent", flagOr(args, "--agent", "cli"))
+	if hasFlag(args, "--hard") {
+		q.Set("hard", "1")
+	}
+	status, raw := e.call("DELETE", "/api/memory/entry?"+q.Encode())
+	if status != http.StatusOK {
+		return fail("forget failed: %s", raw)
+	}
+	if hasFlag(args, "--hard") {
+		fmt.Printf("removed %s from %s\n", pos[1], pos[0])
+	} else {
+		fmt.Printf("retracted %s — still in %s, struck through\n", pos[1], pos[0])
+	}
+	return 0
+}
+
+// flagOr reads a flag with a default.
+func flagOr(args []string, name, def string) string {
+	if v, ok := flagValue(args, name); ok {
+		return v
+	}
+	return def
+}
+
+// positional drops flags and their values, leaving the words a command's text
+// is built from. Without it `grimoire remember the box is fast --topic ops`
+// remembers the flag as part of the fact.
+func positional(args []string) []string {
+	var out []string
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if !strings.HasPrefix(a, "--") {
+			out = append(out, a)
+			continue
+		}
+		if valuedFlags[a] && i+1 < len(args) {
+			i++ // skip the value too
+		}
+	}
+	return out
+}
+
+// valuedFlags are the flags that take a value, so positional() knows which
+// following word to skip. A boolean flag's neighbour is a word, not a value.
+var valuedFlags = map[string]bool{
+	"--topic": true, "--task": true, "--session": true, "--category": true,
+	"--expires-in": true, "--agent": true, "--limit": true, "--as-of": true,
+}
