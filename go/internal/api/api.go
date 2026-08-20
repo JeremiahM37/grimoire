@@ -17,8 +17,11 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/JeremiahM37/grimoire/go/internal/ai"
+	"github.com/JeremiahM37/grimoire/go/internal/auth"
 	"github.com/JeremiahM37/grimoire/go/internal/crdtstore"
 	"github.com/JeremiahM37/grimoire/go/internal/history"
 	"github.com/JeremiahM37/grimoire/go/internal/index"
@@ -39,6 +42,7 @@ type Server struct {
 	Broker       *secrets.Broker
 	CRDT         *crdtstore.Store
 	AI           *ai.Client
+	Auth         *auth.Store
 	Sync         *gsync.Client
 	SyncPeer     string
 	SyncToken    string
@@ -49,6 +53,12 @@ type Server struct {
 	PluginDir    string
 	DailyDir     string
 	InboxDir     string
+
+	// snapshot of the space table for the indexer; see SpaceOf.
+	spaceMu      sync.Mutex
+	spaceAt      time.Time
+	spaceEnabled bool
+	spaceList    []auth.Space
 }
 
 // Routes builds the mux. Specific paths are registered before the catch-all
@@ -59,7 +69,8 @@ func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /api/health", s.health)
-	mux.HandleFunc("POST /api/reindex", s.reindex)
+	s.authRoutes(mux)
+	mux.HandleFunc("POST /api/reindex", s.adminOnly(s.reindex))
 	mux.HandleFunc("GET /api/aliases", s.aliases)
 	mux.HandleFunc("GET /api/notes", s.listNotes)
 	mux.HandleFunc("POST /api/notes", s.createNote)
@@ -87,19 +98,24 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/memory", s.remember)
 	mux.HandleFunc("GET /api/memory", s.recall)
 	mux.HandleFunc("GET /api/briefing", s.briefing)
+	// The credential vault is instance-wide, so managing it is an
+	// administrator's job: one shared store of secrets, and a grant issued
+	// from it acts with the instance's authority rather than the caller's.
+	// Brokering is deliberately NOT admin-gated — the grant token is itself
+	// the capability, which is the whole point of handing one to an agent.
 	mux.HandleFunc("GET /api/vault/status", s.vaultStatus)
-	mux.HandleFunc("POST /api/vault/init", s.vaultInit)
-	mux.HandleFunc("POST /api/vault/unlock", s.vaultUnlock)
-	mux.HandleFunc("POST /api/vault/lock", s.vaultLock)
-	mux.HandleFunc("GET /api/secrets", s.listSecrets)
-	mux.HandleFunc("POST /api/secrets", s.addSecret)
-	mux.HandleFunc("DELETE /api/secrets/{name}", s.deleteSecret)
-	mux.HandleFunc("POST /api/secrets/{name}/grant", s.makeGrant)
+	mux.HandleFunc("POST /api/vault/init", s.adminOnly(s.vaultInit))
+	mux.HandleFunc("POST /api/vault/unlock", s.adminOnly(s.vaultUnlock))
+	mux.HandleFunc("POST /api/vault/lock", s.adminOnly(s.vaultLock))
+	mux.HandleFunc("GET /api/secrets", s.adminOnly(s.listSecrets))
+	mux.HandleFunc("POST /api/secrets", s.adminOnly(s.addSecret))
+	mux.HandleFunc("DELETE /api/secrets/{name}", s.adminOnly(s.deleteSecret))
+	mux.HandleFunc("POST /api/secrets/{name}/grant", s.adminOnly(s.makeGrant))
 	mux.HandleFunc("POST /api/secrets/broker", s.brokerUse)
-	mux.HandleFunc("GET /api/grants", s.listGrants)
-	mux.HandleFunc("DELETE /api/grants", s.revokeAllGrants)
-	mux.HandleFunc("DELETE /api/grants/{token}", s.revokeGrant)
-	mux.HandleFunc("GET /api/audit", s.auditLog)
+	mux.HandleFunc("GET /api/grants", s.adminOnly(s.listGrants))
+	mux.HandleFunc("DELETE /api/grants", s.adminOnly(s.revokeAllGrants))
+	mux.HandleFunc("DELETE /api/grants/{token}", s.adminOnly(s.revokeGrant))
+	mux.HandleFunc("GET /api/audit", s.adminOnly(s.auditLog))
 	mux.HandleFunc("POST /api/attach", s.attach)
 	mux.HandleFunc("GET /api/file/{path...}", s.serveFile)
 	mux.HandleFunc("GET /api/canvas", s.listCanvases)
@@ -138,7 +154,7 @@ func (s *Server) Routes() http.Handler {
 	if s.WebDir != "" {
 		mux.Handle("/", s.staticHandler())
 	}
-	return securityHeaders(s.FrameOptions, s.requireAuth(mux))
+	return securityHeaders(s.FrameOptions, s.requireAuth(s.withPrincipal(mux)))
 }
 
 // securityHeaders applies the same defence-in-depth headers as the Python app.
@@ -330,12 +346,18 @@ func (s *Server) listNotes(w http.ResponseWriter, r *http.Request) {
 	}
 	tag := r.URL.Query().Get("tag")
 
-	query := "SELECT path, title, updated, private, frontmatter_json FROM notes ORDER BY updated DESC, path LIMIT ?"
-	args := []any{limit}
+	// Restricted in SQL rather than after the fact: filtering the result of a
+	// LIMIT would silently return fewer notes than asked for, and the shortfall
+	// would be exactly the notes the caller cannot see.
+	where, spaceArgs := s.whereSpace(r, "space", "")
+	query := "SELECT path, title, updated, private, frontmatter_json FROM notes" +
+		where + " ORDER BY updated DESC, path LIMIT ?"
+	args := append(append([]any{}, spaceArgs...), limit)
 	if tag != "" {
+		nWhere, nSpaceArgs := s.whereSpace(r, "n.space", " WHERE t.tag=?")
 		query = "SELECT n.path, n.title, n.updated, n.private, n.frontmatter_json FROM notes n " +
-			"JOIN tags t ON t.note=n.path WHERE t.tag=? ORDER BY n.updated DESC, n.path LIMIT ?"
-		args = []any{tag, limit}
+			"JOIN tags t ON t.note=n.path" + nWhere + " ORDER BY n.updated DESC, n.path LIMIT ?"
+		args = append(append([]any{tag}, nSpaceArgs...), limit)
 	}
 	rows, err := s.Index.DB.Query(query, args...)
 	if err != nil {
@@ -419,6 +441,10 @@ func (s *Server) createNote(w http.ResponseWriter, r *http.Request) {
 			writeErr(w, http.StatusBadRequest, err.Error())
 			return
 		}
+	}
+
+	if !s.requireWrite(w, r, rel) {
+		return
 	}
 
 	fm := markdown.NewFrontmatter()
@@ -544,6 +570,9 @@ type noteUpdate struct {
 
 func (s *Server) updateNote(w http.ResponseWriter, r *http.Request) {
 	rel := normPath(r.PathValue("path"))
+	if !s.requireWrite(w, r, rel) {
+		return
+	}
 	var u noteUpdate
 	if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
 		writeErr(w, http.StatusBadRequest, "invalid json")
@@ -581,6 +610,9 @@ func (s *Server) updateNote(w http.ResponseWriter, r *http.Request) {
 // console's delete is undoable. Permanent removal is an explicit purge.
 func (s *Server) deleteNote(w http.ResponseWriter, r *http.Request) {
 	rel := normPath(r.PathValue("path"))
+	if !s.requireWrite(w, r, rel) {
+		return
+	}
 	title := rel
 	if note, err := s.Vault.Read(rel); err == nil {
 		title = note.Title
@@ -600,10 +632,11 @@ func (s *Server) deleteNote(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"trashed": tid, "path": rel})
 }
 
-func (s *Server) randomNote(w http.ResponseWriter, _ *http.Request) {
+func (s *Server) randomNote(w http.ResponseWriter, r *http.Request) {
+	randWhere, randArgs := s.whereSpace(r, "space", "")
 	var path string
 	err := s.Index.DB.QueryRow(
-		"SELECT path FROM notes ORDER BY RANDOM() LIMIT 1").Scan(&path)
+		"SELECT path FROM notes"+randWhere+" ORDER BY RANDOM() LIMIT 1", randArgs...).Scan(&path)
 	if err != nil {
 		writeErr(w, http.StatusNotFound, "no notes")
 		return
@@ -619,7 +652,7 @@ func (s *Server) retrieve(w http.ResponseWriter, r *http.Request) {
 			k = n
 		}
 	}
-	hits, err := s.Index.Retrieve(q, k, false)
+	hits, err := s.Index.RetrieveFor(q, k, filterFor(r, false))
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -630,9 +663,13 @@ func (s *Server) retrieve(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, hits)
 }
 
-func (s *Server) tags(w http.ResponseWriter, _ *http.Request) {
+func (s *Server) tags(w http.ResponseWriter, r *http.Request) {
+	// Tag counts are computed over readable notes only: a count that includes
+	// notes the caller cannot open tells them those notes exist.
+	where, args := s.whereSpace(r, "n.space", "")
 	rows, err := s.Index.DB.Query(
-		"SELECT tag, COUNT(*) c FROM tags GROUP BY tag ORDER BY c DESC, tag")
+		"SELECT t.tag, COUNT(*) c FROM tags t JOIN notes n ON n.path=t.note"+where+
+			" GROUP BY t.tag ORDER BY c DESC, t.tag", args...)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return

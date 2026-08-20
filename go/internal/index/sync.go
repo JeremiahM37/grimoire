@@ -199,3 +199,51 @@ func (ix *Index) meta(key string) (string, error) {
 func (ix *Index) setMeta(key, value string) error {
 	return ix.DB.Exec("INSERT OR REPLACE INTO meta(key,value) VALUES(?,?)", key, value)
 }
+
+// RestampSpaces recomputes which space every row belongs to.
+//
+// Space membership is a property of a note's path, so changing the set of
+// spaces changes it for notes that were indexed long ago. Re-reading and
+// re-embedding the vault would cost minutes and produce identical vectors;
+// only the space column moves, so only it is rewritten.
+func (ix *Index) RestampSpaces(spaceOf func(path string) string) error {
+	ix.writeMu.Lock()
+	defer ix.writeMu.Unlock()
+
+	rows, err := ix.DB.Query("SELECT path, space FROM notes")
+	if err != nil {
+		return err
+	}
+	type change struct{ path, space string }
+	var changes []change
+	for rows.Next() {
+		var path, space string
+		if err := rows.Scan(&path, &space); err != nil {
+			rows.Close()
+			return err
+		}
+		if want := spaceOf(path); want != space {
+			changes = append(changes, change{path, want})
+		}
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if len(changes) == 0 {
+		return nil
+	}
+	for _, c := range changes {
+		if err := ix.DB.Exec("UPDATE notes SET space=? WHERE path=?", c.space, c.path); err != nil {
+			return err
+		}
+		if err := ix.DB.Exec("UPDATE vectors SET space=? WHERE note=?", c.space, c.path); err != nil {
+			return err
+		}
+	}
+	// The cache holds each row's space; rather than patch every changed note,
+	// drop it once — a space change is rare and touches many notes at a time.
+	ix.InvalidateCache()
+	ix.bumpRev()
+	return nil
+}

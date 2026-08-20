@@ -101,6 +101,12 @@ func (s *Server) attach(w http.ResponseWriter, r *http.Request) {
 
 // serveFile serves a raw vault file for embeds and the read surface.
 func (s *Server) serveFile(w http.ResponseWriter, r *http.Request) {
+	// Attachments live beside the notes that reference them, so they inherit
+	// the space of their path. Serving them unchecked would make every private
+	// image and PDF readable by URL.
+	if !s.requireRead(w, r, normPath(r.PathValue("path"))) {
+		return
+	}
 	p, err := s.Vault.SafeRawPath(strings.Trim(r.PathValue("path"), "/"))
 	if err != nil {
 		writeErr(w, http.StatusBadRequest, "bad path")

@@ -22,6 +22,7 @@ import (
 
 	"github.com/JeremiahM37/grimoire/go/internal/ai"
 	"github.com/JeremiahM37/grimoire/go/internal/api"
+	"github.com/JeremiahM37/grimoire/go/internal/auth"
 	"github.com/JeremiahM37/grimoire/go/internal/crdtstore"
 	"github.com/JeremiahM37/grimoire/go/internal/db"
 	"github.com/JeremiahM37/grimoire/go/internal/embed"
@@ -57,6 +58,7 @@ type env struct {
 	server   *api.Server
 	handler  http.Handler
 	embedder index.Embedder
+	auth     *auth.Store
 	dailyDir string
 	inboxDir string
 }
@@ -83,6 +85,7 @@ func newEnv(fetchModel bool) (*env, error) {
 	}
 
 	vaultSecrets := secrets.New(grimoireDir)
+	accounts := auth.New(database)
 	store := settings.New(grimoireDir)
 	emb := newEmbedder(store, fetchModel)
 	ix := index.New(database, v, emb)
@@ -98,6 +101,7 @@ func newEnv(fetchModel bool) (*env, error) {
 		Broker:       secrets.NewBroker(vaultSecrets, database),
 		CRDT:         crdt,
 		AI:           ai.New(store, vaultSecrets.Get),
+		Auth:         accounts,
 		Sync:         syncer,
 		SyncPeer:     os.Getenv("GRIMOIRE_SYNC_PEER"),
 		SyncToken:    os.Getenv("GRIMOIRE_SYNC_TOKEN"),
@@ -109,8 +113,14 @@ func newEnv(fetchModel bool) (*env, error) {
 		DailyDir:     envOr("GRIMOIRE_DAILY_DIR", "journal"),
 		InboxDir:     envOr("GRIMOIRE_INBOX_DIR", "inbox"),
 	}
+	// The index writes each row's space, and the server owns the mapping from
+	// path to space. Wiring it after construction keeps the index free of any
+	// dependency on accounts: with none configured it stamps everything
+	// "commons", exactly as a single-user vault always has.
+	ix.Spaces = srv
+
 	return &env{vault: v, index: ix, db: database, settings: store, sync: syncer,
-		server: srv, handler: srv.Routes(), embedder: emb,
+		server: srv, handler: srv.Routes(), embedder: emb, auth: accounts,
 		dailyDir: srv.DailyDir, inboxDir: srv.InboxDir}, nil
 }
 

@@ -91,6 +91,7 @@ type cachedRow struct {
 	ci      int32 // chunk_idx within the note
 	total   int32 // token count, for BM25 length normalization
 	chars   int32 // chunk length, so a removal can undo its corpus-size total
+	space   int32 // index into corpusCache.spaces
 	private bool
 	// dead marks a row whose note has been rewritten or deleted since the
 	// cache was built. Rows are tombstoned rather than removed because the
@@ -140,6 +141,11 @@ type corpusCache struct {
 	// and rebuilt compactly rather than carrying them forever.
 	deadRows int
 
+	// spaces interned to int32, so a row carries an index rather than a string
+	// and a visibility check is an array lookup.
+	spaces   []string
+	spaceIdx map[string]int32
+
 	// sorted is the corpus-order view of rows, materialized only once the
 	// arena stops being in corpus order — which happens the first time a note
 	// is patched in. identity is the 0..n-1 view a freshly built cache uses.
@@ -157,11 +163,87 @@ type corpusCache struct {
 	charsAll, charsPublic int64
 }
 
+// spaceID interns a space name, adding it if new.
+func (c *corpusCache) spaceID(name string) int32 {
+	if name == "" {
+		name = "commons"
+	}
+	if id, ok := c.spaceIdx[name]; ok {
+		return id
+	}
+	id := int32(len(c.spaces))
+	c.spaces = append(c.spaces, name)
+	if c.spaceIdx == nil {
+		c.spaceIdx = map[string]int32{}
+	}
+	c.spaceIdx[name] = id
+	return id
+}
+
+// allowedSpaces turns a filter's space names into a lookup by interned id.
+// A nil filter set means every space, which is what a single-user deployment
+// and an administrator both get.
+func (c *corpusCache) allowedSpaces(names map[string]bool) []bool {
+	if names == nil {
+		return nil
+	}
+	out := make([]bool, len(c.spaces))
+	for i, s := range c.spaces {
+		out[i] = names[s]
+	}
+	return out
+}
+
 func (c *corpusCache) count(includePrivate bool) int {
 	if includePrivate {
 		return c.nAll
 	}
 	return c.nPublic
+}
+
+// countFor and lenFor compute corpus statistics over the visible subset.
+//
+// With no space filter these are the totals maintained on every write, which
+// is why the unrestricted path costs nothing. With one they are a scan — the
+// price of BM25 being scored against the caller's corpus rather than the whole
+// one. It is O(rows) of int32 reads against a query that already walks every
+// row for cosine.
+func (c *corpusCache) countFor(includePrivate bool, allowed []bool) int {
+	if allowed == nil {
+		return c.count(includePrivate)
+	}
+	n := 0
+	for i := range c.rows {
+		r := &c.rows[i]
+		if r.dead || (!includePrivate && r.private) {
+			continue
+		}
+		if int(r.space) < len(allowed) && allowed[r.space] {
+			n++
+		}
+	}
+	return n
+}
+
+func (c *corpusCache) avgLenFor(includePrivate bool, allowed []bool) float64 {
+	if allowed == nil {
+		return c.avgLen(includePrivate)
+	}
+	total, n := 0.0, 0
+	for i := range c.rows {
+		r := &c.rows[i]
+		if r.dead || (!includePrivate && r.private) {
+			continue
+		}
+		if int(r.space) < len(allowed) && allowed[r.space] {
+			total += float64(r.total)
+			n++
+		}
+	}
+	if n == 0 || total == 0 {
+		return 1
+	}
+	return total / float64(n)
 }
 
 // avgLen mirrors the original's guard: an all-empty corpus would divide by
@@ -301,7 +383,7 @@ func (ix *Index) buildCache(rev int64) (*corpusCache, error) {
 	}
 
 	rows, err := ix.DB.Query(
-		"SELECT note, chunk, chunk_idx, embedding, private FROM vectors " +
+		"SELECT note, chunk, chunk_idx, embedding, private, space FROM vectors " +
 			"ORDER BY note, chunk_idx")
 	if err != nil {
 		return nil, err
@@ -309,7 +391,8 @@ func (ix *Index) buildCache(rev int64) (*corpusCache, error) {
 	defer rows.Close()
 
 	c := &corpusCache{rev: rev, postings: make(map[string][]posting),
-		byNote: make(map[string][]int32), noteIdx: make(map[string]int32)}
+		byNote: make(map[string][]int32), noteIdx: make(map[string]int32),
+		spaceIdx: make(map[string]int32)}
 	if n > 0 {
 		c.rows = make([]cachedRow, 0, n)
 		c.norms = make([]float64, 0, n)
@@ -323,13 +406,14 @@ func (ix *Index) buildCache(rev int64) (*corpusCache, error) {
 		var chunk string
 		var ci int
 		var private int
+		var space string
 		var blob []byte
 		// The note path repeats for every chunk of a note. Scanning it as raw
 		// bytes and only materializing a string when the note is NEW turns
 		// one allocation per chunk into one per note; the map lookup on
 		// string(note) is compiled without a copy.
 		var note sql.RawBytes
-		if err := rows.Scan(&note, &chunk, &ci, &blob, &private); err != nil {
+		if err := rows.Scan(&note, &chunk, &ci, &blob, &private, &space); err != nil {
 			return nil, err
 		}
 
@@ -398,7 +482,7 @@ func (ix *Index) buildCache(rev int64) (*corpusCache, error) {
 		c.byNote[c.notes[ni].path] = append(c.byNote[c.notes[ni].path], rowIdx)
 		c.rows = append(c.rows, cachedRow{
 			note: ni, ci: int32(ci), total: total,
-			chars: int32(len(chunk)), private: isPrivate,
+			chars: int32(len(chunk)), space: c.spaceID(space), private: isPrivate,
 		})
 		c.nAll++
 		c.lenAll += float64(total)
@@ -446,29 +530,43 @@ func (ix *Index) noteTitles() (map[string]string, error) {
 // notes it holds and how many characters of chunk text that is. Cheap — the
 // character total is accumulated when the cache is built.
 func (ix *Index) CorpusStats(includePrivate bool) (chunks, notes int, chars int64, err error) {
+	return ix.CorpusStatsFor(Everything(includePrivate))
+}
+
+// CorpusStatsFor is CorpusStats over what a principal may read, so the
+// corpus-fits decision is made against the corpus that caller would receive.
+func (ix *Index) CorpusStatsFor(f Filter) (chunks, notes int, chars int64, err error) {
 	err = ix.withCache(func(c *corpusCache) error {
-		chunks, notes, chars = c.stats(includePrivate)
+		chunks, notes, chars = c.stats(f.IncludePrivate, c.allowedSpaces(f.Spaces))
 		return nil
 	})
 	return chunks, notes, chars, err
 }
 
-func (c *corpusCache) stats(includePrivate bool) (chunks, notes int, chars int64) {
+func (c *corpusCache) stats(includePrivate bool, allowed []bool) (chunks, notes int, chars int64) {
 	seen := make(map[int32]bool, len(c.notes))
 	for i := range c.rows {
 		// Tombstoned rows belong to notes that have since been rewritten or
 		// deleted; counting them would report a corpus larger than the one
 		// that can be retrieved, and the corpus-fits decision reads this.
-		if c.rows[i].dead || (!includePrivate && c.rows[i].private) {
+		r := &c.rows[i]
+		if r.dead || (!includePrivate && r.private) {
+			continue
+		}
+		if allowed != nil && !(int(r.space) < len(allowed) && allowed[r.space]) {
 			continue
 		}
 		chunks++
-		seen[c.rows[i].note] = true
+		chars += int64(r.chars)
+		seen[r.note] = true
 	}
-	if includePrivate {
-		return chunks, len(seen), c.charsAll
+	if allowed == nil {
+		if includePrivate {
+			return chunks, len(seen), c.charsAll
+		}
+		return chunks, len(seen), c.charsPublic
 	}
-	return chunks, len(seen), c.charsPublic
+	return chunks, len(seen), chars
 }
 
 // WholeCorpus returns every retrievable chunk in document order.
@@ -480,12 +578,40 @@ func (c *corpusCache) stats(includePrivate bool) (chunks, notes int, chars int64
 // window, handing over the whole transcript beats retrieving from it by 5.5
 // points.
 func (ix *Index) WholeCorpus(includePrivate bool) ([]Hit, error) {
+	return ix.WholeCorpusFor(Everything(includePrivate))
+}
+
+// WholeCorpusFor is WholeCorpus restricted to what a principal may read.
+func (ix *Index) WholeCorpusFor(f Filter) ([]Hit, error) {
 	q := "SELECT v.note, n.title, v.chunk FROM vectors v JOIN notes n ON n.path=v.note"
-	if !includePrivate {
-		q += " WHERE v.private=0"
+	where := []string{}
+	args := []any{}
+	if !f.IncludePrivate {
+		where = append(where, "v.private=0")
+	}
+	if f.Spaces != nil {
+		// An empty allow-list must return nothing rather than everything, so
+		// the clause is built even when there is nothing to allow.
+		names := make([]string, 0, len(f.Spaces))
+		for s, ok := range f.Spaces {
+			if ok {
+				names = append(names, s)
+			}
+		}
+		if len(names) == 0 {
+			return nil, nil
+		}
+		ph := strings.TrimSuffix(strings.Repeat("?,", len(names)), ",")
+		where = append(where, "v.space IN ("+ph+")")
+		for _, n := range names {
+			args = append(args, n)
+		}
+	}
+	if len(where) > 0 {
+		q += " WHERE " + strings.Join(where, " AND ")
 	}
 	q += " ORDER BY v.note, v.chunk_idx"
-	rows, err := ix.DB.Query(q)
+	rows, err := ix.DB.Query(q, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -525,22 +651,53 @@ func (ix *Index) CacheStats() (chunks, notes, terms int, vectorBytes int64) {
 
 // ------------------------------------------------------------------ ranking
 
+// Filter is what a caller is allowed to see.
+//
+// Spaces nil means every space: a deployment with no accounts, or an
+// administrator. A non-nil set is an allow-list, and an EMPTY non-nil set
+// means nothing is visible — which is what an unauthenticated caller gets on a
+// multi-user deployment, and must not be confused with "unset".
+type Filter struct {
+	IncludePrivate bool
+	Spaces         map[string]bool
+}
+
+// Everything is the filter a single-user deployment retrieves with.
+func Everything(includePrivate bool) Filter {
+	return Filter{IncludePrivate: includePrivate}
+}
+
 // Retrieve ranks chunks against a query. Private chunks are excluded unless
 // includePrivate is set — the default has to be exclusion, since this feeds
 // surfaces that are not necessarily authenticated.
 func (ix *Index) Retrieve(query string, k int, includePrivate bool) ([]Hit, error) {
+	return ix.RetrieveFor(query, k, Everything(includePrivate))
+}
+
+// RetrieveFor is Retrieve restricted to what a principal may read.
+//
+// The restriction is applied INSIDE ranking rather than to its output. BM25
+// scores against corpus statistics — document frequency, corpus size, average
+// document length — so a filter applied afterwards would score every visible
+// chunk against a corpus that includes notes the caller cannot see. The
+// ranking would then depend on their contents, which is a slow leak of exactly
+// the thing a space is for. The private-note filter has always worked this way;
+// spaces reuse the mechanism.
+func (ix *Index) RetrieveFor(query string, k int, f Filter) ([]Hit, error) {
 	var hits []Hit
 	err := ix.withCache(func(c *corpusCache) error {
 		var err error
-		hits, err = ix.rank(c, query, k, includePrivate)
+		hits, err = ix.rank(c, query, k, f)
 		return err
 	})
 	return hits, err
 }
 
 // rank is Retrieve's body, run with the cache read lock held.
-func (ix *Index) rank(c *corpusCache, query string, k int, includePrivate bool) ([]Hit, error) {
-	n := c.count(includePrivate)
+func (ix *Index) rank(c *corpusCache, query string, k int, f Filter) ([]Hit, error) {
+	includePrivate := f.IncludePrivate
+	allowed := c.allowedSpaces(f.Spaces)
+	n := c.countFor(includePrivate, allowed)
 	if n == 0 || strings.TrimSpace(query) == "" {
 		return nil, nil
 	}
@@ -548,7 +705,7 @@ func (ix *Index) rank(c *corpusCache, query string, k int, includePrivate bool) 
 	qterms := queryTerms(query)
 
 	nChunks := float64(n)
-	avglen := c.avgLen(includePrivate)
+	avglen := c.avgLenFor(includePrivate, allowed)
 
 	// visible reports whether a row participates. Every statistic below —
 	// document frequency, corpus size, average length — is computed over the
@@ -556,7 +713,10 @@ func (ix *Index) rank(c *corpusCache, query string, k int, includePrivate bool) 
 	// private note must not shift the scores of public results, or the private
 	// corpus would be observable through the ranking of the public one.
 	visible := func(r *cachedRow) bool {
-		return !r.dead && (includePrivate || !r.private)
+		if r.dead || (!includePrivate && r.private) {
+			return false
+		}
+		return allowed == nil || (int(r.space) < len(allowed) && allowed[r.space])
 	}
 
 	// --- lexical leg: BM25 over the inverted index ---

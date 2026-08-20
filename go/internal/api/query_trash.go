@@ -238,7 +238,7 @@ func (s *Server) ask(w http.ResponseWriter, r *http.Request) {
 	// If the whole corpus fits the context budget, read it rather than rank
 	// it: decomposition and reranking exist to choose what to leave out, and
 	// there is nothing to leave out. See internal/api/context.go.
-	hits, mode, err := s.askContext(q, k, in.IncludePrivate, smart)
+	hits, mode, err := s.askContext(r, q, k, in.IncludePrivate, smart)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -249,7 +249,7 @@ func (s *Server) ask(w http.ResponseWriter, r *http.Request) {
 	// to be the passages that bear on the question. So they are always ranked.
 	cited := hits
 	if mode == "full" {
-		if ranked, rerr := s.smartRetrieve(q, k, in.IncludePrivate, smart); rerr == nil && len(ranked) > 0 {
+		if ranked, rerr := s.smartRetrieve(r, q, k, in.IncludePrivate, smart); rerr == nil && len(ranked) > 0 {
 			cited = ranked
 		}
 	}
@@ -268,7 +268,7 @@ func (s *Server) ask(w http.ResponseWriter, r *http.Request) {
 
 // askContext is bestContext with the answering path's smarter retrieval on the
 // branch where ranking is actually needed.
-func (s *Server) askContext(q string, k int, includePrivate, smart bool) ([]index.Hit, string, error) {
+func (s *Server) askContext(r *http.Request, q string, k int, includePrivate, smart bool) ([]index.Hit, string, error) {
 	// Reading the whole corpus beats ranking it only when something actually
 	// READS it. The extractive answer has no reader — it quotes the passages
 	// it is handed, in the order it is handed them — so handing it the vault
@@ -276,17 +276,18 @@ func (s *Server) askContext(q string, k int, includePrivate, smart bool) ([]inde
 	// contents. The result that motivated this path measured a reader model
 	// consuming the context; with no LLM configured, the ranking IS the
 	// answer, so the size check does not apply.
+	f := filterFor(r, includePrivate)
 	if budget := contextBudget(); budget > 0 && s.AI.Available() {
-		_, _, chars, err := s.Index.CorpusStats(includePrivate)
+		_, _, chars, err := s.Index.CorpusStatsFor(f)
 		if err != nil {
 			return nil, "", err
 		}
 		if chars > 0 && chars <= int64(budget) {
-			hits, err := s.Index.WholeCorpus(includePrivate)
+			hits, err := s.Index.WholeCorpusFor(f)
 			return hits, "full", err
 		}
 	}
-	hits, err := s.smartRetrieve(q, k, includePrivate, smart)
+	hits, err := s.smartRetrieve(r, q, k, includePrivate, smart)
 	return hits, "retrieved", err
 }
 
@@ -295,18 +296,19 @@ func (s *Server) askContext(q string, k int, includePrivate, smart bool) ([]inde
 // retrieves each, and reranks the merged pool. Without one it is plain
 // retrieval, byte for byte — which is what keeps the offline path and the
 // benchmark numbers unchanged.
-func (s *Server) smartRetrieve(q string, k int, includePrivate, smart bool) ([]index.Hit, error) {
+func (s *Server) smartRetrieve(r *http.Request, q string, k int, includePrivate, smart bool) ([]index.Hit, error) {
+	f := filterFor(r, includePrivate)
 	subs := []string{q}
 	if smart {
 		subs = s.AI.Decompose(q)
 	}
 	if len(subs) == 1 {
-		return s.Index.Retrieve(subs[0], k, includePrivate)
+		return s.Index.RetrieveFor(subs[0], k, f)
 	}
 	var pool []index.Hit
 	seen := map[string]bool{}
 	for _, sub := range subs {
-		hits, err := s.Index.Retrieve(sub, k, includePrivate)
+		hits, err := s.Index.RetrieveFor(sub, k, f)
 		if err != nil {
 			return nil, err
 		}

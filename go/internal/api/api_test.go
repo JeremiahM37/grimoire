@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/JeremiahM37/grimoire/go/internal/ai"
+	"github.com/JeremiahM37/grimoire/go/internal/auth"
 	"github.com/JeremiahM37/grimoire/go/internal/crdtstore"
 	"github.com/JeremiahM37/grimoire/go/internal/db"
 	"github.com/JeremiahM37/grimoire/go/internal/embed"
@@ -57,10 +58,12 @@ func testServer(t *testing.T) (*Server, http.Handler) {
 		// no LLM configured: every AI path takes its deterministic fallback,
 		// which is what keeps these tests hermetic
 		AI:       ai.New(st, vaultSecrets.Get),
+		Auth:     auth.New(database),
 		Sync:     gsync.New(ix, v, crdt),
 		DailyDir: "journal",
 		InboxDir: "inbox",
 	}
+	ix.Spaces = s
 	return s, s.Routes()
 }
 

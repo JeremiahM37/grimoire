@@ -41,6 +41,12 @@ func splitNoteAction(raw string) (notePath, action string, args []string) {
 
 func (s *Server) noteGet(w http.ResponseWriter, r *http.Request) {
 	notePath, action, args := splitNoteAction(r.PathValue("path"))
+	// Every read of a single note comes through here — the note itself, its
+	// history, its unlinked mentions, its HTML export — so the space check
+	// belongs here rather than in each of them.
+	if !s.requireRead(w, r, normPath(notePath)) {
+		return
+	}
 	switch action {
 	case "":
 		s.getNote(w, r)
@@ -64,6 +70,9 @@ func (s *Server) noteGet(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) notePost(w http.ResponseWriter, r *http.Request) {
 	notePath, action, args := splitNoteAction(r.PathValue("path"))
+	if !s.requireWrite(w, r, normPath(notePath)) {
+		return
+	}
 	switch action {
 	case "pin":
 		s.withNotePath(notePath, s.togglePin)(w, r)
