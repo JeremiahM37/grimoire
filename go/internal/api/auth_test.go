@@ -23,6 +23,7 @@ var protectedRoutes = []struct {
 	{"GET", "/api/memory"},
 	{"GET", "/api/blocks"},
 	{"GET", "/api/bookmarks"},
+	{"POST", "/api/template/render"},
 	{"POST", "/api/bookmarks"},
 	{"DELETE", "/api/bookmarks?kind=note&target=x"},
 	// Agent memory is note content in every shape it is served in, and each of

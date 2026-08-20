@@ -14,6 +14,7 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/index"
 	"github.com/JeremiahM37/grimoire/go/internal/markdown"
 	"github.com/JeremiahM37/grimoire/go/internal/queries"
+	"github.com/JeremiahM37/grimoire/go/internal/render"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
 )
 
@@ -41,6 +42,121 @@ func (s *Server) runQuery(w http.ResponseWriter, r *http.Request) {
 	}
 	rows := queries.Run(s.Index.DB, block, true)
 	writeJSON(w, http.StatusOK, s.readableRows(r, rows))
+}
+
+// renderTemplate renders one ```template block for a client that draws
+// markdown itself.
+//
+// The console renders markdown in the browser, so a live block has to be
+// hydrated from the server — the same way a query block already is. Doing it
+// here rather than in JS is what keeps ONE definition of what a template
+// block means: the same renderer draws it in the console, on the e-ink read
+// surface, and in a published page.
+func (s *Server) renderTemplate(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Block string `json:"block"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	if strings.TrimSpace(in.Block) == "" {
+		writeErr(w, http.StatusBadRequest, "block is required")
+		return
+	}
+	// A template pulls in a note body and can run a query, so it is a read.
+	if !s.requireUser(w, r) {
+		return
+	}
+	linkMap, err := s.linkMap()
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	html := render.RenderWith("```template\n"+in.Block+"\n```",
+		s.renderContext(r, linkMap))
+	writeJSON(w, http.StatusOK, map[string]any{"html": html})
+}
+
+// renderContext wires the renderer to this caller's view of the vault: it can
+// transclude and template only what it may read, and its queries are filtered
+// the same way /api/query filters them.
+func (s *Server) renderContext(r *http.Request, linkMap map[string]string) *render.Context {
+	return &render.Context{
+		LinkMap: linkMap,
+		NoteBody: func(rel string) *string {
+			if !s.canRead(r, rel) {
+				return nil
+			}
+			var body string
+			if err := s.Index.DB.QueryRow(
+				"SELECT body FROM notes WHERE path=?", rel).Scan(&body); err != nil {
+				return nil
+			}
+			return &body
+		},
+		// Templates come from the vault rather than the index: templates/ is
+		// a reserved directory, so a template is not an indexed note and has
+		// no row to read. The access check is the same one that governs
+		// opening it in the editor.
+		TemplateBody: s.templateBody(r),
+		RunQuery: func(block string) *render.QueryResult {
+			res := s.readableRows(r, queries.Run(s.Index.DB, block, true))
+			if res == nil {
+				return nil
+			}
+			return &render.QueryResult{
+				Errors: res.Errors, Rows: res.Rows,
+				Columns: res.Columns, Render: res.Render,
+			}
+		},
+	}
+}
+
+// templateBody resolves a named template for the renderer, for a caller who
+// may read it.
+func (s *Server) templateBody(r *http.Request) func(string) *string {
+	return func(name string) *string {
+		rel := render.TemplatePrefix + vault.Slugify(name) + ".md"
+		note, err := s.Vault.Read(rel)
+		if err != nil || note.Encrypted {
+			return nil
+		}
+		if r == nil {
+			// The published surface, where there is no caller. A private
+			// template does not render there even though the page using it
+			// was published.
+			if note.Private {
+				return nil
+			}
+			return &note.Body
+		}
+		if !s.canRead(r, rel) {
+			return nil
+		}
+		// The reader list comes from the FILE, not the index. A template is
+		// not an indexed note — templates/ is reserved — so the index has no
+		// row and therefore no ACL for it, and asking the index would return
+		// "no restriction" for a file that says otherwise in its own
+		// frontmatter. That is how a restricted template was readable by
+		// anyone the first time this ran.
+		readers := index.EncodeACL(splitCommas(note.Frontmatter.StringVal("readers")))
+		if !s.aclAllows(r, readers) {
+			return nil
+		}
+		return &note.Body
+	}
+}
+
+// splitCommas reads a comma-separated frontmatter list.
+func splitCommas(v string) []string {
+	var out []string
+	for _, part := range strings.Split(v, ",") {
+		if p := strings.TrimSpace(part); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // ---------------------------------------------------------------- trash

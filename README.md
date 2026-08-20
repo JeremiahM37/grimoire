@@ -185,6 +185,20 @@ Filtering runs in SQL over the frontmatter the index already stores, so a limit
 still means something. Formulas are a whitelist, not an expression language —
 "show me a table" should not also mean "run arbitrary code over my vault".
 
+**Live templates** — a template that renders where it sits, rather than being
+copied in once and going stale:
+
+````markdown
+```template
+use: weekly-review
+owner: ana
+```
+````
+
+The body is rendered as markdown, so a query block inside the template runs
+every time the page is read. That is the difference between a widget and a
+snippet.
+
 **Structured facts** — for values that must be *exact* (a port, a version, an
 owner, a decision), prose RAG is the wrong tool. Write `key:: value` inline in
 any note and agents can look it up deterministically via `get_fact` — no

@@ -90,6 +90,7 @@ var routeAccess = map[string]access{
 	"GET /read":                    scoped,
 	"GET /notes/{path...}":         scoped, // the HTML export, served without /api
 	"POST /api/query":              scoped, // a query block lists notes
+	"POST /api/template/render":    scoped, // a template pulls in a note body
 	"GET /read/{path...}":          scoped,
 	"GET /api/sync/manifest":       scoped,
 	"POST /api/sync/pull":          scoped,
