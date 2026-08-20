@@ -467,7 +467,8 @@ Stated here rather than discovered later:
 ## Watching it run
 
 `/metrics` in Prometheus text format, from what the server already computes —
-no collector, no sampling, no metric that costs a database query:
+no collector, no sampling, and the one metric that needs a query (corpus size)
+memoized for fifteen seconds so scraping cannot become load:
 
 ```
 grimoire_requests_total{route="retrieve",status="2xx"}   is it serving, and what fails
@@ -477,7 +478,7 @@ grimoire_cache_rebuilds_total / _patches_total           is a write throwing the
 grimoire_connector_runs_total{kind="slack",outcome=…}    did the 03:00 sync work
 grimoire_login_failures_total / _lockouts_total          is somebody guessing
 grimoire_vault_unlocked_info                             can the broker serve at all
-grimoire_notes_current · _chunks_current · _cache_vector_bytes
+grimoire_notes_current · grimoire_cache_chunks_current · _cache_vector_bytes
 ```
 
 Paths are reduced to a bounded route class and never emitted raw: a note path is
