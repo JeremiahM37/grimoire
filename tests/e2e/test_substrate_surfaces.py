@@ -114,3 +114,38 @@ def test_credential_audit_log_visible(page, server):
     row = page.locator(".v-arow", has_text="set")
     expect(row.first).to_be_visible(timeout=4000)
     expect(row.first).to_contain_text("ci-token")
+
+
+def test_grant_shows_how_long_it_has_left(page, server):
+    """A grant row must say how much time is left on it.
+
+    The console read expires_in and expired, which the API has never sent: every
+    grant rendered "undefineds", and an expired grant looked exactly like a live
+    one. "Which agent holds what, against which origin, for how long" is the
+    console's entire job, so this is the field that has to be right."""
+    page.goto(server)
+    page.wait_for_selector("body[data-ready]", timeout=10000)
+    pw = "mypassphrase123"
+    for ep in ("init", "unlock"):
+        page.evaluate(
+            f"() => fetch('/api/vault/{ep}', {{method:'POST',"
+            "headers:{'Content-Type':'application/json'},"
+            f"body: JSON.stringify({{passphrase: '{pw}'}})}})")
+        page.wait_for_timeout(200)
+    page.evaluate(
+        "() => fetch('/api/secrets', {method:'POST',"
+        "headers:{'Content-Type':'application/json'},"
+        "body: JSON.stringify({name:'grant-token', value:'ghp_demo'})})")
+    page.wait_for_timeout(300)
+    page.evaluate(
+        "() => fetch('/api/secrets/grant-token/grant', {method:'POST',"
+        "headers:{'Content-Type':'application/json'},"
+        "body: JSON.stringify({grantee:'demo-agent',"
+        " scope:'https://api.github.com', ttl: 3600})})")
+    page.wait_for_timeout(300)
+
+    page.locator("#vault-open").click()
+    row = page.locator("#v-grants .v-row", has_text="demo-agent")
+    expect(row.first).to_be_visible(timeout=6000)
+    expect(row.first).to_contain_text("left")
+    assert "undefined" not in row.first.inner_text()

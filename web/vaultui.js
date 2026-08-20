@@ -10,6 +10,22 @@ import { $, api, toast, esc } from "/util.js";
 $("#vault-open").onclick = openVault;
 $("#vault-close").onclick = () => $("#vault-modal").classList.add("hidden");
 $("#vault-modal").onclick = (e) => { if (e.target.id === "vault-modal") $("#vault-modal").classList.add("hidden"); };
+/* How long a grant has left, from the absolute expiry the API returns.
+   This read g.expires_in and g.expired, which the API has never sent — so
+   every grant in the credential console rendered "undefineds" and an expired
+   one looked identical to a live one. The console's whole job is showing which
+   agent holds what and for how long, so this was the one field that had to be
+   right. */
+function grantRemaining(g) {
+  const left = Math.round((g.expires_at || 0) - Date.now() / 1000);
+  if (left <= 0) return "expired";
+  if (left < 60) return left + "s left";
+  if (left < 3600) return Math.round(left / 60) + "m left";
+  if (left < 86400) return Math.round(left / 3600) + "h left";
+  return Math.round(left / 86400) + "d left";
+}
+
+
 export async function openVault() {
   $("#vault-modal").classList.remove("hidden");
   const st = await api("/vault/status");
@@ -45,7 +61,7 @@ export async function openVault() {
       <input id="v-val" type="password" placeholder="value / token"><button id="v-add" class="btn">Add</button></div>
       ${grants.length ? `<div class="pr-clabel">Active grants</div>
         <div id="v-grants">${grants.map((g) => `<div class="v-row"><span>🎟 ${esc(g.grantee)} → ${esc(g.secret)}
-          <span class="pm">${g.expired ? "expired" : g.expires_in + "s"}</span></span>
+          <span class="pm">${grantRemaining(g)}</span></span>
           <button class="icon danger v-revoke" data-t="${esc(g.token)}" title="revoke">✕</button></div>`).join("")}</div>` : ""}
       <details id="v-audit"><summary>Audit log · every secret use, granted, revoked (${audit.length})</summary>
         ${audit.length ? audit.map((a) => `<div class="v-arow"><span class="pm">${esc((a.ts || "").replace("T", " "))}</span>
