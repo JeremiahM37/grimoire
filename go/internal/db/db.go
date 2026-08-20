@@ -125,6 +125,16 @@ CREATE TABLE IF NOT EXISTS grants(
 CREATE TABLE IF NOT EXISTS audit(
   id INTEGER PRIMARY KEY, ts TEXT, action TEXT, secret TEXT, detail TEXT DEFAULT ''
 );
+-- Who opened a RESTRICTED document, allowed or denied. Only notes with a
+-- reader list or outside the commons are recorded, and only single-document
+-- reads — never search. See internal/readlog for why both limits are there.
+CREATE TABLE IF NOT EXISTS read_audit(
+  id INTEGER PRIMARY KEY, at TEXT NOT NULL, user TEXT, name TEXT,
+  path TEXT NOT NULL, space TEXT, allowed INTEGER NOT NULL,
+  route TEXT, addr TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_read_audit_path ON read_audit(path);
+CREATE INDEX IF NOT EXISTS idx_read_audit_user ON read_audit(user);
 `
 
 // migrations bring an index created by an older build up to the current shape.

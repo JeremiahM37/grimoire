@@ -59,6 +59,16 @@ func (s *Server) registerGauges() {
 		countAt  time.Time
 		countVal float64
 	)
+	// Audit records lost to a full buffer. A trail with a silent hole in it is
+	// worse than no trail, so the hole is a number somebody can alert on.
+	metrics.Gauge("grimoire_read_audit_dropped_total",
+		"Read-audit events discarded because the buffer was full.", nil,
+		func() float64 { return float64(s.Reads.Dropped()) })
+	// Denied attempts counted rather than stored, because one actor produced
+	// more than a window allows. A rising number is somebody walking paths.
+	metrics.Gauge("grimoire_read_audit_suppressed_total",
+		"Denied-read records suppressed by the per-actor bound.", nil,
+		func() float64 { return float64(s.Reads.Suppressed()) })
 	metrics.Gauge("grimoire_notes_current", "Notes in the index.", nil, func() float64 {
 		countMu.Lock()
 		defer countMu.Unlock()

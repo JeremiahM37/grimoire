@@ -302,6 +302,10 @@ func (s *Server) exportVault(w http.ResponseWriter, r *http.Request) {
 		if !s.canRead(r, rel) {
 			continue
 		}
+		// An export is the most complete read there is, so each restricted
+		// document in it is recorded exactly as opening it one at a time
+		// would be.
+		s.auditRead(r, rel, true)
 		note, err := s.Vault.Read(rel)
 		if err != nil {
 			continue

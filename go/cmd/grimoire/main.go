@@ -29,6 +29,7 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/embed"
 	"github.com/JeremiahM37/grimoire/go/internal/history"
 	"github.com/JeremiahM37/grimoire/go/internal/index"
+	"github.com/JeremiahM37/grimoire/go/internal/readlog"
 	"github.com/JeremiahM37/grimoire/go/internal/secrets"
 	"github.com/JeremiahM37/grimoire/go/internal/settings"
 	gsync "github.com/JeremiahM37/grimoire/go/internal/sync"
@@ -88,6 +89,7 @@ func newEnv(fetchModel bool) (*env, error) {
 
 	vaultSecrets := secrets.New(grimoireDir)
 	accounts := auth.New(database)
+	reads := readlog.New(database)
 	connectorStore := connectors.NewStore(database)
 	store := settings.New(grimoireDir)
 	emb := newEmbedder(store, fetchModel)
@@ -105,6 +107,7 @@ func newEnv(fetchModel bool) (*env, error) {
 		CRDT:       crdt,
 		AI:         ai.New(store, vaultSecrets.Get),
 		Auth:       accounts,
+		Reads:      reads,
 		Connectors: connectorStore,
 		Web: &websearch.Client{
 			Settings: store, Secrets: vaultSecrets.Get,
@@ -268,6 +271,23 @@ func run(args []string) error {
 		log.Printf("syncing with %s every %ds", syncPeer, syncInterval)
 		go syncer.Loop(syncPeer, syncToken,
 			time.Duration(syncInterval)*time.Second, done)
+	}
+
+	// The read-audit writer, and its retention. An audit trail that grows
+	// forever becomes its own liability: a permanent list of who looked at
+	// which sensitive document. GRIMOIRE_READ_AUDIT_DAYS=0 keeps everything.
+	if e.server.Reads != nil {
+		e.server.Reads.Start()
+		defer e.server.Reads.Close()
+		days := atoiOr(os.Getenv("GRIMOIRE_READ_AUDIT_DAYS"), readlog.RetentionDays)
+		if os.Getenv("GRIMOIRE_READ_AUDIT_DAYS") == "0" {
+			days = 0
+		}
+		if n, err := e.server.Reads.Prune(days); err != nil {
+			log.Printf("pruning read audit: %v", err)
+		} else if n > 0 {
+			log.Printf("pruned %d read-audit records older than %d days", n, days)
+		}
 	}
 
 	// Dead sessions accumulate one row per login forever otherwise.

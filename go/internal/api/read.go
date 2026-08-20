@@ -83,9 +83,11 @@ func (s *Server) readNote(w http.ResponseWriter, r *http.Request) {
 	if !s.canRead(r, rel) {
 		// Absent rather than forbidden, like every other read of a note the
 		// caller may not see.
+		s.auditRead(r, rel, false)
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
+	s.auditRead(r, rel, true)
 	var title, body string
 	err := s.Index.DB.QueryRow(
 		"SELECT title, body FROM notes WHERE path=? AND private=0", rel).Scan(&title, &body)

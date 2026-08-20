@@ -1,6 +1,8 @@
 package main
 
 import (
+	"io"
+	"os"
 	"strings"
 	"testing"
 )
@@ -50,5 +52,45 @@ func TestHelpTextAndCommandTableAgree(t *testing.T) {
 		if !documented[name] {
 			t.Errorf("`grimoire %s` dispatches but is not in the help text", name)
 		}
+	}
+}
+
+// The table the help text is compared against must be the table runCLI
+// actually dispatches from.
+//
+// The previous version of this file compared commands() with the usage text
+// while runCLI held a SECOND copy of the map, so a command could appear in
+// both lists and still be unreachable — which is the bug that started all
+// this, one indirection further along. This reads runCLI's own view: its
+// "unknown command" message is built from the map it dispatches with, so if
+// the two ever diverge again, the names it offers will not match.
+func TestRunCLIDispatchesFromTheSharedTable(t *testing.T) {
+	old := os.Stderr
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stderr = w
+	handled, code := runCLI([]string{"definitely-not-a-command"})
+	w.Close()
+	os.Stderr = old
+	if !handled || code != 2 {
+		t.Fatalf("unknown command = handled %v code %d", handled, code)
+	}
+	out, _ := io.ReadAll(r)
+	offered := strings.TrimSuffix(strings.TrimSpace(
+		strings.SplitN(string(out), "Try: ", 2)[1]), ", serve")
+
+	got := map[string]bool{}
+	for _, name := range strings.Split(offered, ", ") {
+		got[strings.TrimSpace(name)] = true
+	}
+	for name := range commands() {
+		if !got[name] {
+			t.Errorf("`grimoire %s` is in commands() but runCLI does not dispatch it", name)
+		}
+	}
+	if len(got) != len(commands()) {
+		t.Errorf("runCLI dispatches %d commands, commands() has %d", len(got), len(commands()))
 	}
 }

@@ -55,6 +55,8 @@ const usage = `grimoire — local-first AI-native notes
   grimoire space member SPACE USER [--read]   grant access to a space
   grimoire backup [--out FILE]        archive the vault (notes, secrets, sync state)
   grimoire restore FILE [--into DIR]  restore an archive and rebuild the index
+  grimoire audit [--denied] [--path P] [--user U] [--limit N]
+                                      who opened which restricted document
   grimoire version                    print the build version
 
 Env: GRIMOIRE_VAULT (default ~/notes)`
@@ -74,6 +76,7 @@ func commands() map[string]func([]string) int {
 		"fetch-model": cmdFetchModel,
 		"user":        cmdUser, "space": cmdSpace,
 		"backup": cmdBackup, "restore": cmdRestore,
+		"audit": cmdAudit,
 	}
 }
 
@@ -94,15 +97,9 @@ func runCLI(args []string) (handled bool, code int) {
 	case "serve":
 		return false, 0
 	}
-	cmds := map[string]func([]string) int{
-		"new": cmdNew, "daily": cmdDaily, "capture": cmdCapture,
-		"search": cmdSearch, "ls": cmdLs, "open": cmdOpen,
-		"reindex": cmdReindex, "ingest": cmdIngest, "seed-demo": cmdSeedDemo,
-		"export": cmdExport, "sync": cmdSync, "agent-setup": cmdAgentSetup,
-		"fetch-model": cmdFetchModel,
-		"user":        cmdUser, "space": cmdSpace,
-		"backup": cmdBackup, "restore": cmdRestore,
-	}
+	// The ONE table. It used to be copied here, and the copy is how "backup"
+	// shipped with a help line and no way to run it.
+	cmds := commands()
 	fn, ok := cmds[args[0]]
 	if !ok {
 		names := make([]string, 0, len(cmds))
