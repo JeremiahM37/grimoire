@@ -936,3 +936,98 @@ func TestFeedbackNeedsWriteAccessToTheFactsNote(t *testing.T) {
 		t.Error("the vote landed anyway")
 	}
 }
+
+func TestGraphOverHTTPCarriesNodesEdgesAndEvidence(t *testing.T) {
+	_, h := testServer(t)
+	remember(t, h, map[string]any{"topic": "team",
+		"text": "Priya Sharma and Marco Diaz maintain AIServer"})
+	remember(t, h, map[string]any{"topic": "team",
+		"text": "Marco Diaz owns the Deploy Runbook"})
+
+	var g struct {
+		Seed  string `json:"seed"`
+		Nodes []struct {
+			Entity string `json:"entity"`
+			Facts  int    `json:"facts"`
+			Depth  int    `json:"depth"`
+		} `json:"nodes"`
+		Edges []struct {
+			From, To string
+			Facts    []string
+		} `json:"edges"`
+		Entries []map[string]any `json:"entries"`
+	}
+	decode(t, do(t, h, "GET", "/api/memory/graph?entity=priya&depth=2", nil), &g)
+	if g.Seed != "priya sharma" {
+		t.Fatalf("seed = %q", g.Seed)
+	}
+	var names []string
+	for _, n := range g.Nodes {
+		names = append(names, n.Entity)
+	}
+	for _, want := range []string{"marco diaz", "aiserver", "deploy runbook"} {
+		if !containsString(names, want) {
+			t.Errorf("graph missing %q: %v", want, names)
+		}
+	}
+	if len(g.Edges) == 0 || len(g.Edges[0].Facts) == 0 {
+		t.Fatalf("edges carry no evidence: %+v", g.Edges)
+	}
+	if len(g.Entries) == 0 {
+		t.Error("the graph did not carry the facts behind it")
+	}
+}
+
+func TestGraphWithoutASeedIsAnOverview(t *testing.T) {
+	_, h := testServer(t)
+	remember(t, h, map[string]any{"topic": "team", "text": "Marco Diaz owns the Deploy Runbook"})
+	var g struct {
+		Nodes []struct{ Entity string } `json:"nodes"`
+	}
+	decode(t, do(t, h, "GET", "/api/memory/graph", nil), &g)
+	if len(g.Nodes) == 0 {
+		t.Fatal("overview returned nothing")
+	}
+}
+
+func TestGraphDepthAndLimitAreBounded(t *testing.T) {
+	_, h := testServer(t)
+	remember(t, h, map[string]any{"topic": "team", "text": "Marco Diaz owns the Deploy Runbook"})
+	for _, query := range []string{"?entity=marco&depth=99", "?entity=marco&depth=-1",
+		"?limit=99999", "?limit=0"} {
+		if w := do(t, h, "GET", "/api/memory/graph"+query, nil); w.Code != http.StatusOK {
+			t.Errorf("%s = %d", query, w.Code)
+		}
+	}
+}
+
+func TestGraphRespectsReaderLists(t *testing.T) {
+	s, h := testServer(t)
+	aliceKey := makeUser(t, s, h, "", "alice", "admin")
+	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
+	if _, err := s.WriteNote(MemoryDir+"/restricted.md",
+		"# Memory\n\n- **2026-08-14 09:00 · claude** — Priya Sharma runs the Severance Project <!--m id=r1-->\n",
+		map[string]any{"title": "R", "memory": true, "readers": "alice"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Index.Reindex(); err != nil {
+		t.Fatal(err)
+	}
+	body := asKey(t, h, bobKey, "GET", "/api/memory/graph?entity=priya&depth=2", nil).Body.String()
+	if strings.Contains(strings.ToLower(body), "severance") {
+		t.Errorf("the graph leaked a restricted entity:\n%s", body)
+	}
+	body = asKey(t, h, aliceKey, "GET", "/api/memory/graph?entity=priya&depth=2", nil).Body.String()
+	if !strings.Contains(strings.ToLower(body), "severance") {
+		t.Errorf("the graph hid it from the person named on the list:\n%s", body)
+	}
+}
+
+func containsString(list []string, want string) bool {
+	for _, s := range list {
+		if s == want {
+			return true
+		}
+	}
+	return false
+}

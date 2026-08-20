@@ -364,6 +364,14 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 		// records who stopped believing what.
 		q.Set("agent", s.Agent)
 		return s.api("DELETE", "/api/memory/entry?"+q.Encode(), nil)
+	case "memory_graph":
+		q := url.Values{}
+		if e := str(args, "entity"); e != "" {
+			q.Set("entity", e)
+		}
+		q.Set("depth", fmt.Sprint(num(args, "depth", 1)))
+		q.Set("limit", fmt.Sprint(num(args, "limit", 50)))
+		return s.api("GET", "/api/memory/graph?"+q.Encode(), nil)
 	case "memory_feedback":
 		return s.api("POST", "/api/memory/feedback", map[string]any{
 			"path": str(args, "path"), "id": str(args, "id"),

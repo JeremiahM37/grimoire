@@ -25,6 +25,7 @@ var protectedRoutes = []struct {
 	// these was a separate handler that could have forgotten to say so.
 	{"GET", "/api/memory/export"},
 	{"GET", "/api/memory/facets"},
+	{"GET", "/api/memory/graph"},
 	{"POST", "/api/memory/batch"},
 	{"POST", "/api/memory/feedback"},
 	{"PATCH", "/api/memory/entry"},

@@ -74,6 +74,7 @@ var routeAccess = map[string]access{
 	"GET /api/memory":              scoped,
 	"GET /api/memory/export":       scoped, // every fact the caller may read
 	"GET /api/memory/facets":       scoped, // scope names are drawn from facts
+	"GET /api/memory/graph":        scoped, // entities and the facts behind them
 	"GET /api/briefing":            scoped,
 	"GET /api/file/{path...}":      scoped,
 	"GET /read":                    scoped,

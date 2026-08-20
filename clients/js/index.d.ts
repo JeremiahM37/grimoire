@@ -94,6 +94,28 @@ export interface EntryChanges {
   immutable?: boolean
 }
 
+export interface GraphNode {
+  entity: string
+  /** How many facts mention it. */
+  facts: number
+  /** Hops from the seed; 0 is the seed itself. */
+  depth: number
+}
+
+export interface GraphEdge {
+  from: string
+  to: string
+  /** Ids of the facts that connect them — read the evidence, don't trust the edge. */
+  facts: string[]
+}
+
+export interface Graph {
+  seed: string
+  nodes: GraphNode[]
+  edges: GraphEdge[]
+  entries: Memory[]
+}
+
 export interface Scopes {
   agents: Record<string, number>
   sessions: Record<string, number>
@@ -142,6 +164,13 @@ export class Grimoire {
     unhelpful: number
     usefulness: number
   }>
+  graph(entity?: string, options?: {
+    depth?: number
+    limit?: number
+    agent?: string
+    session?: string
+    category?: string
+  }): Promise<Graph>
   scopes(): Promise<Scopes>
   export(filters?: { agent?: string; session?: string; category?: string }): Promise<{
     count: number

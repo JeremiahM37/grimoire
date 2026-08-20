@@ -1068,6 +1068,33 @@ func (s *Server) exportMemory(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// memoryGraph answers what memory knows about a thing, and what that thing is
+// connected to. Without a seed it returns the busiest entities, which is the
+// "show me the shape of what I know" view.
+func (s *Server) memoryGraph(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	graph, err := s.Index.MemoryGraphFor(index.GraphQuery{
+		Memory: index.MemoryQuery{
+			Filter:   filterFor(r, true),
+			Agent:    strings.TrimSpace(q.Get("agent")),
+			Session:  strings.TrimSpace(q.Get("session")),
+			Category: strings.TrimSpace(q.Get("category")),
+			Now:      vault.Now(),
+		},
+		Seed:  strings.TrimSpace(q.Get("entity")),
+		Depth: clampLimit(q.Get("depth"), 1, 4),
+		Limit: clampLimit(q.Get("limit"), 50, 500),
+	})
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"seed": graph.Seed, "nodes": graph.Nodes, "edges": graph.Edges,
+		"entries": entriesOut(graph.Entries, false),
+	})
+}
+
 // memoryFacets lists the scopes present in the caller's memory, so a console
 // can offer them instead of asking someone to remember what they named a
 // session three weeks ago.

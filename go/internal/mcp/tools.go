@@ -202,6 +202,19 @@ func Tools() []tool {
 			}, "id", "path"),
 		},
 		{
+			Name: "memory_graph",
+			Description: "What memory knows ABOUT a thing, and what that thing is " +
+				"connected to — people, services, files, hosts. Call it when you have " +
+				"a name and no context: it returns the connected entities and the facts " +
+				"that connect them, so you can read the evidence rather than trust the " +
+				"edge. With no entity it returns what memory is mostly about.",
+			InputSchema: obj(map[string]any{
+				"entity": strProp("the thing to start from, e.g. a person or a service"),
+				"depth":  intProp("hops out from it (default 1, max 4)"),
+				"limit":  intProp("max entities (default 50)"),
+			}),
+		},
+		{
 			Name: "memory_feedback",
 			Description: "Report whether a recalled fact actually earned its place. " +
 				"Call it when a recalled fact turned out to be the one you needed, or " +
