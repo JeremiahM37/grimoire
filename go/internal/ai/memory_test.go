@@ -1,0 +1,228 @@
+package ai
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/JeremiahM37/grimoire/go/internal/memory"
+)
+
+func cands(texts ...string) []memory.Entry {
+	var out []memory.Entry
+	for i, t := range texts {
+		out = append(out, memory.Entry{ID: string(rune('a' + i)), Text: t})
+	}
+	return out
+}
+
+func TestDecideMemoryFallsBackToRulesWithNoLLM(t *testing.T) {
+	c := New(mapSettings{}, nil)
+	got := c.DecideMemory("user prefers tabs", cands("user prefers spaces"))
+	if got.Op != memory.OpUpdate || got.Target != "a" {
+		t.Fatalf("rule path not taken: %+v", got)
+	}
+}
+
+func TestDecideMemoryUsesTheModelsVerdict(t *testing.T) {
+	srv, seen := fakeOllama(t, "UPDATE 0")
+	c := New(mapSettings{"ollama_url": srv.URL}, nil)
+	// Lexically unrelated, so the rules alone would say ADD — the model's
+	// verdict has to be what decides.
+	got := c.DecideMemory("the office moved to the third floor",
+		cands("the team sits on the ground floor"))
+	if got.Op != memory.OpUpdate || got.Target != "a" {
+		t.Fatalf("model verdict ignored: %+v", got)
+	}
+	prompt := (*seen)[0]["prompt"].(string)
+	for _, want := range []string{"NEW FACT:", "EXISTING FACTS:", "[0]", "Prefer ADD when unsure"} {
+		if !strings.Contains(prompt, want) {
+			t.Errorf("prompt missing %q:\n%s", want, prompt)
+		}
+	}
+}
+
+func TestDecideMemoryRejectsAnOutOfRangeTarget(t *testing.T) {
+	// A model naming a candidate that does not exist must not become an edit
+	// to whatever happens to be at that index.
+	srv, _ := fakeOllama(t, "UPDATE 7")
+	c := New(mapSettings{"ollama_url": srv.URL}, nil)
+	got := c.DecideMemory("a brand new unrelated fact", cands("something else entirely"))
+	if got.Op != memory.OpAdd {
+		t.Fatalf("out-of-range target was honoured: %+v", got)
+	}
+}
+
+func TestDecideMemoryRejectsGarbage(t *testing.T) {
+	for _, reply := range []string{"", "I think you should probably merge these",
+		"MERGE 0", "UPDATE", "UPDATE banana"} {
+		srv, _ := fakeOllama(t, reply)
+		c := New(mapSettings{"ollama_url": srv.URL}, nil)
+		got := c.DecideMemory("an unrelated new fact", cands("nothing like it"))
+		if got.Op != memory.OpAdd {
+			t.Errorf("reply %q produced %+v, want the rule's ADD", reply, got)
+		}
+	}
+}
+
+func TestDecideMemoryNeverOffersAnImmutableCandidate(t *testing.T) {
+	// The model cannot target what it is not shown, which is what stops a
+	// prompt from talking the server into overwriting a pinned fact.
+	srv, seen := fakeOllama(t, "UPDATE 0")
+	c := New(mapSettings{"ollama_url": srv.URL}, nil)
+	pinned := cands("never delete the production database")
+	pinned[0].Immutable = true
+	got := c.DecideMemory("delete the production database", pinned)
+	if got.Op == memory.OpUpdate || got.Op == memory.OpDelete {
+		t.Fatalf("immutable candidate was targeted: %+v", got)
+	}
+	if len(*seen) != 0 {
+		t.Error("model was consulted with no eligible candidate")
+	}
+}
+
+func TestDecideMemoryNeverOffersASupersededCandidate(t *testing.T) {
+	srv, seen := fakeOllama(t, "UPDATE 0")
+	c := New(mapSettings{"ollama_url": srv.URL}, nil)
+	dead := cands("an old belief", "the current belief")
+	dead[0].SupersededBy = "b"
+	got := c.DecideMemory("a replacement belief", dead)
+	if got.Target == "a" {
+		t.Fatalf("a superseded entry was targeted: %+v", got)
+	}
+	prompt := (*seen)[0]["prompt"].(string)
+	if strings.Contains(prompt, "an old belief") {
+		t.Errorf("superseded candidate was shown to the model:\n%s", prompt)
+	}
+}
+
+func TestDecideMemoryHandlesEveryOperation(t *testing.T) {
+	cases := map[string]memory.Op{
+		"ADD":        memory.OpAdd,
+		"NOOP 0":     memory.OpNoop,
+		"UPDATE 0":   memory.OpUpdate,
+		"DELETE 0":   memory.OpDelete,
+		"update 0":   memory.OpUpdate, // case-insensitive
+		"UPDATE [0]": memory.OpUpdate,
+		"NOOP 0.":    memory.OpNoop,
+	}
+	for reply, want := range cases {
+		srv, _ := fakeOllama(t, reply)
+		c := New(mapSettings{"ollama_url": srv.URL}, nil)
+		got := c.DecideMemory("an unrelated new fact", cands("nothing like it"))
+		if got.Op != want {
+			t.Errorf("reply %q = %s, want %s", reply, got.Op, want)
+		}
+	}
+}
+
+func TestDecideMemoryDeleteCarriesNoText(t *testing.T) {
+	srv, _ := fakeOllama(t, "DELETE 0")
+	c := New(mapSettings{"ollama_url": srv.URL}, nil)
+	got := c.DecideMemory("that is no longer true", cands("something that was true"))
+	if got.Op != memory.OpDelete {
+		t.Fatalf("op = %s", got.Op)
+	}
+	if got.Text != "" {
+		t.Errorf("a retraction stored text: %q", got.Text)
+	}
+}
+
+func TestExtractFactsWithNoLLM(t *testing.T) {
+	c := New(mapSettings{}, nil)
+	got := c.ExtractFacts("User prefers tabs. The server runs proxmox.")
+	if len(got) != 2 {
+		t.Fatalf("got %q, want two facts", got)
+	}
+}
+
+func TestExtractFactsUsesTheModelForConjoinedClauses(t *testing.T) {
+	// The case sentence splitting cannot do: one sentence, two facts, the
+	// second missing its subject.
+	srv, seen := fakeOllama(t,
+		"the user prefers tabs\nthe user hates trailing whitespace")
+	c := New(mapSettings{"ollama_url": srv.URL}, nil)
+	got := c.ExtractFacts("the user prefers tabs and hates trailing whitespace in every file")
+	if len(got) != 2 {
+		t.Fatalf("got %q, want two facts", got)
+	}
+	if strings.HasPrefix(got[1], "and ") {
+		t.Errorf("second fact kept its conjunction: %q", got[1])
+	}
+	prompt := (*seen)[0]["prompt"].(string)
+	if !strings.Contains(prompt, "repeat the subject") {
+		t.Errorf("prompt lost the standalone-fact instruction:\n%s", prompt)
+	}
+}
+
+func TestExtractFactsFallsBackOnEmptyReply(t *testing.T) {
+	srv, _ := fakeOllama(t, "   ")
+	c := New(mapSettings{"ollama_url": srv.URL}, nil)
+	got := c.ExtractFacts("the user prefers tabs and hates trailing whitespace everywhere")
+	if len(got) == 0 {
+		t.Fatal("an empty model reply lost the fact entirely")
+	}
+}
+
+func TestExtractFactsSkipsTheModelForOneShortSentence(t *testing.T) {
+	// A write on an agent's hot path should not wait on a model to be told
+	// that one short sentence is one fact.
+	srv, seen := fakeOllama(t, "something else")
+	c := New(mapSettings{"ollama_url": srv.URL}, nil)
+	got := c.ExtractFacts("user prefers tabs")
+	if len(got) != 1 || got[0] != "user prefers tabs" {
+		t.Fatalf("got %q", got)
+	}
+	if len(*seen) != 0 {
+		t.Error("the model was consulted for a single short sentence")
+	}
+}
+
+func TestExtractFactsStripsBulletMarkers(t *testing.T) {
+	srv, _ := fakeOllama(t, "1. the first fact\n2. the second fact")
+	c := New(mapSettings{"ollama_url": srv.URL}, nil)
+	got := c.ExtractFacts("a long enough statement that asserts two separate things here")
+	if len(got) != 2 || strings.HasPrefix(got[0], "1.") {
+		t.Fatalf("numbering not stripped: %q", got)
+	}
+}
+
+func TestCustomPromptsAreAddedNotSubstituted(t *testing.T) {
+	// An operator can bias what gets recorded; they must not be able to
+	// replace the instructions that define the reply format, or the setting
+	// would silently turn every write into a fallback.
+	srv, seen := fakeOllama(t, "ADD")
+	c := New(mapSettings{
+		"ollama_url":            srv.URL,
+		"memory_extract_prompt": "Only record facts about infrastructure.",
+		"memory_decide_prompt":  "Be conservative about superseding.",
+	}, nil)
+
+	c.ExtractFacts("a long enough statement that asserts two separate things here")
+	prompt := (*seen)[0]["prompt"].(string)
+	if !strings.HasPrefix(prompt, "Only record facts about infrastructure.") {
+		t.Errorf("custom extraction guidance not applied:\n%s", prompt)
+	}
+	if !strings.Contains(prompt, "One fact per line") {
+		t.Errorf("custom guidance replaced the output contract:\n%s", prompt)
+	}
+
+	c.DecideMemory("a new fact", cands("an old fact"))
+	prompt = (*seen)[1]["prompt"].(string)
+	if !strings.HasPrefix(prompt, "Be conservative about superseding.") {
+		t.Errorf("custom decision guidance not applied:\n%s", prompt)
+	}
+	for _, want := range []string{"UPDATE <n>", "NEW FACT:"} {
+		if !strings.Contains(prompt, want) {
+			t.Errorf("custom guidance replaced %q:\n%s", want, prompt)
+		}
+	}
+}
+
+func TestNoCustomPromptAddsNothing(t *testing.T) {
+	srv, seen := fakeOllama(t, "ADD")
+	c := New(mapSettings{"ollama_url": srv.URL}, nil)
+	c.DecideMemory("a new fact", cands("an old fact"))
+	if prompt := (*seen)[0]["prompt"].(string); !strings.HasPrefix(prompt, "You maintain") {
+		t.Errorf("an unset prompt added something:\n%s", prompt)
+	}
+}

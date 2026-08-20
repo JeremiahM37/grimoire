@@ -37,6 +37,13 @@ var Fields = map[string]Field{
 	"local_embed":       {"GRIMOIRE_LOCAL_EMBED", "auto"},
 	"local_embed_model": {"GRIMOIRE_LOCAL_EMBED_MODEL", "minishlab/potion-base-8M"},
 	"whisper_url":       {"GRIMOIRE_WHISPER_URL", ""},
+	// Agent memory. Both are prompt PREFIXES, not whole prompts: the output
+	// contract the server parses is appended after whatever is set here, so a
+	// deployment can bias extraction ("only record facts about
+	// infrastructure") without being able to break the reply format the
+	// engine depends on. See internal/ai/memory.go.
+	"memory_extract_prompt": {"GRIMOIRE_MEMORY_EXTRACT_PROMPT", ""},
+	"memory_decide_prompt":  {"GRIMOIRE_MEMORY_DECIDE_PROMPT", ""},
 	// Web search. The key may name a vault credential ("vault:brave-key")
 	// rather than being one, so a search key does not have to sit in a
 	// settings file that gets copied around.
