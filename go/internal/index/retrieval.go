@@ -5,6 +5,7 @@ import (
 	"errors"
 	"math"
 	"regexp"
+	"runtime"
 	"slices"
 	"sort"
 	"strings"
@@ -764,19 +765,14 @@ func (ix *Index) rank(c *corpusCache, query string, k int, f Filter) ([]Hit, err
 	// and every tie below is broken by candidate position. Going through the
 	// ordering view is what makes a patched cache rank identically to a
 	// rebuilt one, which is the property the golden digest pins.
+	order := c.order()
+	cosines := c.cosines(order, visible, qv, qnorm)
 	cands := make([]candidate, 0, 256)
-	for _, i := range c.order() {
+	for pos, i := range order {
 		if !visible(&c.rows[i]) {
 			continue
 		}
-		cos := c.cosine(int(i), qv, qnorm)
-		// A NaN would make the comparator non-transitive and hand pdqsort an
-		// ordering it is entitled to resolve arbitrarily. Cosine's zero-norm
-		// guards mean one should not arise; clamping makes that a property of
-		// the code rather than of an argument about the code.
-		if math.IsNaN(cos) {
-			cos = 0
-		}
+		cos := cosines[pos]
 		if cos > 0 || lex[i] > 0 {
 			cands = append(cands, candidate{row: i, cos: cos, lex: lex[i]})
 		}
@@ -791,18 +787,18 @@ func (ix *Index) rank(c *corpusCache, query string, k int, f Filter) ([]Hit, err
 	// tie handling is defined by its input order, so ranking the second leg
 	// from the first leg's output would let the dense ordering decide how
 	// lexical ties break — a different ranking, arrived at silently.
-	order := make([]int32, len(cands))
+	perm := make([]int32, len(cands))
 
 	// The dense leg has to rank every candidate: cosine is nonzero almost
 	// everywhere, so there is no sparsity to exploit.
-	identity(order)
-	slices.SortFunc(order, func(a, b int32) int {
+	identity(perm)
+	slices.SortFunc(perm, func(a, b int32) int {
 		if c := cmpDesc(cands[a].cos, cands[b].cos); c != 0 {
 			return c
 		}
 		return int(a - b)
 	})
-	for rank, idx := range order {
+	for rank, idx := range perm {
 		cands[idx].rrf += 1.0 / (rrfK + float64(rank))
 	}
 
@@ -814,7 +810,7 @@ func (ix *Index) rank(c *corpusCache, query string, k int, f Filter) ([]Hit, err
 	// order they are already in. Only the chunks an inverted-index lookup
 	// actually touched need sorting, turning an N-log-N sort of the whole
 	// corpus into an m-log-m sort of the matches.
-	nz := order[:0]
+	nz := perm[:0]
 	for i := range cands {
 		if cands[i].lex > 0 {
 			nz = append(nz, int32(i))
@@ -838,15 +834,15 @@ func (ix *Index) rank(c *corpusCache, query string, k int, f Filter) ([]Hit, err
 		}
 	}
 
-	identity(order)
-	slices.SortFunc(order, func(a, b int32) int {
+	identity(perm)
+	slices.SortFunc(perm, func(a, b int32) int {
 		if c := cmpDesc(cands[a].rrf, cands[b].rrf); c != 0 {
 			return c
 		}
 		return int(a - b)
 	})
 
-	return ix.finalize(c, cands, order, k)
+	return ix.finalize(c, cands, perm, k)
 }
 
 // identity resets a permutation buffer to 0..n-1.
@@ -1077,4 +1073,68 @@ type cacheFields struct {
 	// where dropping the cache once is far cheaper than patching every note.
 	// Guarded by the index write lock, which every bulk operation holds.
 	bulk bool
+}
+
+// cosines scores every visible row against the query, across CPU cores.
+//
+// This is the one term in a query that grows with the corpus: the dense leg has
+// no sparsity to exploit — cosine is non-zero almost everywhere — so every
+// chunk is scored on every query. At 50,000 notes that sweep is most of a
+// query's 53ms, and it is embarrassingly parallel: each row reads its own slice
+// of the arena and writes its own slot.
+//
+// Splitting it is not free at small sizes (goroutine setup outweighs the work),
+// so a small corpus stays sequential and gets exactly the code it had.
+//
+// The result is identical either way, deliberately: the scores are written into
+// a fixed-position slice and consumed in corpus order afterwards, so nothing
+// about ranking — including how ties break — depends on how many cores ran it.
+func (c *corpusCache) cosines(order []int32, visible func(*cachedRow) bool,
+	qv []float32, qnorm float64) []float64 {
+	out := make([]float64, len(order))
+	score := func(lo, hi int) {
+		for pos := lo; pos < hi; pos++ {
+			i := order[pos]
+			if !visible(&c.rows[i]) {
+				continue
+			}
+			cos := c.cosine(int(i), qv, qnorm)
+			// A NaN would make the comparator non-transitive and hand pdqsort
+			// an ordering it is entitled to resolve arbitrarily. Cosine's
+			// zero-norm guards mean one should not arise; clamping makes that
+			// a property of the code rather than of an argument about it.
+			if math.IsNaN(cos) {
+				cos = 0
+			}
+			out[pos] = cos
+		}
+	}
+
+	workers := runtime.GOMAXPROCS(0)
+	const parallelFrom = 4096
+	if workers <= 1 || len(order) < parallelFrom {
+		score(0, len(order))
+		return out
+	}
+	if workers > 8 {
+		// Past a handful of cores this is memory-bandwidth bound, and more
+		// goroutines buy scheduling rather than speed.
+		workers = 8
+	}
+	chunk := (len(order) + workers - 1) / workers
+	var wg sync.WaitGroup
+	for w := 0; w < workers; w++ {
+		lo := w * chunk
+		if lo >= len(order) {
+			break
+		}
+		hi := min(lo+chunk, len(order))
+		wg.Add(1)
+		go func(lo, hi int) {
+			defer wg.Done()
+			score(lo, hi)
+		}(lo, hi)
+	}
+	wg.Wait()
+	return out
 }
