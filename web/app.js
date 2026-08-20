@@ -191,6 +191,11 @@ addEventListener("click", (e) => { if (!e.target.closest("#ctx-menu")) ctxMenu.c
 /* ---------- open / save ---------- */
 let openSeq = 0;
 async function openNote(path) {
+  // Claimed SYNCHRONOUSLY, before the first await. state.path is only set once
+  // the note has been fetched, so a default open that checked it would still
+  // win a race against a click made while the note was in flight — which is
+  // what CI kept catching. openSeq already orders concurrent opens; this is
+  // what lets boot know an open exists at all.
   const seq = ++openSeq;
   if (state.dirty) await save();
   const n = await api(`/notes/${encodeURI(path)}`);
@@ -1842,8 +1847,9 @@ function renderPluginPanels() {
   // while the rest is still loading — and the default open would then replace
   // what they chose with whatever was first, seconds after they chose it. That
   // race was always there; adding one request to boot made it reachable.
-  if (hash) await openNote(hash).catch(() => !state.path && state.notes[0] && openNote(state.notes[0].path));
-  else if (state.notes[0] && !state.path) openNote(state.notes[0].path);
+  const nothingOpened = () => openSeq === 0 && !state.path;
+  if (hash) await openNote(hash).catch(() => nothingOpened() && state.notes[0] && openNote(state.notes[0].path));
+  else if (state.notes[0] && nothingOpened()) openNote(state.notes[0].path);
   renderIdentity(me);
   // readiness beacon: handlers are wired and the editor is mounted (e2e + probes)
   document.body.dataset.ready = "1";
