@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/JeremiahM37/grimoire/go/internal/metrics"
@@ -44,14 +45,35 @@ func (s *Server) serveMetrics(w http.ResponseWriter, _ *http.Request) {
 
 // registerGauges wires the values read at scrape time.
 func (s *Server) registerGauges() {
+	// Corpus size comes from the index, not from cache residency. Reading the
+	// cache reported ZERO on a freshly restarted server — the cache is built
+	// by the first query — so a dashboard showed an empty vault and an alert
+	// on it would have fired every restart. A metric that is wrong exactly
+	// when someone is looking at it is worse than no metric.
+	//
+	// It is a COUNT, memoized for fifteen seconds: cheap enough that scraping
+	// cannot become load, honest enough that it does not depend on whether
+	// anyone has searched yet.
+	var (
+		countMu  sync.Mutex
+		countAt  time.Time
+		countVal float64
+	)
 	metrics.Gauge("grimoire_notes_current", "Notes in the index.", nil, func() float64 {
-		// The cache already knows this; asking the database on every scrape
-		// would make monitoring a source of load.
-		chunks, notes, terms, bytes := s.Index.CacheStats()
-		_, _, _ = chunks, terms, bytes
-		return float64(notes)
+		countMu.Lock()
+		defer countMu.Unlock()
+		if time.Since(countAt) < 15*time.Second {
+			return countVal
+		}
+		n, err := s.Index.DB.Count("SELECT count(*) FROM notes")
+		if err != nil {
+			return countVal
+		}
+		countAt, countVal = time.Now(), float64(n)
+		return countVal
 	})
-	metrics.Gauge("grimoire_chunks_current", "Chunks resident in the retrieval cache.", nil,
+	metrics.Gauge("grimoire_cache_chunks_current",
+		"Chunks resident in the retrieval cache — zero until the first query.", nil,
 		func() float64 {
 			chunks, _, _, _ := s.Index.CacheStats()
 			return float64(chunks)

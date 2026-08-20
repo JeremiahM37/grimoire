@@ -63,6 +63,22 @@ func TestMetricsNeverLabelWithUserContent(t *testing.T) {
 	}
 }
 
+// A freshly restarted server has an empty retrieval cache — it is built by the
+// first query — so reporting cache residency as the corpus size showed an empty
+// vault to anyone looking during a restart, which is exactly when they look.
+func TestCorpusSizeIsRightBeforeAnyoneHasSearched(t *testing.T) {
+	_, h := testServer(t)
+	for i := 0; i < 3; i++ {
+		do(t, h, "POST", "/api/notes", map[string]any{
+			"path": "n" + string(rune('a'+i)) + ".md", "body": "# N\n\nbody"})
+	}
+	// No search, no retrieve: nothing has built the cache.
+	body := do(t, h, "GET", "/metrics", nil).Body.String()
+	if got := metricValue(t, body, "grimoire_notes_current"); got != 3 {
+		t.Fatalf("grimoire_notes_current = %v with three notes and no query yet", got)
+	}
+}
+
 // The cheap path has to be visibly cheap: a write patches the cache, and only
 // the first query after a bulk operation rebuilds it. If rebuilds climb with
 // write volume, in-place patching has broken.
