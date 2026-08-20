@@ -1,6 +1,7 @@
 /* Grimoire console PWA — vanilla ES module, offline-capable, no build step
    (the one vendored artifact is the optional CM6 live editor, see web/editor.js) */
 import { $, api, toast, toastAction, esc, slugify } from "/util.js";
+import { whoami, requireSignIn, renderIdentity } from "/signin.js";
 import { mdToHtml, hydrateDynamicBlocks, headingId, setNoteIndex, setNoteOpener } from "/markdown.js";
 import { Editor } from "/editor.js";
 import { Plugins } from "/plugins.js";
@@ -1789,6 +1790,14 @@ function renderPluginPanels() {
 })();
 
 (async function boot() {
+  // Identity first: on an instance with accounts, every request below would
+  // otherwise 401 and the console would come up empty with nothing to explain
+  // why. On an instance without them this costs one request and changes
+  // nothing.
+  let me = await whoami();
+  if (me.multi_user && me.anonymous) me = await requireSignIn(me);
+  state.me = me;
+
   setNoteOpener(openNote);                          // wiki-link clicks in previews
   initGraph({ openNote, currentPath: () => state.path });
   await loadList();
@@ -1826,6 +1835,7 @@ function renderPluginPanels() {
   const hash = decodeURI(location.hash.slice(1));
   if (hash) await openNote(hash).catch(() => state.notes[0] && openNote(state.notes[0].path));
   else if (state.notes[0]) openNote(state.notes[0].path);
+  renderIdentity(me);
   // readiness beacon: handlers are wired and the editor is mounted (e2e + probes)
   document.body.dataset.ready = "1";
 })();

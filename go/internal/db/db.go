@@ -22,7 +22,8 @@ const Schema = `
 CREATE TABLE IF NOT EXISTS notes(
   path TEXT PRIMARY KEY, title TEXT, body TEXT, frontmatter_json TEXT DEFAULT '{}',
   private INTEGER DEFAULT 0, mtime REAL, hash TEXT,
-  created TEXT, updated TEXT
+  created TEXT, updated TEXT,
+  space TEXT NOT NULL DEFAULT 'commons'
 );
 CREATE TABLE IF NOT EXISTS links(
   src TEXT NOT NULL, target TEXT NOT NULL, dst TEXT, alias TEXT DEFAULT '',
@@ -44,7 +45,12 @@ CREATE VIRTUAL TABLE IF NOT EXISTS fts USING fts5(
 );
 CREATE TABLE IF NOT EXISTS vectors(
   note TEXT NOT NULL, chunk_idx INTEGER, chunk TEXT, embedding BLOB,
-  private INTEGER DEFAULT 0
+  private INTEGER DEFAULT 0,
+  -- Which space this chunk belongs to, denormalized onto the row so ranking
+  -- can filter on it without a join. Filtering AFTER ranking would leak: the
+  -- corpus statistics BM25 scores against would still be computed over notes
+  -- the caller cannot see.
+  space TEXT NOT NULL DEFAULT 'commons'
 );
 CREATE INDEX IF NOT EXISTS idx_vectors_note ON vectors(note);
 -- fts.path is UNINDEXED, so "DELETE FROM fts WHERE path=?" scans every row of
@@ -60,6 +66,35 @@ CREATE INDEX IF NOT EXISTS idx_vectors_note ON vectors(note);
 -- both copies of a note stay searchable — which showed up as an encrypted
 -- note's plaintext still answering a search.
 CREATE TABLE IF NOT EXISTS fts_map(rid INTEGER PRIMARY KEY, path TEXT NOT NULL UNIQUE);
+-- Identity and authorization. A deployment with no rows in users behaves
+-- exactly as the single-user server always did; see internal/auth.
+CREATE TABLE IF NOT EXISTS users(
+  id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, display TEXT,
+  pwhash TEXT NOT NULL, role TEXT NOT NULL, created TEXT
+);
+-- Session and API-key tokens are stored hashed: a stolen copy of the index
+-- must not hand over live credentials for every account.
+CREATE TABLE IF NOT EXISTS sessions(
+  token TEXT PRIMARY KEY, user TEXT NOT NULL, expires REAL, created TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user);
+CREATE TABLE IF NOT EXISTS api_keys(
+  id TEXT PRIMARY KEY, hash TEXT NOT NULL UNIQUE, user TEXT NOT NULL,
+  label TEXT, created TEXT, last_used TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_api_keys_user ON api_keys(user);
+-- A space is the unit of access: a subtree of the vault plus the people who
+-- may see it. Paths stay the source of truth, so who can read what is visible
+-- in the file tree rather than only in a database.
+CREATE TABLE IF NOT EXISTS spaces(
+  id TEXT PRIMARY KEY, name TEXT NOT NULL, prefix TEXT NOT NULL UNIQUE,
+  kind TEXT NOT NULL, owner TEXT, created TEXT
+);
+CREATE TABLE IF NOT EXISTS space_members(
+  space TEXT NOT NULL, user TEXT NOT NULL, role TEXT NOT NULL,
+  PRIMARY KEY(space, user)
+);
+CREATE INDEX IF NOT EXISTS idx_space_members_user ON space_members(user);
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE IF NOT EXISTS grants(
   token TEXT PRIMARY KEY, secret TEXT, grantee TEXT, scope TEXT,
@@ -131,7 +166,66 @@ func Open(path string) (*DB, error) {
 		conn.Close()
 		return nil, fmt.Errorf("migrating schema: %w", err)
 	}
+	// Columns added to existing tables cannot go in Schema — CREATE TABLE IF
+	// NOT EXISTS skips a table that is already there — and cannot go in
+	// migrations either, since ALTER TABLE ADD COLUMN fails the second time it
+	// runs. So they are added conditionally, which also makes them safe to
+	// re-apply after a downgrade and re-upgrade.
+	for _, c := range addedColumns {
+		has, err := hasColumn(conn, c.table, c.column)
+		if err != nil {
+			conn.Close()
+			return nil, err
+		}
+		if has {
+			continue
+		}
+		if _, err := conn.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s",
+			c.table, c.column, c.decl)); err != nil {
+			conn.Close()
+			return nil, fmt.Errorf("adding %s.%s: %w", c.table, c.column, err)
+		}
+	}
+	// Indexes over columns that may have just been added have to come after
+	// them: on an index created before the column existed, Schema would run
+	// first and fail on a column that is not there yet.
+	if _, err := conn.Exec(lateIndexes); err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("indexing: %w", err)
+	}
 	return &DB{conn: conn}, nil
+}
+
+const lateIndexes = `
+CREATE INDEX IF NOT EXISTS idx_notes_space ON notes(space);
+CREATE INDEX IF NOT EXISTS idx_vectors_space ON vectors(space);
+`
+
+// addedColumns are columns introduced after their table shipped.
+var addedColumns = []struct{ table, column, decl string }{
+	{"notes", "space", "TEXT NOT NULL DEFAULT 'commons'"},
+	{"vectors", "space", "TEXT NOT NULL DEFAULT 'commons'"},
+}
+
+func hasColumn(conn *sql.DB, table, column string) (bool, error) {
+	rows, err := conn.Query(fmt.Sprintf("PRAGMA table_info(%s)", table))
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var cid int
+		var name, typ string
+		var notnull, pk int
+		var dflt any
+		if err := rows.Scan(&cid, &name, &typ, &notnull, &dflt, &pk); err != nil {
+			return false, err
+		}
+		if name == column {
+			return true, nil
+		}
+	}
+	return false, rows.Err()
 }
 
 // Close releases the connection.

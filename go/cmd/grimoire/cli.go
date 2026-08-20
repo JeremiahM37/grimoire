@@ -47,6 +47,12 @@ const usage = `grimoire — local-first AI-native notes
   grimoire sync PEER_URL [--watch] [--interval N] [--token T]
   grimoire agent-setup [API_URL]      print MCP + agent-context setup
   grimoire serve [--port N]           run the web app + API (the default)
+  grimoire user add NAME [--admin]    create an account (prompts for a password)
+  grimoire user list                  list accounts
+  grimoire user passwd NAME           change an account's password
+  grimoire space add NAME PREFIX      create a shared space
+  grimoire space list                 list spaces and their prefixes
+  grimoire space member SPACE USER [--read]   grant access to a space
   grimoire version                    print the build version
 
 Env: GRIMOIRE_VAULT (default ~/notes)`
@@ -74,6 +80,7 @@ func runCLI(args []string) (handled bool, code int) {
 		"reindex": cmdReindex, "ingest": cmdIngest, "seed-demo": cmdSeedDemo,
 		"export": cmdExport, "sync": cmdSync, "agent-setup": cmdAgentSetup,
 		"fetch-model": cmdFetchModel,
+		"user":        cmdUser, "space": cmdSpace,
 	}
 	fn, ok := cmds[args[0]]
 	if !ok {

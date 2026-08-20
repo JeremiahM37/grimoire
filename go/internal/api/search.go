@@ -137,6 +137,13 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 
 	out := []searchHit{}
 	for _, x := range rows {
+		// Both branches above over-fetch (500 rows) and cut to the caller's
+		// limit down here, so restricting to readable spaces at this point
+		// costs nothing and cannot truncate the result the way filtering a
+		// LIMITed query would.
+		if !s.canRead(r, x.path) {
+			continue
+		}
 		if opTag != "" {
 			var one int
 			if s.Index.DB.QueryRow("SELECT 1 FROM tags WHERE note=? AND tag=?",

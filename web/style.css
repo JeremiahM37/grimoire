@@ -542,3 +542,26 @@ details.folder .folder-head[data-dir="memory"] { color: var(--accent); }
   border-top: 1px solid var(--border, #2a2a2a); flex-wrap: wrap; }
 .v-arow .a-act { font-weight: 600; }
 .v-arow code { font-size: 12px; }
+
+/* ---------- sign-in (multi-user instances only) ---------- */
+.signin {
+  position: fixed; inset: 0; z-index: 200;
+  background: var(--bg); display: grid; place-items: center;
+}
+.signin-box {
+  display: flex; flex-direction: column; gap: .7rem;
+  min-width: min(22rem, 90vw); padding: 2rem;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+}
+.signin-box h1 { margin: 0; font-size: 1.6rem; }
+.signin-note { margin: 0 0 .4rem; color: var(--dim); font-size: .9rem; }
+.signin-box input {
+  padding: .6rem .7rem; font: inherit;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: var(--bg); color: var(--fg);
+}
+.signin-error { color: var(--danger, #c0392b); font-size: .85rem; min-height: 1.2em; }
+.signin-who {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: .5rem; padding: .25rem .1rem; font-size: .85rem; color: var(--dim);
+}

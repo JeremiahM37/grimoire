@@ -142,11 +142,14 @@ func (s *Server) recall(w http.ResponseWriter, r *http.Request) {
 
 	var out []memoryOut
 	if q != "" {
+		// Memories are ordinary notes, so they live in spaces like any other
+		// and one member must not recall another's.
+		where, spaceArgs := s.whereSpace(r, "n.space",
+			" WHERE n.path LIKE ? AND n.path IN (SELECT path FROM fts WHERE fts MATCH ?)")
+		args := append(append([]any{like, fts.Terms(q)}, spaceArgs...), limit)
 		rows, err := s.Index.DB.Query(
-			"SELECT n.path, n.title, n.body, n.updated FROM notes n "+
-				"WHERE n.path LIKE ? AND n.path IN (SELECT path FROM fts WHERE fts MATCH ?) "+
-				"ORDER BY n.updated DESC, n.path LIMIT ?",
-			like, fts.Terms(q), limit)
+			"SELECT n.path, n.title, n.body, n.updated FROM notes n"+where+
+				" ORDER BY n.updated DESC, n.path LIMIT ?", args...)
 		if err != nil {
 			writeErr(w, http.StatusInternalServerError, err.Error())
 			return
@@ -161,7 +164,7 @@ func (s *Server) recall(w http.ResponseWriter, r *http.Request) {
 		if len(out) == 0 {
 			// exact terms missed — fall back to semantic retrieval over the
 			// memory namespace so paraphrased recalls still land
-			hits, err := s.Index.Retrieve(q, limit*3, true)
+			hits, err := s.Index.RetrieveFor(q, limit*3, filterFor(r, true))
 			if err != nil {
 				writeErr(w, http.StatusInternalServerError, err.Error())
 				return
@@ -184,9 +187,11 @@ func (s *Server) recall(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	} else {
+		where, spaceArgs := s.whereSpace(r, "space", " WHERE path LIKE ?")
+		args := append(append([]any{like}, spaceArgs...), limit)
 		rows, err := s.Index.DB.Query(
-			"SELECT path, title, body, updated FROM notes WHERE path LIKE ? "+
-				"ORDER BY updated DESC, path LIMIT ?", like, limit)
+			"SELECT path, title, body, updated FROM notes"+where+
+				" ORDER BY updated DESC, path LIMIT ?", args...)
 		if err != nil {
 			writeErr(w, http.StatusInternalServerError, err.Error())
 			return
@@ -240,6 +245,12 @@ func (s *Server) briefing(w http.ResponseWriter, r *http.Request) {
 			var path, title, body string
 			if err := rows.Scan(&path, &title, &body); err != nil {
 				return nil, err
+			}
+			// The briefing is standing context handed to an agent before it
+			// asks for anything, so it is the surface most likely to leak a
+			// space quietly. Every bucket goes through this one filter.
+			if !s.canRead(r, path) {
+				continue
 			}
 			out = append(out, map[string]string{"path": path, "title": title, "body": body})
 		}

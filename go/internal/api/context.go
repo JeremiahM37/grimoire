@@ -44,21 +44,21 @@ func contextBudget() int {
 
 // bestContext returns the passages to answer from, and which strategy produced
 // them: "full" when the entire corpus fit the budget, "retrieved" otherwise.
-func (s *Server) bestContext(q string, k int, includePrivate bool, budget int) ([]index.Hit, string, error) {
+func (s *Server) bestContext(q string, k int, f index.Filter, budget int) ([]index.Hit, string, error) {
 	if budget > 0 {
-		_, _, chars, err := s.Index.CorpusStats(includePrivate)
+		_, _, chars, err := s.Index.CorpusStatsFor(f)
 		if err != nil {
 			return nil, "", err
 		}
 		if chars > 0 && chars <= int64(budget) {
-			hits, err := s.Index.WholeCorpus(includePrivate)
+			hits, err := s.Index.WholeCorpusFor(f)
 			if err != nil {
 				return nil, "", err
 			}
 			return hits, "full", nil
 		}
 	}
-	hits, err := s.Index.Retrieve(q, k, includePrivate)
+	hits, err := s.Index.RetrieveFor(q, k, f)
 	return hits, "retrieved", err
 }
 
@@ -81,7 +81,7 @@ func (s *Server) contextEndpoint(w http.ResponseWriter, r *http.Request) {
 	}
 	includePrivate := truthy(r.URL.Query().Get("include_private"))
 
-	hits, mode, err := s.bestContext(q, k, includePrivate, budget)
+	hits, mode, err := s.bestContext(q, k, filterFor(r, includePrivate), budget)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return

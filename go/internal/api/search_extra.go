@@ -53,6 +53,9 @@ func (s *Server) facts(w http.ResponseWriter, r *http.Request) {
 			writeErr(w, http.StatusInternalServerError, err.Error())
 			return
 		}
+		if !s.canRead(r, note) {
+			continue
+		}
 		out = append(out, map[string]string{"note": note, "key": key, "value": value})
 	}
 	if err := rows.Err(); err != nil {
@@ -156,17 +159,25 @@ func (s *Server) renameTag(w http.ResponseWriter, r *http.Request) {
 }
 
 // graph serves the note graph for the visualiser.
-func (s *Server) graph(w http.ResponseWriter, _ *http.Request) {
+func (s *Server) graph(w http.ResponseWriter, r *http.Request) {
 	// Each of these three reads used the `if rows, err := ...; err == nil`
 	// form, which drops the error and leaves the bucket empty. A failing query
 	// then rendered as a 200 with an empty graph — indistinguishable, in the
 	// visualiser, from a vault with no notes in it.
+	// The graph is a map of the vault, so it is drawn from the caller's
+	// readable spaces only. An edge into a space they cannot see would show
+	// them a note's existence and its title.
+	visible := map[string]bool{}
 	nodes := []map[string]string{}
 	if err := s.eachRow("SELECT path, title FROM notes", nil, func(rows *sql.Rows) error {
 		var path, title string
 		if err := rows.Scan(&path, &title); err != nil {
 			return err
 		}
+		if !s.canRead(r, path) {
+			return nil
+		}
+		visible[path] = true
 		nodes = append(nodes, map[string]string{"id": path, "title": title})
 		return nil
 	}); err != nil {
@@ -179,6 +190,9 @@ func (s *Server) graph(w http.ResponseWriter, _ *http.Request) {
 			var src, dst string
 			if err := rows.Scan(&src, &dst); err != nil {
 				return err
+			}
+			if !visible[src] || !visible[dst] {
+				return nil
 			}
 			edges = append(edges, map[string]string{"src": src, "dst": dst})
 			return nil
@@ -250,6 +264,9 @@ func (s *Server) tasks(w http.ResponseWriter, r *http.Request) {
 			writeErr(w, http.StatusInternalServerError, err.Error())
 			return
 		}
+		if !s.canRead(r, path) {
+			continue
+		}
 		for i, line := range strings.Split(body, "\n") {
 			m := taskLineRE.FindStringSubmatch(line)
 			if m == nil {
@@ -276,9 +293,10 @@ func (s *Server) complete(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	like := "%" + q + "%"
+	where, spaceArgs := s.whereSpace(r, "space", " WHERE (lower(title) LIKE ? OR lower(path) LIKE ?)")
+	args := append(append([]any{like, like}, spaceArgs...), limit)
 	rows, err := s.Index.DB.Query(
-		"SELECT path, title FROM notes WHERE lower(title) LIKE ? "+
-			"OR lower(path) LIKE ? ORDER BY updated DESC, path LIMIT ?", like, like, limit)
+		"SELECT path, title FROM notes"+where+" ORDER BY updated DESC, path LIMIT ?", args...)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return

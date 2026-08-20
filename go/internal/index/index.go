@@ -27,11 +27,26 @@ type Embedder interface {
 	Dim() int
 }
 
+// CommonsSpace is where a note lives when no space covers its path — and
+// where every note lives on a deployment with no accounts.
+const CommonsSpace = "commons"
+
+// Spaces maps a note path to the access boundary it belongs to. Left nil on a
+// single-user deployment, where every note is in the commons.
+//
+// An interface rather than a dependency on the auth package: the index knows
+// that rows carry a space and that ranking filters on it, and nothing about
+// accounts, membership or roles.
+type Spaces interface {
+	SpaceOf(path string) string
+}
+
 // Index owns the reconciliation between a vault and its SQLite cache.
 type Index struct {
-	DB    *db.DB
-	Vault *vault.Vault
-	Emb   Embedder
+	DB     *db.DB
+	Vault  *vault.Vault
+	Emb    Embedder
+	Spaces Spaces
 
 	// writeMu serializes whole logical writes. See db.DB for why a
 	// per-statement lock is not enough.
@@ -163,6 +178,18 @@ func (ix *Index) Remove(rel string) error {
 	return ix.resolveAll()
 }
 
+// spaceOf is the access boundary a note belongs to: the commons unless a
+// deployment has spaces configured.
+func (ix *Index) spaceOf(rel string) string {
+	if ix.Spaces == nil {
+		return CommonsSpace
+	}
+	if s := ix.Spaces.SpaceOf(rel); s != "" {
+		return s
+	}
+	return CommonsSpace
+}
+
 // removeRows deletes one note's rows. The caller holds the write lock and owns
 // the revision bump and link resolution, so a batch — a sync that found ten
 // deleted notes — resolves links once rather than once per note, which is the
@@ -216,11 +243,12 @@ func (ix *Index) writeNoteRows(note *vault.Note) error {
 	if note.Private {
 		private = 1
 	}
+	space := ix.spaceOf(rel)
 	if err := ix.DB.Exec(
-		"INSERT INTO notes(path,title,body,frontmatter_json,private,mtime,hash,created,updated)"+
-			" VALUES(?,?,?,?,?,?,?,?,?)",
+		"INSERT INTO notes(path,title,body,frontmatter_json,private,mtime,hash,created,updated,space)"+
+			" VALUES(?,?,?,?,?,?,?,?,?,?)",
 		rel, note.Title, note.Body, fmJSON, private, note.MTime, note.Hash,
-		note.Frontmatter.StringVal("created"), note.Frontmatter.StringVal("updated"),
+		note.Frontmatter.StringVal("created"), note.Frontmatter.StringVal("updated"), space,
 	); err != nil {
 		return err
 	}
@@ -275,8 +303,8 @@ func (ix *Index) embedNote(note *vault.Note) error {
 	}
 	for i, c := range chunks {
 		if err := ix.DB.Exec(
-			"INSERT INTO vectors(note,chunk_idx,chunk,embedding,private) VALUES(?,?,?,?,?)",
-			note.Path, i, c, Pack(vecs[i]), private); err != nil {
+			"INSERT INTO vectors(note,chunk_idx,chunk,embedding,private,space) VALUES(?,?,?,?,?,?)",
+			note.Path, i, c, Pack(vecs[i]), private, ix.spaceOf(note.Path)); err != nil {
 			return err
 		}
 	}
