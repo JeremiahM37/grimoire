@@ -320,6 +320,11 @@ func (s *Server) exportVault(w http.ResponseWriter, r *http.Request) {
 // SafePath — a zip is untrusted input, and "zip slip" entries like
 // ../../.ssh/authorized_keys are exactly what that guards against.
 func (s *Server) importVault(w http.ResponseWriter, r *http.Request) {
+	// Importing writes notes into the vault from an uploaded archive — the
+	// widest write there is, and it answered anyone.
+	if !s.requireUser(w, r) {
+		return
+	}
 	raw, err := io.ReadAll(io.LimitReader(r.Body, 200<<20))
 	if err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
@@ -352,6 +357,10 @@ func (s *Server) importVault(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		fm, body := markdown.ParseFrontmatter(string(content))
+		if !s.canWrite(r, normPath(f.Name)) {
+			skipped++
+			continue
+		}
 		if _, err := s.Vault.Write(f.Name, body, fm); err != nil {
 			skipped++
 			continue

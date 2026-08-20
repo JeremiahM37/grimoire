@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
@@ -105,6 +106,15 @@ func (s *Server) attach(w http.ResponseWriter, r *http.Request) {
 }
 
 // serveFile serves a raw vault file for embeds and the read surface.
+// executable reports whether a browser would run this file if it rendered it.
+func executable(path string) bool {
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".html", ".htm", ".xhtml", ".svg", ".xml", ".js", ".mjs", ".mhtml", ".xsl":
+		return true
+	}
+	return false
+}
+
 func (s *Server) serveFile(w http.ResponseWriter, r *http.Request) {
 	// Attachments live beside the notes that reference them, so they inherit
 	// the space of their path. Serving them unchecked would make every private
@@ -122,8 +132,24 @@ func (s *Server) serveFile(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusNotFound, "no such file")
 		return
 	}
-	// nosniff is already set globally; combined with ServeFile's content-type
-	// detection this keeps an uploaded .svg or .html from executing as the app
+	// nosniff does NOT make an uploaded document safe, which the comment here
+	// used to claim: it stops MIME SNIFFING, and an .html or .svg served with
+	// its own correct content type still executes — same origin, same session,
+	// same everything. An attachment is a file somebody uploaded; it must not
+	// be able to act as the app.
+	//
+	// Two defences, because either alone has gaps. A sandbox CSP puts the
+	// response in an opaque origin with no script, so even a rendered document
+	// can reach nothing. And the types that execute are sent as downloads
+	// rather than rendered at all, since nobody uploads an .html attachment to
+	// a notes app expecting it to run.
+	w.Header().Set("Content-Security-Policy",
+		"default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'; sandbox")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	if executable(p) {
+		w.Header().Set("Content-Disposition",
+			"attachment; filename="+strconv.Quote(filepath.Base(p)))
+	}
 	http.ServeFile(w, r, p)
 }
 

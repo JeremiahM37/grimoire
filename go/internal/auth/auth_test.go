@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"path/filepath"
 	"testing"
 	"time"
@@ -160,5 +161,35 @@ func TestChangingAPasswordEndsSessions(t *testing.T) {
 	}
 	if _, err := s.UserForSession(token); err == nil {
 		t.Fatal("a session survived the password change that was meant to end it")
+	}
+}
+
+// A key is 256 bits of randomness, so guessing one is not a realistic attack —
+// but a limit is a fact where "not realistic" is an argument, and this is what
+// catches a misconfigured agent hammering the endpoint forever.
+func TestWrongAPIKeysBackOff(t *testing.T) {
+	s := testStore(t)
+	u, _ := s.Create("alice", "", "correct horse battery", RoleAdmin)
+	good, _, err := s.CreateAPIKey(u.ID, "agent")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	locked := false
+	for i := 0; i < 12; i++ {
+		if _, err := s.UserForAPIKeyFrom("gk_wrong", "198.51.100.5"); err != nil {
+			var tooMany ErrTooManyAttempts
+			if errors.As(err, &tooMany) {
+				locked = true
+				break
+			}
+		}
+	}
+	if !locked {
+		t.Fatal("twelve wrong keys in a row were all answered at full speed")
+	}
+	// A different caller is unaffected, and the correct key still works there.
+	if _, err := s.UserForAPIKeyFrom(good, "203.0.113.9"); err != nil {
+		t.Fatalf("another address was locked out by the first one: %v", err)
 	}
 }

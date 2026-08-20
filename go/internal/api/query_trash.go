@@ -33,9 +33,14 @@ func (s *Server) runQuery(w http.ResponseWriter, r *http.Request) {
 	if block == "" {
 		block = in.Query
 	}
-	// authenticated surface, so private notes are visible here; /read and the
-	// public renderers pass includePrivate=false instead
-	writeJSON(w, http.StatusOK, queries.Run(s.Index.DB, block, true))
+	// "Authenticated surface" was true of a server with one account. A query
+	// block lists notes, so it is a read, and it answers to the same rules as
+	// every other read: the results are filtered to what this caller may see.
+	if !s.requireUser(w, r) {
+		return
+	}
+	rows := queries.Run(s.Index.DB, block, true)
+	writeJSON(w, http.StatusOK, s.readableRows(r, rows))
 }
 
 // ---------------------------------------------------------------- trash
