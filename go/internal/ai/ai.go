@@ -22,6 +22,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/JeremiahM37/grimoire/go/internal/memory"
 	"unicode/utf8"
 )
 
@@ -378,18 +380,29 @@ func (c *Client) Rerank(question string, candidates []Context, keep int) []Conte
 	return ranked[:min(len(ranked), keep)]
 }
 
-// DedupLines drops exact-duplicate memory entries — the zero-LLM
-// consolidation floor.
+// DedupLines drops duplicate memory entries — the zero-LLM consolidation
+// floor.
+//
+// Duplicates are compared as FACTS, not as lines: two writes of the same
+// belief differ in their trailer (each bullet carries its own id) and in
+// capitalisation, so a line-equality test would call them distinct and leave
+// the duplicate that consolidation exists to remove. A bullet that does not
+// parse as an entry falls back to line equality, and a line that is not a
+// bullet at all is never deduped — repeated prose is a person's writing.
 func DedupLines(body string) string {
 	seen := map[string]bool{}
 	var out []string
 	for _, ln := range strings.Split(body, "\n") {
 		s := strings.TrimSpace(ln)
 		if strings.HasPrefix(s, "- ") {
-			if seen[s] {
+			key := s
+			if e, ok := memory.ParseLine(ln); ok {
+				key = e.Agent + "\x00" + memory.Normalize(e.Text)
+			}
+			if seen[key] {
 				continue
 			}
-			seen[s] = true
+			seen[key] = true
 		}
 		out = append(out, ln)
 	}
