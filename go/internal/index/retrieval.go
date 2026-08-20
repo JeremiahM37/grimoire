@@ -3,6 +3,7 @@ package index
 import (
 	"database/sql"
 	"errors"
+	"github.com/JeremiahM37/grimoire/go/internal/metrics"
 	"math"
 	"regexp"
 	"runtime"
@@ -313,6 +314,11 @@ func (ix *Index) corpusCacheFor() (*corpusCache, error) {
 		return ix.cache, nil
 	}
 	rev = ix.Rev() // read AFTER the scan starts below would race; see buildCache
+	// A rebuild is the expensive path — it reads every chunk out of SQLite —
+	// so it is counted separately from a patch. If this climbs with write
+	// volume, in-place patching has stopped working.
+	metrics.Count("grimoire_cache_rebuilds_total",
+		"Full retrieval-cache rebuilds. Should be rare once warm.", nil)
 	built, err := ix.buildCache(rev)
 	if err != nil {
 		return nil, err
@@ -685,6 +691,9 @@ func (ix *Index) Retrieve(query string, k int, includePrivate bool) ([]Hit, erro
 // the thing a space is for. The private-note filter has always worked this way;
 // spaces reuse the mechanism.
 func (ix *Index) RetrieveFor(query string, k int, f Filter) ([]Hit, error) {
+	done := metrics.Timer()
+	defer done("grimoire_retrieval_seconds", "Time to rank a query.", nil)
+	metrics.Count("grimoire_retrievals_total", "Retrieval queries served.", nil)
 	var hits []Hit
 	err := ix.withCache(func(c *corpusCache) error {
 		var err error

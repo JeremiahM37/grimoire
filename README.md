@@ -383,6 +383,8 @@ Everything is environment-driven (same variables bare-metal, systemd, Docker):
 | `GRIMOIRE_FRAME_OPTIONS` | `SAMEORIGIN` | X-Frame-Options (reverse-proxy embedding) |
 | `GRIMOIRE_TRUST_PROXY` | `0` | Honour `X-Forwarded-For` / `-Proto` — set only when a proxy you control sets them, since they are otherwise caller-supplied |
 | `GRIMOIRE_RATE_GENERAL` / `_EXPENSIVE` | `500` / `2` per second | Rate limits (burst = 20×). `GRIMOIRE_RATE_LIMIT=off` disables both |
+| `GRIMOIRE_ADMIN_TOKEN` | *(empty)* | Gates the administrative surface — vault, connectors, accounts, settings — while notes and retrieval stay open. For instances that want to answer questions from a trusted network without handing it the levers |
+| `GRIMOIRE_METRICS` | *(on)* | `off` removes `/metrics` |
 | `GRIMOIRE_MCP_TRANSPORT` | `stdio` | `http` serves MCP over streamable-HTTP instead |
 | `GRIMOIRE_MCP_ADDR` / `_PORT` | `127.0.0.1` / `9112` | Bind for the MCP http transport |
 | `GRIMOIRE_URL` | `http://127.0.0.1:$PORT` | API the MCP server talks to |
@@ -445,10 +447,13 @@ Stated here rather than discovered later:
   Confluence. Pull into a space whose members are allowed to see everything in
   that source. Mirroring per-document ACLs is the single biggest thing an
   enterprise search product does that this does not.
-- **Connectors do not notice deletions.** An incremental sync asks "what changed
-  since the cursor", which cannot distinguish a deleted document from an
-  unchanged one. A document removed at the source stays in the vault until you
-  remove it.
+- **Connectors notice deletions only where the source enumerates.** An
+  incremental sync asks "what changed since the cursor", and a deleted document
+  did not change — it is indistinguishable from an untouched one. A source that
+  just listed everything can say otherwise, and RSS does (a feed *is* the
+  current list), so a dropped entry's note is removed. Slack, Jira, Confluence,
+  Drive and GitHub sync incrementally, so a document deleted there stays in the
+  vault until you remove it.
 - **Query cost is linear in corpus size** — see the table above. Fine into the
   low hundreds of thousands of chunks on one box; beyond that the answer is an
   approximate index, which trades recall.
@@ -458,6 +463,27 @@ Stated here rather than discovered later:
 - **Administrators can read every space.** A deliberate simplification: the
   alternative is an administrator who cannot fix a space they cannot see.
 - **No SSO, no SCIM, no audit export.** Accounts are local.
+
+## Watching it run
+
+`/metrics` in Prometheus text format, from what the server already computes —
+no collector, no sampling, no metric that costs a database query:
+
+```
+grimoire_requests_total{route="retrieve",status="2xx"}   is it serving, and what fails
+grimoire_request_seconds_bucket{route="ask"}             what is slow
+grimoire_retrieval_seconds                               is ranking the slow part
+grimoire_cache_rebuilds_total / _patches_total           is a write throwing the cache away
+grimoire_connector_runs_total{kind="slack",outcome=…}    did the 03:00 sync work
+grimoire_login_failures_total / _lockouts_total          is somebody guessing
+grimoire_vault_unlocked_info                             can the broker serve at all
+grimoire_notes_current · _chunks_current · _cache_vector_bytes
+```
+
+Paths are reduced to a bounded route class and never emitted raw: a note path is
+user content, and a label would put note titles into a monitoring system for its
+retention period and add one series per note. A test asserts a note path cannot
+reach the metrics output.
 
 ## Benchmarks
 

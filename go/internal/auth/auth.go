@@ -23,6 +23,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/JeremiahM37/grimoire/go/internal/metrics"
 	"strings"
 	"sync"
 	"time"
@@ -191,6 +192,8 @@ func (s *Store) AuthenticateFrom(name, password, addr string) (User, error) {
 	now := Now()
 	for _, key := range lockKeys(name, addr) {
 		if wait := s.login.retryAfter(key, now); wait > 0 {
+			metrics.Count("grimoire_login_lockouts_total",
+				"Sign-in attempts refused by the back-off.", nil)
 			return User{}, ErrTooManyAttempts{RetryAfter: wait}
 		}
 	}
@@ -217,6 +220,9 @@ func (s *Store) AuthenticateFrom(name, password, addr string) (User, error) {
 }
 
 func (s *Store) recordFailure(name, addr string, now time.Time) {
+	// Counted without the account name: which accounts are being guessed is
+	// exactly what a leaked dashboard should not enumerate.
+	metrics.Count("grimoire_login_failures_total", "Failed sign-in attempts.", nil)
 	for _, key := range lockKeys(name, addr) {
 		s.login.fail(key, now)
 	}

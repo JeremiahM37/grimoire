@@ -98,7 +98,11 @@ func (f feed) Fetch(ctx context.Context, in Input) (Page, error) {
 		return Page{}, fmt.Errorf("%s: not a readable feed: %w", src, err)
 	}
 
-	page := Page{Cursor: in.Cursor}
+	// A feed is a complete statement of what the source currently publishes —
+	// that is what a feed IS — so an entry that has fallen off it is gone, and
+	// the runner may remove its note. Sources with a "changed since" API
+	// cannot make this claim; see Page.Complete.
+	page := Page{Cursor: in.Cursor, Complete: true}
 	source := doc.Channel.Title
 	if source == "" {
 		source = doc.Title

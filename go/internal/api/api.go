@@ -54,6 +54,9 @@ type Server struct {
 	SyncInterval int
 	WebDir       string
 	AuthToken    string
+	// AdminToken gates the administrative surface separately from reading, so
+	// a deployment can leave notes and retrieval open while closing the levers.
+	AdminToken   string
 	FrameOptions string
 	PluginDir    string
 	DailyDir     string
@@ -77,6 +80,7 @@ func (s *Server) Routes() http.Handler {
 	s.authRoutes(mux)
 	s.connectorRoutes(mux)
 	s.webRoutes(mux)
+	s.metricsRoutes(mux)
 	mux.HandleFunc("POST /api/reindex", s.adminOnly(s.reindex))
 	mux.HandleFunc("GET /api/aliases", s.aliases)
 	mux.HandleFunc("GET /api/notes", s.listNotes)
@@ -165,7 +169,8 @@ func (s *Server) Routes() http.Handler {
 	// limit is applied before work is done, and the principal is resolved
 	// before a handler can ask who is calling.
 	return securityHeaders(s.FrameOptions,
-		limitBodies(s.throttle(s.requireAuth(s.withPrincipal(mux)))))
+		instrument(limitBodies(s.throttle(s.requireAuth(
+			s.withPrincipal(s.requireAdminToken(mux)))))))
 }
 
 // securityHeaders applies the same defence-in-depth headers as the Python app.

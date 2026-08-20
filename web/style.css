@@ -575,3 +575,4 @@ details.folder .folder-head[data-dir="memory"] { color: var(--accent); }
   padding: .45rem .5rem; font: inherit; border: 1px solid var(--line);
   border-radius: 6px; background: var(--bg); color: var(--fg);
 }
+.ad-newkey { font-family: ui-monospace, monospace; font-size: .85rem; word-break: break-all; }

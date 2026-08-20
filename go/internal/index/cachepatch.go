@@ -2,6 +2,7 @@ package index
 
 import (
 	"database/sql"
+	"github.com/JeremiahM37/grimoire/go/internal/metrics"
 	"math"
 	"slices"
 	"sort"
@@ -51,6 +52,8 @@ func (ix *Index) patchNote(path string) {
 		return
 	}
 
+	metrics.Count("grimoire_cache_patches_total",
+		"In-place cache updates — the cheap path a write should take.", nil)
 	c.tombstone(path)
 	if err := ix.appendNoteRows(c, path); err != nil {
 		// A patch that cannot read the new rows must not leave the cache

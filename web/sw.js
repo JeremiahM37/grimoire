@@ -1,6 +1,6 @@
 /* Grimoire service worker — offline shell */
-const CACHE = "grimoire-v21";
-const SHELL = ["/", "/style.css", "/app.js", "/editor.js", "/plugins.js", "/canvas.js", "/util.js", "/markdown.js", "/signin.js", "/connectors.js", "/vendor/editor.js", "/icon.svg", "/manifest.webmanifest"];
+const CACHE = "grimoire-v22";
+const SHELL = ["/", "/style.css", "/app.js", "/editor.js", "/plugins.js", "/canvas.js", "/util.js", "/markdown.js", "/signin.js", "/connectors.js", "/admin.js", "/vendor/editor.js", "/icon.svg", "/manifest.webmanifest"];
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));
   self.skipWaiting();
