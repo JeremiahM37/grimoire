@@ -115,10 +115,24 @@ func (s *Server) TrashNote(rel, title string) (string, error) {
 	return tid, s.saveTrash(m)
 }
 
-func (s *Server) listTrash(w http.ResponseWriter, _ *http.Request) {
+// listTrash shows what this caller may see of the trash.
+//
+// It used to take the request as `_`, which is the whole bug in one character:
+// a handler that never looks at who is asking cannot be filtering, however the
+// route is labelled. It answered anyone with every deleted note's original path
+// and title across every space — and a path plus a title IS the sensitive part
+// of a private note, which is why a refused read here reports "absent" rather
+// than "forbidden" everywhere else in this file.
+func (s *Server) listTrash(w http.ResponseWriter, r *http.Request) {
+	if !s.requireUser(w, r) {
+		return
+	}
 	m := s.loadTrash()
 	out := make([]trashEntry, 0, len(m))
 	for id, e := range m {
+		if !s.canRead(r, e.Original) {
+			continue
+		}
 		e.ID = id
 		out = append(out, e)
 	}
@@ -133,6 +147,12 @@ func (s *Server) restoreTrash(w http.ResponseWriter, r *http.Request) {
 	entry, ok := m[tid]
 	if !ok {
 		writeErr(w, http.StatusNotFound, "no such trashed note")
+		return
+	}
+	// Restoring puts a note back where it came from, so it is a write to THAT
+	// place — checked against the original path rather than the caller's own
+	// space, or deleting a note would be a way to move it into someone else's.
+	if !s.requireWrite(w, r, normPath(entry.Original)) {
 		return
 	}
 	// restoring must never clobber a note created since the delete
@@ -170,6 +190,13 @@ func (s *Server) restoreTrash(w http.ResponseWriter, r *http.Request) {
 func (s *Server) purgeTrash(w http.ResponseWriter, r *http.Request) {
 	tid := r.PathValue("tid")
 	m := s.loadTrash()
+	// Purging is irreversible, so it answers to the same rule as deleting:
+	// whoever may write the note may destroy its last copy, and nobody else.
+	if entry, ok := m[tid]; ok {
+		if !s.requireWrite(w, r, normPath(entry.Original)) {
+			return
+		}
+	}
 	if _, ok := m[tid]; ok {
 		_ = os.Remove(filepath.Join(s.trashDir(), tid+".md"))
 		delete(m, tid)

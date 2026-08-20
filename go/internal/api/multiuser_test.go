@@ -297,6 +297,25 @@ func TestLoginIssuesASessionAndLogoutEndsIt(t *testing.T) {
 // property it buys is the one that matters: a document one colleague may read
 // is invisible to another, through every surface.
 func TestAPulledDocumentCanBeRestrictedToOnePerson(t *testing.T) {
+	// Run the whole surface sweep in BOTH answering modes. Without an LLM
+	// configured every one of these endpoints takes its ranked path, so the
+	// branch that hands over the whole corpus when it fits a budget — the one
+	// where nothing is scored and therefore nothing had to be checked — was
+	// never swept at all. Setting GRIMOIRE_LLM makes a backend "available"
+	// (and unreachable, so answers fall back to quoting what they were given,
+	// which is what makes a leak visible in the body).
+	for _, mode := range []struct {
+		name string
+		llm  string
+	}{{"ranked", ""}, {"whole-corpus", "ollama"}} {
+		t.Run(mode.name, func(t *testing.T) {
+			t.Setenv("GRIMOIRE_LLM", mode.llm)
+			pulledDocumentRestrictedToOnePerson(t)
+		})
+	}
+}
+
+func pulledDocumentRestrictedToOnePerson(t *testing.T) {
 	s, h := testServer(t)
 	adminKey := makeUser(t, s, h, "", "admin", "admin")
 	aliceKey := makeUser(t, s, h, adminKey, "alice", "member")
@@ -338,8 +357,10 @@ func TestAPulledDocumentCanBeRestrictedToOnePerson(t *testing.T) {
 		"/api/search?q=SECRETMARKER&full=true",
 		"/api/retrieve?q=kestrel&k=10",
 		"/api/context?q=kestrel&k=10",
+		"/api/context?q=kestrel&k=10&include_private=true",
 		"/api/graph",
 		"/api/complete?q=private",
+		"/api/facts",
 		"/api/tasks",
 		"/api/briefing",
 		"/api/notes/random",

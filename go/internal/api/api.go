@@ -99,11 +99,11 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/tags", s.tags)
 	mux.HandleFunc("GET /api/templates", s.listTemplates)
 	mux.HandleFunc("POST /api/templates/apply", s.applyTemplate)
-	mux.HandleFunc("GET /api/settings", s.getSettings)
-	mux.HandleFunc("PUT /api/settings", s.putSettings)
+	mux.HandleFunc("GET /api/settings", s.adminOnly(s.getSettings))
+	mux.HandleFunc("PUT /api/settings", s.adminOnly(s.putSettings))
 	mux.HandleFunc("GET /api/daily", s.daily)
 	mux.HandleFunc("GET /api/daily/dates", s.dailyDates)
-	mux.HandleFunc("POST /api/capture", s.capture)
+	mux.HandleFunc("POST /api/capture", s.userOnly(s.capture))
 	mux.HandleFunc("GET /api/facts", s.facts)
 	mux.HandleFunc("POST /api/tags/rename", s.renameTag)
 	mux.HandleFunc("GET /api/graph", s.graph)
@@ -117,7 +117,13 @@ func (s *Server) Routes() http.Handler {
 	// from it acts with the instance's authority rather than the caller's.
 	// Brokering is deliberately NOT admin-gated — the grant token is itself
 	// the capability, which is the whole point of handing one to an agent.
-	mux.HandleFunc("GET /api/vault/status", s.vaultStatus)
+	// Deliberately NOT adminOnly: the console shows the padlock as an
+	// indicator on every load, and gating it behind the admin token gives a
+	// lock that reports an error instead of a state (see adminSurface). It
+	// still needs a principal, so an anonymous caller on a multi-user instance
+	// learns nothing — and a single-user deployment, where everyone is
+	// unrestricted, is unaffected.
+	mux.HandleFunc("GET /api/vault/status", s.userOnly(s.vaultStatus))
 	mux.HandleFunc("POST /api/vault/init", s.adminOnly(s.vaultInit))
 	mux.HandleFunc("POST /api/vault/unlock", s.adminOnly(s.vaultUnlock))
 	mux.HandleFunc("POST /api/vault/lock", s.adminOnly(s.vaultLock))
@@ -132,14 +138,14 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/audit", s.adminOnly(s.auditLog))
 	mux.HandleFunc("POST /api/attach", s.attach)
 	mux.HandleFunc("GET /api/file/{path...}", s.serveFile)
-	mux.HandleFunc("GET /api/canvas", s.listCanvases)
-	mux.HandleFunc("POST /api/canvas", s.createCanvas)
+	mux.HandleFunc("GET /api/canvas", s.userOnly(s.listCanvases))
+	mux.HandleFunc("POST /api/canvas", s.userOnly(s.createCanvas))
 	mux.HandleFunc("GET /api/canvas/{path...}", s.getCanvas)
 	mux.HandleFunc("PUT /api/canvas/{path...}", s.putCanvas)
 	mux.HandleFunc("DELETE /api/canvas/{path...}", s.deleteCanvas)
 	mux.HandleFunc("GET /api/crdt/doc/{path...}", s.getCRDTDoc)
 	mux.HandleFunc("POST /api/crdt/merge", s.mergeCRDT)
-	mux.HandleFunc("GET /api/sync/status", s.syncStatus)
+	mux.HandleFunc("GET /api/sync/status", s.userOnly(s.syncStatus))
 	mux.HandleFunc("GET /api/sync/manifest", s.syncManifest)
 	mux.HandleFunc("GET /api/export/vault", s.exportVault)
 	mux.HandleFunc("POST /api/import/vault", s.importVault)
@@ -149,22 +155,22 @@ func (s *Server) Routes() http.Handler {
 	// Scaffolding one writes JavaScript into the vault that everyone will then
 	// execute, so on a multi-user instance an ungated scaffold is a member
 	// running code as the administrator.
-	mux.HandleFunc("GET /api/plugins", s.listPlugins)
+	mux.HandleFunc("GET /api/plugins", s.userOnly(s.listPlugins))
 	mux.HandleFunc("POST /api/plugins/scaffold", s.adminOnly(s.scaffoldPlugin))
 	mux.HandleFunc("POST /api/plugins/{name}/enable", s.adminOnly(s.enablePlugin))
 	mux.HandleFunc("GET /plugins/{name}/{rel...}", s.servePluginAsset)
 	mux.HandleFunc("POST /api/query", s.runQuery)
 	mux.HandleFunc("GET /api/trash", s.listTrash)
 	mux.HandleFunc("POST /api/trash/{tid}/restore", s.restoreTrash)
-	mux.HandleFunc("DELETE /api/trash/{tid}", s.purgeTrash)
+	mux.HandleFunc("DELETE /api/trash/{tid}", s.userOnly(s.purgeTrash))
 	mux.HandleFunc("POST /api/templates", s.saveTemplate)
 	mux.HandleFunc("POST /api/ask", s.ask)
-	mux.HandleFunc("POST /api/actions", s.actions)
+	mux.HandleFunc("POST /api/actions", s.userOnly(s.actions))
 	mux.HandleFunc("POST /api/sync/now", s.syncNow)
 	mux.HandleFunc("POST /api/sync/pull", s.syncPull)
 	mux.HandleFunc("POST /api/sync/push", s.syncPush)
 	mux.HandleFunc("POST /api/facts", s.setFact)
-	mux.HandleFunc("POST /api/memory/consolidate", s.consolidateMemory)
+	mux.HandleFunc("POST /api/memory/consolidate", s.userOnly(s.consolidateMemory))
 	mux.HandleFunc("POST /api/audio", s.audioMemo)
 	mux.HandleFunc("POST /api/vault/change-passphrase", s.changePassphrase)
 	mux.HandleFunc("GET /notes/{path...}", s.noteGet)
@@ -345,13 +351,40 @@ func (s *Server) reindex(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]int{"indexed": n})
 }
 
-func (s *Server) aliases(w http.ResponseWriter, _ *http.Request) {
-	m, err := s.Index.AliasMap()
+// aliases maps every alias this caller may follow to its note.
+//
+// It took the request as `_`, which is the same one-character tell the trash
+// listing had: a handler that never looks at who is asking cannot be
+// filtering. An alias is usually the note's human title, so the map handed
+// anyone a readable index of every restricted document in the vault, path
+// included.
+func (s *Server) aliases(w http.ResponseWriter, r *http.Request) {
+	where, args := s.whereReadable(r, "space", "acl", "")
+	rows, err := s.Index.DB.Query(
+		"SELECT path, frontmatter_json FROM notes"+where, args...)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, m)
+	defer rows.Close()
+	out := map[string]string{}
+	for rows.Next() {
+		var path, fm string
+		if err := rows.Scan(&path, &fm); err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		for _, a := range index.AliasesOf(fm) {
+			if _, taken := out[strings.ToLower(a)]; !taken {
+				out[strings.ToLower(a)] = path
+			}
+		}
+	}
+	if err := rows.Err(); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 type listItem struct {
@@ -697,7 +730,7 @@ func (s *Server) retrieve(w http.ResponseWriter, r *http.Request) {
 func (s *Server) tags(w http.ResponseWriter, r *http.Request) {
 	// Tag counts are computed over readable notes only: a count that includes
 	// notes the caller cannot open tells them those notes exist.
-	where, args := s.whereSpace(r, "n.space", "")
+	where, args := s.whereReadable(r, "n.space", "n.acl", "")
 	rows, err := s.Index.DB.Query(
 		"SELECT t.tag, COUNT(*) c FROM tags t JOIN notes n ON n.path=t.note"+where+
 			" GROUP BY t.tag ORDER BY c DESC, t.tag", args...)

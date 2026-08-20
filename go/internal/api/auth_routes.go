@@ -36,10 +36,10 @@ func (s *Server) authRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/identities", s.adminOnly(s.mapIdentity))
 	mux.HandleFunc("DELETE /api/identities/{source}/{external}", s.adminOnly(s.unmapIdentity))
 
-	mux.HandleFunc("GET /api/spaces", s.listSpaces)
+	mux.HandleFunc("GET /api/spaces", s.userOnly(s.listSpaces))
 	mux.HandleFunc("POST /api/spaces", s.createSpace)
 	mux.HandleFunc("DELETE /api/spaces/{id}", s.deleteSpace)
-	mux.HandleFunc("GET /api/spaces/{id}/members", s.listMembers)
+	mux.HandleFunc("GET /api/spaces/{id}/members", s.userOnly(s.listMembers))
 	mux.HandleFunc("POST /api/spaces/{id}/members", s.addMember)
 	mux.HandleFunc("DELETE /api/spaces/{id}/members/{user}", s.removeMember)
 }

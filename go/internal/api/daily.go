@@ -59,8 +59,15 @@ func (s *Server) ensureDaily(date string) (string, *vault.Note, error) {
 }
 
 // dailyDates lists which dates already have a daily note, for the calendar view.
-func (s *Server) dailyDates(w http.ResponseWriter, _ *http.Request) {
-	rows, err := s.Index.DB.Query("SELECT path FROM notes WHERE path LIKE ?", s.DailyDir+"/%")
+// dailyDates lists the days this caller has a journal entry for.
+//
+// Filtered in SQL rather than in the loop: the reader-list lookup canRead does
+// is a query, and a query issued while this cursor is open waits for the one
+// connection the cursor holds.
+func (s *Server) dailyDates(w http.ResponseWriter, r *http.Request) {
+	where, args := s.whereReadable(r, "space", "acl", " WHERE path LIKE ?")
+	rows, err := s.Index.DB.Query("SELECT path FROM notes"+where,
+		append([]any{s.DailyDir + "/%"}, args...)...)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -114,6 +121,11 @@ func (s *Server) capture(w http.ResponseWriter, r *http.Request) {
 		title = "capture " + stamp
 	}
 	rel := fmt.Sprintf("%s/%s-%s.md", s.InboxDir, stamp, vault.Slugify(title))
+	// The inbox is the commons by default, but a space is any path prefix —
+	// so whether this caller may write there is a question, not a given.
+	if !s.requireWrite(w, r, rel) {
+		return
+	}
 
 	body := c.Text
 	if c.URL != "" {

@@ -34,6 +34,12 @@ func (s *Server) setFact(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "note, key and value are required")
 		return
 	}
+	// Setting a fact edits the note's text, so it is a write to THAT note —
+	// which arrives as a path in the body rather than in the URL, and was
+	// therefore checked by nothing at all.
+	if !s.requireWrite(w, r, normPath(rel)) {
+		return
+	}
 	note, err := s.Vault.Read(rel)
 	if err != nil {
 		writeErr(w, http.StatusNotFound, "no such note")
@@ -83,14 +89,27 @@ func (s *Server) consolidateMemory(w http.ResponseWriter, r *http.Request) {
 
 	var rels []string
 	switch {
+	// A caller who NAMES a note gets an answer about that note: refused if
+	// they may not write it, rather than a cheerful "changed nothing" that
+	// reads the same as "there was nothing to change".
 	case strings.TrimSpace(in.Path) != "":
 		rels = []string{strings.TrimSpace(in.Path)}
+		if !s.requireWrite(w, r, normPath(rels[0])) {
+			return
+		}
 	case strings.TrimSpace(in.Topic) != "":
 		rels = []string{s.memoryRel(in.Topic)}
+		if !s.requireWrite(w, r, normPath(rels[0])) {
+			return
+		}
 	default:
+		// "All memory notes" means all the ones this caller may write. It used
+		// to mean all of them, so consolidating rewrote other members' memory
+		// and handed back what it had changed.
+		where, args := s.whereReadable(r, "space", "acl", " WHERE path LIKE ?")
 		rows, err := s.Index.DB.Query(
-			"SELECT path FROM notes WHERE path LIKE ? ORDER BY updated DESC",
-			MemoryDir+"/%")
+			"SELECT path FROM notes"+where+" ORDER BY updated DESC",
+			append([]any{MemoryDir + "/%"}, args...)...)
 		if err != nil {
 			writeErr(w, http.StatusInternalServerError, err.Error())
 			return
@@ -110,6 +129,11 @@ func (s *Server) consolidateMemory(w http.ResponseWriter, r *http.Request) {
 
 	out := []map[string]any{}
 	for _, rel := range rels {
+		// The explicit path and topic forms come straight from the caller, and
+		// every form of this rewrites what it reads.
+		if !s.canWrite(r, normPath(rel)) {
+			continue
+		}
 		note, err := s.Vault.Read(rel)
 		if err != nil || note.Encrypted {
 			continue

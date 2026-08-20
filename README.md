@@ -429,6 +429,18 @@ the same reasoning the secret vault has always applied to passphrases.
 `GRIMOIRE_TRUST_PROXY=1`, because honouring an unverified forwarded address lets
 anyone mint a fresh identity per request and walk through every limit.
 
+Every route carries an access class checked by a test that reads them out of the
+source, and a second test drives the real mux with no credentials and requires
+each non-public one to refuse. That pair replaced a habit with a build error
+after a manual sweep missed routes six separate times; the enforcement half then
+found eleven more, including `PUT /api/settings`, which let anyone repoint this
+instance's model endpoint at a server of their choosing. Reviewing what those
+tests could NOT see found the rest: listings that answered from notes without
+returning one (the alias map, tag counts, agent memory, the canvas index), and
+routes that took a note path in the BODY rather than the URL — applying a
+template copied any note's text into one the caller owned, and setting a fact
+edited any note at all.
+
 On a multi-user instance: sessions and API keys are stored hashed, passwords are
 Argon2id, access is by space, and administrators can read every space — that is
 a deliberate simplification, stated here rather than discovered later, because
@@ -483,7 +495,11 @@ Stated here rather than discovered later:
 - **Source permissions are mirrored, not synced.** Two mechanisms narrow the
   gap. Routing sends a source's own structure to different folders (`route_by` /
   `route_map`: a Confluence space, a Slack channel, a Jira project each into
-  their own space). And a document can carry a **reader list**: Slack's
+  their own space). Writing requires being able to read: a reader list narrows
+  reads only, so without that rule a document mirrored from a private channel
+  into the commons was writable by every member and visible to none — access
+  you cannot see through is clobber-only. And a document can carry a
+  **reader list**: Slack's
   `mirror_members` restricts each pulled conversation to that channel's members,
   mapped to accounts through an explicit identity table, and a member with no
   mapped account cannot read it — the safe direction. A reader list can only

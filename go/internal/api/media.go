@@ -234,13 +234,21 @@ func (s *Server) createCanvas(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, map[string]string{"path": rel, "name": slug})
 }
 
-func (s *Server) listCanvases(w http.ResponseWriter, _ *http.Request) {
+// listCanvases shows the boards this caller may open.
+//
+// It walked the whole vault and took its request as `_` — the third handler in
+// this package to announce the same bug the same way. A board's path and name
+// are as telling as a note's.
+func (s *Server) listCanvases(w http.ResponseWriter, r *http.Request) {
 	out := []map[string]string{}
 	err := filepath.WalkDir(s.Vault.Root, func(path string, d os.DirEntry, err error) error {
 		if err != nil || d.IsDir() || !strings.HasSuffix(d.Name(), ".canvas") {
 			return nil
 		}
 		if rel, err := s.Vault.RelOf(path); err == nil && !strings.Contains(rel, ".grimoire") {
+			if !s.canRead(r, normPath(rel)) {
+				return nil
+			}
 			out = append(out, map[string]string{
 				"path": rel, "name": strings.TrimSuffix(d.Name(), ".canvas")})
 		}
@@ -254,9 +262,14 @@ func (s *Server) listCanvases(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (s *Server) getCanvas(w http.ResponseWriter, r *http.Request) {
-	_, p, err := s.canvasPath(r.PathValue("path"))
+	rel, p, err := s.canvasPath(r.PathValue("path"))
 	if err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	// A canvas is a file in the vault like any other, so it answers to the
+	// space it sits in. Reading one used to skip that entirely.
+	if !s.requireRead(w, r, normPath(rel)) {
 		return
 	}
 	raw, err := os.ReadFile(p)
@@ -269,7 +282,6 @@ func (s *Server) getCanvas(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	rel, _, _ := s.canvasPath(r.PathValue("path"))
 	doc["path"] = rel
 	writeJSON(w, http.StatusOK, doc)
 }
@@ -278,6 +290,9 @@ func (s *Server) putCanvas(w http.ResponseWriter, r *http.Request) {
 	rel, p, err := s.canvasPath(r.PathValue("path"))
 	if err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if !s.requireWrite(w, r, normPath(rel)) {
 		return
 	}
 	raw, err := io.ReadAll(io.LimitReader(r.Body, MaxCanvasBytes+1))
@@ -312,9 +327,12 @@ func (s *Server) putCanvas(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) deleteCanvas(w http.ResponseWriter, r *http.Request) {
-	_, p, err := s.canvasPath(r.PathValue("path"))
+	rel, p, err := s.canvasPath(r.PathValue("path"))
 	if err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if !s.requireWrite(w, r, normPath(rel)) {
 		return
 	}
 	if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
