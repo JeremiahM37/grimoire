@@ -212,6 +212,29 @@ func str(args map[string]any, key string) string {
 	return ""
 }
 
+// strList reads a list argument, tolerating a single string — several MCP
+// clients send one when the list has one element.
+func strList(args map[string]any, key string) []string {
+	switch v := args[key].(type) {
+	case []any:
+		out := make([]string, 0, len(v))
+		for _, item := range v {
+			if s, ok := item.(string); ok && strings.TrimSpace(s) != "" {
+				out = append(out, s)
+			}
+		}
+		return out
+	case []string:
+		return v
+	case string:
+		if strings.TrimSpace(v) == "" {
+			return nil
+		}
+		return []string{v}
+	}
+	return nil
+}
+
 func num(args map[string]any, key string, def int) int {
 	if v, ok := args[key].(float64); ok {
 		return int(v)
@@ -239,6 +262,17 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 		q.Set("q", str(args, "question"))
 		q.Set("k", fmt.Sprint(num(args, "k", 8)))
 		return s.api("GET", "/api/retrieve?"+q.Encode(), nil)
+	case "search_web":
+		q := url.Values{}
+		q.Set("q", str(args, "query"))
+		q.Set("n", fmt.Sprint(num(args, "n", 5)))
+		return s.api("GET", "/api/web/search?"+q.Encode(), nil)
+	case "open_urls":
+		body := map[string]any{"urls": strList(args, "urls")}
+		if n := num(args, "max_chars", 0); n > 0 {
+			body["max_chars"] = n
+		}
+		return s.api("POST", "/api/web/fetch", body)
 	case "read_note":
 		return s.api("GET", "/api/notes/"+str(args, "path"), nil)
 	case "list_notes":

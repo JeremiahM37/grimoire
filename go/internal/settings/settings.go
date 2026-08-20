@@ -37,6 +37,13 @@ var Fields = map[string]Field{
 	"local_embed":       {"GRIMOIRE_LOCAL_EMBED", "auto"},
 	"local_embed_model": {"GRIMOIRE_LOCAL_EMBED_MODEL", "minishlab/potion-base-8M"},
 	"whisper_url":       {"GRIMOIRE_WHISPER_URL", ""},
+	// Web search. The key may name a vault credential ("vault:brave-key")
+	// rather than being one, so a search key does not have to sit in a
+	// settings file that gets copied around.
+	"web_search_provider": {"GRIMOIRE_WEB_SEARCH_PROVIDER", ""}, // searxng|brave|serper|google
+	"web_search_url":      {"GRIMOIRE_WEB_SEARCH_URL", ""},      // searxng only
+	"web_search_key":      {"GRIMOIRE_WEB_SEARCH_KEY", ""},
+	"web_search_cx":       {"GRIMOIRE_WEB_SEARCH_CX", ""}, // google programmable search id
 }
 
 // Store reads and writes the settings file.

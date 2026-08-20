@@ -217,6 +217,11 @@ func (s *Server) ask(w http.ResponseWriter, r *http.Request) {
 		K              int    `json:"k"`
 		IncludePrivate bool   `json:"include_private"`
 		Smart          *bool  `json:"smart"`
+		// Web opts one question into a web pass. Off by default: a context
+		// server answers from your notes unless you ask otherwise, and a
+		// question that silently reaches the internet is a surprise nobody
+		// wants from their own vault.
+		Web bool `json:"web"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 		writeErr(w, http.StatusBadRequest, "invalid json")
@@ -261,6 +266,16 @@ func (s *Server) ask(w http.ResponseWriter, r *http.Request) {
 	contexts := make([]ai.Context, 0, len(hits))
 	for _, h := range hits {
 		contexts = append(contexts, ai.Context{Path: h.Path, Title: h.Title, Chunk: h.Chunk})
+	}
+	if in.Web {
+		// Web passages are appended and cited like any other, so the answer
+		// shows which parts came from outside the vault.
+		for _, p := range s.webContext(r, q, 3) {
+			contexts = append(contexts, ai.Context{
+				Path: p["path"].(string), Title: p["title"].(string), Chunk: p["chunk"].(string)})
+			citations = append(citations, map[string]any{
+				"path": p["path"], "title": p["title"], "web": true})
+		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"answer": s.AI.Answer(q, contexts), "citations": citations, "mode": mode})
