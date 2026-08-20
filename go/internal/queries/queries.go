@@ -14,9 +14,11 @@
 package queries
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/JeremiahM37/grimoire/go/internal/fts"
 
@@ -66,6 +68,14 @@ type Spec struct {
 	Section *string
 	Level   int
 
+	// Where filters on frontmatter properties — the fields people actually
+	// keep structured data in. Several lines AND together.
+	Where []PropertyFilter
+	// Formulas are computed columns, evaluated per row after the query.
+	Formulas []Formula
+	// GroupBy buckets the rows by a column's value.
+	GroupBy string
+
 	Sort     string
 	SortDesc bool
 	Limit    int
@@ -84,6 +94,18 @@ type Result struct {
 	Rows    []map[string]any `json:"rows"`
 	Count   int              `json:"count"`
 	Errors  []string         `json:"errors"`
+	// GroupBy and Groups are set when the block asked for grouping. Rows is
+	// still every row, in group order, so a renderer that knows nothing about
+	// groups keeps working.
+	GroupBy string  `json:"group_by,omitempty"`
+	Groups  []Group `json:"groups,omitempty"`
+}
+
+// Group is one bucket of rows.
+type Group struct {
+	Value string           `json:"value"`
+	Rows  []map[string]any `json:"rows"`
+	Count int              `json:"count"`
 }
 
 // Parse reads the text inside a ```query fence.
@@ -129,6 +151,27 @@ func Parse(block string) *Spec {
 				break
 			}
 			spec.Level = n
+		case "where", "property":
+			f, err := parseWhere(val)
+			if err != nil {
+				spec.Errors = append(spec.Errors, err.Error())
+				break
+			}
+			spec.Where = append(spec.Where, f)
+		case "formula":
+			f, err := parseFormula(val)
+			if err != nil {
+				spec.Errors = append(spec.Errors, err.Error())
+				break
+			}
+			spec.Formulas = append(spec.Formulas, f)
+		case "group_by":
+			if !propertyKeyRE.MatchString(val) {
+				spec.Errors = append(spec.Errors,
+					fmt.Sprintf("'%s' is not a column name", val))
+				break
+			}
+			spec.GroupBy = val
 		case "tag":
 			v := strings.TrimPrefix(val, "#")
 			spec.Tag = &v
@@ -188,7 +231,11 @@ func Parse(block string) *Spec {
 				if c == "" {
 					continue
 				}
-				if !columnsAllowed[c] && !blockColumns[c] {
+				// An unrecognised column is read as a frontmatter property
+				// or a formula rather than refused: that is the whole point
+				// of a database view over notes, and the name never becomes
+				// SQL — it is a lookup on a row already fetched.
+				if !columnsAllowed[c] && !blockColumns[c] && !propertyKeyRE.MatchString(c) {
 					bad = append(bad, c)
 					continue
 				}
@@ -224,6 +271,11 @@ func (s *Spec) finish(setColumns, setSort bool) {
 		}
 		return
 	}
+	// A line has no frontmatter of its own, so a property filter against one
+	// would match nothing forever and look like a query with no results.
+	if len(s.Where) > 0 {
+		s.Errors = append(s.Errors, "'where' filters note properties, not lines")
+	}
 	if s.Checked != nil && s.From != "tasks" {
 		s.Errors = append(s.Errors, "'checked' only applies to 'from: tasks'")
 	}
@@ -240,10 +292,19 @@ func (s *Spec) finish(setColumns, setSort bool) {
 			"cannot sort lines by '%s' (use note|line|text|level)", s.Sort))
 	}
 	for _, c := range s.Columns {
-		if !blockColumns[c] {
+		if !blockColumns[c] && !s.hasFormula(c) {
 			s.Errors = append(s.Errors, fmt.Sprintf("lines have no column '%s'", c))
 		}
 	}
+}
+
+func (s *Spec) hasFormula(name string) bool {
+	for _, f := range s.Formulas {
+		if f.Name == name {
+			return true
+		}
+	}
+	return false
 }
 
 func truthy(v string) bool {
@@ -393,12 +454,20 @@ func executeNotes(database *db.DB, spec *Spec, includePrivate bool) ([]map[strin
 		where = append(where, "n.path IN (SELECT path FROM fts WHERE fts MATCH ?)")
 		params = append(params, fts.Phrase(*spec.Text))
 	}
+	// Property filters run in SQL, through json_extract over the frontmatter
+	// the index already stores verbatim — so the LIMIT still means something
+	// rather than being applied to a set that was sifted afterwards.
+	for _, f := range spec.Where {
+		clause, args := f.sql("n.frontmatter_json")
+		where = append(where, clause)
+		params = append(params, args...)
+	}
 
 	dir := "DESC"
 	if !spec.SortDesc {
 		dir = "ASC"
 	}
-	sql := "SELECT n.path, n.title, n.updated, n.created FROM notes n "
+	sql := "SELECT n.path, n.title, n.updated, n.created, n.frontmatter_json FROM notes n "
 	if len(where) > 0 {
 		sql += "WHERE " + strings.Join(where, " AND ")
 	}
@@ -414,12 +483,21 @@ func executeNotes(database *db.DB, spec *Spec, includePrivate bool) ([]map[strin
 
 	out := []map[string]any{}
 	for rows.Next() {
-		var path, title, updated, created string
-		if err := rows.Scan(&path, &title, &updated, &created); err != nil {
+		var path, title, updated, created, fmJSON string
+		if err := rows.Scan(&path, &title, &updated, &created, &fmJSON); err != nil {
 			return nil, err
 		}
-		out = append(out, map[string]any{
-			"path": path, "title": title, "updated": updated, "created": created})
+		row := map[string]any{
+			"path": path, "title": title, "updated": updated, "created": created}
+		// Frontmatter fields become columns by name. Built-ins win a collision
+		// — a note with a "path" property must not be able to move itself in
+		// a listing, and the access filter reads that field.
+		for key, value := range properties(fmJSON) {
+			if _, taken := row[key]; !taken {
+				row[key] = value
+			}
+		}
+		out = append(out, row)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -466,10 +544,87 @@ func Run(database *db.DB, block string, includePrivate bool) *Result {
 			spec.Errors = append(spec.Errors, err.Error())
 		}
 	}
-	return &Result{
+	// Formulas are computed after the query rather than in SQL: they are a
+	// display concern, and keeping them out of the statement is what lets the
+	// function list be a whitelist instead of an expression language.
+	now := Now()
+	for _, f := range spec.Formulas {
+		for _, row := range rows {
+			row[f.Name] = f.Apply(row, now)
+		}
+	}
+	res := &Result{
 		Render: spec.Render, Columns: spec.Columns,
 		Rows: rows, Count: len(rows), Errors: spec.Errors,
 	}
+	if spec.GroupBy != "" {
+		res.GroupBy = spec.GroupBy
+		res.Groups = group(rows, spec.GroupBy)
+	}
+	return res
+}
+
+// Now is the clock formulas are computed against. A variable so a test can
+// pin it — "days since" is otherwise untestable without waiting.
+var Now = func() time.Time { return time.Now() }
+
+// group buckets rows by a column, preserving the order they arrived in both
+// between groups and inside them. Rows with no value for the column land in
+// one bucket at the end rather than being dropped: a note missing the field
+// is exactly what someone grouping by it is usually looking for.
+func group(rows []map[string]any, by string) []Group {
+	order := []string{}
+	buckets := map[string][]map[string]any{}
+	for _, row := range rows {
+		key := asText(row[by])
+		if _, seen := buckets[key]; !seen {
+			order = append(order, key)
+		}
+		buckets[key] = append(buckets[key], row)
+	}
+	// The empty bucket goes last wherever it first appeared.
+	sortStable(order, func(a, b string) bool { return a != "" && b == "" })
+	out := make([]Group, 0, len(order))
+	for _, key := range order {
+		out = append(out, Group{Value: key, Rows: buckets[key], Count: len(buckets[key])})
+	}
+	return out
+}
+
+func sortStable(items []string, less func(a, b string) bool) {
+	for i := 1; i < len(items); i++ {
+		for j := i; j > 0 && less(items[j], items[j-1]); j-- {
+			items[j], items[j-1] = items[j-1], items[j]
+		}
+	}
+}
+
+// properties decodes the frontmatter the index stored, flattening a list to
+// a comma-joined string so it can sit in a table cell.
+func properties(fmJSON string) map[string]any {
+	if strings.TrimSpace(fmJSON) == "" {
+		return nil
+	}
+	var parsed map[string]any
+	if err := json.Unmarshal([]byte(fmJSON), &parsed); err != nil {
+		return nil
+	}
+	out := make(map[string]any, len(parsed))
+	for key, value := range parsed {
+		if !propertyKeyRE.MatchString(key) {
+			continue
+		}
+		if list, ok := value.([]any); ok {
+			parts := make([]string, 0, len(list))
+			for _, item := range list {
+				parts = append(parts, asText(item))
+			}
+			out[key] = strings.Join(parts, ", ")
+			continue
+		}
+		out[key] = value
+	}
+	return out
 }
 
 // likeEscape neutralizes LIKE metacharacters so a search for "50%" matches
