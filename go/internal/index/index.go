@@ -231,6 +231,9 @@ func (ix *Index) removeRows(rel string) error {
 	if err := ix.dropFTS(rel); err != nil {
 		return err
 	}
+	if err := ix.deleteMemoryRows(rel); err != nil {
+		return err
+	}
 	ix.patchNote(rel)
 	return nil
 }
@@ -306,6 +309,10 @@ func (ix *Index) writeNoteRows(note *vault.Note) error {
 				return err
 			}
 		}
+	}
+	// Agent memory is indexed a second time, bullet by bullet; see memory.go.
+	if err := ix.writeMemoryRows(note); err != nil {
+		return err
 	}
 	// The retrieval cache is patched with this note's rows rather than thrown
 	// away. Discarding it makes the next query rebuild the whole corpus —

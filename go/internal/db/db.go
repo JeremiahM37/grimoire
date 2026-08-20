@@ -66,6 +66,33 @@ CREATE INDEX IF NOT EXISTS idx_vectors_note ON vectors(note);
 -- both copies of a note stay searchable — which showed up as an encrypted
 -- note's plaintext still answering a search.
 CREATE TABLE IF NOT EXISTS fts_map(rid INTEGER PRIMARY KEY, path TEXT NOT NULL UNIQUE);
+-- Agent memory, one row per remembered fact rather than per note. A memory
+-- note accumulates dozens of unrelated facts, so ranking it as one document
+-- blurs every one of them; reconciling a new fact against an old one needs to
+-- address the old one; and scoping memory to an agent or a session is a
+-- property of the fact, not of the file. Derived from the markdown bullets
+-- like every other table here — drop it and a reindex rebuilds it.
+CREATE TABLE IF NOT EXISTS memory_entries(
+  id TEXT NOT NULL, note TEXT NOT NULL, text TEXT NOT NULL,
+  agent TEXT NOT NULL DEFAULT '', task TEXT NOT NULL DEFAULT '',
+  session TEXT NOT NULL DEFAULT '', stamp TEXT NOT NULL DEFAULT '',
+  category TEXT NOT NULL DEFAULT '', expires TEXT NOT NULL DEFAULT '',
+  immutable INTEGER NOT NULL DEFAULT 0, superseded_by TEXT NOT NULL DEFAULT '',
+  superseded_at TEXT NOT NULL DEFAULT '',
+  line INTEGER NOT NULL DEFAULT 0, embedding BLOB,
+  space TEXT NOT NULL DEFAULT 'commons', acl TEXT NOT NULL DEFAULT '',
+  private INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY(note, id)
+);
+CREATE INDEX IF NOT EXISTS idx_memory_entries_id ON memory_entries(id);
+CREATE INDEX IF NOT EXISTS idx_memory_entries_session ON memory_entries(session);
+CREATE INDEX IF NOT EXISTS idx_memory_entries_agent ON memory_entries(agent);
+CREATE INDEX IF NOT EXISTS idx_memory_entries_category ON memory_entries(category);
+CREATE TABLE IF NOT EXISTS memory_entities(
+  note TEXT NOT NULL, id TEXT NOT NULL, entity TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_memory_entities_entity ON memory_entities(entity);
+CREATE INDEX IF NOT EXISTS idx_memory_entities_note ON memory_entities(note);
 -- Identity and authorization. A deployment with no rows in users behaves
 -- exactly as the single-user server always did; see internal/auth.
 CREATE TABLE IF NOT EXISTS users(
