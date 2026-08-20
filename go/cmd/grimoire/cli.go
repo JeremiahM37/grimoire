@@ -59,6 +59,24 @@ const usage = `grimoire — local-first AI-native notes
 
 Env: GRIMOIRE_VAULT (default ~/notes)`
 
+// commands is the table that turns a word into a call.
+//
+// A function, not a literal inside runCLI, so a test can compare its keys with
+// the usage text without running anything: `grimoire backup` once shipped in a
+// release as an unreachable function — written, tested by calling it directly,
+// documented in the help — and simply never added here.
+func commands() map[string]func([]string) int {
+	return map[string]func([]string) int{
+		"new": cmdNew, "daily": cmdDaily, "capture": cmdCapture,
+		"search": cmdSearch, "ls": cmdLs, "open": cmdOpen,
+		"reindex": cmdReindex, "ingest": cmdIngest, "seed-demo": cmdSeedDemo,
+		"export": cmdExport, "sync": cmdSync, "agent-setup": cmdAgentSetup,
+		"fetch-model": cmdFetchModel,
+		"user":        cmdUser, "space": cmdSpace,
+		"backup": cmdBackup, "restore": cmdRestore,
+	}
+}
+
 // runCLI handles a subcommand. It reports whether the arguments were a
 // subcommand at all: anything else means "serve", which stays the default so
 // an existing unit file keeps working untouched.
@@ -83,6 +101,7 @@ func runCLI(args []string) (handled bool, code int) {
 		"export": cmdExport, "sync": cmdSync, "agent-setup": cmdAgentSetup,
 		"fetch-model": cmdFetchModel,
 		"user":        cmdUser, "space": cmdSpace,
+		"backup": cmdBackup, "restore": cmdRestore,
 	}
 	fn, ok := cmds[args[0]]
 	if !ok {
