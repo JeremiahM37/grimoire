@@ -110,9 +110,9 @@ def test_retrieval_still_finds_the_evidence(server, capsys):
         "mrr": sum(1 / r for r in ranks if r) / len(ranks),
     }
     with capsys.disabled():
-        print("\n  measured        floor")
+        print("\n                 measured   floor")
         for name, value in measured.items():
-            print(f"  {name:<14} {FLOORS[name]:.2f}   {value:.3f}")
+            print(f"  {name:<14} {value:8.3f}   {FLOORS[name]:.2f}")
         for row in rows:
             if not 0 < row["rank"] <= 5:
                 print(f"  MISS  {row['q']!r} -> {row['got']}, wanted {row['expect']}")
