@@ -233,10 +233,11 @@ grimoire remember "never touch prod" --immutable        # reconciliation can nev
 grimoire recall --session run-42                        # what that run learned
 ```
 
-**Clients**: [Python](clients/python) and [JS/TypeScript](clients/js), both
-dependency-free, with mem0-compatible method names so switching is an import
-change. The Python one also ships a LangGraph `BaseStore`, so cross-thread
-agent memory lands in markdown files you can open. And the CLI runs the same
+**Clients and adapters**: [Python](clients/python) and
+[JS/TypeScript](clients/js), both dependency-free, with mem0-compatible method
+names so switching is an import change. On top of them: a LangGraph
+`BaseStore`, a CrewAI storage backend, and a Vercel AI SDK tool set — each
+tested against the real framework rather than a stub. And the CLI runs the same
 handlers in process, so none of it needs a server to be up.
 
 **Scoped reconciliation**: by default a write may supersede anything you can
@@ -244,9 +245,20 @@ read, because for one person's memory a belief contradicted in another note is
 still contradicted. `scope: topic | session | agent` confines it — which is what
 a store handing each user a namespace needs.
 
-Where the dedicated memory layers are still ahead: a queryable entity graph
-(Zep and Cognee lead), a feedback signal on a recalled fact, and adapters for
-frameworks other than LangGraph.
+**The entity graph** is navigable, not just a ranking signal: ask what memory
+knows about a name and get the connected entities, the edges between them, and
+the facts that made each edge — so a connection can be read rather than
+trusted.
+
+```bash
+curl 'localhost:9111/api/memory/graph?entity=priya&depth=2'
+```
+
+**Feedback** (`POST /api/memory/feedback`) changes ranking rather than being
+recorded and ignored, but its effect is bounded: it reorders facts that already
+rank close and cannot bury one that is the only answer to some other question.
+It writes to the note the fact lives in, so the spaces and reader lists that
+govern everything else govern who may vote.
 
 ## Credentials your agent can use but never read
 
