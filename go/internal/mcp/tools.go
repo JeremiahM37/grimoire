@@ -153,21 +153,60 @@ func Tools() []tool {
 			Name: "remember",
 			Description: "Persist something future agents will need — a root cause, a " +
 				"convention you had to discover, a gotcha. Memories are ordinary notes the " +
-				"human can read, edit and roll back. Use `topic` to group related memories.",
+				"human can read, edit and roll back. Use `topic` to group related memories.\n" +
+				"Writes RECONCILE: if this contradicts something already recorded, the old " +
+				"belief is superseded rather than left to compete with this one, and if it " +
+				"is already recorded nothing is written. The reply says which happened " +
+				"(op: ADD / UPDATE / DELETE / NOOP), so report a correction plainly — " +
+				"'the user prefers tabs now' — rather than hedging it into a new fact.",
 			InputSchema: obj(map[string]any{
-				"text":  strProp("what to remember"),
-				"topic": strProp("optional grouping, e.g. 'deploy'"),
-				"task":  strProp("optional origin: ticket id, session, url"),
+				"text":     strProp("what to remember"),
+				"topic":    strProp("optional grouping, e.g. 'deploy'"),
+				"task":     strProp("optional origin: ticket id, session, url"),
+				"session":  strProp("optional run/conversation id, so this run's learnings can be recalled together"),
+				"category": strProp("optional bucket, e.g. 'preference', 'gotcha', 'ownership'"),
+				"expires_in": strProp("optional time-to-live, e.g. '72h' — for something " +
+					"true only for now, so it stops being recalled instead of going stale"),
+				"immutable": map[string]any{"type": "boolean",
+					"description": "pin this fact: reconciliation may never supersede or retract it"},
 			}, "text"),
 		},
 		{
 			Name: "recall",
 			Description: "Search what previous agents recorded. Check this before " +
-				"re-deriving anything that smells like it was learned the hard way.",
+				"re-deriving anything that smells like it was learned the hard way.\n" +
+				"Returns individual facts, newest-relevant first, and only what is " +
+				"currently believed — superseded and expired facts are left out unless you " +
+				"ask for them.",
 			InputSchema: obj(map[string]any{
-				"query": strProp("what you are trying to remember"),
-				"limit": intProp("max memories (default 10)"),
+				"query":    strProp("what you are trying to remember"),
+				"limit":    intProp("max facts (default 10)"),
+				"agent":    strProp("optional: only what this agent recorded"),
+				"session":  strProp("optional: only what was learned in this run"),
+				"category": strProp("optional: only this bucket"),
+				"include_superseded": map[string]any{"type": "boolean",
+					"description": "also return beliefs that were later replaced, and what replaced them"},
+				"explain": map[string]any{"type": "boolean",
+					"description": "include why each fact ranked where it did"},
 			}),
+		},
+		{
+			Name: "forget",
+			Description: "Retract one recorded fact by id (ids come from recall). The fact " +
+				"stops being recalled but stays in the note, struck through, so the human " +
+				"can see what was believed and undo this. Use it when a fact is WRONG — " +
+				"not when it is merely old, which remember handles by superseding.",
+			InputSchema: obj(map[string]any{
+				"id":   strProp("the fact's id, from recall"),
+				"path": strProp("the note it lives in, from recall"),
+			}, "id", "path"),
+		},
+		{
+			Name: "memory_scopes",
+			Description: "List the agents, sessions and categories that memory has been " +
+				"recorded under, with counts. Use it to find the right scope to recall " +
+				"from when you do not remember what a previous run was called.",
+			InputSchema: obj(map[string]any{}),
 		},
 		{
 			Name: "list_grants",

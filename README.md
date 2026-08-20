@@ -48,9 +48,13 @@ agent ──MCP──►  knowledge (your markdown)  retrieval (RAG + citations)
   response. The key never enters its context, so it cannot be logged,
   memorised, or extracted by a prompt injection — and revoking access is one
   row, not a key rotation. [How it works ↓](#credentials-your-agent-can-use-but-never-read)
-- **Agent memory** — `remember`/`recall` tools writing to a `memory/` namespace
-  of ordinary notes with provenance (which agent, when, from what task). You
-  read, edit, diff, and **roll back** your agent's memory like any note.
+- **Agent memory** — `remember`/`recall`/`forget` tools writing to a `memory/`
+  namespace of ordinary notes with provenance (which agent, when, from what
+  task). Writes **reconcile**: a fact that contradicts one already on file
+  supersedes it rather than competing with it, and the replaced fact stays in
+  the note, struck through — so you can read, edit, diff and **roll back** your
+  agent's memory like any note, and ask what it believed last month.
+  [How it works ↓](#memory-that-corrects-itself)
 
 None of these four is novel on its own, and the credential half is the least
 novel of all: brokering a secret so an agent can use it without holding it is an
@@ -135,7 +139,7 @@ The agent gets, in one mount:
 | | tools |
 |---|---|
 | **Credentials — use, never read** | **`use_credential`** · **`list_grants`** |
-| **Agent memory** | **`remember`** · **`recall`** · **`consolidate_memory`** |
+| **Agent memory** | **`remember`** · **`recall`** · **`forget`** · **`memory_scopes`** · **`consolidate_memory`** |
 | Knowledge | `search_notes` · `ask_notes` · `read_note` · `list_notes` · `backlinks` · `list_tags` |
 | The web | `search_web` · `open_urls` |
 | Writing | `create_note` · `update_note` · `append_daily` |
@@ -174,6 +178,75 @@ proxy — `GRIMOIRE_MCP_TRANSPORT=http ./grimoire-mcp` serves at
 > lists. Run `grimoire agent-setup` to print the MCP config **plus a
 > CLAUDE.md/AGENTS.md snippet** that tells agents to call `get_briefing` first
 > and consult the KB before assuming project facts.
+
+## Memory that corrects itself
+
+Appending every fact an agent reports is what makes long-lived memory useless:
+"prefers tabs" and "prefers spaces" both end up on file, recall returns
+whichever ranks higher, and the agent acts on a belief you corrected months
+ago. So writes **reconcile**. Every write is split into facts, each fact is
+checked against what is already known, and the reply says what happened:
+
+| the new fact | what happens | `op` |
+|---|---|---|
+| says something new | stored | `ADD` |
+| contradicts one on file | the old one is superseded | `UPDATE` |
+| retracts one on file | the old one is struck through, nothing stored | `DELETE` |
+| is already recorded | nothing is written | `NOOP` |
+
+Rules decide with no model configured; an LLM decides better when there is one,
+and its verdict is bounded by the same four operations against candidates it
+was shown — so an unreachable or confused model degrades to the rules instead
+of inventing an edit.
+
+**A superseded fact is struck through, not deleted.** In the note it looks like
+this, which is also exactly what the console shows you:
+
+```markdown
+# Memory: prefs
+
+- ~~**2026-08-14 09:00 · claude** — the user prefers spaces~~ <!--m id=a1f3 sup=b2c9 supat=2026-08-18 11:20-->
+- **2026-08-18 11:20 · claude** — the user prefers tabs <!--m id=b2c9-->
+```
+
+Keeping the old line is what makes the interesting questions answerable — what
+did this agent believe last month, and when did it change its mind:
+
+```bash
+grimoire recall --all                          # current beliefs, and what they replaced
+grimoire recall --as-of 2026-08-15T00:00:00Z   # what was believed then
+```
+
+A store that deletes what it replaces cannot do that, whatever its API says.
+
+**Ranking** blends four signals — semantic similarity, keyword match with IDF
+over the facts *you* can see, entity overlap, and recency decay. `--why` (or
+`explain=1`) shows the breakdown, because a ranking nobody can inspect is one
+nobody can fix.
+
+**Scope and lifetime** are per fact:
+
+```bash
+grimoire remember "the staging box is smaller" --session run-42 --category infra
+grimoire remember "priya is on call" --expires-in 72h   # stops being recalled by itself
+grimoire remember "never touch prod" --immutable        # reconciliation can never remove it
+grimoire recall --session run-42                        # what that run learned
+```
+
+**Clients**: [Python](clients/python) and [JS/TypeScript](clients/js), both
+dependency-free, with mem0-compatible method names so switching is an import
+change. The Python one also ships a LangGraph `BaseStore`, so cross-thread
+agent memory lands in markdown files you can open. And the CLI runs the same
+handlers in process, so none of it needs a server to be up.
+
+**Scoped reconciliation**: by default a write may supersede anything you can
+read, because for one person's memory a belief contradicted in another note is
+still contradicted. `scope: topic | session | agent` confines it — which is what
+a store handing each user a namespace needs.
+
+Where the dedicated memory layers are still ahead: a queryable entity graph
+(Zep and Cognee lead), a feedback signal on a recalled fact, and adapters for
+frameworks other than LangGraph.
 
 ## Credentials your agent can use but never read
 

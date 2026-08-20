@@ -87,8 +87,8 @@ func TestToolsListIsComplete(t *testing.T) {
 	for _, want := range []string{
 		"get_briefing", "kb_info", "search_notes", "ask_notes", "read_note",
 		"list_notes", "create_note", "update_note", "append_daily", "backlinks",
-		"list_tags", "get_fact", "set_fact", "remember", "recall", "consolidate_memory",
-		"list_grants", "use_credential",
+		"list_tags", "get_fact", "set_fact", "remember", "recall", "forget",
+		"memory_scopes", "consolidate_memory", "list_grants", "use_credential",
 	} {
 		if !got[want] {
 			t.Errorf("tool %q not advertised", want)
@@ -115,6 +115,9 @@ func TestToolCallsHitTheExpectedEndpoints(t *testing.T) {
 		{"remember", map[string]any{"text": "x"}, "POST /api/memory"},
 		{"recall", map[string]any{"query": "x"}, "GET /api/memory"},
 		{"get_fact", map[string]any{"key": "port"}, "GET /api/facts"},
+		{"forget", map[string]any{"id": "a1", "path": "memory/x.md"},
+			"DELETE /api/memory/entry"},
+		{"memory_scopes", nil, "GET /api/memory/facets"},
 	} {
 		seen = nil
 		call(t, s, map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/call",
@@ -206,5 +209,78 @@ func TestAdminTokenIsForwarded(t *testing.T) {
 	}
 	if gotAuth != "Bearer read-token" {
 		t.Errorf("auth token not forwarded: %q", gotAuth)
+	}
+}
+
+// The memory engine's scope, lifetime and pinning controls are only useful if
+// they survive the MCP hop — an agent that can set them in the tool schema but
+// not in the request is worse than one that cannot set them at all.
+func TestRememberForwardsScopeAndLifetime(t *testing.T) {
+	var body map[string]any
+	s := stubAPI(t, func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&body)
+		w.Write([]byte(`{"ok":true}`))
+	})
+	call(t, s, map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+		"params": map[string]any{"name": "remember", "arguments": map[string]any{
+			"text": "x", "session": "run-9", "category": "gotcha",
+			"expires_in": "72h", "immutable": true}}})
+	for k, want := range map[string]any{
+		"session": "run-9", "category": "gotcha", "expires_in": "72h", "immutable": true} {
+		if body[k] != want {
+			t.Errorf("%s = %v, want %v", k, body[k], want)
+		}
+	}
+}
+
+func TestRememberOmitsScopeFieldsItWasNotGiven(t *testing.T) {
+	// An empty string is a value the server would validate and reject; a field
+	// nobody set must simply not be sent.
+	var body map[string]any
+	s := stubAPI(t, func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&body)
+		w.Write([]byte(`{"ok":true}`))
+	})
+	call(t, s, map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+		"params": map[string]any{"name": "remember",
+			"arguments": map[string]any{"text": "x"}}})
+	for _, k := range []string{"session", "category", "expires_in", "immutable"} {
+		if _, ok := body[k]; ok {
+			t.Errorf("unset field %q was sent as %v", k, body[k])
+		}
+	}
+}
+
+func TestRecallForwardsFiltersAsQueryParameters(t *testing.T) {
+	var query string
+	s := stubAPI(t, func(w http.ResponseWriter, r *http.Request) {
+		query = r.URL.RawQuery
+		w.Write([]byte(`[]`))
+	})
+	call(t, s, map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+		"params": map[string]any{"name": "recall", "arguments": map[string]any{
+			"query": "x", "agent": "a", "session": "run-1", "category": "c",
+			"include_superseded": true, "explain": true}}})
+	for _, want := range []string{"agent=a", "session=run-1", "category=c",
+		"include_superseded=1", "explain=1"} {
+		if !strings.Contains(query, want) {
+			t.Errorf("query %q missing %q", query, want)
+		}
+	}
+}
+
+// A retraction has to say who made it, for the same reason a memory says who
+// wrote it — and the agent must not be able to sign someone else's name to it.
+func TestForgetIsAttributedToTheServersIdentity(t *testing.T) {
+	var query string
+	s := stubAPI(t, func(w http.ResponseWriter, r *http.Request) {
+		query = r.URL.RawQuery
+		w.Write([]byte(`{"ok":true}`))
+	})
+	call(t, s, map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+		"params": map[string]any{"name": "forget", "arguments": map[string]any{
+			"id": "a1", "path": "memory/x.md", "agent": "someone-else"}}})
+	if !strings.Contains(query, "agent=test-agent") {
+		t.Errorf("query %q is not attributed to the server's identity", query)
 	}
 }
