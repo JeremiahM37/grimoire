@@ -21,6 +21,7 @@ var protectedRoutes = []struct {
 	{"GET", "/api/audit"},
 	{"POST", "/api/reindex"},
 	{"GET", "/api/memory"},
+	{"GET", "/api/blocks"},
 	// Agent memory is note content in every shape it is served in, and each of
 	// these was a separate handler that could have forgotten to say so.
 	{"GET", "/api/memory/export"},

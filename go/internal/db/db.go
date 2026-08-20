@@ -72,6 +72,19 @@ CREATE TABLE IF NOT EXISTS fts_map(rid INTEGER PRIMARY KEY, path TEXT NOT NULL U
 -- address the old one; and scoping memory to an agent or a session is a
 -- property of the fact, not of the file. Derived from the markdown bullets
 -- like every other table here — drop it and a reindex rebuilds it.
+-- Headings, list items and tasks, one row each. A note is the right unit for
+-- most questions and the wrong one for the questions people actually ask of a
+-- vault — every open task, every heading called Decisions — which are about a
+-- LINE. Derived from the markdown like every other table here.
+CREATE TABLE IF NOT EXISTS blocks(
+  note TEXT NOT NULL, kind TEXT NOT NULL, text TEXT NOT NULL,
+  level INTEGER NOT NULL DEFAULT 0, line INTEGER NOT NULL DEFAULT 0,
+  checked INTEGER NOT NULL DEFAULT 0, parent TEXT NOT NULL DEFAULT '',
+  private INTEGER NOT NULL DEFAULT 0,
+  space TEXT NOT NULL DEFAULT 'commons', acl TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_blocks_note ON blocks(note);
+CREATE INDEX IF NOT EXISTS idx_blocks_kind ON blocks(kind);
 CREATE TABLE IF NOT EXISTS memory_entries(
   id TEXT NOT NULL, note TEXT NOT NULL, text TEXT NOT NULL,
   agent TEXT NOT NULL DEFAULT '', task TEXT NOT NULL DEFAULT '',

@@ -9,13 +9,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/JeremiahM37/grimoire/go/internal/index"
 	"github.com/JeremiahM37/grimoire/go/internal/markdown"
 )
 
 // Facts, tag rename, graph, tasks and completion.
 // Port of the remainder of server/routers/search.py and misc.py.
-
-var taskLineRE = regexp.MustCompile(`^\s*[-*]\s+\[([ xX])\]\s+(.*)$`)
 
 // facts serves the structured `key:: value` layer projected from note bodies —
 // a deterministic lookup over the same markdown. Private notes' facts are
@@ -254,45 +253,86 @@ func (s *Server) eachRow(query string, args []any, fn func(*sql.Rows) error) err
 // Encrypted notes are skipped: ciphertext has no parseable tasks.
 func (s *Server) tasks(w http.ResponseWriter, r *http.Request) {
 	includeDone := truthy(r.URL.Query().Get("include_done"))
-	rows, err := s.Index.DB.Query(
-		"SELECT path, title, body, acl FROM notes ORDER BY updated DESC, path")
+
+	// Tasks are index rows now. This used to read every note body in the
+	// vault on every request and scan it for checkboxes, which is linear in
+	// the whole vault per call and cannot be narrowed in SQL — so "the open
+	// tasks in this project" had to fetch everything and throw most of it
+	// away.
+	q := index.BlockQuery{
+		Filter: filterFor(r, false),
+		Kind:   markdown.KindTask,
+		Path:   normPath(r.URL.Query().Get("path")),
+		Text:   strings.TrimSpace(r.URL.Query().Get("q")),
+		Limit:  clampLimit(r.URL.Query().Get("limit"), 500, 2000),
+	}
+	if !includeDone {
+		open := false
+		q.Checked = &open
+	}
+	blocks, err := s.Index.Blocks(q)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	defer rows.Close()
-
 	type task struct {
-		Path  string `json:"path"`
-		Title string `json:"title"`
-		Line  int    `json:"line"`
-		Text  string `json:"text"`
-		Done  bool   `json:"done"`
+		Path    string `json:"path"`
+		Title   string `json:"title"`
+		Line    int    `json:"line"`
+		Text    string `json:"text"`
+		Done    bool   `json:"done"`
+		Section string `json:"section,omitempty"`
 	}
 	out := []task{}
-	for rows.Next() {
-		var path, title, body, acl string
-		if err := rows.Scan(&path, &title, &body, &acl); err != nil {
-			writeErr(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-		if !s.canReadNote(r, path, acl) {
-			continue
-		}
-		for i, line := range strings.Split(body, "\n") {
-			m := taskLineRE.FindStringSubmatch(line)
-			if m == nil {
-				continue
-			}
-			done := strings.ToLower(m[1]) == "x"
-			if done && !includeDone {
-				continue
-			}
-			out = append(out, task{path, title, i, strings.TrimSpace(m[2]), done})
-		}
+	for _, b := range blocks {
+		out = append(out, task{b.Note, b.Title, b.Line, b.Text, b.Checked, b.Parent})
 	}
+	// Open first, then in document order, which is what the console renders.
 	sort.SliceStable(out, func(i, j int) bool { return !out[i].Done && out[j].Done })
 	writeJSON(w, http.StatusOK, out)
+}
+
+// blocks lists the lines inside notes — headings, list items and tasks.
+//
+// The addressable unit below a note. A heading is how someone finds the
+// section they meant; a list item is what a query block counts; and both were
+// previously reachable only by reading the note.
+func (s *Server) blocks(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	kind := strings.TrimSpace(q.Get("kind"))
+	switch kind {
+	case "", markdown.KindHeading, markdown.KindItem, markdown.KindTask:
+	default:
+		writeErr(w, http.StatusBadRequest, "kind must be heading, item or task")
+		return
+	}
+	bq := index.BlockQuery{
+		Filter:  filterFor(r, false),
+		Kind:    kind,
+		Note:    normPath(q.Get("note")),
+		Path:    normPath(q.Get("path")),
+		Text:    strings.TrimSpace(q.Get("q")),
+		Section: strings.TrimSpace(q.Get("section")),
+		Limit:   clampLimit(q.Get("limit"), 200, 2000),
+	}
+	if v := strings.TrimSpace(q.Get("level")); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 1 {
+			writeErr(w, http.StatusBadRequest, "level must be a positive number")
+			return
+		}
+		bq.Level = n
+	}
+	if v := strings.TrimSpace(q.Get("checked")); v != "" {
+		checked := truthy(v)
+		bq.Checked = &checked
+	}
+	blocks, err := s.Index.Blocks(bq)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, blocks)
 }
 
 // complete backs the `[[` autocomplete: note titles and stems matching a query.

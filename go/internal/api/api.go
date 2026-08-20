@@ -108,6 +108,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/tags/rename", s.userOnly(s.renameTag))
 	mux.HandleFunc("GET /api/graph", s.graph)
 	mux.HandleFunc("GET /api/tasks", s.tasks)
+	mux.HandleFunc("GET /api/blocks", s.blocks)
 	mux.HandleFunc("GET /api/complete", s.complete)
 	mux.HandleFunc("POST /api/memory", s.remember)
 	mux.HandleFunc("GET /api/memory", s.recall)

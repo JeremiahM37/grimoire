@@ -156,6 +156,17 @@ model is configured. `consolidate_memory` compacts the `memory/` namespace
 (merge redundant entries, supersede stale ones) so recall stays sharp as it
 grows — snapshotted first, so every rewrite is reviewable and roll-back-able.
 
+**Query blocks over lines, not just notes** — a heading, a list item and a task
+are indexed objects with a level, a line and the section they sit under:
+
+````markdown
+```query
+from: tasks
+checked: false
+section: Risks
+```
+````
+
 **Structured facts** — for values that must be *exact* (a port, a version, an
 owner, a decision), prose RAG is the wrong tool. Write `key:: value` inline in
 any note and agents can look it up deterministically via `get_fact` — no
