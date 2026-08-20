@@ -234,6 +234,9 @@ func (ix *Index) removeRows(rel string) error {
 	if err := ix.deleteMemoryRows(rel); err != nil {
 		return err
 	}
+	if err := ix.DB.Exec("DELETE FROM blocks WHERE note=?", rel); err != nil {
+		return err
+	}
 	ix.patchNote(rel)
 	return nil
 }
@@ -309,6 +312,10 @@ func (ix *Index) writeNoteRows(note *vault.Note) error {
 				return err
 			}
 		}
+	}
+	// Headings, list items and tasks, one row each; see blocks.go.
+	if err := ix.writeBlockRows(note); err != nil {
+		return err
 	}
 	// Agent memory is indexed a second time, bullet by bullet; see memory.go.
 	if err := ix.writeMemoryRows(note); err != nil {

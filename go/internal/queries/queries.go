@@ -34,15 +34,38 @@ var (
 	columnsAllowed = map[string]bool{
 		"title": true, "path": true, "updated": true, "created": true, "tags": true}
 	renders = map[string]bool{"list": true, "table": true, "count": true}
+
+	// Sources a block can be drawn from. "notes" is the default and the
+	// original behaviour; the rest query the blocks table — the lines inside
+	// notes — which is what makes "every open task" and "every heading called
+	// Decisions" expressible rather than requiring someone to scroll.
+	sources = map[string]string{
+		"notes": "", "headings": "heading", "items": "item", "tasks": "task",
+	}
+	blockSortFields = map[string]bool{
+		"note": true, "path": true, "line": true, "text": true, "level": true}
+	blockColumns = map[string]bool{
+		"text": true, "note": true, "path": true, "title": true, "line": true,
+		"level": true, "section": true, "checked": true, "kind": true}
 )
 
 // Spec is a parsed, validated query block. All filters are optional.
 type Spec struct {
+	// From selects what a row IS: a note, or a line inside one.
+	From     string
 	Tag      *string
 	Path     *string
 	Text     *string
 	LinkedTo *string
 	Pinned   *bool
+
+	// Block filters. Meaningful only when From is not "notes"; using one
+	// against notes is an error rather than silence, since silently ignoring
+	// a filter shows the wrong rows and looks like the query working.
+	Checked *bool
+	Section *string
+	Level   int
+
 	Sort     string
 	SortDesc bool
 	Limit    int
@@ -50,6 +73,9 @@ type Spec struct {
 	Columns  []string
 	Errors   []string
 }
+
+// Blocks reports whether this query is over lines rather than notes.
+func (s *Spec) Blocks() bool { return s.From != "" && s.From != "notes" }
 
 // Result is the shape renderers and /api/query consume.
 type Result struct {
@@ -63,9 +89,12 @@ type Result struct {
 // Parse reads the text inside a ```query fence.
 func Parse(block string) *Spec {
 	spec := &Spec{
-		Sort: "updated", SortDesc: true, Limit: DefaultLimit,
+		From: "notes", Sort: "updated", SortDesc: true, Limit: DefaultLimit,
 		Render: "list", Columns: []string{"title", "updated"}, Errors: []string{},
 	}
+	// Whether the caller chose columns and a sort, so the defaults for a block
+	// query can differ without overriding an explicit choice.
+	var setColumns, setSort bool
 	for _, raw := range strings.Split(block, "\n") {
 		line := strings.TrimSpace(raw)
 		if line == "" || strings.HasPrefix(line, "#") {
@@ -79,6 +108,27 @@ func Parse(block string) *Spec {
 			continue
 		}
 		switch key {
+		case "from":
+			if _, ok := sources[strings.ToLower(val)]; !ok {
+				spec.Errors = append(spec.Errors, fmt.Sprintf(
+					"unknown source '%s' (use notes|headings|items|tasks)", val))
+				break
+			}
+			spec.From = strings.ToLower(val)
+		case "checked", "done":
+			v := truthy(val)
+			spec.Checked = &v
+		case "section":
+			v := val
+			spec.Section = &v
+		case "level":
+			n, err := strconv.Atoi(val)
+			if err != nil || n < 1 {
+				spec.Errors = append(spec.Errors,
+					fmt.Sprintf("level must be a positive number, got '%s'", val))
+				break
+			}
+			spec.Level = n
 		case "tag":
 			v := strings.TrimPrefix(val, "#")
 			spec.Tag = &v
@@ -97,8 +147,9 @@ func Parse(block string) *Spec {
 				strings.EqualFold(val, "true") || strings.EqualFold(val, "yes")
 			spec.Pinned = &v
 		case "sort":
+			setSort = true
 			parts := strings.Fields(strings.ToLower(val))
-			if len(parts) == 0 || !sortFields[parts[0]] {
+			if len(parts) == 0 || !(sortFields[parts[0]] || blockSortFields[parts[0]]) {
 				field := val
 				if len(parts) > 0 {
 					field = parts[0]
@@ -130,13 +181,14 @@ func Parse(block string) *Spec {
 			}
 			spec.Render = strings.ToLower(val)
 		case "columns":
+			setColumns = true
 			var cols, bad []string
 			for _, c := range strings.Split(val, ",") {
 				c = strings.ToLower(strings.TrimSpace(c))
 				if c == "" {
 					continue
 				}
-				if !columnsAllowed[c] {
+				if !columnsAllowed[c] && !blockColumns[c] {
 					bad = append(bad, c)
 					continue
 				}
@@ -153,13 +205,162 @@ func Parse(block string) *Spec {
 			spec.Errors = append(spec.Errors, fmt.Sprintf("unknown key '%s'", key))
 		}
 	}
+	spec.finish(setColumns, setSort)
 	return spec
+}
+
+// finish applies the defaults a source implies and rejects filters that mean
+// nothing for it.
+func (s *Spec) finish(setColumns, setSort bool) {
+	if !s.Blocks() {
+		for name, used := range map[string]bool{
+			"checked": s.Checked != nil, "section": s.Section != nil,
+			"level": s.Level > 0,
+		} {
+			if used {
+				s.Errors = append(s.Errors, fmt.Sprintf(
+					"'%s' needs 'from: tasks', 'items' or 'headings'", name))
+			}
+		}
+		return
+	}
+	if s.Checked != nil && s.From != "tasks" {
+		s.Errors = append(s.Errors, "'checked' only applies to 'from: tasks'")
+	}
+	// A line has no title and no updated date of its own, so the note-shaped
+	// defaults would render a table of blanks.
+	if !setColumns {
+		s.Columns = []string{"text", "title"}
+	}
+	if !setSort {
+		s.Sort, s.SortDesc = "note", false
+	}
+	if !blockSortFields[s.Sort] {
+		s.Errors = append(s.Errors, fmt.Sprintf(
+			"cannot sort lines by '%s' (use note|line|text|level)", s.Sort))
+	}
+	for _, c := range s.Columns {
+		if !blockColumns[c] {
+			s.Errors = append(s.Errors, fmt.Sprintf("lines have no column '%s'", c))
+		}
+	}
+}
+
+func truthy(v string) bool {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "true", "yes", "1", "done", "checked":
+		return true
+	}
+	return false
 }
 
 // Execute runs a validated spec. It returns display fields only — never bodies,
 // so a query block cannot become a read-everything gadget on the
 // unauthenticated surfaces.
 func Execute(database *db.DB, spec *Spec, includePrivate bool) ([]map[string]any, error) {
+	if spec.Blocks() {
+		return executeBlocks(database, spec, includePrivate)
+	}
+	return executeNotes(database, spec, includePrivate)
+}
+
+// executeBlocks queries the lines inside notes.
+//
+// Every row carries the note's `path`, which is not decoration: the HTTP layer
+// filters query results by that field against what the caller may read, so a
+// block row goes through exactly the same check a note row does rather than
+// through a second copy of the rule.
+func executeBlocks(database *db.DB, spec *Spec, includePrivate bool) ([]map[string]any, error) {
+	where := []string{"1=1"}
+	var params []any
+	if kind := sources[spec.From]; kind != "" {
+		where = append(where, "b.kind = ?")
+		params = append(params, kind)
+	}
+	if !includePrivate {
+		where = append(where, "b.private = 0")
+	}
+	if spec.Path != nil {
+		where = append(where, `b.note LIKE ? ESCAPE '\'`)
+		params = append(params, likePrefix(*spec.Path))
+	}
+	if spec.Text != nil {
+		// A block is one line, so a phrase search over it is a substring
+		// search — and the metacharacters are escaped so "50%" means "50%".
+		where = append(where, `b.text LIKE ? ESCAPE '\' COLLATE NOCASE`)
+		params = append(params, "%"+likeEscape(*spec.Text)+"%")
+	}
+	if spec.Section != nil {
+		where = append(where, "b.parent = ? COLLATE NOCASE")
+		params = append(params, *spec.Section)
+	}
+	if spec.Level > 0 {
+		where = append(where, "b.level = ?")
+		params = append(params, spec.Level)
+	}
+	if spec.Checked != nil {
+		want := 0
+		if *spec.Checked {
+			want = 1
+		}
+		where = append(where, "b.checked = ?")
+		params = append(params, want)
+	}
+	if spec.Tag != nil {
+		where = append(where, "b.note IN (SELECT note FROM tags WHERE tag = ? COLLATE NOCASE)")
+		params = append(params, *spec.Tag)
+	}
+	if spec.LinkedTo != nil {
+		where = append(where,
+			"b.note IN (SELECT src FROM links WHERE resolved=1 AND "+
+				"(dst = ? OR target = ? COLLATE NOCASE))")
+		params = append(params, asMDPath(*spec.LinkedTo), *spec.LinkedTo)
+	}
+
+	dir := "DESC"
+	if !spec.SortDesc {
+		dir = "ASC"
+	}
+	// spec.Sort is whitelisted in finish(), so this interpolation cannot
+	// inject. "path" is an alias for the note it lives in, since that is what
+	// a person means when they sort a task list by file.
+	sortCol := "b." + spec.Sort
+	if spec.Sort == "path" {
+		sortCol = "b.note"
+	}
+	sql := "SELECT b.note, b.kind, b.text, b.level, b.line, b.checked, b.parent, " +
+		"COALESCE(n.title,'') FROM blocks b LEFT JOIN notes n ON n.path = b.note WHERE " +
+		strings.Join(where, " AND ") +
+		fmt.Sprintf(" ORDER BY %s %s, b.note, b.line LIMIT ?", sortCol, dir)
+	params = append(params, spec.Limit)
+
+	rows, err := database.Query(sql, params...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := []map[string]any{}
+	for rows.Next() {
+		var note, kind, text, parent, title string
+		var level, line, checked int
+		if err := rows.Scan(&note, &kind, &text, &level, &line, &checked,
+			&parent, &title); err != nil {
+			return nil, err
+		}
+		out = append(out, map[string]any{
+			// `path` is the note, so the access filter finds it where it
+			// looks for it; `note` is the same value under the name a person
+			// writing a column list reaches for.
+			"path": note, "note": note, "kind": kind, "text": text,
+			"level": level, "line": line, "checked": checked == 1,
+			"section": parent, "title": title,
+		})
+	}
+	return out, rows.Err()
+}
+
+func executeNotes(database *db.DB, spec *Spec, includePrivate bool) ([]map[string]any, error) {
 	var where []string
 	var params []any
 
@@ -271,13 +472,16 @@ func Run(database *db.DB, block string, includePrivate bool) *Result {
 	}
 }
 
-// likePrefix escapes LIKE metacharacters so a path prefix matches literally.
-func likePrefix(prefix string) string {
-	e := strings.ReplaceAll(prefix, `\`, `\\`)
+// likeEscape neutralizes LIKE metacharacters so a search for "50%" matches
+// literally rather than matching everything.
+func likeEscape(s string) string {
+	e := strings.ReplaceAll(s, `\`, `\\`)
 	e = strings.ReplaceAll(e, "%", `\%`)
-	e = strings.ReplaceAll(e, "_", `\_`)
-	return e + "%"
+	return strings.ReplaceAll(e, "_", `\_`)
 }
+
+// likePrefix escapes LIKE metacharacters so a path prefix matches literally.
+func likePrefix(prefix string) string { return likeEscape(prefix) + "%" }
 
 func asMDPath(s string) string {
 	if strings.HasSuffix(s, ".md") {

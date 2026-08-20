@@ -69,6 +69,7 @@ var routeAccess = map[string]access{
 	"GET /api/graph":               scoped,
 	"GET /api/tags":                scoped,
 	"GET /api/tasks":               scoped,
+	"GET /api/blocks":              scoped, // the lines inside notes
 	"GET /api/facts":               scoped,
 	"GET /api/complete":            scoped,
 	"GET /api/memory":              scoped,
