@@ -183,6 +183,14 @@ export class Grimoire {
     return this.#request('DELETE', `/api/memory/entry?${params}`)
   }
 
+  /**
+   * Report whether a recalled fact earned its place. A nudge in ranking, not a
+   * verdict — for a fact that is *wrong*, use `delete`.
+   */
+  async feedback(path, id, helpful) {
+    return this.#request('POST', '/api/memory/feedback', { path, id, helpful })
+  }
+
   /** The agents, sessions and categories memory has been recorded under. */
   async scopes() {
     return this.#request('GET', '/api/memory/facets')

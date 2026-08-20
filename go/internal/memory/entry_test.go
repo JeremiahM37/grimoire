@@ -250,3 +250,62 @@ func TestSupersededAtRoundTrips(t *testing.T) {
 		t.Errorf("got %+v, want %+v", got, want)
 	}
 }
+
+func TestFeedbackRoundTrips(t *testing.T) {
+	want := Entry{ID: "a1", Stamp: "2026-08-14 09:00", Agent: "claude",
+		Text: "a useful fact", Helpful: 3, Unhelpful: 1}
+	got, ok := ParseLine(want.Format())
+	if !ok {
+		t.Fatal("did not parse")
+	}
+	if got != want {
+		t.Errorf("got %+v, want %+v", got, want)
+	}
+	// Zero counters are not written, so an unvoted bullet stays clean.
+	plain := Entry{ID: "a2", Stamp: "s", Agent: "a", Text: "x"}
+	if line := plain.Format(); strings.Contains(line, "up=") || strings.Contains(line, "down=") {
+		t.Errorf("unvoted bullet carries counters: %s", line)
+	}
+}
+
+func TestUsefulnessIsNeutralWithoutFeedback(t *testing.T) {
+	if got := (Entry{}).Usefulness(); got != 0.5 {
+		t.Errorf("unvoted usefulness = %v, want 0.5", got)
+	}
+}
+
+func TestUsefulnessIsBoundedAndMonotonic(t *testing.T) {
+	// A disliked fact must sink, not vanish: it can still be the only fact
+	// that answers a question.
+	last := -1.0
+	for _, net := range []int{-50, -5, -1, 0, 1, 5, 50} {
+		e := Entry{Helpful: max0(net), Unhelpful: max0(-net)}
+		got := e.Usefulness()
+		if got <= 0 || got >= 1 {
+			t.Errorf("net %d: usefulness %v left the open interval", net, got)
+		}
+		if got <= last {
+			t.Errorf("net %d: usefulness %v did not increase from %v", net, got, last)
+		}
+		last = got
+	}
+}
+
+func max0(n int) int {
+	if n < 0 {
+		return 0
+	}
+	return n
+}
+
+func TestMalformedCountersParseAsZero(t *testing.T) {
+	// Hand-editing a bullet is the point of storing memory in a file, so a
+	// mangled counter must not make the line unparseable.
+	got, ok := ParseLine("- **2026-08-14 09:00 · a** — x <!--m id=a1 up=banana down=-3-->")
+	if !ok {
+		t.Fatal("did not parse")
+	}
+	if got.Helpful != 0 || got.Unhelpful != 0 {
+		t.Errorf("got up=%d down=%d, want zeroes", got.Helpful, got.Unhelpful)
+	}
+}

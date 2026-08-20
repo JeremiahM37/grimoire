@@ -473,6 +473,8 @@ type entryOut struct {
 	Expires      string  `json:"expires,omitempty"`
 	Immutable    bool    `json:"immutable,omitempty"`
 	SupersededBy string  `json:"superseded_by,omitempty"`
+	Helpful      int     `json:"helpful,omitempty"`
+	Unhelpful    int     `json:"unhelpful,omitempty"`
 	Score        float64 `json:"score"`
 
 	// Why this fact was recalled, for the surface that has to justify it.
@@ -484,6 +486,7 @@ type scoreBreakdown struct {
 	Keyword  float64 `json:"keyword"`
 	Entity   float64 `json:"entity"`
 	Recency  float64 `json:"recency"`
+	Useful   float64 `json:"useful"`
 }
 
 func entriesOut(hits []index.MemoryHit, explain bool) []entryOut {
@@ -493,11 +496,12 @@ func entriesOut(hits []index.MemoryHit, explain bool) []entryOut {
 			ID: h.ID, Text: h.Text, Path: h.Note, Agent: h.Agent, Task: h.Task,
 			Session: h.Session, Category: h.Category, Stamp: h.Stamp,
 			Expires: h.Expires, Immutable: h.Immutable,
-			SupersededBy: h.SupersededBy, Score: h.Score,
+			SupersededBy: h.SupersededBy, Helpful: h.Helpful,
+			Unhelpful: h.Unhelpful, Score: h.Score,
 		}
 		if explain {
 			e.Scores = &scoreBreakdown{Semantic: h.Semantic, Keyword: h.Keyword,
-				Entity: h.Entity, Recency: h.Recency}
+				Entity: h.Entity, Recency: h.Recency, Useful: h.Useful}
 		}
 		out = append(out, e)
 	}
@@ -931,6 +935,60 @@ func entryErrMsg(err error) string {
 		return "no such memory entry"
 	}
 	return err.Error()
+}
+
+// feedback records whether a recalled fact earned its place.
+//
+// The obvious objection to a feedback endpoint is that it is a lever on
+// ranking pointed at your own memory. The answer here is that it writes to the
+// note the fact lives in, so it takes a WRITE check on that note — a member
+// cannot vote down a fact in a space they can only read, and the same reader
+// lists and spaces that govern everything else govern this. What is left is a
+// person adjusting their own memory, which is the point.
+//
+// The effect is bounded and saturating (see memory.Entry.Usefulness): feedback
+// reorders facts that already rank close together and cannot bury one that is
+// the only answer to a question. A signal that could would be a way to lose
+// information by clicking a button.
+func (s *Server) feedback(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Path    string `json:"path"`
+		ID      string `json:"id"`
+		Helpful *bool  `json:"helpful"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	note := normPath(in.Path)
+	if note == "" || strings.TrimSpace(in.ID) == "" || in.Helpful == nil {
+		writeErr(w, http.StatusBadRequest, "path, id and helpful are required")
+		return
+	}
+	if !index.IsMemoryPath(note) {
+		writeErr(w, http.StatusBadRequest, "not a memory note")
+		return
+	}
+	if !s.requireWrite(w, r, note) {
+		return
+	}
+	var out memory.Entry
+	err := s.mutateEntry(note, strings.TrimSpace(in.ID), func(e *memory.Entry) {
+		if *in.Helpful {
+			e.Helpful++
+		} else {
+			e.Unhelpful++
+		}
+		out = *e
+	})
+	if err != nil {
+		writeErr(w, statusForEntryErr(err), entryErrMsg(err))
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"path": note, "id": out.ID, "helpful": out.Helpful,
+		"unhelpful": out.Unhelpful, "usefulness": out.Usefulness(),
+	})
 }
 
 // rememberBatch records several memories in one call. Each is reconciled in

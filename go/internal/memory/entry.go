@@ -18,8 +18,10 @@ package memory
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"math"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -43,6 +45,13 @@ type Entry struct {
 	Expires      string // RFC3339; empty means never
 	Immutable    bool   // reconciliation may not supersede or delete it
 	SupersededBy string // ID of the entry that replaced this one
+	// Helpful and Unhelpful count the times a caller reported this fact as
+	// having earned its place in a recall, or not. They ride in the bullet
+	// like everything else, so the signal is as rebuildable — and as visible —
+	// as the fact it is about.
+	Helpful   int
+	Unhelpful int
+
 	// SupersededAt is when the replacement happened, in the same format as
 	// Stamp. Without it "what did the agent believe last Tuesday" is
 	// unanswerable: knowing a belief was eventually replaced says nothing
@@ -205,6 +214,10 @@ func parseTrailer(s string) Entry {
 			e.SupersededBy = v
 		case "supat":
 			e.SupersededAt = v
+		case "up":
+			e.Helpful = atoiSafe(v)
+		case "down":
+			e.Unhelpful = atoiSafe(v)
 		case "immutable":
 			e.Immutable = v == "1" || v == "true"
 		}
@@ -260,10 +273,38 @@ func (e Entry) trailer() string {
 	if e.SupersededBy != "" {
 		fields = append(fields, "sup="+escapeField(e.SupersededBy))
 	}
+	if e.Helpful > 0 {
+		fields = append(fields, "up="+strconv.Itoa(e.Helpful))
+	}
+	if e.Unhelpful > 0 {
+		fields = append(fields, "down="+strconv.Itoa(e.Unhelpful))
+	}
 	if e.SupersededAt != "" {
 		fields = append(fields, "supat="+escapeField(e.SupersededAt))
 	}
 	return " <!--m " + strings.Join(fields, " ") + "-->"
+}
+
+// atoiSafe reads a trailer counter. A malformed one is zero rather than an
+// error: a hand-edited bullet must still parse, since hand-editing is the
+// point of storing memory in a file.
+func atoiSafe(s string) int {
+	n, err := strconv.Atoi(s)
+	if err != nil || n < 0 {
+		return 0
+	}
+	return n
+}
+
+// Usefulness scores the feedback a fact has collected, 0..1, neutral at 0.5.
+//
+// Bounded and saturating on purpose. Feedback is a nudge in ranking, not a
+// verdict: a fact nobody has voted on must not be handicapped against one with
+// a single upvote, and a fact somebody dislikes must sink rather than vanish —
+// it can still be the only fact that answers a question.
+func (e Entry) Usefulness() float64 {
+	net := float64(e.Helpful - e.Unhelpful)
+	return 0.5 + 0.5*math.Tanh(net/3)
 }
 
 // DeriveID mints the id for a fact. It is a content hash rather than a

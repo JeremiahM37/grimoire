@@ -837,3 +837,102 @@ func TestInvalidScopeIsRefused(t *testing.T) {
 		t.Errorf("unknown scope = %d, want 400", w.Code)
 	}
 }
+
+func TestFeedbackCountsAndReordersWithoutBurying(t *testing.T) {
+	_, h := testServer(t)
+	// Two facts that both answer the query and do NOT reconcile against each
+	// other — otherwise the engine correctly supersedes one and there is
+	// nothing left to reorder.
+	good := remember(t, h, map[string]any{"topic": "ops",
+		"text": "restart gluetun when downloads stall"})
+	bad := remember(t, h, map[string]any{"topic": "ops",
+		"text": "restart the router when downloads stall"})
+
+	for i := 0; i < 3; i++ {
+		w := do(t, h, "POST", "/api/memory/feedback", map[string]any{
+			"path": "memory/ops.md", "id": bad["id"], "helpful": false})
+		if w.Code != http.StatusOK {
+			t.Fatalf("feedback = %d: %s", w.Code, w.Body)
+		}
+	}
+	w := do(t, h, "POST", "/api/memory/feedback", map[string]any{
+		"path": "memory/ops.md", "id": good["id"], "helpful": true})
+	var out map[string]any
+	decode(t, w, &out)
+	if out["helpful"].(float64) != 1 {
+		t.Errorf("counter not incremented: %v", out)
+	}
+
+	facts := recallFacts(t, h, "?q=what+to+restart+when+downloads+stall")
+	if len(facts) != 2 {
+		t.Fatalf("feedback removed a fact: %q", texts(facts))
+	}
+	if !strings.Contains(facts[0]["text"].(string), "gluetun") {
+		t.Errorf("feedback did not reorder: %q", texts(facts))
+	}
+	// Bounded: the disliked fact still ranks, because it may still be the only
+	// answer to some other question.
+	if facts[1]["score"].(float64) <= 0 {
+		t.Errorf("a disliked fact was buried: %v", facts[1])
+	}
+}
+
+func TestFeedbackSurvivesInTheNoteAndTheBreakdown(t *testing.T) {
+	_, h := testServer(t)
+	out := remember(t, h, map[string]any{"topic": "ops", "text": "a fact worth keeping"})
+	do(t, h, "POST", "/api/memory/feedback", map[string]any{
+		"path": "memory/ops.md", "id": out["id"], "helpful": true})
+
+	if body := noteBody(t, h, "memory/ops.md"); !strings.Contains(body, "up=1") {
+		t.Errorf("feedback is not in the note, so it is not rebuildable:\n%s", body)
+	}
+	facts := recallFacts(t, h, "?q=fact&explain=1")
+	if facts[0]["helpful"].(float64) != 1 {
+		t.Errorf("recall does not report the count: %v", facts[0])
+	}
+	scores := facts[0]["scores"].(map[string]any)
+	if _, ok := scores["useful"]; !ok {
+		t.Errorf("breakdown does not show the feedback component: %v", scores)
+	}
+}
+
+func TestFeedbackValidation(t *testing.T) {
+	_, h := testServer(t)
+	out := remember(t, h, map[string]any{"topic": "ops", "text": "a fact"})
+	for _, body := range []map[string]any{
+		{"path": "memory/ops.md", "id": out["id"]}, // no verdict
+		{"id": out["id"], "helpful": true},         // no path
+		{"path": "memory/ops.md", "helpful": true}, // no id
+		{"path": "memory/ops.md", "id": "nope", "helpful": true},
+		{"path": "plain.md", "id": "x", "helpful": true},
+	} {
+		if w := do(t, h, "POST", "/api/memory/feedback", body); w.Code < 400 {
+			t.Errorf("%v = %d, want a refusal", body, w.Code)
+		}
+	}
+}
+
+func TestFeedbackNeedsWriteAccessToTheFactsNote(t *testing.T) {
+	// The answer to "is this a lever on someone else's ranking": no, because
+	// it is a write to the note the fact lives in.
+	s, h := testServer(t)
+	aliceKey := makeUser(t, s, h, "", "alice", "admin")
+	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
+	if _, err := s.WriteNote(MemoryDir+"/alice-only.md",
+		"# Memory: alice\n\n- **2026-08-14 09:00 · claude** — alice's fact <!--m id=a1-->\n",
+		map[string]any{"title": "Alice", "memory": true, "readers": "alice"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Index.Reindex(); err != nil {
+		t.Fatal(err)
+	}
+	w := asKey(t, h, bobKey, "POST", "/api/memory/feedback", map[string]any{
+		"path": "memory/alice-only.md", "id": "a1", "helpful": false})
+	if w.Code < 400 {
+		t.Fatalf("a member voted on a fact they cannot read: %d", w.Code)
+	}
+	body := asKey(t, h, aliceKey, "GET", "/api/notes/memory/alice-only.md", nil).Body.String()
+	if strings.Contains(body, "down=") {
+		t.Error("the vote landed anyway")
+	}
+}

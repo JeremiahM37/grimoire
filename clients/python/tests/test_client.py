@@ -387,3 +387,16 @@ def test_scope_is_forwarded(server, client):
 
     client.add("x")
     assert "scope" not in server.last["body"], "the default must stay unstated"
+
+
+def test_feedback_posts_a_verdict(server, client):
+    server.reply = {"helpful": 1, "unhelpful": 0, "usefulness": 0.66}
+    client.feedback("memory/ops.md", "a1", helpful=True)
+    assert server.last["path"] == "/api/memory/feedback"
+    assert server.last["body"] == {"path": "memory/ops.md", "id": "a1", "helpful": True}
+
+
+def test_feedback_counts_are_parsed(server, client):
+    server.reply = [{"id": "a1", "text": "x", "helpful": 3, "unhelpful": 1}]
+    (fact,) = client.search("x")
+    assert (fact.helpful, fact.unhelpful) == (3, 1)
