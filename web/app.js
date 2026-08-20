@@ -1837,8 +1837,13 @@ function renderPluginPanels() {
   renderPluginPanels();
   if (await handleShareTarget()) return;
   const hash = decodeURI(location.hash.slice(1));
-  if (hash) await openNote(hash).catch(() => state.notes[0] && openNote(state.notes[0].path));
-  else if (state.notes[0]) openNote(state.notes[0].path);
+  // Opening something by default is a convenience, and it must lose to the
+  // person. The note list renders before boot finishes, so a click can land
+  // while the rest is still loading — and the default open would then replace
+  // what they chose with whatever was first, seconds after they chose it. That
+  // race was always there; adding one request to boot made it reachable.
+  if (hash) await openNote(hash).catch(() => !state.path && state.notes[0] && openNote(state.notes[0].path));
+  else if (state.notes[0] && !state.path) openNote(state.notes[0].path);
   renderIdentity(me);
   // readiness beacon: handlers are wired and the editor is mounted (e2e + probes)
   document.body.dataset.ready = "1";
