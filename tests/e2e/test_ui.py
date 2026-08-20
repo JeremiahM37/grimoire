@@ -9,6 +9,23 @@ from playwright.sync_api import expect
 VAULT_PASS = "mypassphrase123"
 
 
+def _wait_listed(page, server, path, tries=40):
+    """Block until the server lists a note, before reloading the page for it.
+
+    The list is rendered once per page load and never re-fetched, so a reload
+    that races the index write shows a page missing the row and then waits for
+    an element that will never arrive — a 30s timeout that looks like slowness
+    and is really a lost race. Asking the API first makes the reload land after
+    the write instead of alongside it.
+    """
+    for _ in range(tries):
+        r = page.request.get(server + "/api/notes")
+        if r.ok and path in r.text():
+            return
+        page.wait_for_timeout(250)
+    raise AssertionError(f"{path} never appeared in /api/notes")
+
+
 def _ensure_vault_unlocked(page):
     """The e2e server shares one vault across tests — init OR unlock as needed."""
     page.click("#vault-open")
@@ -51,6 +68,7 @@ def test_edit_saves_and_persists(page, server):
     # wait for the debounced autosave
     expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
     # reload → content persisted (came from the real .md file via reindex)
+    _wait_listed(page, server, "persist-test.md")
     page.reload()
     page.click(".note-row .t >> text=Persist Test")
     expect(page.locator("#content")).to_have_value(re.compile("#savedtag"), timeout=8000)
@@ -180,6 +198,7 @@ def test_task_checkbox_toggles_and_persists(page, server):
     expect(page.locator("#content")).to_have_value(re.compile(r"- \[x\] buy milk"), timeout=5000)
     expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
     # persists across reload
+    _wait_listed(page, server, "task-list.md")
     page.reload()
     page.click(".note-row .t >> text=Task List")
     expect(page.locator("#content")).to_have_value(re.compile(r"- \[x\] buy milk"), timeout=8000)
@@ -432,6 +451,7 @@ def test_encrypt_note_end_to_end(page, server):
     page.click("#vault-open")
     page.click("#v-lock")
     page.click("#vault-close")
+    _wait_listed(page, server, "secret-e2e.md")
     page.reload()
     page.click(".note-row .t >> text=Secret E2E")
     expect(page.locator("#content")).to_have_value(re.compile("encrypted at rest"), timeout=8000)
@@ -474,6 +494,7 @@ def test_alias_wikilink_navigates(page, server):
         "const p=(b)=>fetch('/api/notes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});"
         "await p({title:'United States', body:'the country', frontmatter:{aliases:['USA']}});"
         "await p({title:'Geo Note', body:'I live in [[USA]]'}); }")
+    _wait_listed(page, server, "geo-note.md")
     page.reload()   # boot re-fetches notes + aliases
     page.click(".note-row .t >> text=Geo Note")
     expect(page.locator("#title")).to_have_value("Geo Note", timeout=8000)
@@ -723,6 +744,7 @@ def test_offline_edit_recovers_and_retries(page, server):
     page.evaluate("() => window.dispatchEvent(new Event('online'))")
     expect(page.locator("#save-state")).to_have_text("saved", timeout=8000)
     # persisted to the server
+    _wait_listed(page, server, "offline-note.md")
     page.reload()
     page.click(".note-row .t >> text=Offline Note")
     expect(page.locator("#content")).to_have_value(re.compile("edited while offline"), timeout=8000)
