@@ -444,9 +444,13 @@ Stated here rather than discovered later:
 
 - **Connectors do not carry the source's permissions.** A pulled Confluence page
   belongs to whichever space its path maps to, not to whoever could read it in
-  Confluence. Pull into a space whose members are allowed to see everything in
-  that source. Mirroring per-document ACLs is the single biggest thing an
-  enterprise search product does that this does not.
+  Confluence — and if someone loses access at the source, nothing here notices.
+  What you *can* do is route on the source's own structure (`route_by` /
+  `route_map`: a Confluence space, a Slack channel, a Jira project each into
+  their own folder), so different parts of a source land in Grimoire spaces with
+  matching membership. That narrows the gap; it does not close it. Mirroring
+  per-document ACLs is the single biggest thing an enterprise search product
+  does that this does not.
 - **Connectors notice deletions only where the source enumerates.** An
   incremental sync asks "what changed since the cursor", and a deleted document
   did not change — it is indistinguishable from an untouched one. A source that
@@ -457,9 +461,12 @@ Stated here rather than discovered later:
 - **Query cost is linear in corpus size** — see the table above. Fine into the
   low hundreds of thousands of chunks on one box; beyond that the answer is an
   approximate index, which trades recall.
-- **One process, one SQLite file.** No horizontal scale, no HA. The vault is
-  plain files and the index is rebuildable, so recovery is restore-and-reindex,
-  but there is no failover.
+- **One process, one SQLite file.** No horizontal scale, no HA. Recovery is
+  `grimoire backup` and `grimoire restore` — a plain .tar.gz of the vault, with
+  the index left out because a restore rebuilds it and the sealed secret store
+  left IN because nothing else can reproduce it. A test does the round trip and
+  asserts the restored vault answers a search. But there is no failover: if the
+  process is down, it is down.
 - **Administrators can read every space.** A deliberate simplification: the
   alternative is an administrator who cannot fix a space they cannot see.
 - **No SSO, no SCIM, no audit export.** Accounts are local.

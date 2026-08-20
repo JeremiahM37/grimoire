@@ -257,7 +257,7 @@ func (r *Runner) write(c Connector, docs []Document) (written, skipped int, err 
 
 		path := prev.Path
 		if path == "" {
-			path = notePath(c.Prefix, d)
+			path = notePath(routePrefix(c, d), d)
 		}
 		fm := map[string]any{
 			"title":       d.Title,
@@ -329,6 +329,60 @@ func sortedKeys(m map[string]string) []string {
 		}
 	}
 	return out
+}
+
+// Routing a document to a folder, and therefore to an access boundary.
+//
+// This is as close to permission sync as an honest implementation gets without
+// mirroring per-document ACLs. A source has structure — a Confluence space, a
+// Slack channel, a Jira project, a Drive folder — and that structure is usually
+// what its permissions follow. Routing on it lets an operator put each part of
+// a source into a Grimoire space whose membership matches, so access is
+// enforced by the same mechanism as everything else.
+//
+// What it is NOT: a copy of the source's ACL. If someone loses access in
+// Confluence, nothing here notices. That limit is in the README, and this
+// feature narrows it rather than closing it — an operator can now separate
+// "Engineering's wiki" from "HR's wiki" instead of pulling both into one folder
+// that everyone with access to the connector can read.
+//
+// The rule is deliberately plain: a metadata field, and a mapping from its
+// values to folders. Anything cleverer would need a language, and a language
+// needs a debugger.
+
+// routePrefix picks a document's destination folder.
+//
+// route_by names a metadata field (space, channel, project, repo…); route_map
+// maps its values to folders, as "value=folder" pairs. A value with no mapping
+// falls back to the connector's own prefix, so a rule that does not cover
+// everything still puts the rest somewhere sensible rather than dropping it.
+func routePrefix(c Connector, d Document) string {
+	field := c.Config.Get("route_by")
+	if field == "" {
+		return c.Prefix
+	}
+	value := strings.TrimSpace(d.Meta[field])
+	if value == "" {
+		return c.Prefix
+	}
+	for _, pair := range strings.Split(c.Config.Get("route_map"), ",") {
+		name, folder, ok := strings.Cut(strings.TrimSpace(pair), "=")
+		if !ok {
+			continue
+		}
+		if strings.EqualFold(strings.TrimSpace(name), value) {
+			if f := strings.Trim(strings.TrimSpace(folder), "/"); f != "" {
+				return f
+			}
+		}
+	}
+	// No explicit mapping: a subfolder named after the value keeps documents
+	// separated by source structure even when the operator has not said where
+	// each one goes, which is the arrangement a space can be drawn around later.
+	if strings.EqualFold(c.Config.Get("route_map"), "") {
+		return strings.Trim(c.Prefix, "/") + "/" + slugify(value, 40)
+	}
+	return c.Prefix
 }
 
 var (

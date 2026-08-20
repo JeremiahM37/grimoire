@@ -41,6 +41,11 @@ func (slack) Describe() Kind {
 					"the ID is at the bottom."},
 			{Name: "include_threads", Label: "Include thread replies",
 				Placeholder: "yes", Help: "yes (default) or no"},
+			{Name: "route_by", Label: "Split by", Placeholder: "channel",
+				Help: "Put each channel in its own folder, so a private channel can " +
+					"sit in a Grimoire space with matching membership."},
+			{Name: "route_map", Label: "Folder per value",
+				Placeholder: "C0123=team/eng, C0456=hr"},
 		},
 		DefaultPrefix: "connectors/slack",
 	}

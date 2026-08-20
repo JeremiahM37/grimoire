@@ -50,6 +50,13 @@ func (confluence) Describe() Kind {
 				Help:        "The account the API token belongs to."},
 			{Name: "spaces", Label: "Space keys", Placeholder: "ENG, HANDBOOK",
 				Help: "Comma-separated. Leave empty for every space the account can read."},
+			{Name: "route_by", Label: "Split by", Placeholder: "space",
+				Help: "Put each Confluence space in its own folder — the way to keep " +
+					"them in different Grimoire spaces, and the closest thing to " +
+					"mirroring who can read what. Leave empty to pull everything " +
+					"into one folder."},
+			{Name: "route_map", Label: "Folder per value", Placeholder: "ENG=team/eng, HR=hr/wiki",
+				Help: "Optional. Without it, each value gets a subfolder named after it."},
 		},
 		DefaultPrefix: "connectors/confluence",
 	}
@@ -169,6 +176,10 @@ func (jira) Describe() Kind {
 				Help: "Comma-separated. Leave empty for every project the account can see."},
 			{Name: "jql", Label: "Extra JQL", Placeholder: "status != Done",
 				Help: "Optional. ANDed with the project and updated-since clauses."},
+			{Name: "route_by", Label: "Split by", Placeholder: "project",
+				Help: "Put each project in its own folder, so projects can sit in " +
+					"different Grimoire spaces."},
+			{Name: "route_map", Label: "Folder per value", Placeholder: "ENG=team/eng, OPS=ops"},
 		},
 		DefaultPrefix: "connectors/jira",
 	}

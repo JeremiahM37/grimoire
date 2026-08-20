@@ -53,6 +53,8 @@ const usage = `grimoire — local-first AI-native notes
   grimoire space add NAME PREFIX      create a shared space
   grimoire space list                 list spaces and their prefixes
   grimoire space member SPACE USER [--read]   grant access to a space
+  grimoire backup [--out FILE]        archive the vault (notes, secrets, sync state)
+  grimoire restore FILE [--into DIR]  restore an archive and rebuild the index
   grimoire version                    print the build version
 
 Env: GRIMOIRE_VAULT (default ~/notes)`
