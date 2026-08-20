@@ -258,6 +258,100 @@ Grimoire ships a full offline-PWA notes app on the same API:
 - Encryption-at-rest for private notes, e-ink `/read` surface, HTML export,
   CRDT-merged multi-device sync, trash + undo, CLI.
 
+## More than one person
+
+Grimoire starts as a single-user server and stays one until you create an
+account — that act, not a flag, is what turns multi-user on, because a flag can
+be flipped on a running server and lock its owner out of their own notes.
+
+```bash
+grimoire user add alice --admin     # the first account; every later one is an admin's doing
+grimoire space add Engineering team/eng
+grimoire space member team/eng bob --read
+```
+
+Access is **spaces**: a subtree of the vault plus the people who may see it. A
+path prefix rather than a per-note access list, because the files outlive the
+app — a prefix is visible in the file tree and survives being copied to another
+machine, while a per-note ACL lives only in an index that is meant to be
+rebuildable from the files alone. Each account gets `users/<name>/`;
+administrators create shared prefixes; everything else is the commons, which is
+what keeps an existing vault working unchanged.
+
+The filter is applied **inside** ranking, not to its output. BM25 scores against
+corpus statistics, so filtering afterwards would leave visible chunks scored
+against a corpus that includes notes the caller cannot see — and their contents
+would move the ranking. A test floods an unreadable space with the query term
+and asserts that not one visible score changes.
+
+Agents authenticate with API keys (`POST /api/keys`, shown once, stored hashed).
+Administrators manage accounts, spaces, connectors and the credential vault;
+members read and write the spaces they belong to.
+
+### What it costs at size
+
+Measured on synthetic vaults (local embedder, one box), because "scales fine" is
+not a claim anyone should take on faith:
+
+| notes | cold index | restart | RSS | query p50 | after a write |
+|---|---|---|---|---|---|
+| 1,000 | 0.6s | 0.1s | 93 MB | 1.2 ms | 1.5 ms |
+| 10,000 | 5.0s | 0.1s | 209 MB | 10.5 ms | 11.2 ms |
+| 50,000 | 24.5s | 0.4s | 542 MB | 38.0 ms | 43.3 ms |
+
+Three things had to change to get there, and each was a measured problem rather
+than a suspected one:
+
+**Restarts re-derived everything.** Serving began with a full rebuild — every
+note re-read, every chunk re-embedded — which is minutes with a remote embedder
+and happens again on every crash-loop iteration. A sync now reads only what
+changed on disk, and a full rebuild happens only when the embedding model or the
+row shape does.
+
+**Every write threw away the retrieval cache**, so the next query rebuilt the
+whole corpus: 2.2s at 50,000 notes, paid by whoever asked next. Writes patch the
+cache in place instead, and a test asserts a patched cache returns byte-identical
+hits to a rebuilt one — the property that keeps the benchmark numbers above
+meaningful.
+
+**Indexing was quadratic**, because deleting a note's full-text row scanned the
+whole FTS index. 897s → 24s for a 50,000-note rebuild.
+
+What is left is honest to say too: query cost is linear in corpus size, because
+the dense leg scores every chunk. That is fine into the low hundreds of
+thousands of chunks on one box, and the lever beyond it is an approximate index
+(HNSW) — which trades recall for latency, so it should be pulled when the
+numbers say to, not before.
+
+## Connectors
+
+Most of what a team knows is in Slack, Confluence, Jira, Drive and GitHub, and
+none of it is going to be retyped. Connectors pull it in — as **markdown notes
+in your vault**, with provenance in the frontmatter, so search, retrieval,
+spaces, the editor and device sync work on them for free. You can also read them
+with `cat`, and if Grimoire disappears the pulled knowledge is still there.
+
+| source | pulls | credential |
+|---|---|---|
+| **Slack** | threads (not stray messages) and per-channel daily notes | bot token, `channels:history` |
+| **Confluence** | pages by space, converted from storage format | account email + API token |
+| **Jira** | issues with description and comments, ADF flattened | account email + API token |
+| **Google Drive** | Docs exported as text, plus text/markdown files | OAuth or service-account token |
+| **GitHub** | issues and PRs with comments; optionally the repo's markdown | personal access token |
+| **RSS / Atom** | any feed — changelogs, status pages, blogs | none |
+
+Configure them in the console (**⌘K → Connectors**) or over the API. Each source
+declares its own fields, help text and where to get its credential, so the
+console renders a form it does not have hardcoded and a new source needs no
+console change. Credentials are named, not stored: the value comes from the
+credential vault for one request and never enters the connector row, the API or
+a note.
+
+Syncs are incremental — a cursor per connector, a stable id per document — so a
+re-sync updates a note rather than duplicating it, and an unchanged document is
+not re-embedded. A failure keeps its place and says what to do about it ("the
+bot is not a member of that channel"), rather than "unexpected status 403".
+
 ## Config
 
 Everything is environment-driven (same variables bare-metal, systemd, Docker):
@@ -274,6 +368,8 @@ Everything is environment-driven (same variables bare-metal, systemd, Docker):
 | `GRIMOIRE_EMBED_MODEL` | `nomic-embed-text` | Embeddings (offline hashing fallback built in) |
 | `GRIMOIRE_LOCAL_EMBED` / `_MODEL` | `auto` / `potion-base-8M` | Local semantic embeddings — the ~30 MB model is fetched once on first start (`grimoire fetch-model` to pre-seed); `off` to stay on the hashing embedder |
 | `GRIMOIRE_WHISPER_URL` / `_MODEL` | *(empty)* | Audio-memo transcription |
+| `GRIMOIRE_WEB_SEARCH_PROVIDER` | *(off)* | `searxng` · `brave` · `serper` · `google` — enables `search_web` / `open_urls` |
+| `GRIMOIRE_WEB_SEARCH_URL` / `_KEY` / `_CX` | *(empty)* | SearXNG base URL · provider key (or `vault:name` to read it from the credential vault) · Google engine id |
 | `GRIMOIRE_DAILY_DIR` / `GRIMOIRE_INBOX_DIR` | `journal` / `inbox` | Vault sub-folders |
 | `GRIMOIRE_SYNC_PEER` / `_TOKEN` / `_INTERVAL` | *(off)* | Background sync with a peer |
 | `GRIMOIRE_VAULT_IDLE_LOCK` | `900` | Credential-vault auto-lock (seconds) |
@@ -300,6 +396,14 @@ idle auto-lock, passphrase rotation. Broker: origin-exact + path-prefix scopes,
 SSRF-guarded, fully audited; secret values never appear in any response. Private
 notes excluded from retrieval, `/read`, export, transclusion, and queries on
 unauthenticated surfaces. Strict CSP. Full threat model: [SECURITY.md](SECURITY.md).
+
+On a multi-user instance: sessions and API keys are stored hashed, passwords are
+Argon2id, access is by space, and administrators can read every space — that is
+a deliberate simplification, stated here rather than discovered later, because
+the alternative is an administrator who cannot fix a space they cannot see.
+Connector credentials are named, never stored by the connector, and never
+returned. Web fetching goes through the credential broker's outbound guard,
+because the URL comes from whoever is asking.
 
 Two options trade a property for availability, so they are off by default and
 worth naming here rather than in a footnote:
@@ -394,11 +498,16 @@ analysis and the rejected experiments: [benchmarks/locomo/](benchmarks/locomo/)
 ## Tests
 
 ```bash
-cd go && go test ./...           # hermetic: unit + api + sync + CLI tests
-.venv/bin/pytest tests/e2e       # 100 real-browser flows against the built binary
+cd go && go test ./...           # hermetic: unit + api + auth + connectors + sync + CLI
+cd go && go test -race ./...     # the retrieval cache is mutated under concurrent readers
+.venv/bin/pytest tests/e2e       # real-browser flows against the built binary
 .venv/bin/pytest tests/retrieval # retrieval gate: 20 questions, known evidence, seconds
 verify run .verify.yaml          # live api + headless-browser smoke (isolated port)
 ```
+
+Connectors are tested against local servers answering like the real ones —
+Slack's 200-with-`ok:false`, Jira's ADF, Confluence storage format, Drive's
+separate export call — so the suite needs no network and no credentials.
 
 The retrieval gate is the cheap half of the benchmarks below. Those take an
 afternoon and a reader model, so nothing used to stand between a retrieval
