@@ -24,21 +24,23 @@ func (s *Server) facts(w http.ResponseWriter, r *http.Request) {
 	var conds []string
 	var args []any
 	if k := strings.TrimSpace(r.URL.Query().Get("key")); k != "" {
-		conds = append(conds, "key=?")
+		conds = append(conds, "f.key=?")
 		args = append(args, strings.ToLower(k))
 	}
 	if n := strings.TrimSpace(r.URL.Query().Get("note")); n != "" {
-		conds = append(conds, "note=?")
+		conds = append(conds, "f.note=?")
 		args = append(args, n)
 	}
 	if !truthy(r.URL.Query().Get("include_private")) {
-		conds = append(conds, "private=0")
+		// Qualified: `private` exists in facts AND notes, and an unqualified
+		// reference became ambiguous the moment the join was added.
+		conds = append(conds, "f.private=0")
 	}
-	q := "SELECT note, key, value FROM facts"
+	q := "SELECT f.note, f.key, f.value, COALESCE(n.acl,'') FROM facts f LEFT JOIN notes n ON n.path=f.note"
 	if len(conds) > 0 {
 		q += " WHERE " + strings.Join(conds, " AND ")
 	}
-	q += " ORDER BY key, note"
+	q += " ORDER BY f.key, f.note"
 
 	rows, err := s.Index.DB.Query(q, args...)
 	if err != nil {
@@ -48,12 +50,12 @@ func (s *Server) facts(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 	out := []map[string]string{}
 	for rows.Next() {
-		var note, key, value string
-		if err := rows.Scan(&note, &key, &value); err != nil {
+		var note, key, value, acl string
+		if err := rows.Scan(&note, &key, &value, &acl); err != nil {
 			writeErr(w, http.StatusInternalServerError, err.Error())
 			return
 		}
-		if !s.canRead(r, note) {
+		if !s.canReadNote(r, note, acl) {
 			continue
 		}
 		out = append(out, map[string]string{"note": note, "key": key, "value": value})
@@ -169,12 +171,12 @@ func (s *Server) graph(w http.ResponseWriter, r *http.Request) {
 	// them a note's existence and its title.
 	visible := map[string]bool{}
 	nodes := []map[string]string{}
-	if err := s.eachRow("SELECT path, title FROM notes", nil, func(rows *sql.Rows) error {
-		var path, title string
-		if err := rows.Scan(&path, &title); err != nil {
+	if err := s.eachRow("SELECT path, title, acl FROM notes", nil, func(rows *sql.Rows) error {
+		var path, title, acl string
+		if err := rows.Scan(&path, &title, &acl); err != nil {
 			return err
 		}
-		if !s.canRead(r, path) {
+		if !s.canReadNote(r, path, acl) {
 			return nil
 		}
 		visible[path] = true
@@ -243,7 +245,7 @@ func (s *Server) eachRow(query string, args []any, fn func(*sql.Rows) error) err
 func (s *Server) tasks(w http.ResponseWriter, r *http.Request) {
 	includeDone := truthy(r.URL.Query().Get("include_done"))
 	rows, err := s.Index.DB.Query(
-		"SELECT path, title, body FROM notes ORDER BY updated DESC, path")
+		"SELECT path, title, body, acl FROM notes ORDER BY updated DESC, path")
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -259,12 +261,12 @@ func (s *Server) tasks(w http.ResponseWriter, r *http.Request) {
 	}
 	out := []task{}
 	for rows.Next() {
-		var path, title, body string
-		if err := rows.Scan(&path, &title, &body); err != nil {
+		var path, title, body, acl string
+		if err := rows.Scan(&path, &title, &body, &acl); err != nil {
 			writeErr(w, http.StatusInternalServerError, err.Error())
 			return
 		}
-		if !s.canRead(r, path) {
+		if !s.canReadNote(r, path, acl) {
 			continue
 		}
 		for i, line := range strings.Split(body, "\n") {
@@ -296,7 +298,7 @@ func (s *Server) complete(w http.ResponseWriter, r *http.Request) {
 	where, spaceArgs := s.whereSpace(r, "space", " WHERE (lower(title) LIKE ? OR lower(path) LIKE ?)")
 	args := append(append([]any{like, like}, spaceArgs...), limit)
 	rows, err := s.Index.DB.Query(
-		"SELECT path, title FROM notes"+where+" ORDER BY updated DESC, path LIMIT ?", args...)
+		"SELECT path, title, acl FROM notes"+where+" ORDER BY updated DESC, path LIMIT ?", args...)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -304,10 +306,13 @@ func (s *Server) complete(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 	out := []map[string]string{}
 	for rows.Next() {
-		var path, title string
-		if err := rows.Scan(&path, &title); err != nil {
+		var path, title, acl string
+		if err := rows.Scan(&path, &title, &acl); err != nil {
 			writeErr(w, http.StatusInternalServerError, err.Error())
 			return
+		}
+		if !s.canReadNote(r, path, acl) {
+			continue
 		}
 		stem := path
 		if i := strings.LastIndex(stem, "/"); i >= 0 {

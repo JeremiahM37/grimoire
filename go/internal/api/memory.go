@@ -242,14 +242,18 @@ func (s *Server) briefing(w http.ResponseWriter, r *http.Request) {
 		}
 		defer rows.Close()
 		for rows.Next() {
-			var path, title, body string
-			if err := rows.Scan(&path, &title, &body); err != nil {
+			var path, title, body, acl string
+			if err := rows.Scan(&path, &title, &body, &acl); err != nil {
 				return nil, err
 			}
 			// The briefing is standing context handed to an agent before it
 			// asks for anything, so it is the surface most likely to leak a
 			// space quietly. Every bucket goes through this one filter.
-			if !s.canRead(r, path) {
+			// canReadNote, not canRead: this loop holds an open cursor, and
+			// canRead reads the note's reader list from the database — which
+			// on a single connection waits for the cursor to finish and never
+			// returns. The briefing hung on exactly that.
+			if !s.canReadNote(r, path, acl) {
 				continue
 			}
 			out = append(out, map[string]string{"path": path, "title": title, "body": body})
@@ -261,21 +265,21 @@ func (s *Server) briefing(w http.ResponseWriter, r *http.Request) {
 	// A briefing that silently drops a bucket is worse than one that fails:
 	// the agent cannot tell "nothing is pinned" from "the pinned query broke".
 	pinned, err := collect(
-		"SELECT path, title, body FROM notes WHERE private=0 " +
+		"SELECT path, title, body, acl FROM notes WHERE private=0 " +
 			"AND frontmatter_json LIKE '%\"pinned\": true%' ORDER BY updated DESC, path LIMIT 10")
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	onboarding, err := collect(
-		"SELECT n.path, n.title, n.body FROM notes n JOIN tags t ON t.note=n.path " +
+		"SELECT n.path, n.title, n.body, n.acl FROM notes n JOIN tags t ON t.note=n.path " +
 			"WHERE t.tag='onboarding' AND n.private=0 ORDER BY n.updated DESC, n.path LIMIT 10")
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	recent, err := collect(
-		"SELECT path, title, body FROM notes WHERE path LIKE ? AND private=0 "+
+		"SELECT path, title, body, acl FROM notes WHERE path LIKE ? AND private=0 "+
 			"ORDER BY updated DESC, path LIMIT ?", MemoryDir+"/%", n)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())

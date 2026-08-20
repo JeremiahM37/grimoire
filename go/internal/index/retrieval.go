@@ -638,6 +638,18 @@ func (ix *Index) WholeCorpusFor(f Filter) ([]Hit, error) {
 			args = append(args, n)
 		}
 	}
+	// Reader lists apply here too. This path hands over the WHOLE corpus when
+	// it fits a budget, so a filter that only covered ranking would leak every
+	// restricted document to anyone whose vault happens to be small — the one
+	// case where nothing is ranked and therefore nothing was checked.
+	if !f.IgnoreACLs {
+		if f.User == "" {
+			where = append(where, "v.acl = ''")
+		} else {
+			where = append(where, "(v.acl = '' OR instr(v.acl, ?) > 0)")
+			args = append(args, ","+f.User+",")
+		}
+	}
 	if len(where) > 0 {
 		q += " WHERE " + strings.Join(where, " AND ")
 	}

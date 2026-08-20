@@ -69,12 +69,13 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	type row struct{ path, title, snippet string }
+	type row struct{ path, title, snippet, acl string }
 	var rows []row
 
 	if len(terms) > 0 {
-		query := "SELECT path, title, snippet(fts, 2, '[', ']', ' … ', 12) AS snippet " +
-			"FROM fts WHERE fts MATCH ? ORDER BY bm25(fts) LIMIT 500"
+		query := "SELECT f.path, f.title, snippet(fts, 2, '[', ']', ' … ', 12) AS snippet, " +
+			"COALESCE(n.acl,'') FROM fts f LEFT JOIN notes n ON n.path=f.path " +
+			"WHERE fts MATCH ? ORDER BY bm25(fts) LIMIT 500"
 		// The closure returns an error rather than swallowing one. Returning
 		// an empty slice on failure made a broken query indistinguishable from
 		// a query with no matches, and the caller then "fell back" to a
@@ -89,7 +90,7 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 			defer rs.Close()
 			for rs.Next() {
 				var x row
-				if err := rs.Scan(&x.path, &x.title, &x.snippet); err != nil {
+				if err := rs.Scan(&x.path, &x.title, &x.snippet, &x.acl); err != nil {
 					return nil, err
 				}
 				out = append(out, x)
@@ -112,21 +113,26 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 		}
 	} else if opTag != "" || wantPinned || pathLike != "" {
 		rs, err := s.Index.DB.Query(
-			"SELECT path, title, '' FROM notes ORDER BY updated DESC, path LIMIT 500")
+			"SELECT path, title, '', acl FROM notes ORDER BY updated DESC, path LIMIT 500")
 		if err != nil {
 			writeErr(w, http.StatusInternalServerError, err.Error())
 			return
 		}
-		defer rs.Close()
 		for rs.Next() {
 			var x row
-			if err := rs.Scan(&x.path, &x.title, &x.snippet); err != nil {
+			if err := rs.Scan(&x.path, &x.title, &x.snippet, &x.acl); err != nil {
+				rs.Close()
 				writeErr(w, http.StatusInternalServerError, err.Error())
 				return
 			}
 			rows = append(rows, x)
 		}
-		if err := rs.Err(); err != nil {
+		err = rs.Err()
+		// Closed HERE rather than by defer: everything below runs queries, and
+		// on one connection a query issued while this cursor is open waits for
+		// a connection the cursor holds.
+		rs.Close()
+		if err != nil {
 			writeErr(w, http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -141,7 +147,7 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 		// limit down here, so restricting to readable spaces at this point
 		// costs nothing and cannot truncate the result the way filtering a
 		// LIMITed query would.
-		if !s.canRead(r, x.path) {
+		if !s.canReadNote(r, x.path, x.acl) {
 			continue
 		}
 		if opTag != "" {
