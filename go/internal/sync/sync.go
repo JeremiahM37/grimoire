@@ -155,9 +155,24 @@ func (c *Client) WriteRaw(rel, raw string) error {
 }
 
 // ConflictName is where a losing version is preserved.
+//
+// The name carries a timestamp to one second, which is fine until two devices
+// lose the same race inside the same second — then the second conflict copy
+// takes the first one's name and the first version is destroyed by the
+// mechanism that exists to preserve it. Callers pass a taken() predicate so a
+// collision becomes a suffix instead.
 func ConflictName(rel string) string {
+	return conflictNameUnless(rel, func(string) bool { return false })
+}
+
+func conflictNameUnless(rel string, taken func(string) bool) string {
 	base := strings.TrimSuffix(rel, ".md")
-	return fmt.Sprintf("%s (conflict %s).md", base, vault.Now().Format("20060102-150405"))
+	stamp := vault.Now().Format("20060102-150405")
+	name := fmt.Sprintf("%s (conflict %s).md", base, stamp)
+	for i := 2; taken(name) && i < 100; i++ {
+		name = fmt.Sprintf("%s (conflict %s-%d).md", base, stamp, i)
+	}
+	return name
 }
 
 // Apply is the server half: accept one pushed change, refusing to overwrite a
@@ -178,7 +193,14 @@ func (c *Client) Apply(ch Change) Result {
 	}
 
 	if haveLocal && ch.BaseHash != nil && curHash != *ch.BaseHash {
-		copyRel := ConflictName(ch.Path)
+		copyRel := conflictNameUnless(ch.Path, func(candidate string) bool {
+			p, err := c.Vault.SafePath(candidate)
+			if err != nil {
+				return false
+			}
+			_, statErr := os.Stat(p)
+			return statErr == nil
+		})
 		if err := c.WriteRaw(copyRel, *ch.Content); err != nil {
 			return Result{Path: ch.Path, Status: "error", Detail: err.Error()}
 		}
