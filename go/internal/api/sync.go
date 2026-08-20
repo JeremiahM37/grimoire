@@ -2,6 +2,8 @@ package api
 
 import (
 	"archive/zip"
+	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -187,19 +189,25 @@ func (s *Server) syncStatus(w http.ResponseWriter, _ *http.Request) {
 // syncManifest lists every note with its content hash and mtime, so a peer can
 // work out what it is missing without transferring bodies. Keyed by path —
 // this is the wire format a peer of EITHER implementation expects.
-func (s *Server) syncManifest(w http.ResponseWriter, _ *http.Request) {
+func (s *Server) syncManifest(w http.ResponseWriter, r *http.Request) {
+	if !s.allowSync(w, r) {
+		return
+	}
 	m, err := s.Sync.LocalManifest()
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, m)
+	writeJSON(w, http.StatusOK, s.readableManifest(r, m))
 }
 
 // syncPull returns the raw text of the requested notes. A note missing here is
 // reported as null rather than omitted, so the caller can tell "deleted on the
 // peer" from "never asked for".
 func (s *Server) syncPull(w http.ResponseWriter, r *http.Request) {
+	if !s.allowSync(w, r) {
+		return
+	}
 	var in struct {
 		Paths []string `json:"paths"`
 	}
@@ -209,6 +217,13 @@ func (s *Server) syncPull(w http.ResponseWriter, r *http.Request) {
 	}
 	out := map[string]*string{}
 	for _, rel := range in.Paths {
+		// A note the caller may not read is reported as absent, exactly like
+		// one that does not exist: sync is a bulk read of note BODIES, and it
+		// answered every one of them to anybody before this check existed.
+		if !s.canReadSync(r, rel) {
+			out[rel] = nil
+			continue
+		}
 		note, err := s.Vault.Read(rel)
 		if err != nil {
 			out[rel] = nil
@@ -223,6 +238,9 @@ func (s *Server) syncPull(w http.ResponseWriter, r *http.Request) {
 // syncPush accepts a peer's changes. A change whose base_hash no longer matches
 // becomes a conflict copy: the local version is never overwritten blindly.
 func (s *Server) syncPush(w http.ResponseWriter, r *http.Request) {
+	if !s.allowSync(w, r) {
+		return
+	}
 	var in struct {
 		Changes []gsync.Change `json:"changes"`
 		Device  string         `json:"device"`
@@ -328,4 +346,82 @@ func (s *Server) importVault(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]int{"imported": imported, "skipped": skipped})
+}
+
+// Who may sync, and to what.
+//
+// Sync predates every access control in this server, and moved whole-vault
+// content without consulting any of them: the manifest listed every note and
+// pull returned any body, to an UNAUTHENTICATED caller on a multi-user
+// instance. It is a bulk read of the vault, so it answers to the same rules as
+// every other read.
+//
+// A peer holding the sync token is the deployment's own other device — that is
+// what the token is for — and keeps whole-vault access. Anyone else is a
+// principal, and gets what that principal can read.
+
+// allowSync gates the peer routes.
+func (s *Server) allowSync(w http.ResponseWriter, r *http.Request) bool {
+	if s.isSyncPeer(r) {
+		return true
+	}
+	p := principal(r)
+	if p.Unrestricted || !p.Anonymous {
+		return true
+	}
+	writeErr(w, http.StatusUnauthorized, "sign in, or present the sync token")
+	return false
+}
+
+// isSyncPeer reports whether the caller authenticated as the deployment's own
+// peer rather than as a person.
+func (s *Server) isSyncPeer(r *http.Request) bool {
+	if strings.TrimSpace(s.SyncToken) == "" {
+		return false
+	}
+	presented, _ := presentedToken(r)
+	if presented == "" {
+		presented = strings.TrimSpace(r.Header.Get("X-Grimoire-Sync"))
+	}
+	want := sha256.Sum256([]byte(s.SyncToken))
+	got := sha256.Sum256([]byte(presented))
+	return subtle.ConstantTimeCompare(got[:], want[:]) == 1
+}
+
+// canReadSync is canRead for the sync routes, with the peer exemption.
+func (s *Server) canReadSync(r *http.Request, path string) bool {
+	if s.isSyncPeer(r) {
+		return true
+	}
+	return s.canRead(r, normPath(path))
+}
+
+// readableManifest drops entries the caller may not read. The manifest is a
+// list of paths and hashes — which is to say, a list of what exists and when it
+// changed, and that is worth hiding on its own.
+func (s *Server) readableManifest(r *http.Request, m map[string]gsync.Entry) map[string]gsync.Entry {
+	if s.isSyncPeer(r) || principal(r).Unrestricted {
+		return m
+	}
+	// Read the reader lists in one pass rather than per path: this runs over
+	// the whole vault, and a query per note would be both slow and, inside the
+	// wrong loop, a deadlock.
+	acls := map[string]string{}
+	rows, err := s.Index.DB.Query("SELECT path, acl FROM notes")
+	if err == nil {
+		for rows.Next() {
+			var path, acl string
+			if err := rows.Scan(&path, &acl); err == nil {
+				acls[path] = acl
+			}
+		}
+		rows.Close()
+	}
+	out := make(map[string]gsync.Entry, len(m))
+	for path, entry := range m {
+		if s.canReadNote(r, path, acls[path]) {
+			out[path] = entry
+		}
+	}
+	return out
 }
