@@ -72,6 +72,8 @@ var routeAccess = map[string]access{
 	"GET /api/facts":               scoped,
 	"GET /api/complete":            scoped,
 	"GET /api/memory":              scoped,
+	"GET /api/memory/export":       scoped, // every fact the caller may read
+	"GET /api/memory/facets":       scoped, // scope names are drawn from facts
 	"GET /api/briefing":            scoped,
 	"GET /api/file/{path...}":      scoped,
 	"GET /read":                    scoped,
@@ -94,7 +96,10 @@ var routeAccess = map[string]access{
 
 	// --- writes and actions that need an account ---
 	"POST /api/memory":              authed,
+	"POST /api/memory/batch":        authed,
 	"POST /api/memory/consolidate":  authed,
+	"PATCH /api/memory/entry":       authed,
+	"DELETE /api/memory/entry":      authed,
 	"POST /api/facts":               authed,
 	"POST /api/capture":             authed,
 	"POST /api/attach":              authed,

@@ -77,23 +77,30 @@ func TestSetFactValidates(t *testing.T) {
 
 func TestConsolidateMemoryDedupesWithoutAnLLM(t *testing.T) {
 	_, h := testServer(t)
+	// infer=false stores verbatim with no reconciliation, which is the only
+	// way a duplicate reaches the note now — reconciliation refuses to write
+	// one. Consolidation still has to clean up whatever is already on file,
+	// including notes written before reconciliation existed.
 	for i := 0; i < 2; i++ {
 		if w := do(t, h, "POST", "/api/memory", map[string]any{
 			"topic": "deploy", "text": "force-recreate after any VPN change",
-			"agent": "claude-code"}); w.Code >= 400 {
+			"agent": "claude-code", "infer": false}); w.Code >= 400 {
 			t.Fatalf("remember = %d: %s", w.Code, w.Body)
 		}
 	}
-	// a second identical memory is a duplicate entry, which is exactly what
-	// makes recall degrade as memory grows
+	var mems []map[string]any
+	decode(t, do(t, h, "GET", "/api/memory?shape=notes", nil), &mems)
+	if n := strings.Count(mems[0]["body"].(string), "force-recreate"); n != 2 {
+		t.Fatalf("test needs two duplicates on file, got %d", n)
+	}
+
 	var out map[string]any
 	decode(t, do(t, h, "POST", "/api/memory/consolidate", map[string]any{}), &out)
 	if out["notes_changed"] == nil {
 		t.Fatalf("no result: %v", out)
 	}
 
-	var mems []map[string]any
-	decode(t, do(t, h, "GET", "/api/memory", nil), &mems)
+	decode(t, do(t, h, "GET", "/api/memory?shape=notes", nil), &mems)
 	if len(mems) != 1 {
 		t.Fatalf("memories = %d", len(mems))
 	}
@@ -103,12 +110,30 @@ func TestConsolidateMemoryDedupesWithoutAnLLM(t *testing.T) {
 	}
 }
 
+func TestRememberRefusesToWriteADuplicateInTheFirstPlace(t *testing.T) {
+	// The behaviour consolidation used to clean up after: the same belief
+	// reported twice must not land twice.
+	_, h := testServer(t)
+	for i := 0; i < 2; i++ {
+		if w := do(t, h, "POST", "/api/memory", map[string]any{
+			"topic": "deploy", "text": "force-recreate after any VPN change",
+			"agent": "claude-code"}); w.Code >= 400 {
+			t.Fatalf("remember = %d: %s", w.Code, w.Body)
+		}
+	}
+	var mems []map[string]any
+	decode(t, do(t, h, "GET", "/api/memory?shape=notes", nil), &mems)
+	if n := strings.Count(mems[0]["body"].(string), "force-recreate after any VPN change"); n != 1 {
+		t.Errorf("duplicate belief written %d times:\n%s", n, mems[0]["body"])
+	}
+}
+
 func TestConsolidateSnapshotsBeforeRewriting(t *testing.T) {
 	_, h := testServer(t)
 	do(t, h, "POST", "/api/memory", map[string]any{
-		"topic": "deploy", "text": "one", "agent": "a"})
+		"topic": "deploy", "text": "one", "agent": "a", "infer": false})
 	do(t, h, "POST", "/api/memory", map[string]any{
-		"topic": "deploy", "text": "one", "agent": "a"})
+		"topic": "deploy", "text": "one", "agent": "a", "infer": false})
 	do(t, h, "POST", "/api/memory/consolidate", map[string]any{})
 
 	// memory that a model can rewrite must stay rollback-able, or the human

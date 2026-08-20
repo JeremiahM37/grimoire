@@ -388,11 +388,30 @@ func TestMemoryRememberAndRecall(t *testing.T) {
 		t.Errorf("second memory should append, got created=%v", res["created"])
 	}
 
+	// Recall is fact-level: the matching belief comes back, not the page it
+	// lives on.
 	w = do(t, h, "GET", "/api/memory?q=platform+team", nil)
+	var facts []map[string]any
+	decode(t, w, &facts)
+	if len(facts) == 0 {
+		t.Fatal("recall found nothing")
+	}
+	if !strings.Contains(facts[0]["text"].(string), "platform team") {
+		t.Errorf("wrong fact ranked first: %v", facts[0])
+	}
+	if facts[0]["agent"] != "claude" {
+		t.Errorf("provenance lost: %v", facts[0])
+	}
+	if facts[0]["path"] != "memory/ownership.md" {
+		t.Errorf("fact does not name its note: %v", facts[0])
+	}
+
+	// The note-level view still shows the file, with both memories in it.
+	w = do(t, h, "GET", "/api/memory?shape=notes&q=platform+team", nil)
 	var mems []map[string]any
 	decode(t, w, &mems)
 	if len(mems) == 0 {
-		t.Fatal("recall found nothing")
+		t.Fatal("note-level recall found nothing")
 	}
 	body := mems[0]["body"].(string)
 	if !strings.Contains(body, "platform team") || !strings.Contains(body, "on-call rota") {
