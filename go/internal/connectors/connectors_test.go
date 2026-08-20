@@ -562,3 +562,81 @@ func TestIncrementalPagesNeverDeleteAnything(t *testing.T) {
 		t.Fatalf("notes=%v deleted=%v", keysOf(w.notes), w.deleted)
 	}
 }
+
+// Routing is how a source's structure reaches Grimoire's access boundaries: a
+// Confluence space or a Slack channel lands in its own folder, and a folder is
+// what a Grimoire space is drawn around. It is not a copy of the source's ACL —
+// that limit is documented — but it is what makes "HR's wiki is not
+// Engineering's wiki" expressible at all.
+func TestDocumentsRouteToFoldersBySourceStructure(t *testing.T) {
+	docs := []Document{
+		{ExternalID: "1", Title: "Runbook", Body: "x", Meta: map[string]string{"space": "ENG"}},
+		{ExternalID: "2", Title: "Handbook", Body: "y", Meta: map[string]string{"space": "HR"}},
+		{ExternalID: "3", Title: "Stray", Body: "z"}, // no value for the field
+	}
+
+	t.Run("explicit map", func(t *testing.T) {
+		src := &stubSource{pages: []Page{{Docs: docs}}}
+		r, w, store, c := runnerFixture(t, src)
+		c.Config = Config{"route_by": "space", "route_map": "ENG=team/eng, HR=hr/wiki"}
+		if err := store.Save(c); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := r.Run(context.Background(), "c1"); err != nil {
+			t.Fatal(err)
+		}
+		paths := keysOf(w.notes)
+		want := map[string]bool{
+			"team/eng/runbook-1.md":      true,
+			"hr/wiki/handbook-2.md":      true,
+			"connectors/stub/stray-3.md": true, // unmapped falls back, never dropped
+		}
+		for _, p := range paths {
+			if !want[p] {
+				t.Errorf("unexpected destination %q", p)
+			}
+			delete(want, p)
+		}
+		for p := range want {
+			t.Errorf("missing destination %q (got %v)", p, paths)
+		}
+	})
+
+	t.Run("no map: a subfolder per value", func(t *testing.T) {
+		src := &stubSource{pages: []Page{{Docs: docs}}}
+		r, w, store, c := runnerFixture(t, src)
+		c.Config = Config{"route_by": "space"}
+		if err := store.Save(c); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := r.Run(context.Background(), "c1"); err != nil {
+			t.Fatal(err)
+		}
+		found := map[string]bool{}
+		for _, p := range keysOf(w.notes) {
+			found[p] = true
+		}
+		for _, want := range []string{
+			"connectors/stub/eng/runbook-1.md",
+			"connectors/stub/hr/handbook-2.md",
+			"connectors/stub/stray-3.md",
+		} {
+			if !found[want] {
+				t.Errorf("missing %q (got %v)", want, keysOf(w.notes))
+			}
+		}
+	})
+
+	t.Run("no routing configured", func(t *testing.T) {
+		src := &stubSource{pages: []Page{{Docs: docs}}}
+		r, w, _, _ := runnerFixture(t, src)
+		if _, err := r.Run(context.Background(), "c1"); err != nil {
+			t.Fatal(err)
+		}
+		for _, p := range keysOf(w.notes) {
+			if !strings.HasPrefix(p, "connectors/stub/") || strings.Count(p, "/") != 2 {
+				t.Errorf("routing happened without being asked for: %q", p)
+			}
+		}
+	})
+}
