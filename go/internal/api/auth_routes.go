@@ -32,6 +32,10 @@ func (s *Server) authRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /api/users/{id}", s.updateUser)
 	mux.HandleFunc("DELETE /api/users/{id}", s.deleteUser)
 
+	mux.HandleFunc("GET /api/identities", s.adminOnly(s.listIdentities))
+	mux.HandleFunc("POST /api/identities", s.adminOnly(s.mapIdentity))
+	mux.HandleFunc("DELETE /api/identities/{source}/{external}", s.adminOnly(s.unmapIdentity))
+
 	mux.HandleFunc("GET /api/spaces", s.listSpaces)
 	mux.HandleFunc("POST /api/spaces", s.createSpace)
 	mux.HandleFunc("DELETE /api/spaces/{id}", s.deleteSpace)
@@ -269,6 +273,52 @@ func (s *Server) deleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := s.Auth.Delete(r.PathValue("id")); err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// ------------------------------------------------------------- identities
+
+// Identities are what makes a pulled document's reader list mean anything: a
+// connector knows a Slack user id, and only this mapping says which account
+// that is. Administrators only — a mapping grants access.
+
+func (s *Server) listIdentities(w http.ResponseWriter, _ *http.Request) {
+	ids, err := s.Auth.Identities()
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if ids == nil {
+		ids = []auth.Identity{}
+	}
+	writeJSON(w, http.StatusOK, ids)
+}
+
+func (s *Server) mapIdentity(w http.ResponseWriter, r *http.Request) {
+	var in struct{ Source, External, User string }
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	u, err := s.Auth.ByName(in.User)
+	if err != nil {
+		if u, err = s.Auth.Get(in.User); err != nil {
+			writeErr(w, http.StatusNotFound, "no such user")
+			return
+		}
+	}
+	if err := s.Auth.MapIdentity(in.Source, in.External, u.ID); err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{"ok": true})
+}
+
+func (s *Server) unmapIdentity(w http.ResponseWriter, r *http.Request) {
+	if err := s.Auth.UnmapIdentity(r.PathValue("source"), r.PathValue("external")); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})

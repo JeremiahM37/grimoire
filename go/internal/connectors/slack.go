@@ -46,6 +46,12 @@ func (slack) Describe() Kind {
 					"sit in a Grimoire space with matching membership."},
 			{Name: "route_map", Label: "Folder per value",
 				Placeholder: "C0123=team/eng, C0456=hr"},
+			{Name: "mirror_members", Label: "Mirror channel membership",
+				Placeholder: "no",
+				Help: "yes restricts each pulled conversation to the channel's own " +
+					"members — mapped to accounts here through the identity table. " +
+					"Needs the channels:read scope. Members with no mapped account " +
+					"cannot read it, which is the safe direction."},
 		},
 		DefaultPrefix: "connectors/slack",
 	}
@@ -158,6 +164,16 @@ func (s slack) assemble(ctx context.Context, in Input, channel string, msgs []sl
 		}
 	}
 
+	// A channel's membership, when the operator asked for it. Fetched once per
+	// channel rather than per document: it is a property of the channel, and a
+	// call per thread would burn the rate limit for the same answer.
+	var readers []string
+	if strings.EqualFold(in.Config.Get("mirror_members"), "yes") {
+		if members, err := s.members(ctx, in, channel); err == nil {
+			readers = members
+		}
+	}
+
 	var docs []Document
 	roots := make([]string, 0, len(threads))
 	for ts := range threads {
@@ -177,6 +193,7 @@ func (s slack) assemble(ctx context.Context, in Input, channel string, msgs []sl
 			}
 			title := firstLine(replies[0].Text)
 			docs = append(docs, Document{
+				Readers:    readers,
 				ExternalID: channel + "/" + root,
 				Title:      title,
 				Body:       b.String(),
@@ -204,6 +221,7 @@ func (s slack) assemble(ctx context.Context, in Input, channel string, msgs []sl
 			fmt.Fprintf(&b, "**%s** · %s\n\n%s\n\n", displayUser(m.User), slackTime(m.TS), m.Text)
 		}
 		docs = append(docs, Document{
+			Readers:    readers,
 			ExternalID: channel + "/day/" + day,
 			Title:      "#" + channel + " " + day,
 			Body:       b.String(),
@@ -212,6 +230,28 @@ func (s slack) assemble(ctx context.Context, in Input, channel string, msgs []sl
 		})
 	}
 	return docs
+}
+
+// members lists a channel's members, for mirroring its access.
+func (s slack) members(ctx context.Context, in Input, channel string) ([]string, error) {
+	q := url.Values{"channel": {channel}, "limit": {"1000"}}
+	req, err := jsonRequest("https://slack.com/api/conversations.members", q,
+		map[string]string{"Authorization": "Bearer " + in.Secret})
+	if err != nil {
+		return nil, err
+	}
+	var out struct {
+		OK      bool     `json:"ok"`
+		Error   string   `json:"error"`
+		Members []string `json:"members"`
+	}
+	if err := getJSON(ctx, in.Client, req, &out); err != nil {
+		return nil, err
+	}
+	if !out.OK {
+		return nil, slackError(out.Error)
+	}
+	return out.Members, nil
 }
 
 func slackError(code string) error {

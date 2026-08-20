@@ -129,7 +129,7 @@ func (ix *Index) appendNoteRows(c *corpusCache, path string) error {
 	}
 
 	rows, err := ix.DB.Query(
-		"SELECT chunk, chunk_idx, embedding, private, space FROM vectors WHERE note=? ORDER BY chunk_idx",
+		"SELECT chunk, chunk_idx, embedding, private, space, acl FROM vectors WHERE note=? ORDER BY chunk_idx",
 		path)
 	if err != nil {
 		return err
@@ -141,9 +141,9 @@ func (ix *Index) appendNoteRows(c *corpusCache, path string) error {
 	for rows.Next() {
 		var chunk string
 		var ci, private int
-		var space string
+		var space, acl string
 		var blob []byte
-		if err := rows.Scan(&chunk, &ci, &blob, &private, &space); err != nil {
+		if err := rows.Scan(&chunk, &ci, &blob, &private, &space, &acl); err != nil {
 			return err
 		}
 		if c.dim == 0 {
@@ -177,7 +177,8 @@ func (ix *Index) appendNoteRows(c *corpusCache, path string) error {
 		c.byNote[path] = append(c.byNote[path], rowIdx)
 		c.rows = append(c.rows, cachedRow{
 			note: ni, ci: int32(ci), total: total,
-			chars: int32(len(chunk)), space: c.spaceID(space), private: isPrivate,
+			chars: int32(len(chunk)), space: c.spaceID(space), acl: c.aclID(acl),
+			private: isPrivate,
 		})
 		c.nAll++
 		c.lenAll += float64(total)

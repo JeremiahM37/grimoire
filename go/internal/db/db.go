@@ -90,6 +90,14 @@ CREATE TABLE IF NOT EXISTS spaces(
   id TEXT PRIMARY KEY, name TEXT NOT NULL, prefix TEXT NOT NULL UNIQUE,
   kind TEXT NOT NULL, owner TEXT, created TEXT
 );
+-- Who a person is in a system Grimoire pulls from. A connector knows a Slack
+-- user id or a Confluence account id; only this table can say which account
+-- that is here, and an unmapped identity is nobody rather than everybody.
+CREATE TABLE IF NOT EXISTS identities(
+  source TEXT NOT NULL, external TEXT NOT NULL, user TEXT NOT NULL,
+  PRIMARY KEY(source, external)
+);
+CREATE INDEX IF NOT EXISTS idx_identities_user ON identities(user);
 CREATE TABLE IF NOT EXISTS space_members(
   space TEXT NOT NULL, user TEXT NOT NULL, role TEXT NOT NULL,
   PRIMARY KEY(space, user)
@@ -219,6 +227,11 @@ CREATE INDEX IF NOT EXISTS idx_vectors_space ON vectors(space);
 var addedColumns = []struct{ table, column, decl string }{
 	{"notes", "space", "TEXT NOT NULL DEFAULT 'commons'"},
 	{"vectors", "space", "TEXT NOT NULL DEFAULT 'commons'"},
+	// A per-note reader list, for documents whose source knows who may read
+	// them. Empty means "governed by the space", which is every note a person
+	// writes and every note that existed before this column did.
+	{"notes", "acl", "TEXT NOT NULL DEFAULT ''"},
+	{"vectors", "acl", "TEXT NOT NULL DEFAULT ''"},
 }
 
 func hasColumn(conn *sql.DB, table, column string) (bool, error) {

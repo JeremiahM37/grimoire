@@ -47,12 +47,20 @@ type Secrets interface {
 	Get(name string) (string, error)
 }
 
+// Identities maps a source's own user ids to Grimoire accounts, so a
+// document's reader list means something here. Nil on a single-user
+// deployment, where there is nobody to restrict a document to.
+type Identities interface {
+	ResolveIdentities(source string, external []string) (users []string, unmapped int, err error)
+}
+
 // Runner executes connectors.
 type Runner struct {
-	Store   *Store
-	Writer  Writer
-	Secrets Secrets
-	Client  *http.Client
+	Store      *Store
+	Writer     Writer
+	Secrets    Secrets
+	Identities Identities
+	Client     *http.Client
 	// Limit bounds documents per fetch.
 	Limit int
 	// MaxPages bounds how many fetches one run may chain when a source says
@@ -264,6 +272,25 @@ func (r *Runner) write(c Connector, docs []Document) (written, skipped int, err 
 			"source":      c.Kind,
 			"connector":   c.Name,
 			"external_id": d.ExternalID,
+		}
+		// A reader list from the source, mapped to accounts here. Written into
+		// the note's frontmatter so it survives a reindex and is visible to
+		// whoever opens the file.
+		if len(d.Readers) > 0 && r.Identities != nil {
+			users, unmapped, err := r.Identities.ResolveIdentities(c.Kind, d.Readers)
+			if err != nil {
+				return written, skipped, err
+			}
+			if len(users) == 0 {
+				// Every reader is unmapped: nobody here can read it. Writing it
+				// anyway would put a note in the vault that answers to no one —
+				// visible in the file tree, absent from every search — which is
+				// more confusing than not pulling it.
+				skipped++
+				continue
+			}
+			fm["readers"] = strings.Join(users, ", ")
+			fm["readers_unmapped"] = fmt.Sprint(unmapped)
 		}
 		if d.URL != "" {
 			fm["url"] = d.URL

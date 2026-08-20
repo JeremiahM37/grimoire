@@ -94,6 +94,7 @@ type cachedRow struct {
 	total   int32 // token count, for BM25 length normalization
 	chars   int32 // chunk length, so a removal can undo its corpus-size total
 	space   int32 // index into corpusCache.spaces
+	acl     int32 // index into corpusCache.acls; 0 is the empty ACL
 	private bool
 	// dead marks a row whose note has been rewritten or deleted since the
 	// cache was built. Rows are tombstoned rather than removed because the
@@ -148,6 +149,12 @@ type corpusCache struct {
 	spaces   []string
 	spaceIdx map[string]int32
 
+	// Per-note reader lists, interned the same way. Index 0 is always the
+	// empty ACL — the overwhelming majority of rows — so the common case is a
+	// single int comparison.
+	acls   []string
+	aclIdx map[string]int32
+
 	// sorted is the corpus-order view of rows, materialized only once the
 	// arena stops being in corpus order — which happens the first time a note
 	// is patched in. identity is the 0..n-1 view a freshly built cache uses.
@@ -163,6 +170,21 @@ type corpusCache struct {
 	// character totals, for callers deciding whether the whole corpus fits a
 	// budget rather than which parts of it to rank
 	charsAll, charsPublic int64
+}
+
+// aclID interns a reader list.
+func (c *corpusCache) aclID(acl string) int32 {
+	if c.aclIdx == nil {
+		c.aclIdx = map[string]int32{"": 0}
+		c.acls = []string{""}
+	}
+	if id, ok := c.aclIdx[acl]; ok {
+		return id
+	}
+	id := int32(len(c.acls))
+	c.acls = append(c.acls, acl)
+	c.aclIdx[acl] = id
+	return id
 }
 
 // spaceID interns a space name, adding it if new.
@@ -390,7 +412,7 @@ func (ix *Index) buildCache(rev int64) (*corpusCache, error) {
 	}
 
 	rows, err := ix.DB.Query(
-		"SELECT note, chunk, chunk_idx, embedding, private, space FROM vectors " +
+		"SELECT note, chunk, chunk_idx, embedding, private, space, acl FROM vectors " +
 			"ORDER BY note, chunk_idx")
 	if err != nil {
 		return nil, err
@@ -399,7 +421,8 @@ func (ix *Index) buildCache(rev int64) (*corpusCache, error) {
 
 	c := &corpusCache{rev: rev, postings: make(map[string][]posting),
 		byNote: make(map[string][]int32), noteIdx: make(map[string]int32),
-		spaceIdx: make(map[string]int32)}
+		spaceIdx: make(map[string]int32),
+		acls:     []string{""}, aclIdx: map[string]int32{"": 0}}
 	if n > 0 {
 		c.rows = make([]cachedRow, 0, n)
 		c.norms = make([]float64, 0, n)
@@ -413,14 +436,14 @@ func (ix *Index) buildCache(rev int64) (*corpusCache, error) {
 		var chunk string
 		var ci int
 		var private int
-		var space string
+		var space, acl string
 		var blob []byte
 		// The note path repeats for every chunk of a note. Scanning it as raw
 		// bytes and only materializing a string when the note is NEW turns
 		// one allocation per chunk into one per note; the map lookup on
 		// string(note) is compiled without a copy.
 		var note sql.RawBytes
-		if err := rows.Scan(&note, &chunk, &ci, &blob, &private, &space); err != nil {
+		if err := rows.Scan(&note, &chunk, &ci, &blob, &private, &space, &acl); err != nil {
 			return nil, err
 		}
 
@@ -489,7 +512,8 @@ func (ix *Index) buildCache(rev int64) (*corpusCache, error) {
 		c.byNote[c.notes[ni].path] = append(c.byNote[c.notes[ni].path], rowIdx)
 		c.rows = append(c.rows, cachedRow{
 			note: ni, ci: int32(ci), total: total,
-			chars: int32(len(chunk)), space: c.spaceID(space), private: isPrivate,
+			chars: int32(len(chunk)), space: c.spaceID(space), acl: c.aclID(acl),
+			private: isPrivate,
 		})
 		c.nAll++
 		c.lenAll += float64(total)
@@ -667,6 +691,14 @@ func (ix *Index) CacheStats() (chunks, notes, terms int, vectorBytes int64) {
 type Filter struct {
 	IncludePrivate bool
 	Spaces         map[string]bool
+	// User is the account id a per-note reader list is checked against. Empty
+	// means no account — an unauthenticated caller, or a single-user
+	// deployment — and an unauthenticated caller is on nobody's reader list.
+	User string
+	// IgnoreACLs lets an administrator see documents whose source restricted
+	// them. Same deliberate simplification as spaces: an administrator who
+	// cannot see a document cannot fix it. Never set from a request.
+	IgnoreACLs bool
 }
 
 // Everything is the filter a single-user deployment retrieves with.
@@ -726,7 +758,17 @@ func (ix *Index) rank(c *corpusCache, query string, k int, f Filter) ([]Hit, err
 		if r.dead || (!includePrivate && r.private) {
 			return false
 		}
-		return allowed == nil || (int(r.space) < len(allowed) && allowed[r.space])
+		if allowed != nil && !(int(r.space) < len(allowed) && allowed[r.space]) {
+			return false
+		}
+		// The reader list can only NARROW: a row already excluded by its space
+		// stays excluded whatever its ACL says.
+		if r.acl != 0 && !f.IgnoreACLs {
+			if int(r.acl) >= len(c.acls) || !aclAllows(c.acls[r.acl], f.User) {
+				return false
+			}
+		}
+		return true
 	}
 
 	// --- lexical leg: BM25 over the inverted index ---

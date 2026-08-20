@@ -108,7 +108,16 @@ func principal(r *http.Request) *auth.Principal { return callerOf(r).principal }
 
 // filterFor is what this caller may retrieve.
 func filterFor(r *http.Request, includePrivate bool) index.Filter {
-	return index.Filter{IncludePrivate: includePrivate, Spaces: principal(r).ReadableSpaces()}
+	p := principal(r)
+	f := index.Filter{IncludePrivate: includePrivate, Spaces: p.ReadableSpaces()}
+	if !p.Anonymous && !p.Unrestricted {
+		f.User = p.User.ID
+	}
+	// A single-user deployment has no accounts, so nobody is on any reader
+	// list — and every note would be invisible. There is nobody to restrict a
+	// document FROM, so reader lists do not apply.
+	f.IgnoreACLs = p.Unrestricted || p.IsAdmin()
+	return f
 }
 
 // SpaceOf implements index.Spaces, so rows are written with their space.

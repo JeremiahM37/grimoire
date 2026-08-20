@@ -189,6 +189,17 @@ func (ix *Index) Remove(rel string) error {
 	return ix.unresolveLinksTo(rel)
 }
 
+// splitList reads a comma-separated frontmatter value.
+func splitList(s string) []string {
+	var out []string
+	for _, part := range strings.Split(s, ",") {
+		if p := strings.TrimSpace(part); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
 // spaceOf is the access boundary a note belongs to: the commons unless a
 // deployment has spaces configured.
 func (ix *Index) spaceOf(rel string) string {
@@ -255,11 +266,15 @@ func (ix *Index) writeNoteRows(note *vault.Note) error {
 		private = 1
 	}
 	space := ix.spaceOf(rel)
+	// A reader list travels with the note, in its frontmatter, so it survives
+	// a reindex and is visible to whoever opens the file — the same property
+	// that makes a path prefix a better boundary than a database row.
+	acl := EncodeACL(splitList(note.Frontmatter.StringVal("readers")))
 	if err := ix.DB.Exec(
-		"INSERT INTO notes(path,title,body,frontmatter_json,private,mtime,hash,created,updated,space)"+
-			" VALUES(?,?,?,?,?,?,?,?,?,?)",
+		"INSERT INTO notes(path,title,body,frontmatter_json,private,mtime,hash,created,updated,space,acl)"+
+			" VALUES(?,?,?,?,?,?,?,?,?,?,?)",
 		rel, note.Title, note.Body, fmJSON, private, note.MTime, note.Hash,
-		note.Frontmatter.StringVal("created"), note.Frontmatter.StringVal("updated"), space,
+		note.Frontmatter.StringVal("created"), note.Frontmatter.StringVal("updated"), space, acl,
 	); err != nil {
 		return err
 	}
@@ -314,8 +329,9 @@ func (ix *Index) embedNote(note *vault.Note) error {
 	}
 	for i, c := range chunks {
 		if err := ix.DB.Exec(
-			"INSERT INTO vectors(note,chunk_idx,chunk,embedding,private,space) VALUES(?,?,?,?,?,?)",
-			note.Path, i, c, Pack(vecs[i]), private, ix.spaceOf(note.Path)); err != nil {
+			"INSERT INTO vectors(note,chunk_idx,chunk,embedding,private,space,acl) VALUES(?,?,?,?,?,?,?)",
+			note.Path, i, c, Pack(vecs[i]), private, ix.spaceOf(note.Path),
+			EncodeACL(splitList(note.Frontmatter.StringVal("readers")))); err != nil {
 			return err
 		}
 	}
