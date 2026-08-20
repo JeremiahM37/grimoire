@@ -167,6 +167,24 @@ section: Risks
 ```
 ````
 
+**Database views over your notes** — filter, compute and group by the fields
+you keep in frontmatter, with the result rendered in the note that asks for it:
+
+````markdown
+```query
+where: status = active
+where: priority > 5
+formula: overdue_by = days_since(due)
+columns: title, owner, priority, overdue_by
+group_by: owner
+render: table
+```
+````
+
+Filtering runs in SQL over the frontmatter the index already stores, so a limit
+still means something. Formulas are a whitelist, not an expression language —
+"show me a table" should not also mean "run arbitrary code over my vault".
+
 **Structured facts** — for values that must be *exact* (a port, a version, an
 owner, a decision), prose RAG is the wrong tool. Write `key:: value` inline in
 any note and agents can look it up deterministically via `get_fact` — no
