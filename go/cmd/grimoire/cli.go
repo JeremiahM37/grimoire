@@ -37,6 +37,13 @@ const usage = `grimoire — local-first AI-native notes
   grimoire daily [text...]            append to today's daily note (or open it)
   grimoire capture [text...]          quick capture → inbox + daily link
   grimoire search QUERY               full-text search the vault
+  grimoire remember TEXT [--topic T] [--session S] [--category C]
+                    [--expires-in 72h] [--immutable] [--verbatim]
+                                      record a fact, reconciled against what is known
+  grimoire recall [QUERY] [--agent A] [--session S] [--category C]
+                  [--limit N] [--all] [--as-of RFC3339] [--why]
+                                      what is currently believed (--all: and what was)
+  grimoire forget PATH ID [--hard]    retract one fact (ids come from recall)
   grimoire ls [--tag TAG]             list notes
   grimoire open PATH                  print a note
   grimoire reindex                    rebuild the search index
@@ -71,6 +78,7 @@ func commands() map[string]func([]string) int {
 	return map[string]func([]string) int{
 		"new": cmdNew, "daily": cmdDaily, "capture": cmdCapture,
 		"search": cmdSearch, "ls": cmdLs, "open": cmdOpen,
+		"remember": cmdRemember, "recall": cmdRecall, "forget": cmdForget,
 		"reindex": cmdReindex, "ingest": cmdIngest, "seed-demo": cmdSeedDemo,
 		"export": cmdExport, "sync": cmdSync, "agent-setup": cmdAgentSetup,
 		"fetch-model": cmdFetchModel,
@@ -172,9 +180,25 @@ func (r *recorder) WriteHeader(code int)        { r.status = code }
 
 // call runs one in-process request against the server's own mux.
 func (e *env) call(method, path string) (int, string) {
-	req, err := http.NewRequest(method, path, nil)
+	return e.callBody(method, path, nil)
+}
+
+// callBody is call with a JSON request body, for the write surfaces.
+func (e *env) callBody(method, path string, body any) (int, string) {
+	var reader io.Reader
+	if body != nil {
+		raw, err := json.Marshal(body)
+		if err != nil {
+			return 500, err.Error()
+		}
+		reader = bytes.NewReader(raw)
+	}
+	req, err := http.NewRequest(method, path, reader)
 	if err != nil {
 		return 500, err.Error()
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
 	}
 	rec := &recorder{status: 200}
 	e.handler.ServeHTTP(rec, req)
