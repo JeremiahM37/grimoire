@@ -37,6 +37,11 @@ type caller struct {
 	principal *auth.Principal
 	spaces    []auth.Space
 	enabled   bool
+	// acls memoizes per-note reader lists for this request. A note's ACL is a
+	// row in the database, and looking one up inside an open cursor deadlocks
+	// on the single connection — so loops that iterate notes select the column
+	// instead, and only single-note routes come through here.
+	acls map[string]string
 }
 
 func (c *caller) spaceOf(path string) string {
@@ -161,10 +166,65 @@ func (s *Server) forgetSpaces() {
 // be when it is changed out of band — by the CLI, or by another process.
 const spaceSnapshotTTL = 3 * time.Second
 
-// canRead reports whether the caller may see a note.
+// canRead reports whether the caller may see a note, checking BOTH the space
+// and the note's own reader list.
+//
+// The reader list used to be enforced only inside retrieval, which meant a
+// restricted document was hidden from search results and readable by opening
+// its path — the exact bypass that makes "we mirror the source's permissions"
+// a lie. Anything that returns a note's existence or its text goes through
+// here or through canReadNote.
+//
+// Must not be called while a result set is open; see caller.acls.
 func (s *Server) canRead(r *http.Request, path string) bool {
 	c := callerOf(r)
-	return c.principal.CanRead(c.spaceOf(path))
+	if !c.principal.CanRead(c.spaceOf(path)) {
+		return false
+	}
+	return s.aclAllows(r, s.aclOf(r, path))
+}
+
+// canReadNote is canRead for callers that already hold the note's ACL, which
+// is every loop over a result set.
+func (s *Server) canReadNote(r *http.Request, path, acl string) bool {
+	c := callerOf(r)
+	if !c.principal.CanRead(c.spaceOf(path)) {
+		return false
+	}
+	return s.aclAllows(r, acl)
+}
+
+// aclAllows applies a reader list to this caller. Administrators and the
+// single-user deployment ignore them, for the same reason they ignore spaces.
+func (s *Server) aclAllows(r *http.Request, acl string) bool {
+	if strings.TrimSpace(acl) == "" {
+		return true
+	}
+	p := principal(r)
+	if p.Unrestricted || p.IsAdmin() {
+		return true
+	}
+	if p.Anonymous {
+		return false
+	}
+	return index.ACLAllows(acl, p.User.ID)
+}
+
+// aclOf reads one note's reader list, memoized per request.
+func (s *Server) aclOf(r *http.Request, path string) string {
+	c := callerOf(r)
+	if c.acls == nil {
+		c.acls = map[string]string{}
+	}
+	if acl, ok := c.acls[path]; ok {
+		return acl
+	}
+	var acl string
+	if err := s.Index.DB.QueryRow("SELECT acl FROM notes WHERE path=?", path).Scan(&acl); err != nil {
+		acl = "" // an unindexed note has no reader list; the space decides
+	}
+	c.acls[path] = acl
+	return acl
 }
 
 // canWrite reports whether the caller may change a note.

@@ -366,12 +366,12 @@ func (s *Server) listNotes(w http.ResponseWriter, r *http.Request) {
 	// LIMIT would silently return fewer notes than asked for, and the shortfall
 	// would be exactly the notes the caller cannot see.
 	where, spaceArgs := s.whereSpace(r, "space", "")
-	query := "SELECT path, title, updated, private, frontmatter_json FROM notes" +
+	query := "SELECT path, title, updated, private, frontmatter_json, acl FROM notes" +
 		where + " ORDER BY updated DESC, path LIMIT ?"
 	args := append(append([]any{}, spaceArgs...), limit)
 	if tag != "" {
 		nWhere, nSpaceArgs := s.whereSpace(r, "n.space", " WHERE t.tag=?")
-		query = "SELECT n.path, n.title, n.updated, n.private, n.frontmatter_json FROM notes n " +
+		query = "SELECT n.path, n.title, n.updated, n.private, n.frontmatter_json, n.acl FROM notes n " +
 			"JOIN tags t ON t.note=n.path" + nWhere + " ORDER BY n.updated DESC, n.path LIMIT ?"
 		args = append(append([]any{tag}, nSpaceArgs...), limit)
 	}
@@ -386,10 +386,16 @@ func (s *Server) listNotes(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var it listItem
 		var private int
-		var fmJSON string
-		if err := rows.Scan(&it.Path, &it.Title, &it.Updated, &private, &fmJSON); err != nil {
+		var fmJSON, acl string
+		if err := rows.Scan(&it.Path, &it.Title, &it.Updated, &private, &fmJSON, &acl); err != nil {
 			writeErr(w, http.StatusInternalServerError, err.Error())
 			return
+		}
+		// The reader list is selected with the row rather than looked up: a
+		// query inside an open cursor waits for the connection the cursor
+		// holds, which on one connection is a deadlock.
+		if !s.canReadNote(r, it.Path, acl) {
+			continue
 		}
 		it.Private = private != 0
 		it.Pinned = pinnedFlag(fmJSON)
@@ -649,7 +655,7 @@ func (s *Server) deleteNote(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) randomNote(w http.ResponseWriter, r *http.Request) {
-	randWhere, randArgs := s.whereSpace(r, "space", "")
+	randWhere, randArgs := s.whereSpace(r, "space", " WHERE acl=''")
 	var path string
 	err := s.Index.DB.QueryRow(
 		"SELECT path FROM notes"+randWhere+" ORDER BY RANDOM() LIMIT 1", randArgs...).Scan(&path)

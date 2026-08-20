@@ -41,6 +41,10 @@ func EncodeACL(users []string) string {
 	return "," + strings.Join(clean, ",") + ","
 }
 
+// ACLAllows is aclAllows for callers outside this package — the HTTP layer,
+// which has to apply the same rule to note reads, listings and search results.
+func ACLAllows(acl, userID string) bool { return aclAllows(acl, userID) }
+
 // aclAllows reports whether a principal may read a row with this ACL.
 //
 // Stored with delimiters on both ends so a substring test cannot match a

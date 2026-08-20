@@ -311,33 +311,65 @@ func TestAPulledDocumentCanBeRestrictedToOnePerson(t *testing.T) {
 		t.Fatalf("mapping an identity = %d %s", w.Code, w.Body)
 	}
 
-	// A connector writes a note carrying that reader list. (Written directly:
-	// the runner's own resolution is covered in the connectors package.)
+	// A connector writes a note carrying that reader list. Both notes are in
+	// the COMMONS, which bob can read: the reader list is the only thing
+	// keeping him out, which is exactly what is under test.
 	if _, err := s.WriteNote("connectors/slack/private-thread.md",
-		"# Private thread\n\nthe kestrel decision", map[string]any{
-			"title": "Private thread", "source": "slack",
-			"readers": alice.ID,
+		"# Private thread\n\nSECRETMARKER the kestrel decision", map[string]any{
+			"title": "Private thread", "source": "slack", "readers": alice.ID,
+		}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.WriteNote("connectors/slack/open-thread.md",
+		"# Open thread\n\nkestrel, but public", map[string]any{
+			"title": "Open thread", "source": "slack",
 		}); err != nil {
 		t.Fatal(err)
 	}
 
-	// Alice sees it everywhere; Bob nowhere.
-	for _, path := range []string{
-		"/api/search?q=kestrel", "/api/retrieve?q=kestrel&k=10", "/api/notes",
-	} {
+	// Every surface that can reveal a note's existence or its text. The first
+	// version of this test asserted on a phrase that never appears in a search
+	// snippet, so it passed while three of these leaked.
+	surfaces := []string{
+		"/api/notes",
+		"/api/notes/connectors/slack/private-thread.md",
+		"/api/search?q=kestrel",
+		"/api/search?q=SECRETMARKER&full=true",
+		"/api/retrieve?q=kestrel&k=10",
+		"/api/context?q=kestrel&k=10",
+		"/api/graph",
+		"/api/complete?q=private",
+		"/api/tasks",
+		"/api/briefing",
+		"/api/notes/random",
+	}
+	for _, path := range surfaces {
+		body := asKey(t, h, bobKey, "GET", path, nil).Body.String()
+		for _, forbidden := range []string{"private-thread", "SECRETMARKER"} {
+			if strings.Contains(body, forbidden) {
+				t.Errorf("%s leaked %q to a member who is not on the reader list:\n%s",
+					path, forbidden, body)
+			}
+		}
+	}
+
+	// Alice, who IS on the list, sees it — otherwise this is just a broken
+	// document rather than a restricted one.
+	for _, path := range []string{"/api/notes", "/api/search?q=SECRETMARKER&full=true",
+		"/api/retrieve?q=kestrel&k=10"} {
 		if body := asKey(t, h, aliceKey, "GET", path, nil).Body.String(); !strings.Contains(body, "private-thread") {
 			t.Errorf("alice cannot see a document she is named on: %s -> %s", path, body)
 		}
-		if body := asKey(t, h, bobKey, "GET", path, nil).Body.String(); strings.Contains(body, "kestrel decision") {
-			t.Errorf("%s leaked a restricted document to bob: %s", path, body)
-		}
 	}
-	// Retrieval is the surface that matters most: the chunk text must not
-	// appear even though the note is in a space bob CAN read.
-	if body := asKey(t, h, bobKey, "GET", "/api/retrieve?q=kestrel&k=10", nil).Body.String(); strings.Contains(body, "kestrel decision") {
-		t.Error("retrieval returned a restricted chunk")
+	if w := asKey(t, h, aliceKey, "GET", "/api/notes/connectors/slack/private-thread.md", nil); w.Code != http.StatusOK {
+		t.Errorf("alice cannot open her own document: %d", w.Code)
 	}
-	// And a member cannot grant themselves access by mapping an identity.
+	// And bob still sees the unrestricted one, so nothing was over-blocked.
+	if body := asKey(t, h, bobKey, "GET", "/api/search?q=kestrel", nil).Body.String(); !strings.Contains(body, "open-thread") {
+		t.Errorf("the unrestricted document was hidden too: %s", body)
+	}
+
+	// A member cannot grant themselves access by mapping an identity.
 	if w := asKey(t, h, bobKey, "POST", "/api/identities", map[string]any{
 		"source": "slack", "external": "U_ALICE", "user": "bob"}); w.Code != http.StatusForbidden {
 		t.Errorf("a member mapped an identity: %d", w.Code)

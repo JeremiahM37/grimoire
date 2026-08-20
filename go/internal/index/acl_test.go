@@ -285,3 +285,37 @@ func TestACLEncodingCannotMatchAPartialID(t *testing.T) {
 		t.Error("an empty list must defer to the space, not deny")
 	}
 }
+
+// The whole-corpus path is where a reader list is easiest to forget: when the
+// corpus fits a budget nothing is ranked, so a filter that lives only in
+// ranking checks nothing. That is the case a small vault always takes.
+func TestTheWholeCorpusPathAppliesReaderLists(t *testing.T) {
+	ix := testIndex(t)
+	aclNote(t, ix, "open.md", "# Open\n\nkestrel for everyone")
+	aclNote(t, ix, "restricted.md", "# Restricted\n\nkestrel for alice", "user-alice")
+
+	for name, c := range map[string]struct {
+		filter Filter
+		want   int
+	}{
+		"named reader":  {Filter{IncludePrivate: true, User: "user-alice"}, 2},
+		"other member":  {Filter{IncludePrivate: true, User: "user-bob"}, 1},
+		"no account":    {Filter{IncludePrivate: true}, 1},
+		"administrator": {Filter{IncludePrivate: true, IgnoreACLs: true}, 2},
+	} {
+		hits, err := ix.WholeCorpusFor(c.filter)
+		if err != nil {
+			t.Fatal(err)
+		}
+		notes := map[string]bool{}
+		for _, h := range hits {
+			notes[h.Path] = true
+		}
+		if len(notes) != c.want {
+			t.Errorf("%s saw %v, want %d notes", name, paths(hits), c.want)
+		}
+		if c.want == 1 && notes["restricted.md"] {
+			t.Errorf("%s saw the restricted note", name)
+		}
+	}
+}
