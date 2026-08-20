@@ -105,7 +105,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/daily/dates", s.dailyDates)
 	mux.HandleFunc("POST /api/capture", s.userOnly(s.capture))
 	mux.HandleFunc("GET /api/facts", s.facts)
-	mux.HandleFunc("POST /api/tags/rename", s.renameTag)
+	mux.HandleFunc("POST /api/tags/rename", s.userOnly(s.renameTag))
 	mux.HandleFunc("GET /api/graph", s.graph)
 	mux.HandleFunc("GET /api/tasks", s.tasks)
 	mux.HandleFunc("GET /api/complete", s.complete)
@@ -172,7 +172,10 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/facts", s.setFact)
 	mux.HandleFunc("POST /api/memory/consolidate", s.userOnly(s.consolidateMemory))
 	mux.HandleFunc("POST /api/audio", s.audioMemo)
-	mux.HandleFunc("POST /api/vault/change-passphrase", s.changePassphrase)
+	// adminOnly like every other vault lever. It re-seals every encrypted note
+	// in the vault, so it was the one /api/vault route relying solely on the
+	// admin TOKEN — which a deployment that uses accounts instead never sets.
+	mux.HandleFunc("POST /api/vault/change-passphrase", s.adminOnly(s.changePassphrase))
 	mux.HandleFunc("GET /notes/{path...}", s.noteGet)
 	mux.HandleFunc("GET /read", s.readIndex)
 	mux.HandleFunc("GET /read/{path...}", s.readNote)

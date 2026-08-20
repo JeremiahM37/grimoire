@@ -118,8 +118,18 @@ func (s *Server) renameTag(w http.ResponseWriter, r *http.Request) {
 	}
 	rows.Close()
 
-	affected := 0
+	affected, skipped := 0, 0
 	for _, rel := range rels {
+		// Renaming a tag rewrites the BODY of every note carrying it. Without
+		// this check one request edited the whole vault — every space, every
+		// restricted document — on behalf of anyone who could reach the port.
+		// Notes the caller cannot write are skipped and counted rather than
+		// refusing the whole request, because a tag is legitimately shared
+		// across spaces and the alternative is that it can never be renamed.
+		if !s.canWrite(r, normPath(rel)) {
+			skipped++
+			continue
+		}
 		note, err := s.Vault.Read(rel)
 		if err != nil {
 			continue
@@ -156,7 +166,7 @@ func (s *Server) renameTag(w http.ResponseWriter, r *http.Request) {
 		affected++
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"renamed": old, "to": nw, "notes": affected,
+		"renamed": old, "to": nw, "notes": affected, "skipped": skipped,
 	})
 }
 

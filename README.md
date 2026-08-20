@@ -439,7 +439,9 @@ tests could NOT see found the rest: listings that answered from notes without
 returning one (the alias map, tag counts, agent memory, the canvas index), and
 routes that took a note path in the BODY rather than the URL — applying a
 template copied any note's text into one the caller owned, and setting a fact
-edited any note at all.
+edited any note at all. A sweep of every handler that touches the vault then
+found the last of them, including a tag rename that rewrote the body of every
+note carrying a tag — across every space, for anyone who could reach the port.
 
 On a multi-user instance: sessions and API keys are stored hashed, passwords are
 Argon2id, access is by space, and administrators can read every space — that is

@@ -86,6 +86,11 @@ func (s *Server) attach(w http.ResponseWriter, r *http.Request) {
 	}
 	rel := fmt.Sprintf("%s/%s-%s.%s", AttachDir, vault.Now().Format("20060102-150405"), slug, ext)
 
+	// The attachment directory is the commons by default, but a space is any
+	// path prefix — so whether this caller may write there is a question.
+	if !s.requireWrite(w, r, normPath(rel)) {
+		return
+	}
 	// SafeRawPath, not SafePath: attachments must keep their real extension
 	p, err := s.Vault.SafeRawPath(rel)
 	if err != nil {

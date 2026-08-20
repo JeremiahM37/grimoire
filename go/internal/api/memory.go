@@ -66,6 +66,10 @@ func (s *Server) remember(w http.ResponseWriter, r *http.Request) {
 	}
 	task := strings.TrimSpace(m.Task)
 	rel := s.memoryRel(m.Topic)
+	// The topic decides the destination, and the topic comes from the caller.
+	if !s.requireWrite(w, r, normPath(rel)) {
+		return
+	}
 	stamp := vault.Now().Format("2006-01-02 15:04")
 	attribution := stamp + " · " + agent
 	if task != "" {
