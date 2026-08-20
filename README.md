@@ -453,6 +453,14 @@ A denial is recorded for any path, including one that does not exist — walking
 paths you cannot open is what the trail should show — so denials are bounded at
 120 per actor per minute and counted past that, keeping the signal without
 letting a loop over invented paths write rows forever.
+An answer counts as a read of what it quotes: the restricted documents an
+`/api/ask` answer CITES are recorded, because being shown a document's text is
+disclosure whether or not the reader knew it existed. The rest of the retrieval
+context is not — in full-corpus mode that is every note, which would be a row
+per note per question and no signal at all. Agents are covered without anything
+extra: the MCP server is an HTTP client carrying an account's API key, so a
+model that opens or is handed a restricted note is recorded as that account, on
+that key.
 
 Two options trade a property for availability, so they are off by default and
 worth naming here rather than in a footnote:

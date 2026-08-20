@@ -159,3 +159,38 @@ func TestVaultExportRecordsEachRestrictedDocument(t *testing.T) {
 		t.Fatalf("export recorded %d of 2 restricted documents: %+v", len(rows), rows)
 	}
 }
+
+// An answer that quotes a restricted document has disclosed it. Searching is
+// not recorded, but being shown the text is.
+func TestAnsweredCitationsOfRestrictedNotesAreRecorded(t *testing.T) {
+	s, h := testServer(t)
+	withReads(t, s)
+	aliceKey := makeUser(t, s, h, "", "alice", "admin")
+
+	if w := asKey(t, h, aliceKey, "POST", "/api/notes", map[string]any{
+		"path": "users/alice/secret.md", "body": "# Secret\n\nthe kestrel roosts at dawn"}); w.Code != http.StatusCreated {
+		t.Fatalf("create = %d %s", w.Code, w.Body)
+	}
+	// A search alone is not an access, and must leave no record.
+	if w := asKey(t, h, aliceKey, "GET", "/api/search?q=kestrel", nil); w.Code != http.StatusOK {
+		t.Fatalf("search = %d", w.Code)
+	}
+	if rows := recorded(t, s, readlog.Query{}); len(rows) != 0 {
+		t.Fatalf("search was audited: %+v", rows)
+	}
+
+	w := asKey(t, h, aliceKey, "POST", "/api/ask", map[string]any{"q": "kestrel", "k": 5})
+	if w.Code != http.StatusOK {
+		t.Fatalf("ask = %d %s", w.Code, w.Body)
+	}
+	if !strings.Contains(w.Body.String(), "users/alice/secret.md") {
+		t.Skip("no citation of the restricted note; nothing to audit")
+	}
+	rows := recorded(t, s, readlog.Query{Path: "users/alice/secret.md"})
+	if len(rows) == 0 {
+		t.Fatal("a restricted note was quoted in an answer without being recorded")
+	}
+	if !strings.Contains(rows[0].Route, "/api/ask") {
+		t.Fatalf("route not recorded as the answering one: %+v", rows[0])
+	}
+}

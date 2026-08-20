@@ -282,6 +282,16 @@ func (s *Server) ask(w http.ResponseWriter, r *http.Request) {
 				"path": p["path"], "title": p["title"], "web": true})
 		}
 	}
+	// An answer quotes the documents it cites, so a restricted document that
+	// appears in one has been disclosed as surely as if it were opened — more
+	// so, since the reader did not have to know it existed. The CITED set is
+	// audited rather than the whole context: in full mode the context is the
+	// entire corpus, and a row per note per question would be both enormous
+	// and no signal at all. What was shown is recorded; what was searched for
+	// is not.
+	for _, h := range cited {
+		s.auditRead(r, h.Path, true)
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"answer": s.AI.Answer(q, contexts), "citations": citations, "mode": mode})
 }
