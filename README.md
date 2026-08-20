@@ -52,10 +52,15 @@ agent ──MCP──►  knowledge (your markdown)  retrieval (RAG + citations)
   of ordinary notes with provenance (which agent, when, from what task). You
   read, edit, diff, and **roll back** your agent's memory like any note.
 
-Nothing else puts these in one trust boundary: memory layers (Mem0, Letta, Zep)
-have no knowledge base or credentials; notes-RAG tools (Khoj, editor plugins)
-have no agent memory or secrets; token vaults (Auth0 GenAI, Arcade, Infisical)
-have no knowledge layer. Grimoire is the unified, self-hosted version.
+None of these four is novel on its own, and the credential half is the least
+novel of all: brokering a secret so an agent can use it without holding it is an
+established pattern with an [IETF draft](https://datatracker.ietf.org/) and
+several implementations — Auth0's Token Vault, agentgateway, Arcade. What is
+unusual is the **combination**, in one process, under one policy: memory layers
+(Mem0, Letta, Zep) carry no knowledge base or credentials; notes-RAG tools
+(Khoj, editor plugins) carry no agent memory or secrets; token vaults carry no
+knowledge layer. Grimoire is the self-hosted version of all four at once, on
+files you own — which is a claim about integration, not invention.
 
 **Not wiring up agents yet?** Grimoire is also a full offline notes app in its
 own right — CodeMirror live preview, wiki-links, backlinks, graph, daily notes,
@@ -376,6 +381,7 @@ Everything is environment-driven (same variables bare-metal, systemd, Docker):
 | `GRIMOIRE_VAULT_PASSPHRASE_FILE` | *(empty)* | Unlock the credential vault at startup from a `0600` file — for a headless server whose agents need the broker after every restart ([trade-off](#security-posture-short-version)) |
 | `GRIMOIRE_BROKER_ALLOW_PRIVATE` | `0` | Allow brokered calls to private-range hosts |
 | `GRIMOIRE_FRAME_OPTIONS` | `SAMEORIGIN` | X-Frame-Options (reverse-proxy embedding) |
+| `GRIMOIRE_TRUST_PROXY` | `0` | Honour `X-Forwarded-For` / `-Proto` — set only when a proxy you control sets them, since they are otherwise caller-supplied |
 | `GRIMOIRE_MCP_TRANSPORT` | `stdio` | `http` serves MCP over streamable-HTTP instead |
 | `GRIMOIRE_MCP_ADDR` / `_PORT` | `127.0.0.1` / `9112` | Bind for the MCP http transport |
 | `GRIMOIRE_URL` | `http://127.0.0.1:$PORT` | API the MCP server talks to |
@@ -396,6 +402,16 @@ idle auto-lock, passphrase rotation. Broker: origin-exact + path-prefix scopes,
 SSRF-guarded, fully audited; secret values never appear in any response. Private
 notes excluded from retrieval, `/read`, export, transclusion, and queries on
 unauthenticated surfaces. Strict CSP. Full threat model: [SECURITY.md](SECURITY.md).
+
+Requests are bounded: bodies are capped before a handler reads them, and the
+routes that spend someone ELSE's resources — `ask`, `web/*`, a connector run —
+have a much tighter rate limit than ordinary reads, because a loop over any of
+them is both a denial of service here and a way to get banned by whoever is on
+the other end. Login backs off exponentially per account and per source address,
+the same reasoning the secret vault has always applied to passphrases.
+`X-Forwarded-For` and `X-Forwarded-Proto` are ignored unless
+`GRIMOIRE_TRUST_PROXY=1`, because honouring an unverified forwarded address lets
+anyone mint a fresh identity per request and walk through every limit.
 
 On a multi-user instance: sessions and API keys are stored hashed, passwords are
 Argon2id, access is by space, and administrators can read every space — that is
@@ -418,6 +434,29 @@ worth naming here rather than in a footnote:
   "anyone who can choose what the server reads". Enable it when you control
   what lands in the vault; leave it off if the vault is fed by a sync client or
   shared with other people.
+
+## What this is not
+
+Stated here rather than discovered later:
+
+- **Connectors do not carry the source's permissions.** A pulled Confluence page
+  belongs to whichever space its path maps to, not to whoever could read it in
+  Confluence. Pull into a space whose members are allowed to see everything in
+  that source. Mirroring per-document ACLs is the single biggest thing an
+  enterprise search product does that this does not.
+- **Connectors do not notice deletions.** An incremental sync asks "what changed
+  since the cursor", which cannot distinguish a deleted document from an
+  unchanged one. A document removed at the source stays in the vault until you
+  remove it.
+- **Query cost is linear in corpus size** — see the table above. Fine into the
+  low hundreds of thousands of chunks on one box; beyond that the answer is an
+  approximate index, which trades recall.
+- **One process, one SQLite file.** No horizontal scale, no HA. The vault is
+  plain files and the index is rebuildable, so recovery is restore-and-reindex,
+  but there is no failover.
+- **Administrators can read every space.** A deliberate simplification: the
+  alternative is an administrator who cannot fix a space they cannot see.
+- **No SSO, no SCIM, no audit export.** Accounts are local.
 
 ## Benchmarks
 

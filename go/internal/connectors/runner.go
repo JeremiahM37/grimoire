@@ -348,6 +348,13 @@ func (r *Runner) Loop(interval time.Duration, done <-chan struct{}) {
 			if err != nil {
 				continue
 			}
+			// After a restart every connector is due at once, which would hit
+			// six APIs in the same second and look like a burst to each of
+			// them. They run one at a time anyway; this spreads the first
+			// round rather than stacking it.
+			if len(due) > 1 {
+				due = due[:1]
+			}
 			for _, c := range due {
 				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 				if _, err := r.Run(ctx, c.ID); err != nil {

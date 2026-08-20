@@ -2,6 +2,8 @@ package api
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -257,8 +259,15 @@ func (s SecretsForConnectors) Get(name string) (string, error) {
 	return s.Server.Secrets.Get(name)
 }
 
+// newConnectorID is random rather than a timestamp. Two connectors created in
+// the same nanosecond would have collided, and a sequential id is guessable —
+// which matters because the id is the whole of a run endpoint's address.
 func newConnectorID() string {
-	return fmt.Sprintf("%d", time.Now().UnixNano())
+	b := make([]byte, 8)
+	if _, err := rand.Read(b); err != nil {
+		return fmt.Sprintf("%d", time.Now().UnixNano())
+	}
+	return hex.EncodeToString(b)
 }
 
 // connectorSpaceHint is used by the console to explain where documents land.

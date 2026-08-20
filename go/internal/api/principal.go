@@ -2,7 +2,9 @@ package api
 
 import (
 	"context"
+	"net"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -213,6 +215,49 @@ func (s *Server) requireUser(w http.ResponseWriter, r *http.Request) bool {
 	}
 	writeErr(w, http.StatusUnauthorized, "sign in first")
 	return false
+}
+
+// clientAddr is who is calling, for rate limiting.
+//
+// A reverse proxy is the normal deployment, so X-Forwarded-For is honoured —
+// but only its FIRST entry and only when a proxy is trusted, because the header
+// is caller-supplied and an unfiltered read of it lets anyone mint a fresh
+// identity per request and walk straight through the lockout.
+func clientAddr(r *http.Request) string {
+	if trustProxyHeaders() {
+		if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
+			if first, _, ok := strings.Cut(fwd, ","); ok {
+				return strings.TrimSpace(first)
+			}
+			return strings.TrimSpace(fwd)
+		}
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
+}
+
+// trustProxyHeaders reports the documented opt-in for deployments behind a
+// reverse proxy. Off by default: trusting a forwarded address that nothing
+// verified is worse than ignoring it.
+func trustProxyHeaders() bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("GRIMOIRE_TRUST_PROXY"))) {
+	case "1", "true", "yes", "on":
+		return true
+	}
+	return false
+}
+
+// isHTTPS reports whether the caller's connection is encrypted, honouring a
+// trusted proxy's X-Forwarded-Proto.
+func isHTTPS(r *http.Request) bool {
+	if r.TLS != nil {
+		return true
+	}
+	return trustProxyHeaders() &&
+		strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
 }
 
 // spaceSQL restricts a query to the caller's readable spaces.

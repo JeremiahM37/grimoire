@@ -161,7 +161,11 @@ func (s *Server) Routes() http.Handler {
 	if s.WebDir != "" {
 		mux.Handle("/", s.staticHandler())
 	}
-	return securityHeaders(s.FrameOptions, s.requireAuth(s.withPrincipal(mux)))
+	// Order matters: bodies are capped before anything reads them, the rate
+	// limit is applied before work is done, and the principal is resolved
+	// before a handler can ask who is calling.
+	return securityHeaders(s.FrameOptions,
+		limitBodies(s.throttle(s.requireAuth(s.withPrincipal(mux)))))
 }
 
 // securityHeaders applies the same defence-in-depth headers as the Python app.

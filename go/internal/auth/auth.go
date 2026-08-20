@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/crypto/argon2"
@@ -65,9 +66,28 @@ type User struct {
 func (u User) IsAdmin() bool { return u.Role == RoleAdmin }
 
 // Store owns accounts, sessions and API keys.
-type Store struct{ DB *db.DB }
+type Store struct {
+	DB *db.DB
 
-func New(database *db.DB) *Store { return &Store{DB: database} }
+	login *limiter
+
+	// Whether any account exists is asked on EVERY request — it is what
+	// decides between the single-user server and the multi-user one — and it
+	// answered with a COUNT each time. With one SQLite connection that put a
+	// serialized query in front of every static asset. It changes only when an
+	// account is created or deleted, so it is cached and invalidated there.
+	enabledMu    sync.RWMutex
+	enabledKnown bool
+	enabledVal   bool
+
+	// last_used is stamped at most once a minute per key; see touchKey.
+	touchMu sync.Mutex
+	touched map[string]time.Time
+}
+
+func New(database *db.DB) *Store {
+	return &Store{DB: database, login: newLimiter()}
+}
 
 // Enabled reports whether this deployment has accounts at all.
 //
@@ -77,8 +97,29 @@ func New(database *db.DB) *Store { return &Store{DB: database} }
 // a flag could be set on a running server and lock its owner out of their own
 // notes; creating an account cannot.
 func (s *Store) Enabled() bool {
+	s.enabledMu.RLock()
+	known, val := s.enabledKnown, s.enabledVal
+	s.enabledMu.RUnlock()
+	if known {
+		return val
+	}
 	n, err := s.DB.Count("SELECT count(*) FROM users")
-	return err == nil && n > 0
+	if err != nil {
+		// Not cached: a transient error must not pin the instance into
+		// single-user mode, which would be a failure that opens it up.
+		return false
+	}
+	s.enabledMu.Lock()
+	s.enabledKnown, s.enabledVal = true, n > 0
+	s.enabledMu.Unlock()
+	return n > 0
+}
+
+// forgetEnabled drops the cache after the account set changes.
+func (s *Store) forgetEnabled() {
+	s.enabledMu.Lock()
+	s.enabledKnown = false
+	s.enabledMu.Unlock()
 }
 
 // Create adds an account. The first account is always an administrator: a
@@ -118,7 +159,16 @@ func (s *Store) Create(name, display, password, role string) (User, error) {
 		u.ID, u.Name, u.Display, hash, u.Role, u.Created); err != nil {
 		return User{}, err
 	}
+	s.forgetEnabled()
 	return u, nil
+}
+
+// ErrTooManyAttempts is returned while a login is locked out.
+type ErrTooManyAttempts struct{ RetryAfter time.Duration }
+
+func (e ErrTooManyAttempts) Error() string {
+	return fmt.Sprintf("too many failed attempts — try again in %s",
+		e.RetryAfter.Round(time.Second))
 }
 
 // Authenticate checks a password and returns the account.
@@ -126,8 +176,24 @@ func (s *Store) Create(name, display, password, role string) (User, error) {
 // A wrong name and a wrong password are reported the same way and cost the
 // same work: skipping the hash for an unknown name turns the login endpoint
 // into a fast oracle for which accounts exist.
+//
+// Repeated failures back off, per account and per source address — see
+// lockout.go. Pass the caller's address; an empty one only limits per account,
+// which is what a CLI or a test wants.
 func (s *Store) Authenticate(name, password string) (User, error) {
+	return s.AuthenticateFrom(name, password, "")
+}
+
+// AuthenticateFrom is Authenticate with the caller's address, so guessing is
+// slowed for whoever is doing it as well as for whoever it is aimed at.
+func (s *Store) AuthenticateFrom(name, password, addr string) (User, error) {
 	name = strings.TrimSpace(strings.ToLower(name))
+	now := Now()
+	for _, key := range lockKeys(name, addr) {
+		if wait := s.login.retryAfter(key, now); wait > 0 {
+			return User{}, ErrTooManyAttempts{RetryAfter: wait}
+		}
+	}
 	var u User
 	var hash string
 	err := s.DB.QueryRow(
@@ -136,13 +202,36 @@ func (s *Store) Authenticate(name, password string) (User, error) {
 	if err != nil {
 		// Hash anyway, against a dummy of the same shape.
 		_, _ = HashPassword(password)
+		s.recordFailure(name, addr, now)
 		return User{}, ErrBadPassword
 	}
 	ok, err := VerifyPassword(hash, password)
 	if err != nil || !ok {
+		s.recordFailure(name, addr, now)
 		return User{}, ErrBadPassword
 	}
+	for _, key := range lockKeys(name, addr) {
+		s.login.succeed(key)
+	}
 	return u, nil
+}
+
+func (s *Store) recordFailure(name, addr string, now time.Time) {
+	for _, key := range lockKeys(name, addr) {
+		s.login.fail(key, now)
+	}
+}
+
+// lockKeys are the buckets one attempt counts against: the account, and the
+// address it came from. Either alone leaves a hole — per account only lets one
+// attacker spray a password across every account, per address only lets a
+// botnet walk around it.
+func lockKeys(name, addr string) []string {
+	keys := []string{"user:" + name}
+	if addr != "" {
+		keys = append(keys, "addr:"+addr)
+	}
+	return keys
 }
 
 // Get returns one account by id.
@@ -247,6 +336,7 @@ func (s *Store) Delete(id string) error {
 			return err
 		}
 	}
+	s.forgetEnabled()
 	return nil
 }
 
@@ -281,6 +371,16 @@ func (s *Store) UserForSession(token string) (User, error) {
 		return User{}, ErrSessionExpiry
 	}
 	return s.Get(userID)
+}
+
+// PurgeExpiredSessions drops sessions that have timed out.
+//
+// Nothing removed them before: a row was written on every login and deleted
+// only on an explicit logout, so a year of daily logins left a year of dead
+// rows. They are harmless but unbounded, which is the same thing as a leak on a
+// long enough timeline.
+func (s *Store) PurgeExpiredSessions() error {
+	return s.DB.Exec("DELETE FROM sessions WHERE expires < ?", float64(Now().Unix()))
 }
 
 // EndSession logs one session out.
@@ -324,9 +424,36 @@ func (s *Store) UserForAPIKey(key string) (User, error) {
 		Scan(&userID); err != nil {
 		return User{}, ErrNoSuchUser
 	}
-	_ = s.DB.Exec("UPDATE api_keys SET last_used=? WHERE hash=?",
-		Now().UTC().Format(time.RFC3339), hashToken(key))
+	// Stamping last_used on EVERY request put a write in front of every agent
+	// call — and with one SQLite connection, a write serializes against every
+	// read behind it. A minute's resolution is all this field is read at.
+	s.touchKey(hashToken(key))
 	return s.Get(userID)
+}
+
+// touchKey records that a key was used, at most once a minute per key.
+func (s *Store) touchKey(hash string) {
+	now := Now()
+	s.touchMu.Lock()
+	if s.touched == nil {
+		s.touched = map[string]time.Time{}
+	}
+	last, seen := s.touched[hash]
+	if seen && now.Sub(last) < time.Minute {
+		s.touchMu.Unlock()
+		return
+	}
+	s.touched[hash] = now
+	if len(s.touched) > 4096 {
+		for k, v := range s.touched {
+			if now.Sub(v) > time.Hour {
+				delete(s.touched, k)
+			}
+		}
+	}
+	s.touchMu.Unlock()
+	_ = s.DB.Exec("UPDATE api_keys SET last_used=? WHERE hash=?",
+		now.UTC().Format(time.RFC3339), hash)
 }
 
 // ListAPIKeys returns one account's keys, never their values.

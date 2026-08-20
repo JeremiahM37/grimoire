@@ -2,7 +2,9 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/JeremiahM37/grimoire/go/internal/auth"
@@ -76,7 +78,13 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "invalid json")
 		return
 	}
-	u, err := s.Auth.Authenticate(in.Name, in.Password)
+	u, err := s.Auth.AuthenticateFrom(in.Name, in.Password, clientAddr(r))
+	var locked auth.ErrTooManyAttempts
+	if errors.As(err, &locked) {
+		w.Header().Set("Retry-After", strconv.Itoa(int(locked.RetryAfter.Seconds())+1))
+		writeErr(w, http.StatusTooManyRequests, locked.Error())
+		return
+	}
 	if err != nil {
 		// One message for both "no such account" and "wrong password": the
 		// difference is exactly what an attacker enumerating names wants.
@@ -90,7 +98,10 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	}
 	http.SetCookie(w, &http.Cookie{
 		Name: sessionCookie, Value: token, Path: "/", HttpOnly: true,
-		Secure: r.TLS != nil, SameSite: http.SameSiteStrictMode,
+		// Secure when the request arrived over TLS — including when a trusted
+		// reverse proxy terminated it, which is the normal deployment and
+		// where r.TLS alone reports plaintext and drops the flag.
+		Secure: isHTTPS(r), SameSite: http.SameSiteStrictMode,
 		MaxAge: int(auth.SessionTTL.Seconds()),
 	})
 	writeJSON(w, http.StatusOK, map[string]any{"user": u})

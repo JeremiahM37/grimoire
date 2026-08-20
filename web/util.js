@@ -12,6 +12,15 @@ export async function api(path, opts = {}) {
     ...opts, body: opts.body ? JSON.stringify(opts.body) : undefined,
   });
   if (!r.ok) {
+    // A session that expires mid-use turned every subsequent request into an
+    // unexplained error toast, with no way back to the sign-in screen short of
+    // a manual reload. Anything that answers 401 after the app has loaded means
+    // "you are no longer signed in", and there is exactly one thing to do
+    // about it.
+    if (r.status === 401 && document.body.dataset.ready && !document.body.dataset.signin) {
+      document.body.dataset.signin = "expired";
+      location.reload();
+    }
     let m = r.statusText; try { m = (await r.json()).detail || m; } catch {}
     throw new Error(m);
   }
