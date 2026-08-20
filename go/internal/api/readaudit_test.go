@@ -194,3 +194,77 @@ func TestAnsweredCitationsOfRestrictedNotesAreRecorded(t *testing.T) {
 		t.Fatalf("route not recorded as the answering one: %+v", rows[0])
 	}
 }
+
+// A query block lists notes, so it is a read — and it must obey the same rules
+// as every other read.
+//
+// This is the behaviour test for a hole that shipped: /api/query answered
+// anyone and returned unfiltered rows, because "authenticated surface" was
+// true of a server that had exactly one account. The route-classification
+// table records that this route is scoped; only this test proves it acts that
+// way, so a filter deleted in a refactor fails here rather than in someone's
+// vault.
+func TestQueryBlocksAreFilteredToWhatTheCallerMaySee(t *testing.T) {
+	s, h := testServer(t)
+	aliceKey := makeUser(t, s, h, "", "alice", "admin")
+	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
+
+	for _, p := range []string{"users/alice/private.md", "users/bob/own.md"} {
+		if w := asKey(t, h, aliceKey, "POST", "/api/notes", map[string]any{
+			"path": p, "body": "# N\n\ntagged\n\n#shared"}); w.Code != http.StatusCreated {
+			// bob's note is created by alice only if she may write it; do it as
+			// its owner instead when she may not.
+			if w2 := asKey(t, h, bobKey, "POST", "/api/notes", map[string]any{
+				"path": p, "body": "# N\n\ntagged\n\n#shared"}); w2.Code != http.StatusCreated {
+				t.Fatalf("create %s = %d %s / %d %s", p, w.Code, w.Body, w2.Code, w2.Body)
+			}
+		}
+	}
+
+	block := map[string]any{"block": "tag: shared"}
+
+	// Anonymous callers get no listing at all.
+	if w := do(t, h, "POST", "/api/query", block); w.Code != http.StatusUnauthorized {
+		t.Fatalf("anonymous query = %d %s, want 401", w.Code, w.Body)
+	}
+
+	// Bob sees his own note and not Alice's.
+	w := asKey(t, h, bobKey, "POST", "/api/query", block)
+	if w.Code != http.StatusOK {
+		t.Fatalf("bob query = %d %s", w.Code, w.Body)
+	}
+	body := w.Body.String()
+	if strings.Contains(body, "users/alice/private.md") {
+		t.Fatalf("query leaked alice's note to bob: %s", body)
+	}
+	if !strings.Contains(body, "users/bob/own.md") {
+		t.Fatalf("query hid bob's own note from him: %s", body)
+	}
+
+	// The count must agree with the rows; a filtered list that still reports
+	// the unfiltered total tells the caller how much they are not seeing.
+	var out struct {
+		Rows  []map[string]any `json:"rows"`
+		Count int              `json:"count"`
+	}
+	decode(t, w, &out)
+	if out.Count != len(out.Rows) {
+		t.Fatalf("count %d does not match %d returned rows", out.Count, len(out.Rows))
+	}
+}
+
+// The vault import writes notes from an uploaded archive. It answered anyone.
+func TestVaultImportRequiresAnAccount(t *testing.T) {
+	_, h := testServer(t)
+	s2, h2 := testServer(t)
+	makeUser(t, s2, h2, "", "alice", "admin")
+
+	// Single-user: still open, exactly as before.
+	if w := do(t, h, "POST", "/api/import/vault", nil); w.Code == http.StatusUnauthorized {
+		t.Fatal("single-user deployment now demands a login for import")
+	}
+	// Multi-user: anonymous writes are refused before any archive is read.
+	if w := do(t, h2, "POST", "/api/import/vault", nil); w.Code != http.StatusUnauthorized {
+		t.Fatalf("anonymous import = %d %s, want 401", w.Code, w.Body)
+	}
+}
