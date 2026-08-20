@@ -88,6 +88,31 @@ store has to return what was put — and `GrimoireStore(client, reconcile=True)`
 opts into reconciled writes instead. Either way reconciliation is confined to
 the namespace, so one namespace can never supersede another's facts.
 
+## CrewAI
+
+CrewAI's storage backend is *vector-in*: it hands the storage a query embedding,
+never the query text. That only produces meaningful results if CrewAI's vectors
+are in the same space as the stored ones — so point its embedder at the server:
+
+```bash
+pip install 'grimoire-client[crewai]'
+```
+
+```python
+from crewai.memory.unified_memory import Memory
+from grimoire_client import Grimoire
+from grimoire_client.crewai import GrimoireEmbedder, GrimoireStorage
+
+client = Grimoire("http://localhost:9111")
+memory = Memory(storage=GrimoireStorage(client), embedder=GrimoireEmbedder(client))
+```
+
+Scopes become notes (`memory/crew-researcher.md`), record ids become the fact's
+provenance field, and a record with no metadata is stored as readable text. If
+you point CrewAI at a *different* embedder, the server refuses the vector on
+width rather than scoring it — a cosine between two models' vectors is a number
+with no meaning, and silently returning one is worse than an error.
+
 ## Beyond memory
 
 `ask`, `search_notes`, `read_note`, `write_note`, `get_fact`, `briefing`,

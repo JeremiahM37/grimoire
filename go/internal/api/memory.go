@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -1066,6 +1067,108 @@ func (s *Server) exportMemory(w http.ResponseWriter, r *http.Request) {
 		"exported": vault.Now().UTC().Format(time.RFC3339),
 		"entries":  entriesOut(hits, false),
 	})
+}
+
+// embedText hands back vectors from THIS server's embedding model.
+//
+// It exists so a framework that owns its embedding step can put its vectors in
+// the same space as the stored ones. That is the whole reason a vector search
+// is safe to offer: a cosine between vectors from two different models is a
+// number with no meaning, and a memory store that accepts foreign vectors
+// returns confident nonsense. Embedding here and searching here is one space
+// by construction.
+func (s *Server) embedText(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Texts []string `json:"texts"`
+		Text  string   `json:"text"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	texts := in.Texts
+	if len(texts) == 0 && strings.TrimSpace(in.Text) != "" {
+		texts = []string{in.Text}
+	}
+	if len(texts) == 0 {
+		writeErr(w, http.StatusBadRequest, "texts must not be empty")
+		return
+	}
+	if len(texts) > 256 {
+		writeErr(w, http.StatusBadRequest, "at most 256 texts per call")
+		return
+	}
+	vecs := s.Index.Emb.Embed(texts)
+	out := make([][]float32, len(vecs))
+	copy(out, vecs)
+	writeJSON(w, http.StatusOK, map[string]any{
+		// The signature identifies the space. A caller that caches vectors can
+		// tell when the model changed underneath them, which is the failure
+		// that otherwise shows up as retrieval quietly getting worse.
+		"model":      s.Index.Emb.Signature(),
+		"dimensions": s.Index.Emb.Dim(),
+		"embeddings": out,
+	})
+}
+
+// searchMemoryByVector ranks memory against a vector the caller computed.
+func (s *Server) searchMemoryByVector(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Embedding         []float32 `json:"embedding"`
+		Query             string    `json:"query"`
+		Path              string    `json:"path"`
+		Agent             string    `json:"agent"`
+		Task              string    `json:"task"`
+		Session           string    `json:"session"`
+		Category          string    `json:"category"`
+		Limit             int       `json:"limit"`
+		IncludeSuperseded bool      `json:"include_superseded"`
+		IncludeExpired    bool      `json:"include_expired"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	if len(in.Embedding) == 0 && strings.TrimSpace(in.Query) == "" {
+		writeErr(w, http.StatusBadRequest, "embedding or query is required")
+		return
+	}
+	// The dimension check is what enforces "one embedding space". A vector
+	// from another model would otherwise be scored against these, and cosine
+	// does not report that it is comparing two unrelated coordinate systems —
+	// it reports a number, and retrieval looks like it works.
+	if n := len(in.Embedding); n > 0 && n != s.Index.Emb.Dim() {
+		writeErr(w, http.StatusBadRequest, fmt.Sprintf(
+			"embedding has %d dimensions, this server's model produces %d — "+
+				"embed the query with POST /api/embed", n, s.Index.Emb.Dim()))
+		return
+	}
+	limit := in.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 200 {
+		limit = 200
+	}
+	hits, err := s.Index.MemoryEntries(index.MemoryQuery{
+		Filter:            filterFor(r, true),
+		Query:             strings.TrimSpace(in.Query),
+		QueryVector:       in.Embedding,
+		Note:              normPath(in.Path),
+		Agent:             strings.TrimSpace(in.Agent),
+		Task:              strings.TrimSpace(in.Task),
+		Session:           strings.TrimSpace(in.Session),
+		Category:          strings.TrimSpace(in.Category),
+		IncludeSuperseded: in.IncludeSuperseded,
+		IncludeExpired:    in.IncludeExpired,
+		Now:               vault.Now(),
+		Limit:             limit,
+	})
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, entriesOut(hits, true))
 }
 
 // memoryGraph answers what memory knows about a thing, and what that thing is

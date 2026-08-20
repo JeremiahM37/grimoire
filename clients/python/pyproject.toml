@@ -16,10 +16,15 @@ dev = ["pytest>=8"]
 # The LangGraph store adapter. Optional: the client itself stays
 # dependency-free, and the adapter is only imported when you ask for it.
 langgraph = ["langgraph>=0.2"]
+# The CrewAI storage backend. Also optional, and also only imported on demand.
+crewai = ["crewai>=1.0"]
 
 [project.urls]
 Homepage = "https://github.com/JeremiahM37/grimoire"
 Source = "https://github.com/JeremiahM37/grimoire/tree/main/clients/python"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [build-system]
 requires = ["setuptools>=68"]

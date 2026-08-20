@@ -464,3 +464,45 @@ func TestDuplicateBulletsDoNotBreakIndexing(t *testing.T) {
 		t.Fatalf("got %d entries for one duplicated fact: %v", len(hits), ids(hits))
 	}
 }
+
+func TestMemoryRanksByASuppliedVector(t *testing.T) {
+	// The path a framework that owns its embedding step takes: it embeds the
+	// query itself (through /api/embed, so the vector is in this server's
+	// space) and hands the vector over.
+	ix := testIndex(t)
+	memNote(t, ix, "memory/facts.md",
+		entry("deploy", "2026-08-14 09:00", "the deploy script lives at /usr/local/bin"),
+		entry("cat", "2026-08-15 09:00", "the cat is named marmalade"))
+
+	vec := ix.Emb.Embed([]string{"the deploy script lives at /usr/local/bin"})[0]
+	hits, err := ix.MemoryEntries(MemoryQuery{QueryVector: vec, Limit: 5})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(hits) == 0 || hits[0].ID != "deploy" {
+		t.Fatalf("vector query ranked %v first", ids(hits))
+	}
+	if hits[0].Semantic == 0 {
+		t.Error("the semantic component did not contribute")
+	}
+	// No query text means no terms and no entities to match on, and claiming
+	// otherwise would be inventing a signal.
+	if hits[0].Keyword != 0 || hits[0].Entity != 0 {
+		t.Errorf("a vector-only query produced term signals: %+v", hits[0])
+	}
+}
+
+func TestSuppliedVectorLosesToTextWhenBothArePresent(t *testing.T) {
+	// A caller that sends both gets the vector honoured, since that is the
+	// thing it went to the trouble of computing.
+	ix := testIndex(t)
+	memNote(t, ix, "memory/facts.md",
+		entry("a", "2026-08-14 09:00", "the deploy script lives at /usr/local/bin"),
+		entry("b", "2026-08-15 09:00", "the cat is named marmalade"))
+	vec := ix.Emb.Embed([]string{"the cat is named marmalade"})[0]
+	hits, _ := ix.MemoryEntries(MemoryQuery{
+		Query: "deploy script", QueryVector: vec, Limit: 5})
+	if hits[0].ID != "b" {
+		t.Errorf("the supplied vector was ignored: %v", ids(hits))
+	}
+}
