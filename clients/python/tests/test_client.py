@@ -400,3 +400,17 @@ def test_feedback_counts_are_parsed(server, client):
     server.reply = [{"id": "a1", "text": "x", "helpful": 3, "unhelpful": 1}]
     (fact,) = client.search("x")
     assert (fact.helpful, fact.unhelpful) == (3, 1)
+
+
+def test_graph_builds_its_query(server, client):
+    server.reply = {"seed": "priya sharma", "nodes": [], "edges": [], "entries": []}
+    client.graph("priya", depth=2, limit=10, session="run-1")
+    path = server.last["path"]
+    for fragment in ("entity=priya", "depth=2", "limit=10", "session=run-1"):
+        assert fragment in path, path
+
+
+def test_graph_without_an_entity_asks_for_the_overview(server, client):
+    server.reply = {"seed": "", "nodes": [], "edges": [], "entries": []}
+    client.graph()
+    assert "entity=" not in server.last["path"]

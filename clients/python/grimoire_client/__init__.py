@@ -344,6 +344,32 @@ class Grimoire:
         return self._request("POST", "/api/memory/feedback",
                              {"path": path, "id": memory_id, "helpful": helpful})
 
+    def graph(
+        self,
+        entity: str = "",
+        *,
+        depth: int = 1,
+        limit: int = 50,
+        agent: str = "",
+        session: str = "",
+        category: str = "",
+    ) -> dict[str, Any]:
+        """What memory knows about a thing, and what it is connected to.
+
+        Returns ``nodes`` (entities, with how many facts mention each and how
+        many hops from the seed), ``edges`` (pairs that share a fact, naming
+        the facts), and ``entries`` — the facts themselves, so an edge can be
+        read rather than trusted. With no ``entity``, the busiest entities.
+        """
+        params: dict[str, str] = {"depth": str(depth), "limit": str(limit)}
+        for key, value in (
+            ("entity", entity), ("agent", agent), ("session", session),
+            ("category", category),
+        ):
+            if value:
+                params[key] = value
+        return self._request("GET", "/api/memory/graph?" + urllib.parse.urlencode(params))
+
     def scopes(self) -> dict[str, Any]:
         """The agents, sessions and categories memory has been recorded under."""
         return self._request("GET", "/api/memory/facets")

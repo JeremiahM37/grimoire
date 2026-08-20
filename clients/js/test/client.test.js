@@ -313,3 +313,19 @@ describe('feedback', () => {
     assert.deepEqual(last().body, { path: 'memory/ops.md', id: 'a1', helpful: true })
   })
 })
+
+describe('entity graph', () => {
+  it('builds its query', async () => {
+    reply = { seed: 'priya sharma', nodes: [], edges: [], entries: [] }
+    await client.graph('priya', { depth: 2, limit: 10, session: 'run-1' })
+    for (const fragment of ['entity=priya', 'depth=2', 'limit=10', 'session=run-1']) {
+      assert.ok(last().path.includes(fragment), `${last().path} missing ${fragment}`)
+    }
+  })
+
+  it('omits the entity for an overview', async () => {
+    reply = { seed: '', nodes: [], edges: [], entries: [] }
+    await client.graph()
+    assert.ok(!last().path.includes('entity='))
+  })
+})

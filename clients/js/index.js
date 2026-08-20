@@ -191,6 +191,25 @@ export class Grimoire {
     return this.#request('POST', '/api/memory/feedback', { path, id, helpful })
   }
 
+  /**
+   * What memory knows about a thing, and what it is connected to. Returns
+   * nodes, edges naming the facts that connect them, and those facts — so an
+   * edge can be read rather than trusted. With no entity, the busiest ones.
+   */
+  async graph(entity = '', options = {}) {
+    const params = new URLSearchParams({
+      depth: String(options.depth ?? 1),
+      limit: String(options.limit ?? 50),
+    })
+    for (const [key, value] of [
+      ['entity', entity], ['agent', options.agent],
+      ['session', options.session], ['category', options.category],
+    ]) {
+      if (value) params.set(key, value)
+    }
+    return this.#request('GET', `/api/memory/graph?${params}`)
+  }
+
   /** The agents, sessions and categories memory has been recorded under. */
   async scopes() {
     return this.#request('GET', '/api/memory/facets')

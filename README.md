@@ -139,7 +139,7 @@ The agent gets, in one mount:
 | | tools |
 |---|---|
 | **Credentials — use, never read** | **`use_credential`** · **`list_grants`** |
-| **Agent memory** | **`remember`** · **`recall`** · **`forget`** · **`memory_feedback`** · **`memory_scopes`** · **`consolidate_memory`** |
+| **Agent memory** | **`remember`** · **`recall`** · **`forget`** · **`memory_graph`** · **`memory_feedback`** · **`memory_scopes`** · **`consolidate_memory`** |
 | Knowledge | `search_notes` · `ask_notes` · `read_note` · `list_notes` · `backlinks` · `list_tags` |
 | The web | `search_web` · `open_urls` |
 | Writing | `create_note` · `update_note` · `append_daily` |
