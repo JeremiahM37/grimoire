@@ -329,14 +329,43 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 	case "remember":
 		// attribution comes from the server's configured identity, not from the
 		// caller — an agent must not be able to write memories as someone else
-		return s.api("POST", "/api/memory", map[string]any{
+		body := map[string]any{
 			"text": str(args, "text"), "topic": str(args, "topic"),
-			"task": str(args, "task"), "agent": s.Agent})
+			"task": str(args, "task"), "agent": s.Agent}
+		for _, k := range []string{"session", "category", "expires_in"} {
+			if v := str(args, k); v != "" {
+				body[k] = v
+			}
+		}
+		if boolean(args, "immutable") {
+			body["immutable"] = true
+		}
+		return s.api("POST", "/api/memory", body)
 	case "recall":
 		q := url.Values{}
 		q.Set("q", str(args, "query"))
 		q.Set("limit", fmt.Sprint(num(args, "limit", 10)))
+		for _, k := range []string{"agent", "session", "category"} {
+			if v := str(args, k); v != "" {
+				q.Set(k, v)
+			}
+		}
+		for _, k := range []string{"include_superseded", "explain"} {
+			if boolean(args, k) {
+				q.Set(k, "1")
+			}
+		}
 		return s.api("GET", "/api/memory?"+q.Encode(), nil)
+	case "forget":
+		q := url.Values{}
+		q.Set("path", str(args, "path"))
+		q.Set("id", str(args, "id"))
+		// The retraction is attributed to the agent making it, so the note
+		// records who stopped believing what.
+		q.Set("agent", s.Agent)
+		return s.api("DELETE", "/api/memory/entry?"+q.Encode(), nil)
+	case "memory_scopes":
+		return s.api("GET", "/api/memory/facets", nil)
 	case "set_fact":
 		return s.api("POST", "/api/facts", map[string]any{
 			"note": str(args, "note"), "key": str(args, "key"),
