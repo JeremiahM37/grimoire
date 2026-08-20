@@ -120,6 +120,14 @@ export function mdToHtml(src) {
         html += `<div class="query query-pending" data-q="${esc(buf.join("\n"))}">running query…</div>`;
         lineNo = j; continue;
       }
+      if (lang === "template") {
+        // A live template renders on the SERVER, not here: it can contain a
+        // query and another template, and the server already has one
+        // definition of what those mean. Rendering it a second way in JS is
+        // how the console and the published page end up disagreeing.
+        html += `<div class="template template-pending" data-t="${esc(buf.join("\n"))}">rendering template…</div>`;
+        lineNo = j; continue;
+      }
       const cls = lang ? ` class="lang-${esc(lang)}"` : "";
       html += `<pre><code${cls} data-lang="${esc(lang)}">${highlightCode(buf.join("\n"))}</code></pre>`;
       lineNo = j; continue;
@@ -182,6 +190,13 @@ export async function hydrateDynamicBlocks(root, depth = 0) {
         a.onclick = (e) => { e.preventDefault(); openNoteFn(a.dataset.path); };
       });
     } catch (e) { el.textContent = `query failed: ${e.message}`; }
+  }
+  for (const el of root.querySelectorAll(".template-pending")) {
+    el.classList.remove("template-pending");
+    try {
+      const res = await api("/template/render", { method: "POST", body: { block: el.dataset.t } });
+      el.outerHTML = res.html || "";
+    } catch (e) { el.textContent = `template failed: ${e.message}`; }
   }
   for (const el of root.querySelectorAll(".embed-pending")) {
     el.classList.remove("embed-pending");

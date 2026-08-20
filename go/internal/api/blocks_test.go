@@ -184,3 +184,59 @@ func TestQueryBlockOverLinesGoesThroughTheSameAccessFilter(t *testing.T) {
 		t.Errorf("a query block over lines bypassed the reader list:\n%s", body)
 	}
 }
+
+func TestTemplateBlockRendersThroughTheAPI(t *testing.T) {
+	// The console draws markdown itself, so a live template is hydrated from
+	// the server — which keeps ONE definition of what the block means across
+	// the console, the read surface and a published page.
+	_, h := testServer(t)
+	if w := do(t, h, "POST", "/api/templates", map[string]any{
+		"name": "standup", "body": "## Standup for {{owner}}\n\n- what shipped\n",
+	}); w.Code >= 400 {
+		t.Fatalf("write template = %d: %s", w.Code, w.Body)
+	}
+	var out struct {
+		HTML string `json:"html"`
+	}
+	decode(t, do(t, h, "POST", "/api/template/render",
+		map[string]any{"block": "use: standup\nowner: Ana"}), &out)
+	if !strings.Contains(out.HTML, "Standup for Ana") {
+		t.Errorf("template not rendered: %s", out.HTML)
+	}
+	if !strings.Contains(out.HTML, "<h2") {
+		t.Errorf("template body was not rendered as markdown: %s", out.HTML)
+	}
+}
+
+func TestTemplateRenderNeedsABlockAndAnAccount(t *testing.T) {
+	s, h := testServer(t)
+	if w := do(t, h, "POST", "/api/template/render",
+		map[string]any{"block": ""}); w.Code != http.StatusBadRequest {
+		t.Errorf("empty block = %d, want 400", w.Code)
+	}
+	// A template pulls in a note body, so it is a read.
+	makeUser(t, s, h, "", "alice", "admin")
+	if w := do(t, h, "POST", "/api/template/render",
+		map[string]any{"block": "use: x"}); w.Code != http.StatusUnauthorized {
+		t.Errorf("anonymous = %d, want 401", w.Code)
+	}
+}
+
+func TestTemplateCannotReachANoteTheCallerCannotRead(t *testing.T) {
+	s, h := testServer(t)
+	aliceKey := makeUser(t, s, h, "", "alice", "admin")
+	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
+	if _, err := s.WriteNote("templates/restricted.md",
+		"the severance terms\n",
+		map[string]any{"title": "restricted", "readers": "alice"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Index.Reindex(); err != nil {
+		t.Fatal(err)
+	}
+	body := asKey(t, h, bobKey, "POST", "/api/template/render",
+		map[string]any{"block": "use: restricted"}).Body.String()
+	if strings.Contains(strings.ToLower(body), "severance") {
+		t.Errorf("a template block read a note bob cannot open:\n%s", body)
+	}
+}

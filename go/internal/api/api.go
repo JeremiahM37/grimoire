@@ -173,6 +173,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/plugins/{name}/enable", s.adminOnly(s.enablePlugin))
 	mux.HandleFunc("GET /plugins/{name}/{rel...}", s.servePluginAsset)
 	mux.HandleFunc("POST /api/query", s.runQuery)
+	mux.HandleFunc("POST /api/template/render", s.renderTemplate)
 	mux.HandleFunc("GET /api/trash", s.listTrash)
 	mux.HandleFunc("POST /api/trash/{tid}/restore", s.restoreTrash)
 	mux.HandleFunc("DELETE /api/trash/{tid}", s.userOnly(s.purgeTrash))

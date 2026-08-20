@@ -70,8 +70,13 @@ type Context struct {
 	LinkMap  map[string]string        // lower title/stem/path -> rel path
 	ImgSrc   func(rel string) string  // attachment URL
 	NoteBody func(rel string) *string // transclusion source; nil disables it
-	RunQuery func(block string) *QueryResult
-	LinkHref func(rel string) string
+	// TemplateBody resolves a named template. Separate from NoteBody because
+	// templates/ is a RESERVED directory: templates are not indexed as notes,
+	// so they are not in the link map and cannot be found the way an embed
+	// finds its target. nil disables ```template blocks.
+	TemplateBody func(name string) *string
+	RunQuery     func(block string) *QueryResult
+	LinkHref     func(rel string) string
 
 	depth     int
 	embedding map[string]bool // cycle guard (rel paths)
@@ -150,6 +155,8 @@ func RenderWith(body string, ctx *Context) string {
 			}
 			if lang == "query" && ctx.RunQuery != nil {
 				out = append(out, queryHTML(strings.Join(buf, "\n"), ctx))
+			} else if lang == "template" {
+				out = append(out, templateHTML(strings.Join(buf, "\n"), ctx))
 			} else {
 				cls := ""
 				if lang != "" {
@@ -444,8 +451,9 @@ func transclude(target string, ctx *Context) string {
 	}
 	sub := &Context{
 		LinkMap: ctx.LinkMap, ImgSrc: ctx.ImgSrc, NoteBody: ctx.NoteBody,
-		RunQuery: ctx.RunQuery, LinkHref: ctx.LinkHref,
-		depth: ctx.depth + 1, embedding: embedding,
+		TemplateBody: ctx.TemplateBody, RunQuery: ctx.RunQuery,
+		LinkHref: ctx.LinkHref,
+		depth:    ctx.depth + 1, embedding: embedding,
 	}
 	return `<div class="embed"><div class="embed-title">` +
 		`<a class="wikilink" href="` + escapeHTML(ctx.linkHref(rel)) + `">` + label + `</a></div>` +

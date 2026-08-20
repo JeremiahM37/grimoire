@@ -176,6 +176,24 @@ func (s *Server) publishedNotePage(w http.ResponseWriter, r *http.Request) {
 	rendered := render.RenderWith(body, &render.Context{
 		LinkMap:  linkMap,
 		LinkHref: func(rel string) string { return "/published/" + stripMD(rel) },
+		// Templates are the author's own building blocks rather than pages,
+		// so a published note may use one — it is the note that was published,
+		// and its template is part of how it renders. Passing nil for the
+		// request means no per-caller check, which is right here and would be
+		// wrong anywhere else: there is no caller.
+		TemplateBody: s.templateBody(nil),
+		// An embed or a template block on a published page may pull in
+		// PUBLISHED notes only. Otherwise "embed this" is a way to put an
+		// unpublished note on the public internet without ever marking it.
+		NoteBody: func(target string) *string {
+			var inner string
+			if err := s.Index.DB.QueryRow(
+				"SELECT body FROM notes WHERE path=? AND "+publishedWhere, target).
+				Scan(&inner); err != nil {
+				return nil
+			}
+			return &inner
+		},
 	})
 
 	back := ""

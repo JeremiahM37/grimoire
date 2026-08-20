@@ -100,9 +100,24 @@ func (s *Server) readNote(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	// NoteBody is what makes an embed and a live template block work here.
+	// It is scoped to what this caller may read, so the read surface cannot
+	// become a way to pull in a note the console would refuse to open.
 	rendered := render.RenderWith(body, &render.Context{
-		LinkMap:  linkMap,
-		LinkHref: func(rel string) string { return "/read/" + stripMD(rel) },
+		LinkMap:      linkMap,
+		LinkHref:     func(rel string) string { return "/read/" + stripMD(rel) },
+		TemplateBody: s.templateBody(r),
+		NoteBody: func(target string) *string {
+			if !s.canRead(r, target) {
+				return nil
+			}
+			var inner string
+			if err := s.Index.DB.QueryRow(
+				"SELECT body FROM notes WHERE path=? AND private=0", target).Scan(&inner); err != nil {
+				return nil
+			}
+			return &inner
+		},
 	})
 
 	back := ""
