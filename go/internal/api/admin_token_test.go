@@ -39,9 +39,13 @@ func TestAdminTokenClosesTheLeversAndLeavesReadingOpen(t *testing.T) {
 	}
 
 	// Reading is untouched — this is the whole point of a second token.
+	// /api/vault/status is here on purpose: whether the vault is locked is a
+	// status the console shows on every load, not a lever, and gating it means
+	// a padlock that reports an error instead of a state.
 	for _, path := range []string{
 		"/api/notes", "/api/notes/open.md", "/api/search?q=kestrel",
 		"/api/retrieve?q=kestrel&k=3", "/api/health", "/api/briefing",
+		"/api/vault/status",
 	} {
 		if w := do(t, h, "GET", path, nil); w.Code != http.StatusOK {
 			t.Errorf("%s = %d, want it to stay open", path, w.Code)

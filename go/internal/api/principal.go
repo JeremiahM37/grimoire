@@ -337,6 +337,13 @@ func (s *Server) adminOnly(h http.HandlerFunc) http.HandlerFunc {
 // adminSurface reports whether a path administers the instance rather than
 // reading from it.
 func adminSurface(path string) bool {
+	// Whether the vault is locked is a STATUS, not a lever: the console shows
+	// it as an indicator on every load, and gating it means a padlock that
+	// reports an error instead of a state. It reveals that a vault exists and
+	// how many names are in it — never a name, never a value.
+	if path == "/api/vault/status" {
+		return false
+	}
 	for _, p := range []string{
 		"/api/vault/", "/api/secrets", "/api/grants", "/api/audit",
 		"/api/connectors", "/api/users", "/api/spaces", "/api/keys",
