@@ -122,6 +122,7 @@ func newEnv(fetchModel bool) (*env, error) {
 		SyncInterval: atoiOr(os.Getenv("GRIMOIRE_SYNC_INTERVAL"), 0),
 		WebDir:       envOr("GRIMOIRE_WEB_DIR", ""),
 		AuthToken:    os.Getenv("GRIMOIRE_AUTH_TOKEN"),
+		AdminToken:   os.Getenv("GRIMOIRE_ADMIN_TOKEN"),
 		FrameOptions: envOr("GRIMOIRE_FRAME_OPTIONS", "SAMEORIGIN"),
 		PluginDir:    envOr("GRIMOIRE_PLUGIN_DIR", "plugins"),
 		DailyDir:     envOr("GRIMOIRE_DAILY_DIR", "journal"),
@@ -187,8 +188,15 @@ func run(args []string) error {
 		host = v
 	}
 	if e.server.AuthToken == "" && host == "" {
-		log.Printf("WARNING: serving on all interfaces with no GRIMOIRE_AUTH_TOKEN — " +
-			"anyone who can reach this port can read notes and drive the secret vault")
+		if e.server.AdminToken == "" && (e.auth == nil || !e.auth.Enabled()) {
+			log.Printf("WARNING: serving on all interfaces with no GRIMOIRE_AUTH_TOKEN " +
+				"and no GRIMOIRE_ADMIN_TOKEN — anyone who can reach this port can read " +
+				"notes AND drive the secret vault, accounts and connectors")
+		} else {
+			log.Printf("serving on all interfaces with no GRIMOIRE_AUTH_TOKEN: notes and " +
+				"retrieval are open to anyone who can reach this port; the administrative " +
+				"surface is gated")
+		}
 	}
 
 	// Unattended unlock, when the deployment has opted into one. Done before

@@ -50,6 +50,20 @@ type Page struct {
 	// More reports that the source has further pages ready now; the runner
 	// keeps going rather than waiting for the next scheduled sync.
 	More bool
+	// Complete marks a page as a FULL enumeration of the source rather than
+	// "what changed since the cursor".
+	//
+	// This is what makes deletion detectable at all. An incremental sync asks
+	// "what moved?", and a document that was deleted did not move — it is
+	// indistinguishable from one that was simply not touched. Only a source
+	// that just listed everything can say "and nothing else exists", which is
+	// the claim this flag makes. Setting it when the page is partial would
+	// delete every document the page did not happen to include.
+	Complete bool
+	// Seen lists every external id the source holds, when a connector can
+	// enumerate cheaply but does not want to return the bodies. Used with
+	// Complete.
+	Seen []string
 }
 
 // Config is a connector's settings: free-form per kind, validated by the kind.

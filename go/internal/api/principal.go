@@ -2,6 +2,8 @@ package api
 
 import (
 	"context"
+	"crypto/sha256"
+	"crypto/subtle"
 	"net"
 	"net/http"
 	"os"
@@ -312,4 +314,74 @@ func (s *Server) adminOnly(h http.HandlerFunc) http.HandlerFunc {
 		}
 		h(w, r)
 	}
+}
+
+// A second token, for the surfaces that are not reading notes.
+//
+// The single shared GRIMOIRE_AUTH_TOKEN is all-or-nothing: set it and the whole
+// server is closed, including retrieval — which is precisely what a homelab
+// wants OPEN, since the point of running this is that agents and dashboards on
+// a trusted network can ask it questions without ceremony.
+//
+// That leaves the levers open too. Reading a note and configuring a connector
+// are not the same act: one answers a question, the other decides what enters
+// the vault, holds a credential name, and calls out to other systems. So the
+// administrative surface can be gated separately — notes and retrieval stay as
+// open as they were, while accounts, spaces, the credential vault and
+// connectors require GRIMOIRE_ADMIN_TOKEN.
+//
+// On a multi-user instance this is redundant with accounts and can be left
+// unset; it exists for the single-user deployment that wants to stay
+// single-user and still not hand its levers to the network.
+
+// adminSurface reports whether a path administers the instance rather than
+// reading from it.
+func adminSurface(path string) bool {
+	for _, p := range []string{
+		"/api/vault/", "/api/secrets", "/api/grants", "/api/audit",
+		"/api/connectors", "/api/users", "/api/spaces", "/api/keys",
+		"/api/reindex", "/api/settings",
+	} {
+		if strings.HasPrefix(path, p) {
+			return true
+		}
+	}
+	return false
+}
+
+// requireAdminToken gates the administrative surface when a token is set.
+//
+// Applied before the principal is resolved, because it is a property of the
+// deployment rather than of the caller: with no accounts there is nobody to
+// authenticate, and this is the only thing standing between an open port and
+// the levers.
+func (s *Server) requireAdminToken(next http.Handler) http.Handler {
+	token := strings.TrimSpace(s.AdminToken)
+	if token == "" {
+		return next
+	}
+	want := sha256.Sum256([]byte(token))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !adminSurface(r.URL.Path) {
+			next.ServeHTTP(w, r)
+			return
+		}
+		// A signed-in administrator has already proved more than this token
+		// does, so accounts take precedence where they exist.
+		if p := principal(r); !p.Anonymous && !p.Unrestricted && p.IsAdmin() {
+			next.ServeHTTP(w, r)
+			return
+		}
+		presented, _ := presentedToken(r)
+		if presented == "" {
+			presented = strings.TrimSpace(r.Header.Get("X-Grimoire-Admin"))
+		}
+		got := sha256.Sum256([]byte(presented))
+		if subtle.ConstantTimeCompare(got[:], want[:]) != 1 {
+			writeErr(w, http.StatusUnauthorized,
+				"this endpoint administers the instance and needs the admin token")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }

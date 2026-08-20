@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"github.com/JeremiahM37/grimoire/go/internal/metrics"
 	"log"
 	"net/http"
 	"regexp"
@@ -66,8 +67,12 @@ type Runner struct {
 
 // Result reports what one run did.
 type Result struct {
-	Written int    `json:"written"`
-	Skipped int    `json:"skipped"`
+	Written int `json:"written"`
+	Skipped int `json:"skipped"`
+	// Removed counts notes dropped because the source no longer has them —
+	// only ever non-zero for a source that enumerated everything. See
+	// Page.Complete.
+	Removed int    `json:"removed"`
 	Cursor  string `json:"cursor"`
 	Err     string `json:"error,omitempty"`
 }
@@ -151,6 +156,15 @@ func (r *Runner) Run(ctx context.Context, id string) (Result, error) {
 		if out.Cursor != "" {
 			cursor = out.Cursor
 		}
+		if out.Complete {
+			removed, err := r.reap(c, out)
+			if err != nil {
+				c.Cursor = cursor
+				r.record(c, res, err)
+				return res, err
+			}
+			res.Removed += removed
+		}
 		if !out.More || len(out.Docs) == 0 {
 			break
 		}
@@ -171,6 +185,14 @@ func (r *Runner) fail(c Connector, err error) (Result, error) {
 func (r *Runner) record(c Connector, res Result, err error) {
 	c.LastRun = time.Now().UTC().Format(time.RFC3339)
 	c.LastOK = err == nil
+	outcome := "ok"
+	if err != nil {
+		outcome = "failed"
+	}
+	metrics.Count("grimoire_connector_runs_total", "Connector runs by kind and outcome.",
+		map[string]string{"kind": c.Kind, "outcome": outcome})
+	metrics.Add("grimoire_connector_documents_total", "Documents written by connectors.",
+		map[string]string{"kind": c.Kind}, int64(res.Written))
 	c.LastErr = ""
 	if err != nil {
 		c.LastErr = err.Error()
@@ -180,6 +202,41 @@ func (r *Runner) record(c Connector, res Result, err error) {
 	if saveErr := r.Store.Save(c); saveErr != nil {
 		log.Printf("connector %s: recording the run failed: %v", c.Name, saveErr)
 	}
+}
+
+// reap removes notes whose source document is gone.
+//
+// Only called for a page that claims to be a complete enumeration, because
+// only then does "absent from this page" mean "deleted at the source" rather
+// than "unchanged since the cursor". Getting that distinction wrong deletes a
+// vault, so the claim has to be made explicitly by the source.
+func (r *Runner) reap(c Connector, page Page) (int, error) {
+	present := make(map[string]bool, len(page.Docs)+len(page.Seen))
+	for _, d := range page.Docs {
+		present[d.ExternalID] = true
+	}
+	for _, id := range page.Seen {
+		present[id] = true
+	}
+	known, err := r.Store.docsFor(c.ID)
+	if err != nil {
+		return 0, err
+	}
+	removed := 0
+	for externalID, rec := range known {
+		if present[externalID] {
+			continue
+		}
+		if err := r.Writer.DeleteNote(rec.Path); err != nil {
+			// A note somebody has already deleted by hand is not an error.
+			log.Printf("connector %s: removing %s: %v", c.Name, rec.Path, err)
+		}
+		if err := r.Store.forgetDoc(c.ID, externalID); err != nil {
+			return removed, err
+		}
+		removed++
+	}
+	return removed, nil
 }
 
 // write turns documents into notes.

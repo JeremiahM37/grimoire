@@ -171,6 +171,32 @@ func (s *Store) putDoc(connector, externalID string, d docRecord) error {
 			"VALUES(?,?,?,?,?)", connector, externalID, d.Path, d.Hash, d.Updated)
 }
 
+// docsFor returns everything a connector has written, keyed by external id.
+func (s *Store) docsFor(connector string) (map[string]docRecord, error) {
+	rows, err := s.DB.Query(
+		"SELECT external_id, path, hash, updated FROM connector_docs WHERE connector=?",
+		connector)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]docRecord{}
+	for rows.Next() {
+		var id string
+		var d docRecord
+		if err := rows.Scan(&id, &d.Path, &d.Hash, &d.Updated); err != nil {
+			return nil, err
+		}
+		out[id] = d
+	}
+	return out, rows.Err()
+}
+
+func (s *Store) forgetDoc(connector, externalID string) error {
+	return s.DB.Exec("DELETE FROM connector_docs WHERE connector=? AND external_id=?",
+		connector, externalID)
+}
+
 // Paths lists every note a connector has written, for cleanup on delete.
 func (s *Store) Paths(connector string) ([]string, error) {
 	rows, err := s.DB.Query("SELECT path FROM connector_docs WHERE connector=?", connector)

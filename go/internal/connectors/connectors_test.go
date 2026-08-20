@@ -498,3 +498,67 @@ func keysOf(m map[string]string) []string {
 	}
 	return out
 }
+
+// Deletion is the one thing an incremental sync cannot see: a document that was
+// deleted did not change. Only a source that just listed everything can say so,
+// and saying it wrongly deletes a vault — so the claim is explicit and tested
+// from both sides.
+func TestCompletePagesRemoveDocumentsTheSourceNoLongerHas(t *testing.T) {
+	src := &stubSource{pages: []Page{
+		{Docs: []Document{
+			{ExternalID: "1", Title: "Kept", Body: "one"},
+			{ExternalID: "2", Title: "Doomed", Body: "two"},
+		}, Complete: true},
+		// Second sync: the source no longer lists "2".
+		{Docs: []Document{{ExternalID: "1", Title: "Kept", Body: "one"}}, Complete: true},
+	}}
+	r, w, _, _ := runnerFixture(t, src)
+	if _, err := r.Run(context.Background(), "c1"); err != nil {
+		t.Fatal(err)
+	}
+	if len(w.notes) != 2 {
+		t.Fatalf("first sync wrote %d notes", len(w.notes))
+	}
+	res, err := r.Run(context.Background(), "c1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Removed != 1 {
+		t.Fatalf("removed %d, want the one the source dropped", res.Removed)
+	}
+	if len(w.notes) != 1 {
+		t.Fatalf("notes after reap = %v", keysOf(w.notes))
+	}
+	for path := range w.notes {
+		if strings.Contains(path, "doomed") {
+			t.Fatalf("the deleted document's note survived: %s", path)
+		}
+	}
+}
+
+// The dangerous direction: an INCREMENTAL page says nothing about what still
+// exists, so absence from it must never delete anything.
+func TestIncrementalPagesNeverDeleteAnything(t *testing.T) {
+	src := &stubSource{pages: []Page{
+		{Docs: []Document{
+			{ExternalID: "1", Title: "One", Body: "one"},
+			{ExternalID: "2", Title: "Two", Body: "two"},
+		}},
+		// A normal incremental page: only what changed. Both notes must stay.
+		{Docs: []Document{{ExternalID: "1", Title: "One", Body: "one edited"}}},
+	}}
+	r, w, _, _ := runnerFixture(t, src)
+	if _, err := r.Run(context.Background(), "c1"); err != nil {
+		t.Fatal(err)
+	}
+	res, err := r.Run(context.Background(), "c1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Removed != 0 {
+		t.Fatalf("an incremental page removed %d notes", res.Removed)
+	}
+	if len(w.notes) != 2 || len(w.deleted) != 0 {
+		t.Fatalf("notes=%v deleted=%v", keysOf(w.notes), w.deleted)
+	}
+}
