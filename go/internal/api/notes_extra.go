@@ -70,6 +70,13 @@ func (s *Server) renameNote(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "new_path required")
 		return
 	}
+	// The DESTINATION arrives in the body. requireWrite on the way in covered
+	// the path in the URL — the note being moved — and said nothing about
+	// where it was being moved TO, so a member could push a document into a
+	// space they cannot write.
+	if !s.requireWrite(w, r, normPath(target)) {
+		return
+	}
 	newRel, err := s.Vault.Rename(rel, normPath(target))
 	if err != nil {
 		writeErr(w, statusForVaultErr(err), err.Error())
@@ -99,6 +106,10 @@ func (s *Server) duplicateNote(w http.ResponseWriter, r *http.Request) {
 	// what a person looking at the list expects to find
 	title := fm2Title(note)
 	newRel, err := s.uniquePath(vault.Slugify(title) + ".md")
+	if err == nil && !s.canWrite(r, newRel) {
+		writeErr(w, http.StatusForbidden, "you cannot write there")
+		return
+	}
 	if err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
@@ -152,6 +163,13 @@ func (s *Server) linkNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	src := normPath(in.Source)
+	// The note being EDITED is the source in the body, not the target in the
+	// URL: this rewrites src's text. Unchecked it was both a write to any note
+	// and an oracle — "mention not found" versus success answers whether a
+	// phrase appears in a document you cannot read.
+	if !s.requireWrite(w, r, src) {
+		return
+	}
 	note, err := s.Vault.Read(src)
 	if err != nil {
 		writeErr(w, http.StatusNotFound, "no such source note")
@@ -377,7 +395,7 @@ func (s *Server) restoreVersion(w http.ResponseWriter, r *http.Request) {
 
 // ---------------------------------------------------------------- templates
 
-func (s *Server) listTemplates(w http.ResponseWriter, _ *http.Request) {
+func (s *Server) listTemplates(w http.ResponseWriter, r *http.Request) {
 	rels, err := s.Vault.WalkDir("templates")
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
@@ -385,6 +403,12 @@ func (s *Server) listTemplates(w http.ResponseWriter, _ *http.Request) {
 	}
 	out := []map[string]string{}
 	for _, rel := range rels {
+		// A space is any path prefix, so "templates/" is not automatically
+		// everyone's: it is only the commons until somebody puts a space over
+		// part of it.
+		if !s.canRead(r, normPath(rel)) {
+			continue
+		}
 		note, err := s.Vault.Read(rel)
 		if err != nil {
 			continue
@@ -408,6 +432,13 @@ func (s *Server) applyTemplate(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "invalid json")
 		return
 	}
+	// The template path comes from the caller, and applying one COPIES its
+	// body into a new note the caller then owns. Without this check it is a
+	// read of any note in the vault wearing a write's clothes: name someone
+	// else's note as your template and read it back out of the result.
+	if !s.requireRead(w, r, normPath(in.Template)) {
+		return
+	}
 	tpl, err := s.Vault.Read(normPath(in.Template))
 	if err != nil {
 		writeErr(w, http.StatusNotFound, "no such template")
@@ -428,6 +459,9 @@ func (s *Server) applyTemplate(w http.ResponseWriter, r *http.Request) {
 	rel, err := s.uniquePath(vault.Slugify(title) + ".md")
 	if err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if !s.requireWrite(w, r, rel) {
 		return
 	}
 	fm := markdown.NewFrontmatter()

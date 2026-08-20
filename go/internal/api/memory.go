@@ -144,7 +144,7 @@ func (s *Server) recall(w http.ResponseWriter, r *http.Request) {
 	if q != "" {
 		// Memories are ordinary notes, so they live in spaces like any other
 		// and one member must not recall another's.
-		where, spaceArgs := s.whereSpace(r, "n.space",
+		where, spaceArgs := s.whereReadable(r, "n.space", "n.acl",
 			" WHERE n.path LIKE ? AND n.path IN (SELECT path FROM fts WHERE fts MATCH ?)")
 		args := append(append([]any{like, fts.Terms(q)}, spaceArgs...), limit)
 		rows, err := s.Index.DB.Query(
@@ -187,7 +187,7 @@ func (s *Server) recall(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	} else {
-		where, spaceArgs := s.whereSpace(r, "space", " WHERE path LIKE ?")
+		where, spaceArgs := s.whereReadable(r, "space", "acl", " WHERE path LIKE ?")
 		args := append(append([]any{like}, spaceArgs...), limit)
 		rows, err := s.Index.DB.Query(
 			"SELECT path, title, body, updated FROM notes"+where+

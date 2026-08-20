@@ -1,12 +1,15 @@
 package api
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 	"testing"
+	"time"
 )
 
 // Every route must be classified, and adding one must FAIL until it is.
@@ -226,5 +229,150 @@ func TestThePublicSurfaceIsSmallAndDeliberate(t *testing.T) {
 			strings.Contains(r, "/export") {
 			t.Errorf("%q is classified public but looks like a content route", r)
 		}
+	}
+}
+
+// Every non-public route must actually REFUSE an anonymous caller.
+//
+// The table above records a decision; it cannot tell whether the code honours
+// it. That gap is not hypothetical — it hid three holes in the trash surface
+// for as long as the table existed. GET /api/trash was labelled `scoped` while
+// its handler took the request as `_`, which is the bug in one character: a
+// handler that never looks at who is asking cannot be filtering. It answered
+// anyone with every deleted note's path and title, and restore and purge let
+// anyone move a note back into a space they cannot write or destroy its last
+// copy.
+//
+// So this drives the real mux. Accounts exist, nobody is signed in, and a
+// success is a failure. It does not check that the FILTERING is right — that
+// needs a second principal and lives beside each feature — but no route can
+// ever again be reachable by an anonymous caller merely because someone wrote
+// a label next to it.
+func TestNonPublicRoutesRefuseAnonymousCallers(t *testing.T) {
+	s, h := testServer(t)
+	adminKey := makeUser(t, s, h, "", "alice", "admin") // accounts exist ⇒ multi-user rules apply
+
+	// The probe targets have to EXIST, or a route 404s on the way to the
+	// branch worth testing and reports itself guarded. Removing the write
+	// check from POST /api/facts did not fail this test until these were here.
+	for _, p := range []string{"probe/note.md", "memory/probe.md", "templates/probe.md"} {
+		if w := asKey(t, h, adminKey, "POST", "/api/notes", map[string]any{
+			"path": p, "body": "# Probe\n\nbody"}); w.Code != http.StatusCreated {
+			t.Fatalf("seeding %s = %d %s", p, w.Code, w.Body)
+		}
+	}
+
+	for route, class := range routeAccess {
+		if class == public {
+			continue
+		}
+		method, pattern, ok := strings.Cut(route, " ")
+		if !ok {
+			t.Fatalf("route %q is not \"METHOD /path\"", route)
+		}
+		// A `scoped` READ may answer an anonymous caller — with nothing in it.
+		// Notes and retrieval stay reachable on a trusted network by design;
+		// what must not happen is content coming back, and that is checked by
+		// the content sweeps in multiuser_test.go with a real second principal.
+		// A scoped WRITE is a different matter: there is no such thing as an
+		// anonymous write once accounts exist.
+		if class == scoped && !writesContent(method, route) {
+			continue
+		}
+		t.Run(route, func(t *testing.T) {
+			code := statusAnonymously(t, h, method, fillWildcards(pattern), bodyFor(route))
+			if code >= 200 && code < 300 {
+				t.Errorf("%s answered an anonymous caller with %d.\n"+
+					"It is classified %s, so it must refuse one. A label is not a check: "+
+					"look at whether the handler ever reads the request's principal.",
+					route, code, className(class))
+			}
+		})
+	}
+}
+
+// writesContent reports whether a route changes the vault. POST is not a
+// reliable signal on its own: /api/ask and /api/query are reads that take a
+// body, so they are named here rather than guessed at.
+func writesContent(method, route string) bool {
+	switch route {
+	case "POST /api/ask", "POST /api/query":
+		return false
+	}
+	return method == "PUT" || method == "POST" || method == "DELETE" || method == "PATCH"
+}
+
+func className(a access) string {
+	switch a {
+	case authed:
+		return "authed"
+	case scoped:
+		return "scoped"
+	case admin:
+		return "admin"
+	}
+	return "public"
+}
+
+// fillWildcards turns a mux pattern into a concrete path. The values only have
+// to be well-formed: a refused request never reaches the thing they name.
+func fillWildcards(pattern string) string {
+	r := strings.NewReplacer(
+		"{path...}", "probe/note.md",
+		"{rel...}", "probe.js",
+		"{name}", "probe",
+		"{id}", "probe",
+		"{tid}", "probe",
+		"{version}", "1",
+		"{key}", "probe",
+		"{token}", "probe",
+	)
+	return r.Replace(pattern)
+}
+
+// statusAnonymously performs one request with no credentials, failing the test
+// if the handler never returns — a route that hangs an anonymous caller is its
+// own kind of unguarded.
+// bodyFor supplies a request body good enough to get PAST validation.
+//
+// An empty {} is not a probe, it is a typo check: POST /api/facts and
+// POST /api/memory/consolidate both answered 400 "field required" to an
+// anonymous caller and so looked guarded, while the branch behind that
+// validation wrote to any note in the vault. A probe that never reaches the
+// dangerous branch tests nothing, and — worse — reports that it did.
+func bodyFor(route string) string {
+	switch route {
+	case "POST /api/facts":
+		return `{"note":"probe/note.md","key":"k","value":"v"}`
+	case "POST /api/memory/consolidate":
+		return `{"path":"memory/probe.md"}`
+	case "POST /api/templates/apply":
+		return `{"template":"templates/probe.md","title":"probe"}`
+	case "POST /api/capture":
+		return `{"text":"probe","title":"probe"}`
+	case "POST /api/query":
+		return `{"block":"tag: probe"}`
+	case "POST /api/ask":
+		return `{"q":"probe"}`
+	}
+	return "{}"
+}
+
+func statusAnonymously(t *testing.T, h http.Handler, method, path, body string) int {
+	t.Helper()
+	done := make(chan int, 1)
+	go func() {
+		req := httptest.NewRequest(method, path, strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, req)
+		done <- w.Code
+	}()
+	select {
+	case code := <-done:
+		return code
+	case <-time.After(10 * time.Second):
+		t.Fatalf("%s %s never answered an anonymous caller", method, path)
+		return 0
 	}
 }

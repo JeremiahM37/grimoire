@@ -229,9 +229,20 @@ func (s *Server) aclOf(r *http.Request, path string) string {
 }
 
 // canWrite reports whether the caller may change a note.
+//
+// Writing requires being able to READ the note as well, which is not the
+// tautology it looks like: a reader list narrows reads only, so a note pulled
+// from a private Slack channel into the commons was writable by every member
+// while being visible to none of them. Access you cannot see through is
+// clobber-only — you cannot merge, edit or review what you cannot read, you
+// can only overwrite it — and for a mirrored document that is precisely the
+// permission the source did not grant.
 func (s *Server) canWrite(r *http.Request, path string) bool {
 	c := callerOf(r)
-	return c.principal.CanWrite(c.spaceOf(path))
+	if !c.principal.CanWrite(c.spaceOf(path)) {
+		return false
+	}
+	return s.aclAllows(r, s.aclOf(r, path))
 }
 
 // requireRead ends the request unless the caller may read the path.
@@ -364,6 +375,39 @@ func (s *Server) spaceSQL(r *http.Request, col string) (string, []any) {
 	return col + " IN (" + strings.Join(ph, ",") + ")", args
 }
 
+// aclSQL is spaceSQL for reader lists: the second half of "may they read
+// this", expressed in SQL so an aggregate or a body-returning query can filter
+// without a per-row lookup.
+//
+// It exists because the space clause alone was quietly treated as the whole
+// check by every query that could not conveniently loop — tag counts, agent
+// memory, the alias map — each of which then answered with something drawn
+// from documents the caller may not open.
+func (s *Server) aclSQL(r *http.Request, col string) (string, []any) {
+	p := principal(r)
+	if p.Unrestricted || p.IsAdmin() {
+		return "", nil
+	}
+	if p.Anonymous {
+		return col + " = ''", nil
+	}
+	return "(" + col + " = '' OR instr(" + col + ", ?) > 0)", []any{"," + p.User.ID + ","}
+}
+
+// whereReadable is the clause for "notes this caller may read": space AND
+// reader list, which is what canRead checks one note at a time.
+func (s *Server) whereReadable(r *http.Request, spaceCol, aclCol, existing string) (string, []any) {
+	where, args := s.whereSpace(r, spaceCol, existing)
+	clause, aclArgs := s.aclSQL(r, aclCol)
+	if clause == "" {
+		return where, args
+	}
+	if strings.TrimSpace(where) == "" {
+		return " WHERE " + clause, aclArgs
+	}
+	return where + " AND " + clause, append(args, aclArgs...)
+}
+
 // whereSpace composes spaceSQL into a query that may already have a WHERE.
 func (s *Server) whereSpace(r *http.Request, col, existing string) (string, []any) {
 	clause, args := s.spaceSQL(r, col)
@@ -382,6 +426,24 @@ func (s *Server) whereSpace(r *http.Request, col, existing string) (string, []an
 func (s *Server) adminOnly(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !s.requireAdmin(w, r) {
+			return
+		}
+		h(w, r)
+	}
+}
+
+// userOnly wraps a handler so it answers a signed-in caller only, and everyone
+// on a deployment with no accounts.
+//
+// Applied at registration for the same reason adminOnly is: the route table
+// then SHOWS which surfaces need a principal, instead of that fact living
+// inside a handler where the next person has to go and look. Eleven routes
+// answered anonymous callers because the check lived nowhere at all — among
+// them PUT /api/settings, which let anyone repoint this instance's model
+// endpoint at a server of their choosing.
+func (s *Server) userOnly(h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !s.requireUser(w, r) {
 			return
 		}
 		h(w, r)

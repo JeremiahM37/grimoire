@@ -448,6 +448,10 @@ func (ix *Index) AliasMap() (map[string]string, error) {
 	return out, nil
 }
 
+// AliasesOf exposes the alias parser to the API, so a caller-filtered alias
+// map does not have to reimplement it and drift.
+func AliasesOf(fmJSON string) []string { return aliasesOf(fmJSON) }
+
 func aliasesOf(fmJSON string) []string {
 	if fmJSON == "" {
 		return nil

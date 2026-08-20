@@ -2,9 +2,11 @@ package api
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/JeremiahM37/grimoire/go/internal/auth"
 	"github.com/JeremiahM37/grimoire/go/internal/readlog"
 )
 
@@ -267,4 +269,371 @@ func TestVaultImportRequiresAnAccount(t *testing.T) {
 	if w := do(t, h2, "POST", "/api/import/vault", nil); w.Code != http.StatusUnauthorized {
 		t.Fatalf("anonymous import = %d %s, want 401", w.Code, w.Body)
 	}
+}
+
+// Full-corpus mode is the most dangerous read path in the system, and until
+// this test it was the least exercised one.
+//
+// When the whole corpus fits the context budget, the answering path stops
+// ranking and hands the model EVERYTHING — the branch where nothing is scored
+// and therefore nothing had to be checked. It only runs when an LLM is
+// configured, and no other test configures one, so the branch that reads every
+// note in the vault was never taken at the HTTP boundary.
+//
+// It is reached here by setting GRIMOIRE_LLM: the backend is then "available"
+// and unreachable, so the answer falls back to quoting the passages it was
+// handed — which is exactly what makes this a real check. If the filter were
+// missing, the restricted text would appear in the answer body, not merely in
+// a citation list.
+func TestFullCorpusAnswersStillObeyAccess(t *testing.T) {
+	t.Setenv("GRIMOIRE_LLM", "ollama")
+	s, h := testServer(t)
+	if !s.AI.Available() {
+		t.Fatal("full-corpus mode is unreachable; this test would prove nothing")
+	}
+	aliceKey := makeUser(t, s, h, "", "alice", "admin")
+	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
+
+	if w := asKey(t, h, aliceKey, "POST", "/api/notes", map[string]any{
+		"path": "users/alice/vault.md",
+		"body": "# Vault\n\nthe kestrel combination is SEVENTEEN"}); w.Code != http.StatusCreated {
+		t.Fatalf("alice create = %d %s", w.Code, w.Body)
+	}
+	if w := asKey(t, h, bobKey, "POST", "/api/notes", map[string]any{
+		"path": "users/bob/notes.md", "body": "# Bob\n\nkestrel sightings"}); w.Code != http.StatusCreated {
+		t.Fatalf("bob create = %d %s", w.Code, w.Body)
+	}
+	// Both legs of the filter, because they fail independently: a note bob is
+	// kept out of by SPACE, and one in the commons — which he can read — that
+	// he is kept out of only by its READER LIST. An earlier version of this
+	// test had only the first, and passed with the reader-list clause deleted.
+	alice, err := s.Auth.ByName("alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.WriteNote("shared/minutes.md",
+		"# Minutes\n\nkestrel LISTONLYMARKER decision", map[string]any{
+			"title": "Minutes", "readers": alice.ID,
+		}); err != nil {
+		t.Fatal(err)
+	}
+
+	w := asKey(t, h, bobKey, "POST", "/api/ask", map[string]any{"q": "kestrel", "k": 10})
+	if w.Code != http.StatusOK {
+		t.Fatalf("ask = %d %s", w.Code, w.Body)
+	}
+	body := w.Body.String()
+	if strings.Contains(body, "SEVENTEEN") {
+		t.Fatalf("alice's space-restricted text reached bob through the answer: %s", body)
+	}
+	if strings.Contains(body, "LISTONLYMARKER") || strings.Contains(body, "shared/minutes.md") {
+		t.Fatalf("a reader-list-restricted note reached bob through the answer: %s", body)
+	}
+	if strings.Contains(body, "users/alice/vault.md") {
+		t.Fatalf("alice's note was cited to bob: %s", body)
+	}
+
+	// And the mode really was the unranked one, or the test proved the wrong
+	// branch safe.
+	var out struct {
+		Mode string `json:"mode"`
+	}
+	decode(t, w, &out)
+	if out.Mode != "full" {
+		t.Fatalf("answered in %q mode, not the whole-corpus branch this test exists for", out.Mode)
+	}
+}
+
+// The trash is a read surface wearing a different name, and it was open.
+//
+// GET /api/trash took the request as `_` — a handler that never looks at who
+// is asking cannot be filtering — and returned every deleted note's original
+// path and title to anyone, across every space. Restore put a note back where
+// it came from without checking whether the caller may write there, and purge
+// destroyed its last copy without checking anything at all.
+func TestTrashDoesNotLeakOrAcceptOtherPeoplesNotes(t *testing.T) {
+	s, h := testServer(t)
+	aliceKey := makeUser(t, s, h, "", "alice", "admin")
+	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
+
+	if w := asKey(t, h, aliceKey, "POST", "/api/notes", map[string]any{
+		"path": "users/alice/severance-terms.md", "body": "# Terms\n\nconfidential"}); w.Code != http.StatusCreated {
+		t.Fatalf("create = %d %s", w.Code, w.Body)
+	}
+	if w := asKey(t, h, aliceKey, "DELETE", "/api/notes/users/alice/severance-terms.md", nil); w.Code != http.StatusOK {
+		t.Fatalf("delete = %d %s", w.Code, w.Body)
+	}
+
+	// The title and path of a deleted note are the sensitive part — which is
+	// why a refused read reports "absent" rather than "forbidden" everywhere
+	// else in this server.
+	if body := asKey(t, h, bobKey, "GET", "/api/trash", nil).Body.String(); strings.Contains(body, "severance-terms") {
+		t.Errorf("trash listing leaked alice's deleted note to bob: %s", body)
+	}
+	if w := do(t, h, "GET", "/api/trash", nil); w.Code != http.StatusUnauthorized {
+		t.Errorf("anonymous trash listing = %d, want 401", w.Code)
+	}
+
+	// Alice sees her own, or this is a broken trash rather than a private one.
+	var entries []map[string]any
+	decode(t, asKey(t, h, aliceKey, "GET", "/api/trash", nil), &entries)
+	if len(entries) != 1 {
+		t.Fatalf("alice sees %d of her own trashed notes", len(entries))
+	}
+	tid, _ := entries[0]["id"].(string)
+	if tid == "" {
+		t.Fatalf("no trash id in %v", entries[0])
+	}
+
+	// Bob may not restore it into her space, nor destroy her only copy.
+	if w := asKey(t, h, bobKey, "POST", "/api/trash/"+tid+"/restore", nil); w.Code == http.StatusOK {
+		t.Error("bob restored a note into a space he cannot write")
+	}
+	if w := asKey(t, h, bobKey, "DELETE", "/api/trash/"+tid, nil); w.Code < 400 {
+		t.Errorf("bob purged alice's deleted note: %d", w.Code)
+	}
+	// Still there for its owner afterwards.
+	decode(t, asKey(t, h, aliceKey, "GET", "/api/trash", nil), &entries)
+	if len(entries) != 1 {
+		t.Fatalf("alice's trashed note is gone after bob's attempts: %v", entries)
+	}
+	if w := asKey(t, h, aliceKey, "POST", "/api/trash/"+tid+"/restore", nil); w.Code != http.StatusOK {
+		t.Fatalf("alice cannot restore her own note: %d %s", w.Code, w.Body)
+	}
+}
+
+// Instance settings are levers, not content: an anonymous caller could read
+// them and — worse — change them, which includes repointing this instance's
+// model endpoint at a server of their choosing.
+func TestSettingsAreAdministrative(t *testing.T) {
+	s, h := testServer(t)
+	aliceKey := makeUser(t, s, h, "", "alice", "admin")
+	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
+
+	for _, c := range []struct {
+		name, key string
+		want      int
+	}{{"anonymous", "", http.StatusUnauthorized}, {"member", bobKey, http.StatusForbidden}} {
+		if w := call(t, h, c.key, "GET", "/api/settings", nil); w.Code != c.want {
+			t.Errorf("%s GET /api/settings = %d, want %d", c.name, w.Code, c.want)
+		}
+		if w := call(t, h, c.key, "PUT", "/api/settings",
+			map[string]string{"embed_base_url": "http://attacker.example"}); w.Code != c.want {
+			t.Errorf("%s PUT /api/settings = %d, want %d", c.name, w.Code, c.want)
+		}
+	}
+	if got := s.Settings.Get("embed_base_url"); strings.Contains(got, "attacker") {
+		t.Fatalf("a refused write still changed the setting: %q", got)
+	}
+	if w := asKey(t, h, aliceKey, "GET", "/api/settings", nil); w.Code != http.StatusOK {
+		t.Fatalf("admin GET /api/settings = %d", w.Code)
+	}
+}
+
+// call is asKey, or do when the key is empty.
+func call(t *testing.T, h http.Handler, key, method, path string, body any) *httptest.ResponseRecorder {
+	t.Helper()
+	if key == "" {
+		return do(t, h, method, path, body)
+	}
+	return asKey(t, h, key, method, path, body)
+}
+
+// Surfaces that answer FROM notes without returning one: the alias map, tag
+// counts, and agent memory.
+//
+// Each was reasoned about as if it returned "just" a name or a number, so each
+// was filtered by space alone or — in the alias map's case, which took its
+// request as `_` — not at all. But an alias IS the note's human title, a tag
+// count tells you how many documents you cannot see carry a given label, and
+// memory hands back bodies. The fixture matters here: the restricted note is
+// in the COMMONS, which the other member can read, so its reader list is the
+// only thing keeping him out. An earlier version of this test reused a fixture
+// whose note had no alias and no tag, and passed with every filter removed.
+func TestDerivedSurfacesRespectReaderLists(t *testing.T) {
+	s, h := testServer(t)
+	aliceKey := makeUser(t, s, h, "", "alice", "admin")
+	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
+	alice, err := s.Auth.ByName("alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := s.WriteNote(MemoryDir+"/severance.md",
+		"# Severance\n\nALIASMARKER terms for the kestrel departure\n\n#payroll",
+		map[string]any{
+			"title": "Severance", "aliases": "SEVERANCEALIAS", "tags": "payroll",
+			"readers": alice.ID,
+		}); err != nil {
+		t.Fatal(err)
+	}
+	// An unrestricted note in the same folder, so "bob sees nothing" cannot
+	// pass by the surface being broken for everyone.
+	if _, err := s.WriteNote(MemoryDir+"/standup.md",
+		"# Standup\n\nkestrel notes\n\n#standup",
+		map[string]any{"title": "Standup", "aliases": "STANDUPALIAS", "tags": "standup"}); err != nil {
+		t.Fatal(err)
+	}
+
+	// A canvas, a journal entry and a template in her space: three listings
+	// that walked the vault or the index without asking who was calling.
+	if _, err := s.WriteNote("users/alice/journal-note.md", "# J\n\nx", nil); err != nil {
+		t.Fatal(err)
+	}
+	if w := asKey(t, h, aliceKey, "PUT", "/api/canvas/users/alice/BOARDMARKER",
+		map[string]any{"nodes": []any{}, "edges": []any{}}); w.Code != http.StatusOK {
+		t.Fatalf("alice canvas write = %d %s", w.Code, w.Body)
+	}
+	if body := asKey(t, h, bobKey, "GET", "/api/canvas", nil).Body.String(); strings.Contains(body, "BOARDMARKER") {
+		t.Errorf("the canvas listing leaked a board in another member's space: %s", body)
+	}
+	if body := asKey(t, h, aliceKey, "GET", "/api/canvas", nil).Body.String(); !strings.Contains(body, "BOARDMARKER") {
+		t.Errorf("alice cannot see her own board: %s", body)
+	}
+
+	for _, path := range []string{"/api/aliases", "/api/tags", "/api/memory?q=kestrel"} {
+		body := asKey(t, h, bobKey, "GET", path, nil).Body.String()
+		for _, forbidden := range []string{"SEVERANCEALIAS", "ALIASMARKER", "payroll", "severance"} {
+			if strings.Contains(strings.ToLower(body), strings.ToLower(forbidden)) {
+				t.Errorf("%s leaked %q to a member not on the reader list:\n%s", path, forbidden, body)
+			}
+		}
+	}
+	// Not over-blocked: the open note still shows up on each.
+	for path, want := range map[string]string{
+		"/api/aliases": "STANDUPALIAS", "/api/tags": "standup", "/api/memory?q=kestrel": "standup",
+	} {
+		if body := asKey(t, h, bobKey, "GET", path, nil).Body.String(); !strings.Contains(strings.ToLower(body), strings.ToLower(want)) {
+			t.Errorf("%s hid the unrestricted note too: %s", path, body)
+		}
+	}
+	// And alice, who is named on it, still sees hers.
+	for _, path := range []string{"/api/aliases", "/api/tags", "/api/memory?q=kestrel"} {
+		if body := asKey(t, h, aliceKey, "GET", path, nil).Body.String(); !strings.Contains(strings.ToLower(body), "severance") &&
+			!strings.Contains(strings.ToLower(body), "payroll") {
+			t.Errorf("%s hid the document from the person named on it: %s", path, body)
+		}
+	}
+}
+
+// Applying a template COPIES a note's body into a new note the caller owns, and
+// the template path comes from the caller — so without a read check it is a
+// read of any note in the vault wearing a write's clothes.
+func TestTemplateApplyIsNotAReadBypass(t *testing.T) {
+	s, h := testServer(t)
+	aliceKey := makeUser(t, s, h, "", "alice", "admin")
+	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
+
+	if w := asKey(t, h, aliceKey, "POST", "/api/notes", map[string]any{
+		"path": "users/alice/offer.md", "body": "# Offer\n\nBASESALARYMARKER 210k"}); w.Code != http.StatusCreated {
+		t.Fatalf("create = %d %s", w.Code, w.Body)
+	}
+
+	w := asKey(t, h, bobKey, "POST", "/api/templates/apply", map[string]any{
+		"template": "users/alice/offer.md", "title": "Innocent"})
+	if w.Code == http.StatusCreated {
+		// If it was created, the body must not be hers — but it will be, which
+		// is the point: this must be refused outright.
+		var out map[string]string
+		decode(t, w, &out)
+		body := asKey(t, h, bobKey, "GET", "/api/notes/"+out["path"], nil).Body.String()
+		t.Fatalf("bob templated another member's note into his own: %s", body)
+	}
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("template apply = %d %s, want 404 (absent, not forbidden)", w.Code, w.Body)
+	}
+
+	// A template he MAY read still works, or this is just a broken route.
+	if _, err := s.WriteNote("templates/daily.md", "# {{title}}\n\nagenda", nil); err != nil {
+		t.Fatal(err)
+	}
+	if w := asKey(t, h, bobKey, "POST", "/api/templates/apply", map[string]any{
+		"template": "templates/daily.md", "title": "Standup"}); w.Code != http.StatusCreated {
+		t.Fatalf("applying a readable template = %d %s", w.Code, w.Body)
+	}
+}
+
+// Routes that take a note path in the BODY rather than the URL.
+//
+// This is one class, not five bugs. Every access check in this package hangs
+// off the path in the URL — requireRead and requireWrite are called with
+// r.PathValue("path"), and the dispatcher does it once for every note route.
+// A handler whose real subject arrives in the JSON body slips underneath all
+// of it, and five of them did: applying a template copied any note's text into
+// one the caller owned, setting a fact edited any note, memory consolidation
+// rewrote any memory note, renaming moved a note INTO a space the caller
+// cannot write, and linking rewrote a source note named only in the body.
+//
+// Each case below names the note in the body; the URL, where one is needed,
+// points at something the caller legitimately owns — so a pass means the body
+// path was checked, not that the request was refused for some other reason.
+func TestNotePathsInRequestBodiesAreChecked(t *testing.T) {
+	s, h := testServer(t)
+	aliceKey := makeUser(t, s, h, "", "alice", "admin")
+	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
+
+	if w := asKey(t, h, aliceKey, "POST", "/api/notes", map[string]any{
+		"path": "users/alice/private.md", "body": "# Private\n\nBODYMARKER mentions kestrel here"}); w.Code != http.StatusCreated {
+		t.Fatalf("alice create = %d %s", w.Code, w.Body)
+	}
+	if _, err := s.WriteNote(MemoryDir+"/alice-memory.md", "# Mem\n\nBODYMARKER", map[string]any{
+		"readers": mustUser(t, s, "alice").ID}); err != nil {
+		t.Fatal(err)
+	}
+	// One note per case. They shared one, and a rename that wrongly SUCCEEDED
+	// moved it out from under the link case, which then failed to find it and
+	// reported itself passing — one hole hiding the next.
+	for _, p := range []string{"users/bob/for-rename.md", "users/bob/for-link.md"} {
+		if w := asKey(t, h, bobKey, "POST", "/api/notes", map[string]any{
+			"path": p, "body": "# Mine\n\nkestrel"}); w.Code != http.StatusCreated {
+			t.Fatalf("bob create %s = %d %s", p, w.Code, w.Body)
+		}
+	}
+
+	cases := []struct {
+		name, method, url string
+		body              map[string]any
+	}{
+		{"template copies another member's note", "POST", "/api/templates/apply",
+			map[string]any{"template": "users/alice/private.md", "title": "Copy"}},
+		{"fact edits another member's note", "POST", "/api/facts",
+			map[string]any{"note": "users/alice/private.md", "key": "k", "value": "v"}},
+		{"consolidate rewrites another member's memory", "POST", "/api/memory/consolidate",
+			map[string]any{"path": MemoryDir + "/alice-memory.md"}},
+		{"rename moves a note into a space the caller cannot write", "POST",
+			"/api/notes/users/bob/for-rename.md/rename",
+			map[string]any{"new_path": "users/alice/planted.md"}},
+		{"link rewrites a source note named in the body", "POST",
+			"/api/notes/users/bob/for-link.md/link",
+			map[string]any{"source": "users/alice/private.md", "name": "kestrel"}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			w := asKey(t, h, bobKey, c.method, c.url, c.body)
+			if w.Code >= 200 && w.Code < 300 {
+				t.Errorf("%s %s succeeded (%d): %s", c.method, c.url, w.Code, w.Body)
+			}
+		})
+	}
+
+	// Nothing of alice's moved, changed, or was copied out.
+	if w := asKey(t, h, aliceKey, "GET", "/api/notes/users/alice/private.md", nil); w.Code != http.StatusOK ||
+		!strings.Contains(w.Body.String(), "BODYMARKER") {
+		t.Fatalf("alice's note was altered or lost: %d %s", w.Code, w.Body)
+	}
+	if w := asKey(t, h, aliceKey, "GET", "/api/notes/users/alice/planted.md", nil); w.Code == http.StatusOK {
+		t.Error("a note was planted in alice's space by rename")
+	}
+	if body := asKey(t, h, bobKey, "GET", "/api/notes", nil).Body.String(); strings.Contains(body, "BODYMARKER") {
+		t.Errorf("alice's text reached bob's own notes: %s", body)
+	}
+}
+
+func mustUser(t *testing.T, s *Server, name string) auth.User {
+	t.Helper()
+	u, err := s.Auth.ByName(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return u
 }
