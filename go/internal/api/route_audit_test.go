@@ -116,7 +116,7 @@ var routeAccess = map[string]access{
 	"GET /api/spaces":               authed, // filtered to what the caller may read
 	"GET /api/plugins":              authed,
 	"GET /api/sync/status":          authed,
-	"POST /api/sync/now":            authed,
+	"POST /api/sync/now":            admin, // a whole-vault transfer to the peer
 	"GET /api/crdt/doc/{path...}":   scoped,
 	"POST /api/crdt/merge":          scoped,
 	"GET /api/vault/status":         authed, // lock state only, never a name or value

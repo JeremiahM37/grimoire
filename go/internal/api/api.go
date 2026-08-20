@@ -166,7 +166,12 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/templates", s.saveTemplate)
 	mux.HandleFunc("POST /api/ask", s.ask)
 	mux.HandleFunc("POST /api/actions", s.userOnly(s.actions))
-	mux.HandleFunc("POST /api/sync/now", s.syncNow)
+	// A manual sync pushes this vault to the configured peer and pulls its
+	// notes back. That is a whole-vault transfer, so it is a lever rather than
+	// a read: adminOnly, like the other levers. It answered anyone until now,
+	// and the anonymous probe could not see it because a server with no peer
+	// configured refuses on that ground first.
+	mux.HandleFunc("POST /api/sync/now", s.adminOnly(s.syncNow))
 	mux.HandleFunc("POST /api/sync/pull", s.syncPull)
 	mux.HandleFunc("POST /api/sync/push", s.syncPush)
 	mux.HandleFunc("POST /api/facts", s.setFact)

@@ -443,6 +443,14 @@ edited any note at all. A sweep of every handler that touches the vault then
 found the last of them, including a tag rename that rewrote the body of every
 note carrying a tag — across every space, for anyone who could reach the port.
 
+Two sweeps now stand behind those: one drives every registered GET route as a
+member who must not see two planted notes and fails if either leaks; the other
+drives every write route with a body naming another member's note in each field
+this API treats as a path, and fails if any of her notes changed, vanished, or
+if anything appeared in her space. Both are checked by removing a guard and
+confirming they fail. Every hole found here was on a route nobody had thought to
+put on a list, so the point of the sweeps is that they need no list.
+
 On a multi-user instance: sessions and API keys are stored hashed, passwords are
 Argon2id, access is by space, and administrators can read every space — that is
 a deliberate simplification, stated here rather than discovered later, because

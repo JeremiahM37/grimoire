@@ -438,6 +438,17 @@ func TestSettingsAreAdministrative(t *testing.T) {
 		map[string]string{"old": "a", "new": "b"}); w.Code != http.StatusForbidden {
 		t.Errorf("member change-passphrase = %d, want 403", w.Code)
 	}
+
+	// A manual sync transfers the whole vault to the peer and pulls its notes
+	// back. Same blind spot as change-passphrase: with no peer configured the
+	// handler refuses on that ground first, so the anonymous probe never
+	// reaches the check and the member is the case that shows it.
+	if w := asKey(t, h, bobKey, "POST", "/api/sync/now", nil); w.Code != http.StatusForbidden {
+		t.Errorf("member sync/now = %d, want 403", w.Code)
+	}
+	if w := do(t, h, "POST", "/api/sync/now", nil); w.Code != http.StatusUnauthorized {
+		t.Errorf("anonymous sync/now = %d, want 401", w.Code)
+	}
 }
 
 // call is asKey, or do when the key is empty.
@@ -833,4 +844,144 @@ func truncate(s string, n int) string {
 		return s
 	}
 	return s[:n] + "…"
+}
+
+// The write-side companion to the GET sweep.
+//
+// That one proves no read route hands over another member's note. This one
+// proves no WRITE route changes one. It drives every non-GET route the mux
+// registers as a member, with a body that names another member's note in every
+// field the API treats as a path — "path", "note", "template", "source",
+// "new_path", "to", "topic", "name", "old", "paths" — and then checks that
+// every one of her notes is byte-for-byte what it was, that none vanished, and
+// that nothing new appeared in her space.
+//
+// The shotgun body is the point. Each write route reads a different field, and
+// a sweep that had to know which one would be exactly as complete as the list
+// someone typed — the failure mode that produced every hole found in the last
+// two days. Firing all the field names at once needs no such list.
+func TestNoWriteRouteTouchesAnotherMembersNotes(t *testing.T) {
+	s, h := testServer(t)
+	aliceKey := makeUser(t, s, h, "", "alice", "admin")
+	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
+	alice := mustUser(t, s, "alice")
+
+	hers := []string{"users/alice/one.md", "users/alice/two.md"}
+	for _, p := range hers {
+		if w := asKey(t, h, aliceKey, "POST", "/api/notes", map[string]any{
+			"path": p, "body": "# Hers\n\nWRITEMARKER kestrel\n\n#hertag"}); w.Code != http.StatusCreated {
+			t.Fatalf("create %s = %d %s", p, w.Code, w.Body)
+		}
+	}
+	// Also one in the commons that only her reader list protects.
+	const commons = "commons-hers.md"
+	if _, err := s.WriteNote(commons, "# Commons\n\nWRITEMARKER kestrel\n\n#hertag",
+		map[string]any{"title": "Commons", "readers": alice.ID}); err != nil {
+		t.Fatal(err)
+	}
+	hers = append(hers, commons)
+
+	// And a note in a shared space where bob is a READER. This is the third
+	// principal the sweeps had not exercised: not a stranger to the space and
+	// not a writer in it, which is the case where CanRead is true and CanWrite
+	// is false — the one a check written as "can they see it?" gets wrong.
+	w := asKey(t, h, aliceKey, "POST", "/api/spaces",
+		map[string]any{"name": "Engineering", "prefix": "team/eng"})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create space = %d %s", w.Code, w.Body)
+	}
+	var space map[string]any
+	decode(t, w, &space)
+	const shared = "team/eng/runbook.md"
+	if w := asKey(t, h, aliceKey, "POST", "/api/notes", map[string]any{
+		"path": shared, "body": "# Runbook\n\nWRITEMARKER kestrel\n\n#hertag"}); w.Code != http.StatusCreated {
+		t.Fatalf("create %s = %d %s", shared, w.Code, w.Body)
+	}
+	if w := asKey(t, h, aliceKey, "POST", "/api/spaces/"+space["id"].(string)+"/members",
+		map[string]any{"user": "bob", "role": "reader"}); w.Code != http.StatusOK {
+		t.Fatalf("add reader = %d %s", w.Code, w.Body)
+	}
+	if w := asKey(t, h, bobKey, "GET", "/api/notes/"+shared, nil); w.Code != http.StatusOK {
+		t.Fatalf("reader cannot read the shared note (%d) — the case under test would be vacuous", w.Code)
+	}
+	hers = append(hers, shared)
+
+	before := snapshotOf(t, s, hers)
+
+	for _, route := range registeredRoutes(t) {
+		method, pattern, ok := strings.Cut(route, " ")
+		if !ok || method == "GET" {
+			continue
+		}
+		// Her path in the URL and in the body, for each protected note: the
+		// one in her own space and the one she shares read-only with bob.
+		for _, aim := range []string{hers[0], shared} {
+			for _, url := range []string{fillWildcards(pattern), aimAt(pattern, aim)} {
+				asKey(t, h, bobKey, method, url, shotgun(aim, hers))
+			}
+		}
+	}
+
+	after := snapshotOf(t, s, hers)
+	for _, p := range hers {
+		switch {
+		case after[p] == "":
+			t.Errorf("%s was deleted or emptied by a write route driven as another member", p)
+		case after[p] != before[p]:
+			t.Errorf("%s was modified by a write route driven as another member:\n  before %q\n  after  %q",
+				p, truncate(before[p], 120), truncate(after[p], 120))
+		}
+	}
+	// And nothing new appeared in her space.
+	var listed []map[string]any
+	decode(t, asKey(t, h, aliceKey, "GET", "/api/notes", nil), &listed)
+	for _, row := range listed {
+		p, _ := row["path"].(string)
+		if strings.HasPrefix(p, "users/alice/") && !contains(hers, p) {
+			t.Errorf("a write route planted %q in another member's space", p)
+		}
+	}
+}
+
+func snapshotOf(t *testing.T, s *Server, paths []string) map[string]string {
+	t.Helper()
+	out := map[string]string{}
+	for _, p := range paths {
+		if note, err := s.Vault.Read(p); err == nil {
+			out[p] = note.Body
+		}
+	}
+	return out
+}
+
+func contains(xs []string, x string) bool {
+	for _, v := range xs {
+		if v == x {
+			return true
+		}
+	}
+	return false
+}
+
+// aimAt puts a specific note path into a pattern's wildcard.
+func aimAt(pattern, notePath string) string {
+	if strings.Contains(pattern, "{path...}") {
+		return strings.ReplaceAll(pattern, "{path...}", notePath)
+	}
+	return fillWildcards(pattern)
+}
+
+// shotgun names one note in every field this API treats as a path. Each write
+// route reads a different one, and a sweep that had to know which would be
+// exactly as complete as the list someone typed.
+func shotgun(aim string, all []string) map[string]any {
+	return map[string]any{
+		"path": aim, "note": aim, "template": aim, "source": aim,
+		"new_path": aim, "to": aim, "paths": all,
+		"topic": "alice/one", "name": "one", "title": "one",
+		"old": "hertag", "new": "bobtag",
+		"key": "k", "value": "v", "text": "x",
+		"body": "# Overwritten\n\nBOBWASHERE",
+		"doc":  map[string]any{}, "frontmatter": map[string]any{},
+	}
 }
