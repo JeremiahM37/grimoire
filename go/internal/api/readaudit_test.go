@@ -512,7 +512,7 @@ func TestDerivedSurfacesRespectReaderLists(t *testing.T) {
 		t.Errorf("alice cannot see her own board: %s", body)
 	}
 
-	for _, path := range []string{"/api/aliases", "/api/tags", "/api/memory?q=kestrel"} {
+	for _, path := range []string{"/api/aliases", "/api/tags", "/api/memory?shape=notes&q=kestrel"} {
 		body := asKey(t, h, bobKey, "GET", path, nil).Body.String()
 		for _, forbidden := range []string{"SEVERANCEALIAS", "ALIASMARKER", "payroll", "severance"} {
 			if strings.Contains(strings.ToLower(body), strings.ToLower(forbidden)) {
@@ -522,14 +522,14 @@ func TestDerivedSurfacesRespectReaderLists(t *testing.T) {
 	}
 	// Not over-blocked: the open note still shows up on each.
 	for path, want := range map[string]string{
-		"/api/aliases": "STANDUPALIAS", "/api/tags": "standup", "/api/memory?q=kestrel": "standup",
+		"/api/aliases": "STANDUPALIAS", "/api/tags": "standup", "/api/memory?shape=notes&q=kestrel": "standup",
 	} {
 		if body := asKey(t, h, bobKey, "GET", path, nil).Body.String(); !strings.Contains(strings.ToLower(body), strings.ToLower(want)) {
 			t.Errorf("%s hid the unrestricted note too: %s", path, body)
 		}
 	}
 	// And alice, who is named on it, still sees hers.
-	for _, path := range []string{"/api/aliases", "/api/tags", "/api/memory?q=kestrel"} {
+	for _, path := range []string{"/api/aliases", "/api/tags", "/api/memory?shape=notes&q=kestrel"} {
 		if body := asKey(t, h, aliceKey, "GET", path, nil).Body.String(); !strings.Contains(strings.ToLower(body), "severance") &&
 			!strings.Contains(strings.ToLower(body), "payroll") {
 			t.Errorf("%s hid the document from the person named on it: %s", path, body)

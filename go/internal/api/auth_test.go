@@ -21,6 +21,13 @@ var protectedRoutes = []struct {
 	{"GET", "/api/audit"},
 	{"POST", "/api/reindex"},
 	{"GET", "/api/memory"},
+	// Agent memory is note content in every shape it is served in, and each of
+	// these was a separate handler that could have forgotten to say so.
+	{"GET", "/api/memory/export"},
+	{"GET", "/api/memory/facets"},
+	{"POST", "/api/memory/batch"},
+	{"PATCH", "/api/memory/entry"},
+	{"DELETE", "/api/memory/entry?path=memory/x.md&id=1"},
 }
 
 func TestAuthTokenUnsetLeavesServerOpen(t *testing.T) {
