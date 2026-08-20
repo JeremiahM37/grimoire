@@ -70,6 +70,7 @@ def test_edit_saves_and_persists(page, server):
     # reload → content persisted (came from the real .md file via reindex)
     _wait_listed(page, server, "persist-test.md")
     page.reload()
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.click(".note-row .t >> text=Persist Test")
     expect(page.locator("#content")).to_have_value(re.compile("#savedtag"), timeout=8000)
 
@@ -200,6 +201,7 @@ def test_task_checkbox_toggles_and_persists(page, server):
     # persists across reload
     _wait_listed(page, server, "task-list.md")
     page.reload()
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.click(".note-row .t >> text=Task List")
     expect(page.locator("#content")).to_have_value(re.compile(r"- \[x\] buy milk"), timeout=8000)
 
@@ -453,6 +455,7 @@ def test_encrypt_note_end_to_end(page, server):
     page.click("#vault-close")
     _wait_listed(page, server, "secret-e2e.md")
     page.reload()
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.click(".note-row .t >> text=Secret E2E")
     expect(page.locator("#content")).to_have_value(re.compile("encrypted at rest"), timeout=8000)
     assert page.evaluate("() => document.getElementById('content').readOnly") is True
@@ -746,6 +749,7 @@ def test_offline_edit_recovers_and_retries(page, server):
     # persisted to the server
     _wait_listed(page, server, "offline-note.md")
     page.reload()
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.click(".note-row .t >> text=Offline Note")
     expect(page.locator("#content")).to_have_value(re.compile("edited while offline"), timeout=8000)
 
@@ -935,6 +939,7 @@ def test_sidebar_collapse_toggle_and_persist(page, server):
     expect(page.locator("#sidebar")).to_be_hidden()
     # persists across reload
     page.reload()
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     expect(page.locator("#editor")).to_be_visible()
     expect(page.locator("#sidebar")).to_be_hidden()
     # Ctrl+\ brings it back
@@ -956,6 +961,7 @@ def test_sidebar_resize_drags_and_persists(page, server):
     assert w1 > w0 + 50, f"sidebar did not widen: {w0} -> {w1}"
     # persists across reload (localStorage)
     page.reload()
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     expect(page.locator("#side-head h1")).to_have_text("Grimoire")
     w2 = page.evaluate("() => document.getElementById('sidebar').getBoundingClientRect().width")
     assert abs(w2 - w1) < 6, f"sidebar width not persisted: {w1} -> {w2}"
@@ -1249,6 +1255,7 @@ def test_outgoing_panel_survives_autosave(page, server):
         "headers:{'Content-Type':'application/json'},"
         "body: JSON.stringify({title:'Stay Target', body:'x'})})")
     page.reload()
+    page.wait_for_selector("body[data-ready]", timeout=10000)
     page.wait_for_selector("body[data-ready]", timeout=10000)
     page.once("dialog", lambda d: d.accept("Stay Source"))
     page.click("#new-note")
