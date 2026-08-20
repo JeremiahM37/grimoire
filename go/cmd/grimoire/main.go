@@ -261,6 +261,13 @@ func run(args []string) error {
 			time.Duration(syncInterval)*time.Second, done)
 	}
 
+	// Dead sessions accumulate one row per login forever otherwise.
+	if e.auth != nil {
+		if err := e.auth.PurgeExpiredSessions(); err != nil {
+			log.Printf("purging expired sessions: %v", err)
+		}
+	}
+
 	// Connectors on their schedules. One goroutine, one connector at a time:
 	// these are network-bound, and a self-hosted instance would rather be
 	// polite to the systems it pulls from than fast.

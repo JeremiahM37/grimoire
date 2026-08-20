@@ -233,13 +233,24 @@ func (ix *Index) RestampSpaces(spaceOf func(path string) string) error {
 	if len(changes) == 0 {
 		return nil
 	}
+	// One transaction for the batch. Each Exec is its own transaction
+	// otherwise, which on a 50,000-note vault means 100,000 fsyncs to relabel
+	// rows whose contents do not change at all.
+	if err := ix.DB.Exec("BEGIN"); err != nil {
+		return err
+	}
 	for _, c := range changes {
 		if err := ix.DB.Exec("UPDATE notes SET space=? WHERE path=?", c.space, c.path); err != nil {
+			_ = ix.DB.Exec("ROLLBACK")
 			return err
 		}
 		if err := ix.DB.Exec("UPDATE vectors SET space=? WHERE note=?", c.space, c.path); err != nil {
+			_ = ix.DB.Exec("ROLLBACK")
 			return err
 		}
+	}
+	if err := ix.DB.Exec("COMMIT"); err != nil {
+		return err
 	}
 	// The cache holds each row's space; rather than patch every changed note,
 	// drop it once — a space change is rare and touches many notes at a time.

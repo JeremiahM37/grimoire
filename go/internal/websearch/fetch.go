@@ -75,11 +75,13 @@ func (c *Client) fetchOne(ctx context.Context, raw string, maxChars int) (Page, 
 	req.Header.Set("User-Agent", "grimoire (+https://github.com/JeremiahM37/grimoire)")
 	req.Header.Set("Accept", "text/html,text/plain,application/xhtml+xml")
 
-	client := c.client()
-	if client.Timeout == 0 {
-		client.Timeout = 30 * time.Second
-	}
-	resp, err := client.Do(req)
+	// The deadline goes on the CONTEXT, not on the shared client. Setting
+	// client.Timeout here mutated a *http.Client that Fetch is calling from
+	// several goroutines at once — a data race the detector catches, and one
+	// that would have silently changed the timeout of every other caller.
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	resp, err := c.client().Do(req.WithContext(ctx))
 	if err != nil {
 		return Page{}, err
 	}

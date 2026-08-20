@@ -1071,7 +1071,8 @@ type cacheFields struct {
 	cache   *corpusCache
 	// bulk suppresses per-note cache patching during a rebuild or a sync,
 	// where dropping the cache once is far cheaper than patching every note.
-	// Guarded by the index write lock, which every bulk operation holds.
+	// Guarded by cacheMu — the same lock every read of it takes — and NOT by
+	// the index write lock, which the comment here used to claim.
 	bulk bool
 }
 
