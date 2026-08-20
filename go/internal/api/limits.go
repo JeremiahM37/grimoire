@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -117,13 +118,36 @@ func (l *rateLimiter) allow(key string, now time.Time) (bool, time.Duration) {
 	return false, time.Duration((1-b.tokens)/l.rate*float64(time.Second)) + time.Second
 }
 
+// Limits, in requests per second and burst. Configurable because a number
+// baked into a binary is a number that is wrong for somebody: an agent doing a
+// bulk import and a phone on a train are not the same client.
+//
+// The general limit is deliberately far above any legitimate use. Its job is to
+// stop a runaway loop, not to shape traffic — and the first version of it
+// refused 143 of 400 plain health checks and made the browser suite fail, which
+// is exactly the failure mode a rate limiter is supposed to prevent rather than
+// cause. GRIMOIRE_RATE_LIMIT=off disables both.
+func rateFromEnv(key string, rate, burst float64) (float64, float64) {
+	if strings.EqualFold(strings.TrimSpace(os.Getenv("GRIMOIRE_RATE_LIMIT")), "off") {
+		return 0, 0
+	}
+	if v := strings.TrimSpace(os.Getenv(key)); v != "" {
+		if n, err := strconv.ParseFloat(v, 64); err == nil && n > 0 {
+			return n, n * 20
+		}
+	}
+	return rate, burst
+}
+
 // throttle applies the two buckets.
 func (s *Server) throttle(next http.Handler) http.Handler {
-	// Generous for ordinary API use — the console makes bursts of requests
-	// opening a note — and tight for the routes that spend other people's
-	// resources.
-	general := newRateLimiter(50, 200)
-	expensive := newRateLimiter(1, 20)
+	generalRate, generalBurst := rateFromEnv("GRIMOIRE_RATE_GENERAL", 500, 5000)
+	costlyRate, costlyBurst := rateFromEnv("GRIMOIRE_RATE_EXPENSIVE", 2, 30)
+	if generalRate == 0 {
+		return next
+	}
+	general := newRateLimiter(generalRate, generalBurst)
+	expensive := newRateLimiter(costlyRate, costlyBurst)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.HasPrefix(r.URL.Path, "/api/") {
 			next.ServeHTTP(w, r) // static console assets

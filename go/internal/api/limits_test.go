@@ -48,11 +48,14 @@ func TestExpensiveRoutesAreRateLimited(t *testing.T) {
 	}
 }
 
-// Ordinary reads must not be throttled at a level the console would hit: it
-// makes a burst of requests every time a note is opened.
+// Ordinary reads must not be throttled at any level a real client reaches. The
+// first version of this limit refused 143 of 400 plain health checks and made
+// the browser suite fail — a rate limiter causing the outage it exists to
+// prevent. This test is 1,000 requests because the one that missed it was 100,
+// under a burst of 200.
 func TestOrdinaryReadsAreNotThrottledAtConsoleSpeed(t *testing.T) {
 	_, h := testServer(t)
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 1000; i++ {
 		req := httptest.NewRequest("GET", "/api/health", nil)
 		req.RemoteAddr = "203.0.113.10:1234"
 		w := httptest.NewRecorder()
