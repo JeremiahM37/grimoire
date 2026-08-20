@@ -61,6 +61,34 @@ await g.scopes()
 path alongside the id (facts live in files you own), and `add` reconciles
 rather than accumulating.
 
+## Vercel AI SDK
+
+Memory reaches a model through tools, so the adapter is a tool set:
+
+```js
+import { generateText, jsonSchema } from 'ai'
+import Grimoire from '@jeremiahm37/grimoire'
+import { grimoireTools } from '@jeremiahm37/grimoire/tools'
+
+const client = new Grimoire('http://localhost:9111', { token: '...' })
+const tools = grimoireTools(client, { jsonSchema })
+
+await generateText({ model, tools, prompt: 'what indentation do I prefer?' })
+```
+
+Six tools: `recallMemory`, `rememberFact`, `forgetFact`, `memoryGraph`,
+`rateMemory`, `askNotes`. Pass `include: [...]` for a subset.
+
+The descriptions say what changes a model's behaviour, not just what each tool
+can do — that writes reconcile, that recall returns current beliefs only, and
+when to retract rather than overwrite. A tool list that only says what is
+callable produces an agent that hedges every correction into a new fact
+competing with the old one.
+
+`jsonSchema` is the AI SDK's own helper, passed in so this package keeps no
+dependencies. Leave it out and `inputSchema` stays a plain JSON Schema object,
+which most other frameworks accept as-is.
+
 ## Beyond memory
 
 `ask`, `searchNotes`, `readNote`, `writeNote`, `getFact`, `briefing`, `health`.

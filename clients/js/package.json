@@ -7,8 +7,11 @@
   "type": "module",
   "main": "index.js",
   "types": "index.d.ts",
-  "exports": { ".": { "types": "./index.d.ts", "default": "./index.js" } },
-  "files": ["index.js", "index.d.ts", "README.md"],
+  "exports": {
+    ".": { "types": "./index.d.ts", "default": "./index.js" },
+    "./tools": { "types": "./tools.d.ts", "default": "./tools.js" }
+  },
+  "files": ["index.js", "index.d.ts", "tools.js", "tools.d.ts", "README.md"],
   "engines": { "node": ">=18" },
   "scripts": { "test": "node --test test/" },
   "keywords": ["grimoire", "agent-memory", "llm", "mcp", "self-hosted", "rag"],
