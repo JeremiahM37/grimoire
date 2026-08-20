@@ -70,6 +70,7 @@ var routeAccess = map[string]access{
 	"GET /api/tags":                scoped,
 	"GET /api/tasks":               scoped,
 	"GET /api/blocks":              scoped, // the lines inside notes
+	"GET /api/bookmarks":           scoped, // resolves to notes the caller may read
 	"GET /api/facts":               scoped,
 	"GET /api/complete":            scoped,
 	"GET /api/memory":              scoped,
@@ -99,6 +100,8 @@ var routeAccess = map[string]access{
 
 	// --- writes and actions that need an account ---
 	"POST /api/memory":              authed,
+	"POST /api/bookmarks":           authed,
+	"DELETE /api/bookmarks":         authed,
 	"POST /api/memory/batch":        authed,
 	"POST /api/memory/feedback":     authed,
 	"POST /api/memory/consolidate":  authed,
