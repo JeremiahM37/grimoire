@@ -43,19 +43,34 @@ func ReadPassphraseFile(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	phrase := strings.TrimSpace(string(raw))
-	// A YAML one-liner is the shape these files already have in the wild.
-	if rest, ok := strings.CutPrefix(phrase, "passphrase:"); ok && !strings.Contains(rest, "\n") {
-		phrase = strings.TrimSpace(rest)
-		phrase = trimQuotes(phrase)
+	text := strings.TrimSpace(string(raw))
+
+	// A secrets file grows. This one was a single `passphrase:` line until
+	// something else worth keeping beside it was added — an admin token, in
+	// the deployment that found this — and a reader that accepts only one line
+	// then refuses to unlock the vault at the next restart, with an error
+	// about line counts rather than about what changed.
+	//
+	// So a `passphrase:` key is taken from a flat key/value file whatever else
+	// is in it. A file with no such key is treated as the passphrase itself,
+	// which is the other shape people use, and only THAT case has to be a
+	// single line — because there is no way to tell which line was meant.
+	for _, line := range strings.Split(text, "\n") {
+		line = strings.TrimSpace(line)
+		if rest, ok := strings.CutPrefix(line, "passphrase:"); ok {
+			if phrase := trimQuotes(strings.TrimSpace(rest)); phrase != "" {
+				return phrase, nil
+			}
+		}
 	}
-	if phrase == "" {
+	if text == "" {
 		return "", fmt.Errorf("%s contains no passphrase", path)
 	}
-	if strings.Contains(phrase, "\n") {
-		return "", fmt.Errorf("%s contains more than one line", path)
+	if strings.Contains(text, "\n") {
+		return "", fmt.Errorf("%s has several lines and none of them is a "+
+			"passphrase: key — name it, or leave the file as the passphrase alone", path)
 	}
-	return phrase, nil
+	return text, nil
 }
 
 func trimQuotes(s string) string {

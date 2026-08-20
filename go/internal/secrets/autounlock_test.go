@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -96,5 +97,38 @@ func TestUnlockFromFile(t *testing.T) {
 	}
 	if v.IsUnlocked() {
 		t.Fatal("vault unlocked with the wrong passphrase")
+	}
+}
+
+// A secrets file grows. This one held a single passphrase line until an admin
+// token was added beside it, at which point the vault stopped unlocking at the
+// next restart — with an error about line counts rather than about what
+// changed. A named key must be found whatever else the file holds.
+func TestPassphraseIsFoundBesideOtherKeys(t *testing.T) {
+	const want = "correct horse battery staple"
+	for name, contents := range map[string]string{
+		"passphrase first": "passphrase: " + want + "\nadmin_token: abc123\n",
+		"passphrase last":  "admin_token: abc123\npassphrase: " + want + "\n",
+		"with comments":    "# the vault\npassphrase: " + want + "\n# and more\nother: x\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			got, err := ReadPassphraseFile(passphraseFile(t, contents, 0o600))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != want {
+				t.Fatalf("got %q, want %q", got, want)
+			}
+		})
+	}
+
+	// Without a named key, several lines are ambiguous — there is no way to
+	// tell which one was meant — and that stays an error.
+	_, err := ReadPassphraseFile(passphraseFile(t, "one\ntwo\n", 0o600))
+	if err == nil {
+		t.Fatal("an unnamed multi-line file was accepted")
+	}
+	if !strings.Contains(err.Error(), "passphrase:") {
+		t.Fatalf("the error does not say how to fix it: %v", err)
 	}
 }

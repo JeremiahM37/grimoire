@@ -51,6 +51,11 @@ type Server struct {
 	// GRIMOIRE_AUTH_TOKEN. This server is an HTTP client of that API, so
 	// without it every tool call against a gated instance returns 401.
 	AuthToken string
+
+	// AdminToken is presented to the administrative surface when that is
+	// gated separately — list_grants and the credential console's own state
+	// live there.
+	AdminToken string
 }
 
 func New(baseURL, agent string) *Server {
@@ -61,7 +66,12 @@ func New(baseURL, agent string) *Server {
 		BaseURL:   strings.TrimRight(baseURL, "/"),
 		Agent:     agent,
 		AuthToken: os.Getenv("GRIMOIRE_AUTH_TOKEN"),
-		Client:    &http.Client{Timeout: 120 * time.Second},
+		// The administrative surface can be gated separately, and some tools
+		// here are on it — list_grants reads the credential console's own
+		// state. Without this an agent on a gated instance would find those
+		// tools failing with 401 and nothing to point at.
+		AdminToken: os.Getenv("GRIMOIRE_ADMIN_TOKEN"),
+		Client:     &http.Client{Timeout: 120 * time.Second},
 	}
 }
 
@@ -182,6 +192,9 @@ func (s *Server) api(method, path string, body any) (any, error) {
 	req.Header.Set("Content-Type", "application/json")
 	if s.AuthToken != "" {
 		req.Header.Set("Authorization", "Bearer "+s.AuthToken)
+	}
+	if s.AdminToken != "" {
+		req.Header.Set("X-Grimoire-Admin", s.AdminToken)
 	}
 	resp, err := s.Client.Do(req)
 	if err != nil {
