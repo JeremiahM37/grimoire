@@ -1031,3 +1031,131 @@ func containsString(list []string, want string) bool {
 	}
 	return false
 }
+
+func TestEmbedReturnsVectorsInTheServersSpace(t *testing.T) {
+	_, h := testServer(t)
+	var out struct {
+		Model      string      `json:"model"`
+		Dimensions int         `json:"dimensions"`
+		Embeddings [][]float32 `json:"embeddings"`
+	}
+	decode(t, do(t, h, "POST", "/api/embed",
+		map[string]any{"texts": []string{"one", "two"}}), &out)
+	if len(out.Embeddings) != 2 {
+		t.Fatalf("got %d embeddings, want 2", len(out.Embeddings))
+	}
+	if len(out.Embeddings[0]) != out.Dimensions {
+		t.Errorf("vector has %d values, reported %d dimensions",
+			len(out.Embeddings[0]), out.Dimensions)
+	}
+	// The signature identifies the space, so a caller caching vectors can tell
+	// when the model changed underneath them.
+	if out.Model == "" {
+		t.Error("no model signature")
+	}
+	// The single-text form, for the common case.
+	decode(t, do(t, h, "POST", "/api/embed", map[string]any{"text": "one"}), &out)
+	if len(out.Embeddings) != 1 {
+		t.Errorf("single text returned %d embeddings", len(out.Embeddings))
+	}
+}
+
+func TestEmbedValidation(t *testing.T) {
+	_, h := testServer(t)
+	if w := do(t, h, "POST", "/api/embed", map[string]any{}); w.Code != http.StatusBadRequest {
+		t.Errorf("empty = %d, want 400", w.Code)
+	}
+	big := make([]string, 257)
+	for i := range big {
+		big[i] = "x"
+	}
+	if w := do(t, h, "POST", "/api/embed",
+		map[string]any{"texts": big}); w.Code != http.StatusBadRequest {
+		t.Errorf("oversized = %d, want 400", w.Code)
+	}
+}
+
+func TestVectorSearchRoundTripsThroughEmbed(t *testing.T) {
+	// The whole point: embed here, search here, one space.
+	_, h := testServer(t)
+	remember(t, h, map[string]any{"topic": "facts",
+		"text": "the deploy script lives at /usr/local/bin", "infer": false})
+	remember(t, h, map[string]any{"topic": "facts",
+		"text": "the cat is named marmalade", "infer": false})
+
+	var emb struct {
+		Embeddings [][]float32 `json:"embeddings"`
+	}
+	decode(t, do(t, h, "POST", "/api/embed",
+		map[string]any{"text": "the deploy script lives at /usr/local/bin"}), &emb)
+
+	var hits []map[string]any
+	decode(t, do(t, h, "POST", "/api/memory/search",
+		map[string]any{"embedding": emb.Embeddings[0], "limit": 5}), &hits)
+	if len(hits) == 0 {
+		t.Fatal("vector search returned nothing")
+	}
+	if !strings.Contains(hits[0]["text"].(string), "deploy script") {
+		t.Errorf("wrong fact ranked first: %q", texts(hits))
+	}
+}
+
+func TestVectorSearchRefusesAForeignEmbeddingSpace(t *testing.T) {
+	// The check that keeps this honest. Cosine does not report that it is
+	// comparing two unrelated coordinate systems; it reports a number, and
+	// retrieval looks like it works.
+	_, h := testServer(t)
+	remember(t, h, map[string]any{"topic": "facts", "text": "a fact"})
+	w := do(t, h, "POST", "/api/memory/search",
+		map[string]any{"embedding": []float32{0.1, 0.2, 0.3}})
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("a foreign vector was accepted: %d", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "/api/embed") {
+		t.Errorf("the refusal does not say how to fix it: %s", w.Body)
+	}
+}
+
+func TestVectorSearchAppliesTheSameFiltersAndAccess(t *testing.T) {
+	s, h := testServer(t)
+	remember(t, h, map[string]any{"topic": "facts", "text": "run one fact",
+		"session": "run-1", "infer": false})
+	remember(t, h, map[string]any{"topic": "facts", "text": "run two fact",
+		"session": "run-2", "infer": false})
+	var emb struct {
+		Embeddings [][]float32 `json:"embeddings"`
+	}
+	decode(t, do(t, h, "POST", "/api/embed", map[string]any{"text": "fact"}), &emb)
+
+	var hits []map[string]any
+	decode(t, do(t, h, "POST", "/api/memory/search", map[string]any{
+		"embedding": emb.Embeddings[0], "session": "run-2"}), &hits)
+	if len(hits) != 1 || !strings.Contains(hits[0]["text"].(string), "run two") {
+		t.Fatalf("session filter not applied: %q", texts(hits))
+	}
+
+	// And the reader list, since this is another way to read note content.
+	aliceKey := makeUser(t, s, h, "", "alice", "admin")
+	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
+	if _, err := s.WriteNote(MemoryDir+"/restricted.md",
+		"# Memory\n\n- **2026-08-14 09:00 · claude** — the severance terms are confidential <!--m id=r1-->\n",
+		map[string]any{"title": "R", "memory": true, "readers": "alice"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Index.Reindex(); err != nil {
+		t.Fatal(err)
+	}
+	body := asKey(t, h, bobKey, "POST", "/api/memory/search", map[string]any{
+		"embedding": emb.Embeddings[0], "limit": 50}).Body.String()
+	if strings.Contains(strings.ToLower(body), "severance") {
+		t.Errorf("vector search leaked a restricted fact:\n%s", body)
+	}
+}
+
+func TestVectorSearchNeedsSomethingToSearchWith(t *testing.T) {
+	_, h := testServer(t)
+	if w := do(t, h, "POST", "/api/memory/search",
+		map[string]any{"limit": 5}); w.Code != http.StatusBadRequest {
+		t.Errorf("empty search = %d, want 400", w.Code)
+	}
+}

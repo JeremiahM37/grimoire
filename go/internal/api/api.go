@@ -114,6 +114,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/memory/export", s.exportMemory)
 	mux.HandleFunc("GET /api/memory/facets", s.memoryFacets)
 	mux.HandleFunc("GET /api/memory/graph", s.memoryGraph)
+	mux.HandleFunc("POST /api/memory/search", s.searchMemoryByVector)
+	mux.HandleFunc("POST /api/embed", s.embedText)
 	mux.HandleFunc("POST /api/memory/batch", s.userOnly(s.rememberBatch))
 	mux.HandleFunc("POST /api/memory/feedback", s.feedback)
 	mux.HandleFunc("PATCH /api/memory/entry", s.patchEntry)

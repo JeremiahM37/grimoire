@@ -64,6 +64,14 @@ type MemoryQuery struct {
 	// Query ranks the survivors. Empty returns them newest first.
 	Query string
 
+	// QueryVector ranks by a vector the caller already computed, for a
+	// framework that owns its embedding step. It must be in THIS server's
+	// embedding space — the caller gets it from /api/embed — because a cosine
+	// between vectors from two different models is a number with no meaning.
+	// With no query text there are no terms and no entities, so semantic is
+	// the only content signal available.
+	QueryVector []float32
+
 	IncludeSuperseded bool
 	IncludeExpired    bool
 
@@ -289,7 +297,7 @@ func (q MemoryQuery) allows(r memoryRow) bool {
 }
 
 func (ix *Index) rankMemory(cands []memoryRow, q MemoryQuery) []MemoryHit {
-	if strings.TrimSpace(q.Query) == "" {
+	if strings.TrimSpace(q.Query) == "" && len(q.QueryVector) == 0 {
 		out := make([]MemoryHit, 0, len(cands))
 		for _, c := range cands {
 			out = append(out, c.hit)
@@ -303,7 +311,10 @@ func (ix *Index) rankMemory(cands []memoryRow, q MemoryQuery) []MemoryHit {
 		return truncate(out, q.Limit)
 	}
 
-	qVec := firstVec(ix.Emb.Embed([]string{q.Query}))
+	qVec := q.QueryVector
+	if len(qVec) == 0 {
+		qVec = firstVec(ix.Emb.Embed([]string{q.Query}))
+	}
 	qNorm := norm(qVec)
 	qEntities := memory.Entities(q.Query)
 	idf := entryIDF(cands)

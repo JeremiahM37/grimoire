@@ -75,6 +75,7 @@ var routeAccess = map[string]access{
 	"GET /api/memory/export":       scoped, // every fact the caller may read
 	"GET /api/memory/facets":       scoped, // scope names are drawn from facts
 	"GET /api/memory/graph":        scoped, // entities and the facts behind them
+	"POST /api/memory/search":      scoped, // recall, ranked by a supplied vector
 	"GET /api/briefing":            scoped,
 	"GET /api/file/{path...}":      scoped,
 	"GET /read":                    scoped,
@@ -115,6 +116,7 @@ var routeAccess = map[string]access{
 	"DELETE /api/trash/{tid}":       authed,
 	"POST /api/tags/rename":         authed,
 	"GET /api/web/search":           authed,
+	"POST /api/embed":               authed, // vectors from the local model; no note content
 	"POST /api/web/fetch":           authed,
 	"GET /api/keys":                 authed,
 	"POST /api/keys":                authed,
