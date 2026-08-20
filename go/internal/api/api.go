@@ -195,6 +195,9 @@ func (s *Server) Routes() http.Handler {
 	// admin TOKEN — which a deployment that uses accounts instead never sets.
 	mux.HandleFunc("POST /api/vault/change-passphrase", s.adminOnly(s.changePassphrase))
 	mux.HandleFunc("GET /notes/{path...}", s.noteGet)
+	mux.HandleFunc("GET /published", s.publishedIndex)
+	mux.HandleFunc("GET /published/{path...}", s.publishedNotePage)
+	mux.HandleFunc("GET /api/published", s.publishedAPI)
 	mux.HandleFunc("GET /read", s.readIndex)
 	mux.HandleFunc("GET /read/{path...}", s.readNote)
 

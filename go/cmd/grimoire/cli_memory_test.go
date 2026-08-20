@@ -203,3 +203,69 @@ func firstID(t *testing.T, listing string) string {
 	t.Fatalf("no id in listing:\n%s", listing)
 	return ""
 }
+
+// --- publishing ------------------------------------------------------------
+
+func TestExportPublishedRefusesWhenPublishingIsOff(t *testing.T) {
+	// An export that silently produced an empty site would read as "you have
+	// published nothing".
+	vaultDir(t)
+	runCmd(t, "new", "Public", "# Public\n")
+	out, code := runCmd(t, "export", "--published", "--out", t.TempDir())
+	if code == 0 {
+		t.Fatalf("export succeeded with publishing off: %s", out)
+	}
+}
+
+func TestExportPublishedCutsTheSiteNotTheVault(t *testing.T) {
+	dir := vaultDir(t)
+	t.Setenv("GRIMOIRE_PUBLISH", "1")
+	if err := os.WriteFile(filepath.Join(dir, "public.md"),
+		[]byte("---\ntitle: Public Note\npublish: true\n---\n\n# Public Note\n\nout here\n"),
+		0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "draft.md"),
+		[]byte("---\ntitle: Draft\n---\n\n# Draft\n\nnot out here\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runCmd(t, "reindex")
+
+	out := t.TempDir()
+	stdout, code := runCmd(t, "export", "--published", "--out", out)
+	if code != 0 {
+		t.Fatalf("export = %d: %s", code, stdout)
+	}
+	if !strings.Contains(stdout, "published notes") {
+		t.Errorf("output does not say what it exported: %q", stdout)
+	}
+	if _, err := os.Stat(filepath.Join(out, "public.html")); err != nil {
+		t.Errorf("the published note was not exported: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(out, "draft.html")); err == nil {
+		t.Error("an unpublished note was exported")
+	}
+	index, err := os.ReadFile(filepath.Join(out, "index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(index), "Draft") {
+		t.Errorf("the exported index lists an unpublished note:\n%s", index)
+	}
+}
+
+func TestPlainExportStillTakesTheWholeVault(t *testing.T) {
+	dir := vaultDir(t)
+	if err := os.WriteFile(filepath.Join(dir, "draft.md"),
+		[]byte("---\ntitle: Draft\n---\n\n# Draft\n\nbody\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runCmd(t, "reindex")
+	out := t.TempDir()
+	if _, code := runCmd(t, "export", "--out", out); code != 0 {
+		t.Fatal("export failed")
+	}
+	if _, err := os.Stat(filepath.Join(out, "draft.html")); err != nil {
+		t.Errorf("the plain export skipped an unpublished note: %v", err)
+	}
+}

@@ -37,6 +37,10 @@ var Fields = map[string]Field{
 	"local_embed":       {"GRIMOIRE_LOCAL_EMBED", "auto"},
 	"local_embed_model": {"GRIMOIRE_LOCAL_EMBED_MODEL", "minishlab/potion-base-8M"},
 	"whisper_url":       {"GRIMOIRE_WHISPER_URL", ""},
+	// The public published site, off unless an operator turns it on. A
+	// surface with no principal behind it must not appear because somebody
+	// typed a frontmatter key; see internal/api/publish.go.
+	"publish": {"GRIMOIRE_PUBLISH", ""},
 	// Agent memory. Both are prompt PREFIXES, not whole prompts: the output
 	// contract the server parses is appended after whatever is set here, so a
 	// deployment can bias extraction ("only record facts about

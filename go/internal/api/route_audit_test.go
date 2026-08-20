@@ -45,13 +45,20 @@ const (
 
 var routeAccess = map[string]access{
 	// --- public, on purpose ---
-	"GET /api/admin/reads":         admin,  // who opened which restricted document
-	"GET /api/health":              public, // liveness; reveals counts, not content
-	"GET /api/me":                  public, // the console asks this BEFORE signing in
-	"POST /api/auth/login":         public, // the sign-in route itself
-	"POST /api/auth/logout":        public,
-	"POST /api/users":              public, // ONLY when no account exists; admin-gated after
-	"GET /metrics":                 public, // route classes and counts, never content
+	"GET /api/admin/reads":  admin,  // who opened which restricted document
+	"GET /api/health":       public, // liveness; reveals counts, not content
+	"GET /api/me":           public, // the console asks this BEFORE signing in
+	"POST /api/auth/login":  public, // the sign-in route itself
+	"POST /api/auth/logout": public,
+	"POST /api/users":       public, // ONLY when no account exists; admin-gated after
+	"GET /metrics":          public, // route classes and counts, never content
+	// The published site. Public BY DESIGN and the only routes here that serve
+	// note content to nobody in particular — which is why they exist only when
+	// the operator turns publishing on, and serve only notes whose author
+	// wrote publish: true. See publish.go.
+	"GET /published":               public,
+	"GET /published/{path...}":     public,
+	"GET /api/published":           public,
 	"GET /plugins/{name}/{rel...}": public, // static plugin assets, no note content
 
 	// --- content: space + reader list ---
@@ -231,7 +238,12 @@ func TestThePublicSurfaceIsSmallAndDeliberate(t *testing.T) {
 		}
 	}
 	sort.Strings(pub)
-	if len(pub) > 8 {
+	// Raised from 8 to 11 for the published site, deliberately: three routes
+	// that serve note content to nobody in particular. What makes that
+	// defensible is that they do not exist unless an operator turns publishing
+	// on, and that they serve only notes whose author wrote publish: true —
+	// both of which are tested in publish_test.go rather than asserted here.
+	if len(pub) > 11 {
 		t.Errorf("the anonymous surface has grown to %d routes: %v\n"+
 			"Each one is reachable without an account; if that is intended, raise this "+
 			"bound deliberately.", len(pub), pub)

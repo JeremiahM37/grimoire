@@ -50,7 +50,9 @@ const usage = `grimoire — local-first AI-native notes
   grimoire ingest PATH [--into DIR]   bulk-import a folder of markdown/text
   grimoire seed-demo                  write a small sample vault (first-run demo)
   grimoire fetch-model                pre-download the local embedding model
-  grimoire export [--out DIR]         static HTML export of the vault
+  grimoire export [--out DIR] [--published]
+                                      static HTML export (--published: only
+                                      notes marked publish: true)
   grimoire sync PEER_URL [--watch] [--interval N] [--token T]
   grimoire agent-setup [API_URL]      print MCP + agent-context setup
   grimoire serve [--port N]           run the web app + API (the default)
@@ -573,16 +575,37 @@ func cmdExport(args []string) int {
 	if v, ok := flagValue(args, "--out"); ok {
 		out = v
 	}
+	// --published cuts the site rather than the vault: only the notes whose
+	// author wrote publish: true, rendered against a link map of those notes
+	// only. It is the same subset the /published surface serves, taken through
+	// the same handlers, so a static copy cannot include something the live
+	// site would refuse.
+	published := hasFlag(args, "--published")
+	indexPath, notePrefix := "/read", "/read/"
+	query := "SELECT path FROM notes WHERE private=0 ORDER BY path"
+	if published {
+		indexPath, notePrefix = "/published", "/published/"
+		query = "SELECT path FROM notes WHERE private=0 AND " +
+			`frontmatter_json LIKE '%"publish": true%' ORDER BY path`
+	}
 	e, err := openEnv()
 	if err != nil {
 		return fail("%v", err)
 	}
 	defer e.close()
 
+	if published {
+		// The surface does not exist unless publishing is on, and an export
+		// that silently produced an empty site would look like "you have
+		// published nothing".
+		if !truthyFlag(e.settings.Get("publish")) {
+			return fail("publishing is off — set GRIMOIRE_PUBLISH=1 to export the published site")
+		}
+	}
 	if err := os.MkdirAll(out, 0o755); err != nil {
 		return fail("%v", err)
 	}
-	status, body := e.call("GET", "/read")
+	status, body := e.call("GET", indexPath)
 	if status != http.StatusOK {
 		return fail("export index failed: %s", body)
 	}
@@ -593,7 +616,7 @@ func cmdExport(args []string) int {
 	// collect the paths BEFORE rendering: each render runs a handler that
 	// queries the same database, and holding a cursor open across those
 	// queries deadlocks against the index writer
-	rows, err := e.index.DB.Query("SELECT path FROM notes WHERE private=0 ORDER BY path")
+	rows, err := e.index.DB.Query(query)
 	if err != nil {
 		return fail("%v", err)
 	}
@@ -612,7 +635,7 @@ func cmdExport(args []string) int {
 	n := 0
 	for _, path := range paths {
 		stem := strings.TrimSuffix(path, ".md")
-		status, html := e.call("GET", "/read/"+(&url.URL{Path: stem}).EscapedPath())
+		status, html := e.call("GET", notePrefix+(&url.URL{Path: stem}).EscapedPath())
 		if status != http.StatusOK {
 			continue
 		}
@@ -625,8 +648,21 @@ func cmdExport(args []string) int {
 		}
 		n++
 	}
-	fmt.Printf("exported %d notes to %s/ (open index.html)\n", n, out)
+	what := "notes"
+	if published {
+		what = "published notes"
+	}
+	fmt.Printf("exported %d %s to %s/ (open index.html)\n", n, what, out)
 	return 0
+}
+
+// truthyFlag reads the on/off settings the CLI consults.
+func truthyFlag(v string) bool {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "1", "true", "yes", "on":
+		return true
+	}
+	return false
 }
 
 func cmdSync(args []string) int {
