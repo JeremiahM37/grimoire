@@ -198,6 +198,12 @@ func (s *Server) audioMemo(w http.ResponseWriter, r *http.Request) {
 
 	stamp := vault.Now().Format("20060102-150405")
 	audioRel := fmt.Sprintf("%s/%s.%s", AttachDir, stamp, ext)
+	// Two writes: the audio file and the note that transcribes it. Both land
+	// at server-chosen paths, and a space is any path prefix.
+	if !s.requireWrite(w, r, normPath(audioRel)) ||
+		!s.requireWrite(w, r, fmt.Sprintf("%s/%s-audio.md", s.InboxDir, stamp)) {
+		return
+	}
 	apath, err := s.Vault.SafeRawPath(audioRel)
 	if err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())

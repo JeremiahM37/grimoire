@@ -224,6 +224,11 @@ func (s *Server) saveTemplate(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "name required")
 		return
 	}
+	// "templates/" is only the commons until somebody puts a space over part
+	// of it, and the name decides the path.
+	if !s.requireWrite(w, r, "templates/"+vault.Slugify(name)+".md") {
+		return
+	}
 	rel := "templates/" + vault.Slugify(name) + ".md"
 	fm := markdown.NewFrontmatter()
 	fm.Set("title", name)

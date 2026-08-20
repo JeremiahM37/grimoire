@@ -354,6 +354,8 @@ func bodyFor(route string) string {
 		return `{"block":"tag: probe"}`
 	case "POST /api/ask":
 		return `{"q":"probe"}`
+	case "POST /api/vault/change-passphrase":
+		return `{"old":"probe-old","new":"probe-new"}`
 	}
 	return "{}"
 }

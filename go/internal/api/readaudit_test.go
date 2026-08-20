@@ -428,6 +428,16 @@ func TestSettingsAreAdministrative(t *testing.T) {
 	if w := asKey(t, h, aliceKey, "GET", "/api/settings", nil); w.Code != http.StatusOK {
 		t.Fatalf("admin GET /api/settings = %d", w.Code)
 	}
+
+	// Changing the vault passphrase re-seals every encrypted note. It was the
+	// one /api/vault route not wrapped adminOnly, leaning entirely on the
+	// admin TOKEN — which a deployment that uses accounts instead never sets.
+	// The anonymous probe cannot see this one: an uninitialized vault answers
+	// before any check would, so the property worth testing is the member.
+	if w := asKey(t, h, bobKey, "POST", "/api/vault/change-passphrase",
+		map[string]string{"old": "a", "new": "b"}); w.Code != http.StatusForbidden {
+		t.Errorf("member change-passphrase = %d, want 403", w.Code)
+	}
 }
 
 // call is asKey, or do when the key is empty.
@@ -636,4 +646,191 @@ func mustUser(t *testing.T, s *Server, name string) auth.User {
 		t.Fatal(err)
 	}
 	return u
+}
+
+// The note-action routes — encrypt, decrypt, pin, delete, restore a version.
+//
+// Each is gated by the dispatcher rather than by anything in the handler, which
+// is a perfectly good place for the check to live and a bad thing to take on
+// faith: a handler sweep flags all of them as unguarded, and the only way to
+// tell a safe indirection from a hole is to drive the route. If someone later
+// registers one of these directly, the dispatcher's check is silently gone and
+// this is what says so.
+func TestNoteActionRoutesAreGatedByTheDispatcher(t *testing.T) {
+	s, h := testServer(t)
+	aliceKey := makeUser(t, s, h, "", "alice", "admin")
+	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
+
+	const path = "users/alice/ledger.md"
+	if w := asKey(t, h, aliceKey, "POST", "/api/notes", map[string]any{
+		"path": path, "body": "# Ledger\n\nACTIONMARKER"}); w.Code != http.StatusCreated {
+		t.Fatalf("create = %d %s", w.Code, w.Body)
+	}
+
+	for _, c := range []struct{ method, url string }{
+		{"POST", "/api/notes/" + path + "/pin"},
+		{"POST", "/api/notes/" + path + "/encrypt"},
+		{"POST", "/api/notes/" + path + "/decrypt"},
+		{"POST", "/api/notes/" + path + "/rename"},
+		{"POST", "/api/notes/" + path + "/duplicate"},
+		{"POST", "/api/notes/" + path + "/history/1/restore"},
+		{"DELETE", "/api/notes/" + path},
+		{"GET", "/api/notes/" + path + "/history"},
+		{"GET", "/api/notes/" + path + "/export.html"},
+		{"GET", "/api/crdt/doc/" + path},
+	} {
+		t.Run(c.method+" "+c.url, func(t *testing.T) {
+			if w := asKey(t, h, bobKey, c.method, c.url, map[string]any{"new_path": "x.md"}); w.Code >= 200 && w.Code < 300 {
+				t.Errorf("%s %s succeeded for a member who cannot read it: %d %s",
+					c.method, c.url, w.Code, w.Body)
+			}
+		})
+	}
+	// Untouched and still hers.
+	w := asKey(t, h, aliceKey, "GET", "/api/notes/"+path, nil)
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "ACTIONMARKER") {
+		t.Fatalf("alice's note changed under her: %d %s", w.Code, w.Body)
+	}
+}
+
+// The rest of what a handler sweep turned up: routes that write to a path the
+// caller chooses indirectly — a memory topic, a template name, a tag — and the
+// CRDT pair, where the document IS the note's text.
+//
+// renameTag is the one worth naming. It rewrites the BODY of every note
+// carrying a tag, it was registered with no principal check at all, and tags
+// cross spaces by design. One request re-wrote the whole vault on behalf of
+// anyone who could reach the port.
+func TestIndirectWriteTargetsAreChecked(t *testing.T) {
+	s, h := testServer(t)
+	aliceKey := makeUser(t, s, h, "", "alice", "admin")
+	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
+
+	if w := asKey(t, h, aliceKey, "POST", "/api/notes", map[string]any{
+		"path": "users/alice/tagged.md",
+		"body": "# Tagged\n\nTAGMARKER body\n\n#shared"}); w.Code != http.StatusCreated {
+		t.Fatalf("create = %d %s", w.Code, w.Body)
+	}
+	if w := asKey(t, h, bobKey, "POST", "/api/notes", map[string]any{
+		"path": "users/bob/tagged.md", "body": "# Mine\n\nmine\n\n#shared"}); w.Code != http.StatusCreated {
+		t.Fatalf("bob create = %d %s", w.Code, w.Body)
+	}
+
+	// A tag rename touches only what the caller may write, and says how much
+	// it skipped rather than pretending it did everything.
+	w := asKey(t, h, bobKey, "POST", "/api/tags/rename",
+		map[string]any{"old": "shared", "new": "renamed"})
+	if w.Code != http.StatusOK {
+		t.Fatalf("tag rename = %d %s", w.Code, w.Body)
+	}
+	var out struct{ Notes, Skipped int }
+	decode(t, w, &out)
+	if out.Notes != 1 || out.Skipped != 1 {
+		t.Errorf("tag rename touched %d notes and skipped %d; want 1 and 1", out.Notes, out.Skipped)
+	}
+	body := asKey(t, h, aliceKey, "GET", "/api/notes/users/alice/tagged.md", nil).Body.String()
+	if !strings.Contains(body, "#shared") || strings.Contains(body, "#renamed") {
+		t.Errorf("alice's note was rewritten by another member's tag rename: %s", body)
+	}
+	if w := do(t, h, "POST", "/api/tags/rename",
+		map[string]any{"old": "shared", "new": "x"}); w.Code != http.StatusUnauthorized {
+		t.Errorf("anonymous tag rename = %d, want 401", w.Code)
+	}
+
+	// The CRDT pair: reading a document is reading the note, merging is writing
+	// it, and the merge path arrives in the body.
+	if w := asKey(t, h, bobKey, "GET", "/api/crdt/doc/users/alice/tagged.md", nil); w.Code < 400 {
+		t.Errorf("crdt doc read of another member's note = %d", w.Code)
+	}
+	if w := asKey(t, h, bobKey, "POST", "/api/crdt/merge", map[string]any{
+		"path": "users/alice/tagged.md", "doc": map[string]any{}}); w.Code < 400 {
+		t.Errorf("crdt merge into another member's note = %d", w.Code)
+	}
+	if !strings.Contains(asKey(t, h, aliceKey, "GET", "/api/notes/users/alice/tagged.md", nil).Body.String(), "TAGMARKER") {
+		t.Error("alice's note was altered through the CRDT routes")
+	}
+
+	// And the write routes whose destination the caller names indirectly.
+	for _, c := range []struct {
+		name, url string
+		body      map[string]any
+	}{
+		{"memory topic", "/api/memory", map[string]any{"topic": "x", "text": "y"}},
+		{"template name", "/api/templates", map[string]any{"name": "x", "body": "y"}},
+		{"capture", "/api/capture", map[string]any{"text": "y", "title": "x"}},
+	} {
+		if w := do(t, h, "POST", c.url, c.body); w.Code != http.StatusUnauthorized {
+			t.Errorf("anonymous %s = %d, want 401", c.name, w.Code)
+		}
+	}
+}
+
+// A leak sweep that does not depend on remembering which surfaces exist.
+//
+// Every test above names the routes it checks, so each is only as complete as
+// the list someone typed — and the holes found today were, without exception,
+// on routes nobody had thought to add to a list. This drives every GET route
+// the mux registers, as a member who must not see one particular note, and
+// fails if a marker from that note appears in any response body.
+//
+// It cannot prove a surface is safe (a route needing parameters may answer
+// nothing at all), so it does not replace the targeted tests. What it does is
+// make the DEFAULT for a newly registered read route "checked by something"
+// rather than "checked if remembered".
+func TestNoGetRouteLeaksARestrictedNote(t *testing.T) {
+	s, h := testServer(t)
+	aliceKey := makeUser(t, s, h, "", "alice", "admin")
+	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
+	alice := mustUser(t, s, "alice")
+
+	// Two restricted notes: one kept away by SPACE, one in the commons kept
+	// away only by its READER LIST. They fail independently.
+	if w := asKey(t, h, aliceKey, "POST", "/api/notes", map[string]any{
+		"path": "users/alice/spacesecret.md",
+		"body": "# Space Secret\n\nSPACELEAKMARKER kestrel\n\n#spacetag"}); w.Code != http.StatusCreated {
+		t.Fatalf("create = %d %s", w.Code, w.Body)
+	}
+	if _, err := s.WriteNote("commons-restricted.md",
+		"# Commons Restricted\n\nACLLEAKMARKER kestrel\n\n#acltag",
+		map[string]any{"title": "ACLLEAKTITLE", "aliases": "ACLLEAKALIAS",
+			"tags": "acltag", "readers": alice.ID}); err != nil {
+		t.Fatal(err)
+	}
+	// Something bob CAN see, so a route answering nothing at all is visible as
+	// a gap in this test rather than as a pass.
+	if w := asKey(t, h, bobKey, "POST", "/api/notes", map[string]any{
+		"path": "users/bob/ok.md", "body": "# OK\n\nkestrel visible"}); w.Code != http.StatusCreated {
+		t.Fatalf("bob create = %d %s", w.Code, w.Body)
+	}
+
+	markers := []string{"SPACELEAKMARKER", "ACLLEAKMARKER", "ACLLEAKTITLE",
+		"ACLLEAKALIAS", "spacesecret", "commons-restricted", "acltag", "spacetag"}
+
+	for _, route := range registeredRoutes(t) {
+		method, pattern, ok := strings.Cut(route, " ")
+		if !ok || method != "GET" {
+			continue
+		}
+		if pattern == "/metrics" { // route classes and counts, never content
+			continue
+		}
+		path := fillWildcards(pattern)
+		for _, q := range []string{"", "?q=kestrel&k=20", "?q=kestrel&full=true", "?include_private=true"} {
+			w := asKey(t, h, bobKey, "GET", path+q, nil)
+			body := w.Body.String()
+			for _, m := range markers {
+				if strings.Contains(body, m) {
+					t.Errorf("GET %s%s leaked %q to a member who may not read it:\n%s",
+						path, q, m, truncate(body, 400))
+				}
+			}
+		}
+	}
+}
+
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "…"
 }

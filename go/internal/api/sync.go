@@ -104,6 +104,11 @@ func (s *Server) decryptNote(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) getCRDTDoc(w http.ResponseWriter, r *http.Request) {
 	rel := normPath(r.PathValue("path"))
+	// A CRDT document is the note's text in another encoding, plus its
+	// frontmatter. Handing one over is a read.
+	if !s.requireRead(w, r, rel) {
+		return
+	}
 	note, err := s.Vault.Read(rel)
 	if err != nil {
 		writeErr(w, http.StatusNotFound, "no such note")
@@ -140,6 +145,11 @@ func (s *Server) mergeCRDT(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rel := normPath(in.Path)
+	// The path is in the BODY, so nothing upstream checked it, and merging
+	// rewrites the note it names.
+	if !s.requireWrite(w, r, rel) {
+		return
+	}
 	body := ""
 	fm := markdown.NewFrontmatter()
 	if note, err := s.Vault.Read(rel); err == nil {
