@@ -298,11 +298,19 @@ members read and write the spaces they belong to.
 Measured on synthetic vaults (local embedder, one box), because "scales fine" is
 not a claim anyone should take on faith:
 
-| notes | cold index | restart | RSS | query p50 | after a write |
-|---|---|---|---|---|---|
-| 1,000 | 0.6s | 0.1s | 93 MB | 1.2 ms | 1.5 ms |
-| 10,000 | 5.0s | 0.1s | 209 MB | 10.5 ms | 11.2 ms |
-| 50,000 | 24.5s | 0.4s | 542 MB | 38.0 ms | 43.3 ms |
+| notes | cold index | restart | RSS | query p50 | write (median) | after a write |
+|---|---|---|---|---|---|---|
+| 1,000 | 0.6s | 0.1s | 93 MB | 1.2 ms | ~1 ms | 1.5 ms |
+| 10,000 | 5.0s | 0.1s | 209 MB | 10.5 ms | ~1 ms | 11.2 ms |
+| 50,000 | 24.3s | 0.4s | 559 MB | 37.5 ms | 1.4 ms | 42.7 ms |
+| 200,000 | 97.5s | ~1.5s | 1.86 GB | 171.7 ms | 5.4 ms | 201.9 ms |
+
+Writes are flat because they cost the note, not the corpus. The FIRST write
+after a start is not: it pays once for the link resolver's lookup maps (118ms at
+50k, 539ms at 200k), then every write after it is the number above. An earlier
+version of this table timed a single write and reported that one-time cost as
+the write cost — which is how a measurement lies without anything being wrong
+with the code.
 
 Three things had to change to get there, and each was a measured problem rather
 than a suspected one:
@@ -322,11 +330,12 @@ meaningful.
 **Indexing was quadratic**, because deleting a note's full-text row scanned the
 whole FTS index. 897s → 24s for a 50,000-note rebuild.
 
-What is left is honest to say too: query cost is linear in corpus size, because
-the dense leg scores every chunk. That is fine into the low hundreds of
-thousands of chunks on one box, and the lever beyond it is an approximate index
-(HNSW) — which trades recall for latency, so it should be pulled when the
-numbers say to, not before.
+What is left is honest to say too: **query cost is linear in corpus size**,
+because the dense leg scores every chunk. 200,000 notes is 172ms at p50 and
+1.86 GB resident — usable, and the point where the curve starts to matter.
+Beyond it the lever is an approximate index (HNSW), which trades recall for
+latency; the numbers above are what should decide when to pull it, and they do
+not yet.
 
 ## Connectors
 

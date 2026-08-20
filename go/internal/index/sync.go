@@ -154,6 +154,9 @@ func (ix *Index) Sync() (SyncStats, error) {
 
 	if changed {
 		ix.bumpRev()
+		// A sync can touch any number of notes, so the whole-vault pass is the
+		// right one here — and it is once per sync, not once per note.
+		ix.invalidateResolver()
 		if err := ix.resolveAll(); err != nil {
 			return stats, err
 		}

@@ -56,6 +56,8 @@ type Index struct {
 
 	// the retrieval cache, invalidated by rev; see retrieval.go
 	cacheFields
+	// the wiki-link lookup maps, patched on write; see resolve.go
+	resolverFields
 }
 
 func New(database *db.DB, v *vault.Vault, e Embedder) *Index {
@@ -134,8 +136,15 @@ func (ix *Index) Upsert(rel string) (*vault.Note, error) {
 	if err := ix.writeNoteRows(note); err != nil {
 		return nil, err
 	}
-	// a new or edited note can resolve others' dangling links
-	if err := ix.resolveAll(); err != nil {
+	// A new or edited note can resolve others' dangling links — but only the
+	// ones that name it. Re-resolving the whole vault here cost 563ms per
+	// write at 200,000 notes; see resolve.go.
+	fmJSON, err := frontmatterJSON(note.Frontmatter)
+	if err != nil {
+		return nil, err
+	}
+	ix.noteResolves(note.Path, note.Title, fmJSON)
+	if err := ix.resolveFor(note.Path, note.Title, fmJSON); err != nil {
 		return nil, err
 	}
 	return note, nil
@@ -175,7 +184,9 @@ func (ix *Index) Remove(rel string) error {
 		return err
 	}
 	ix.bumpRev()
-	return ix.resolveAll()
+	ix.noteGone(rel)
+	// Links that pointed here are dangling now; nothing else changed.
+	return ix.unresolveLinksTo(rel)
 }
 
 // spaceOf is the access boundary a note belongs to: the commons unless a
