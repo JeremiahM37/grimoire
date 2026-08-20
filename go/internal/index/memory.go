@@ -40,6 +40,7 @@ type MemoryHit struct {
 	Keyword  float64
 	Entity   float64
 	Recency  float64
+	Useful   float64
 }
 
 // MemoryQuery selects and ranks entries.
@@ -87,10 +88,15 @@ type MemoryQuery struct {
 // recency is small on purpose — it breaks ties between equally relevant facts
 // without letting a new irrelevant one outrank an old exact match.
 const (
-	wSemantic = 0.45
-	wKeyword  = 0.30
-	wEntity   = 0.20
-	wRecency  = 0.05
+	wSemantic = 0.42
+	wKeyword  = 0.28
+	wEntity   = 0.18
+	wRecency  = 0.04
+	// wUseful is small and saturating (see memory.Entry.Usefulness): feedback
+	// reorders facts that are already close, and cannot bury one that is the
+	// only answer to a question. It is also the one signal a person can drive
+	// directly, which is a reason to keep its authority low.
+	wUseful = 0.08
 
 	// recencyHalfLife is how long a fact takes to lose half its recency
 	// component. Ninety days: long enough that last quarter's facts still
@@ -144,11 +150,12 @@ func (ix *Index) writeMemoryRows(note *vault.Note) error {
 		// them is the right answer rather than a workaround.
 		if err := ix.DB.Exec(
 			"INSERT OR IGNORE INTO memory_entries(id,note,text,agent,task,session,stamp,category,"+
-				"expires,immutable,superseded_by,superseded_at,line,embedding,space,acl,private)"+
-				" VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+				"expires,immutable,superseded_by,superseded_at,helpful,unhelpful,line,"+
+				"embedding,space,acl,private)"+
+				" VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
 			e.ID, note.Path, e.Text, e.Agent, e.Task, e.Session, e.Stamp, e.Category,
-			e.Expires, immutable, e.SupersededBy, e.SupersededAt, e.Line, blob,
-			space, acl, private,
+			e.Expires, immutable, e.SupersededBy, e.SupersededAt, e.Helpful,
+			e.Unhelpful, e.Line, blob, space, acl, private,
 		); err != nil {
 			return err
 		}
@@ -226,7 +233,8 @@ func (ix *Index) MemoryEntries(q MemoryQuery) ([]MemoryHit, error) {
 	}
 	rows, err := ix.DB.Query(
 		"SELECT id,note,text,agent,task,session,stamp,category,expires,immutable,"+
-			"superseded_by,superseded_at,line,embedding,space,acl,private FROM memory_entries WHERE "+
+			"superseded_by,superseded_at,helpful,unhelpful,line,embedding,space,acl,"+
+			"private FROM memory_entries WHERE "+
 			strings.Join(where, " AND "), args...)
 	if err != nil {
 		return nil, err
@@ -244,7 +252,8 @@ func (ix *Index) MemoryEntries(q MemoryQuery) ([]MemoryHit, error) {
 		if err := rows.Scan(&r.hit.ID, &r.hit.Note, &r.hit.Text, &r.hit.Agent,
 			&r.hit.Task, &r.hit.Session, &r.hit.Stamp, &r.hit.Category,
 			&r.hit.Expires, &immutable, &r.hit.SupersededBy, &r.hit.SupersededAt,
-			&r.hit.Line, &blob, &r.sp, &r.acl, &private); err != nil {
+			&r.hit.Helpful, &r.hit.Unhelpful, &r.hit.Line, &blob, &r.sp, &r.acl,
+			&private); err != nil {
 			return nil, err
 		}
 		r.hit.Immutable = immutable == 1
@@ -307,8 +316,9 @@ func (ix *Index) rankMemory(cands []memoryRow, q MemoryQuery) []MemoryHit {
 		h.Keyword = keywordScore(qTokens, c.hit.Text, idf)
 		h.Entity = memory.EntityOverlap(qEntities, memory.Entities(c.hit.Text))
 		h.Recency = recencyScore(c.hit.Stamp, q.Now)
+		h.Useful = c.hit.Usefulness()
 		h.Score = wSemantic*h.Semantic + wKeyword*h.Keyword +
-			wEntity*h.Entity + wRecency*h.Recency
+			wEntity*h.Entity + wRecency*h.Recency + wUseful*h.Useful
 		out = append(out, h)
 	}
 	sort.SliceStable(out, func(i, j int) bool {

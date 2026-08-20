@@ -88,7 +88,8 @@ func TestToolsListIsComplete(t *testing.T) {
 		"get_briefing", "kb_info", "search_notes", "ask_notes", "read_note",
 		"list_notes", "create_note", "update_note", "append_daily", "backlinks",
 		"list_tags", "get_fact", "set_fact", "remember", "recall", "forget",
-		"memory_scopes", "consolidate_memory", "list_grants", "use_credential",
+		"memory_scopes", "memory_feedback", "consolidate_memory", "list_grants",
+		"use_credential",
 	} {
 		if !got[want] {
 			t.Errorf("tool %q not advertised", want)
@@ -118,6 +119,8 @@ func TestToolCallsHitTheExpectedEndpoints(t *testing.T) {
 		{"forget", map[string]any{"id": "a1", "path": "memory/x.md"},
 			"DELETE /api/memory/entry"},
 		{"memory_scopes", nil, "GET /api/memory/facets"},
+		{"memory_feedback", map[string]any{"id": "a1", "path": "memory/x.md",
+			"helpful": true}, "POST /api/memory/feedback"},
 	} {
 		seen = nil
 		call(t, s, map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/call",

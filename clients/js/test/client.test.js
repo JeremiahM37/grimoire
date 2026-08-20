@@ -304,3 +304,12 @@ describe('reconciliation scope', () => {
     assert.equal('scope' in last().body, false)
   })
 })
+
+describe('feedback', () => {
+  it('posts a verdict on a recalled fact', async () => {
+    reply = { helpful: 1, unhelpful: 0, usefulness: 0.66 }
+    await client.feedback('memory/ops.md', 'a1', true)
+    assert.equal(last().path, '/api/memory/feedback')
+    assert.deepEqual(last().body, { path: 'memory/ops.md', id: 'a1', helpful: true })
+  })
+})

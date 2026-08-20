@@ -202,6 +202,20 @@ func Tools() []tool {
 			}, "id", "path"),
 		},
 		{
+			Name: "memory_feedback",
+			Description: "Report whether a recalled fact actually earned its place. " +
+				"Call it when a recalled fact turned out to be the one you needed, or " +
+				"turned out to be noise — not on every recall. The effect on ranking is " +
+				"a nudge, so this cannot bury a fact that is the only answer to some " +
+				"other question; use forget for a fact that is WRONG.",
+			InputSchema: obj(map[string]any{
+				"id":   strProp("the fact's id, from recall"),
+				"path": strProp("the note it lives in, from recall"),
+				"helpful": map[string]any{"type": "boolean",
+					"description": "true if the fact earned its place, false if it was noise"},
+			}, "id", "path", "helpful"),
+		},
+		{
 			Name: "memory_scopes",
 			Description: "List the agents, sessions and categories that memory has been " +
 				"recorded under, with counts. Use it to find the right scope to recall " +

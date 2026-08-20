@@ -269,12 +269,14 @@ func TestMemoryScoreComponentsAreReported(t *testing.T) {
 	if h.Score <= 0 {
 		t.Errorf("score = %v", h.Score)
 	}
-	sum := wSemantic*h.Semantic + wKeyword*h.Keyword + wEntity*h.Entity + wRecency*h.Recency
+	sum := wSemantic*h.Semantic + wKeyword*h.Keyword + wEntity*h.Entity +
+		wRecency*h.Recency + wUseful*h.Useful
 	if diff := h.Score - sum; diff > 1e-9 || diff < -1e-9 {
 		t.Errorf("score %v is not the weighted sum of its parts %v", h.Score, sum)
 	}
 	for name, v := range map[string]float64{"semantic": h.Semantic,
-		"keyword": h.Keyword, "entity": h.Entity, "recency": h.Recency} {
+		"keyword": h.Keyword, "entity": h.Entity, "recency": h.Recency,
+		"useful": h.Useful} {
 		if v < 0 || v > 1 {
 			t.Errorf("%s component out of range: %v", name, v)
 		}

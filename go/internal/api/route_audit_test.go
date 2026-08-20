@@ -97,6 +97,7 @@ var routeAccess = map[string]access{
 	// --- writes and actions that need an account ---
 	"POST /api/memory":              authed,
 	"POST /api/memory/batch":        authed,
+	"POST /api/memory/feedback":     authed,
 	"POST /api/memory/consolidate":  authed,
 	"PATCH /api/memory/entry":       authed,
 	"DELETE /api/memory/entry":      authed,

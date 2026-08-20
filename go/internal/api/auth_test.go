@@ -26,6 +26,7 @@ var protectedRoutes = []struct {
 	{"GET", "/api/memory/export"},
 	{"GET", "/api/memory/facets"},
 	{"POST", "/api/memory/batch"},
+	{"POST", "/api/memory/feedback"},
 	{"PATCH", "/api/memory/entry"},
 	{"DELETE", "/api/memory/entry?path=memory/x.md&id=1"},
 }

@@ -87,6 +87,8 @@ class Memory:
     expires: str = ""
     immutable: bool = False
     superseded_by: str = ""
+    helpful: int = 0
+    unhelpful: int = 0
     score: float = 0.0
     scores: Mapping[str, float] = field(default_factory=dict)
 
@@ -111,6 +113,8 @@ class Memory:
             expires=raw.get("expires", ""),
             immutable=bool(raw.get("immutable", False)),
             superseded_by=raw.get("superseded_by", ""),
+            helpful=int(raw.get("helpful", 0) or 0),
+            unhelpful=int(raw.get("unhelpful", 0) or 0),
             score=float(raw.get("score", 0.0) or 0.0),
             scores=raw.get("scores") or {},
         )
@@ -329,6 +333,16 @@ class Grimoire:
         return self._request(
             "DELETE", "/api/memory/entry?" + urllib.parse.urlencode(params)
         )
+
+    def feedback(self, path: str, memory_id: str, *, helpful: bool) -> dict[str, Any]:
+        """Report whether a recalled fact earned its place.
+
+        A nudge in ranking, not a verdict: this cannot bury a fact that is the
+        only answer to some other question. For a fact that is *wrong*, use
+        :meth:`delete`.
+        """
+        return self._request("POST", "/api/memory/feedback",
+                             {"path": path, "id": memory_id, "helpful": helpful})
 
     def scopes(self) -> dict[str, Any]:
         """The agents, sessions and categories memory has been recorded under."""

@@ -20,6 +20,8 @@ export interface Memory {
   immutable?: boolean
   /** Set when a later fact replaced this one. */
   superseded_by?: string
+  helpful?: number
+  unhelpful?: number
   score: number
   /** Present when `explain` was requested. */
   scores?: {
@@ -27,6 +29,7 @@ export interface Memory {
     keyword: number
     entity: number
     recency: number
+    useful: number
   }
 }
 
@@ -132,6 +135,13 @@ export class Grimoire {
   history(asOf: string, options?: SearchOptions & { query?: string }): Promise<Memory[]>
   update(path: string, id: string, changes?: EntryChanges): Promise<{ path: string; entry: Memory }>
   delete(path: string, id: string, options?: { hard?: boolean }): Promise<Record<string, unknown>>
+  feedback(path: string, id: string, helpful: boolean): Promise<{
+    path: string
+    id: string
+    helpful: number
+    unhelpful: number
+    usefulness: number
+  }>
   scopes(): Promise<Scopes>
   export(filters?: { agent?: string; session?: string; category?: string }): Promise<{
     count: number
