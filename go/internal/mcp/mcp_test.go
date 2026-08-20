@@ -182,3 +182,29 @@ func TestNotificationsAreNotAnswered(t *testing.T) {
 		t.Errorf("notification produced %d responses", len(resps))
 	}
 }
+
+// An instance whose administrative surface is gated must still be usable by an
+// agent: the tools that touch it have to carry the token, or they fail with a
+// 401 an agent cannot act on.
+func TestAdminTokenIsForwarded(t *testing.T) {
+	var gotAdmin, gotAuth string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAdmin = r.Header.Get("X-Grimoire-Admin")
+		gotAuth = r.Header.Get("Authorization")
+		_, _ = w.Write([]byte(`[]`))
+	}))
+	defer srv.Close()
+
+	s := New(srv.URL, "test-agent")
+	s.AuthToken = "read-token"
+	s.AdminToken = "admin-token"
+	if _, err := s.dispatch("list_grants", map[string]any{}); err != nil {
+		t.Fatal(err)
+	}
+	if gotAdmin != "admin-token" {
+		t.Errorf("admin token not forwarded: %q", gotAdmin)
+	}
+	if gotAuth != "Bearer read-token" {
+		t.Errorf("auth token not forwarded: %q", gotAuth)
+	}
+}
