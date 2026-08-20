@@ -333,8 +333,15 @@ func cmdReindex([]string) int {
 		return fail("%v", err)
 	}
 	defer e.close()
+	// `reindex` stays a FULL rebuild: it is the escape hatch you reach for
+	// when you believe the index is wrong, and an incremental pass that
+	// believes the same stale rows would be no escape at all. Startup syncs
+	// incrementally instead.
 	n, err := e.index.Reindex()
 	if err != nil {
+		return fail("%v", err)
+	}
+	if err := e.index.RecordSignature(); err != nil {
 		return fail("%v", err)
 	}
 	fmt.Printf("indexed %d notes\n", n)
