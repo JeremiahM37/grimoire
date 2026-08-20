@@ -2,6 +2,7 @@
    (the one vendored artifact is the optional CM6 live editor, see web/editor.js) */
 import { $, api, toast, toastAction, esc, slugify } from "/util.js";
 import { whoami, requireSignIn, renderIdentity } from "/signin.js";
+import { openConnectors } from "/connectors.js";
 import { mdToHtml, hydrateDynamicBlocks, headingId, setNoteIndex, setNoteOpener } from "/markdown.js";
 import { Editor } from "/editor.js";
 import { Plugins } from "/plugins.js";
@@ -982,6 +983,7 @@ const COMMANDS = [
   { icon: "🗂", name: "Save current note as template", run: saveAsTemplate },
   { icon: "⇩", name: "Export note as HTML (print to PDF)", run: exportNote },
   { icon: "⚙", name: "Open settings", run: openSettings },
+  { icon: "🔌", name: "Connectors (pull from Slack, Jira, Drive…)", run: openConnectors },
   { icon: "🔒", name: "Encrypt this note (at rest)", run: () => cryptNote("encrypt") },
   { icon: "🔓", name: "Decrypt this note", run: () => cryptNote("decrypt") },
   { icon: "🗑", name: "Open trash", run: openTrash },

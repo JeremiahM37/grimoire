@@ -31,6 +31,7 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/settings"
 	gsync "github.com/JeremiahM37/grimoire/go/internal/sync"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
+	"github.com/JeremiahM37/grimoire/go/internal/websearch"
 )
 
 // Server holds everything the handlers need.
@@ -46,6 +47,7 @@ type Server struct {
 	Auth         *auth.Store
 	Connectors   *connectors.Store
 	Runner       *connectors.Runner
+	Web          *websearch.Client
 	Sync         *gsync.Client
 	SyncPeer     string
 	SyncToken    string
@@ -74,6 +76,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/health", s.health)
 	s.authRoutes(mux)
 	s.connectorRoutes(mux)
+	s.webRoutes(mux)
 	mux.HandleFunc("POST /api/reindex", s.adminOnly(s.reindex))
 	mux.HandleFunc("GET /api/aliases", s.aliases)
 	mux.HandleFunc("GET /api/notes", s.listNotes)

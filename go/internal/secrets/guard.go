@@ -181,6 +181,15 @@ var privateExtra = mustCIDRs("100.64.0.0/10", "fc00::/7")
 // to use, so a name that answered publicly on the first lookup and privately
 // on the second is still refused. It also covers every redirect hop for free,
 // since each hop dials again.
+// GuardedTransport is guardedTransport for callers outside this package —
+// web search and URL fetching, which take a URL from whoever is asking and so
+// need exactly the protection the broker does.
+func GuardedTransport(allowPrivate bool) *http.Transport { return guardedTransport(allowPrivate) }
+
+// AllowPrivateFromEnv reports the self-hoster opt-in, so other outbound paths
+// honour the same setting rather than inventing a second one.
+func AllowPrivateFromEnv() bool { return allowPrivateFromEnv() }
+
 func guardedTransport(allowPrivate bool) *http.Transport {
 	dialer := &net.Dialer{
 		Timeout:   10 * time.Second,

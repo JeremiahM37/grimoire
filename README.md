@@ -132,6 +132,7 @@ The agent gets, in one mount:
 | **Credentials — use, never read** | **`use_credential`** · **`list_grants`** |
 | **Agent memory** | **`remember`** · **`recall`** · **`consolidate_memory`** |
 | Knowledge | `search_notes` · `ask_notes` · `read_note` · `list_notes` · `backlinks` · `list_tags` |
+| The web | `search_web` · `open_urls` |
 | Writing | `create_note` · `update_note` · `append_daily` |
 | Exact values | `get_fact` · **`set_fact`** |
 | Orientation | `get_briefing` · `kb_info` |

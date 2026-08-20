@@ -34,6 +34,7 @@ import (
 	gsync "github.com/JeremiahM37/grimoire/go/internal/sync"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
 	"github.com/JeremiahM37/grimoire/go/internal/watcher"
+	"github.com/JeremiahM37/grimoire/go/internal/websearch"
 )
 
 func main() {
@@ -95,16 +96,26 @@ func newEnv(fetchModel bool) (*env, error) {
 	syncer := gsync.New(ix, v, crdt)
 
 	srv := &api.Server{
-		Index:        ix,
-		Vault:        v,
-		Settings:     store,
-		History:      history.New(grimoireDir),
-		Secrets:      vaultSecrets,
-		Broker:       secrets.NewBroker(vaultSecrets, database),
-		CRDT:         crdt,
-		AI:           ai.New(store, vaultSecrets.Get),
-		Auth:         accounts,
-		Connectors:   connectorStore,
+		Index:      ix,
+		Vault:      v,
+		Settings:   store,
+		History:    history.New(grimoireDir),
+		Secrets:    vaultSecrets,
+		Broker:     secrets.NewBroker(vaultSecrets, database),
+		CRDT:       crdt,
+		AI:         ai.New(store, vaultSecrets.Get),
+		Auth:       accounts,
+		Connectors: connectorStore,
+		Web: &websearch.Client{
+			Settings: store, Secrets: vaultSecrets.Get,
+			// The same outbound guard the credential broker uses: the URL
+			// comes from whoever is asking, so private ranges and cloud
+			// metadata are refused, on the address the socket will use.
+			HTTP: &http.Client{
+				Timeout:   45 * time.Second,
+				Transport: secrets.GuardedTransport(secrets.AllowPrivateFromEnv()),
+			},
+		},
 		Sync:         syncer,
 		SyncPeer:     os.Getenv("GRIMOIRE_SYNC_PEER"),
 		SyncToken:    os.Getenv("GRIMOIRE_SYNC_TOKEN"),

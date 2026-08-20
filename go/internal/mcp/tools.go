@@ -23,6 +23,16 @@ func strProp(desc string) map[string]any {
 	return map[string]any{"type": "string", "description": desc}
 }
 
+// arrProp describes a list-of-strings argument. Clients differ in how strictly
+// they coerce, so the item type is declared rather than left open.
+func arrProp(desc string) map[string]any {
+	return map[string]any{
+		"type":        "array",
+		"description": desc,
+		"items":       map[string]any{"type": "string"},
+	}
+}
+
 func intProp(desc string) map[string]any {
 	return map[string]any{"type": "integer", "description": desc}
 }
@@ -63,6 +73,27 @@ func Tools() []tool {
 				"question": strProp("a natural-language question"),
 				"k":        intProp("passages to return (default 8)"),
 			}, "question"),
+		},
+		{
+			Name: "search_web",
+			Description: "Search the public web. Use it when the answer cannot be in the " +
+				"notes — a library's current API, a fresh error message, something that " +
+				"happened after they were written. Search the notes FIRST: they hold " +
+				"what this team decided, which the web does not.",
+			InputSchema: obj(map[string]any{
+				"query": strProp("what to search for"),
+				"n":     intProp("results to return (default 5)"),
+			}, "query"),
+		},
+		{
+			Name: "open_urls",
+			Description: "Fetch web pages and return their readable text. Pair it with " +
+				"search_web: a result's snippet is two lines, and the answer is usually " +
+				"in the page.",
+			InputSchema: obj(map[string]any{
+				"urls":      arrProp("URLs to read"),
+				"max_chars": intProp("characters per page (default 20000)"),
+			}, "urls"),
 		},
 		{
 			Name:        "read_note",

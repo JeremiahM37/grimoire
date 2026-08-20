@@ -3,11 +3,13 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
 
 	"github.com/JeremiahM37/grimoire/go/internal/connectors"
+	"github.com/JeremiahM37/grimoire/go/internal/websearch"
 )
 
 // A connector, configured over the API, ending as searchable notes.
@@ -190,3 +192,47 @@ func TestConnectorSecretsAreNeverReturned(t *testing.T) {
 		t.Fatal("a credential value leaked through the list")
 	}
 }
+
+// ------------------------------------------------------------- web search
+
+func TestWebSearchRoutesReportWhenUnconfigured(t *testing.T) {
+	_, h := testServer(t)
+	w := do(t, h, "GET", "/api/web/search?q=anything", nil)
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("unconfigured search = %d %s", w.Code, w.Body)
+	}
+	if !strings.Contains(w.Body.String(), "web_search_provider") {
+		t.Fatalf("the error does not say what to configure: %s", w.Body)
+	}
+}
+
+func TestAskDoesNotReachTheWebUnlessAsked(t *testing.T) {
+	s, h := testServer(t)
+	reached := false
+	s.Web = &websearch.Client{
+		Settings: mapSettings{"web_search_provider": "searxng", "web_search_url": "http://example.invalid"},
+		HTTP: &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			reached = true
+			return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"results":[]}`)),
+				Header: http.Header{}}, nil
+		})},
+	}
+	do(t, h, "POST", "/api/notes", map[string]any{"path": "n.md", "body": "# N\n\nlocal knowledge"})
+
+	do(t, h, "POST", "/api/ask", map[string]any{"q": "what do we know"})
+	if reached {
+		t.Fatal("a plain ask reached the internet — that must be opt-in")
+	}
+	do(t, h, "POST", "/api/ask", map[string]any{"q": "what do we know", "web": true})
+	if !reached {
+		t.Fatal("ask with web:true did not search the web")
+	}
+}
+
+type mapSettings map[string]string
+
+func (m mapSettings) Get(k string) string { return m[k] }
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
