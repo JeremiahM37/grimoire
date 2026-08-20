@@ -12,6 +12,7 @@ import (
 
 	"github.com/JeremiahM37/grimoire/go/internal/auth"
 	"github.com/JeremiahM37/grimoire/go/internal/index"
+	"github.com/JeremiahM37/grimoire/go/internal/queries"
 )
 
 // Who is asking, and what they may see.
@@ -80,7 +81,7 @@ func (s *Server) resolve(r *http.Request) *auth.Principal {
 		}
 	}
 	if key := bearer(r); key != "" {
-		if u, err := s.Auth.UserForAPIKey(key); err == nil {
+		if u, err := s.Auth.UserForAPIKeyFrom(key, clientAddr(r)); err == nil {
 			if p, err := s.Auth.PrincipalFor(u); err == nil {
 				return p
 			}
@@ -460,4 +461,24 @@ func (s *Server) requireAdminToken(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// readableRows filters a query block's results to the notes this caller may
+// see. A query block lists notes by tag, folder or field, so it is a read of
+// the vault wearing a different shape.
+func (s *Server) readableRows(r *http.Request, res *queries.Result) *queries.Result {
+	if res == nil || principal(r).Unrestricted {
+		return res
+	}
+	kept := make([]map[string]any, 0, len(res.Rows))
+	for _, row := range res.Rows {
+		path, _ := row["path"].(string)
+		if path != "" && !s.canRead(r, path) {
+			continue
+		}
+		kept = append(kept, row)
+	}
+	res.Rows = kept
+	res.Count = len(kept)
+	return res
 }

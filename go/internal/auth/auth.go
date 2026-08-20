@@ -425,10 +425,34 @@ func (s *Store) CreateAPIKey(userID, label string) (string, APIKey, error) {
 
 // UserForAPIKey resolves an API key to its owner.
 func (s *Store) UserForAPIKey(key string) (User, error) {
+	return s.UserForAPIKeyFrom(key, "")
+}
+
+// UserForAPIKeyFrom is UserForAPIKey with the caller's address, so a stream of
+// wrong keys backs off the way a stream of wrong passwords does.
+//
+// A key is 256 bits of randomness, so guessing one is not a realistic attack —
+// but "not realistic" is an argument, and a limit is a fact. It also stops a
+// misconfigured agent from hammering the endpoint forever without anyone
+// noticing, which is the failure this actually catches.
+func (s *Store) UserForAPIKeyFrom(key, addr string) (User, error) {
+	now := Now()
+	if addr != "" {
+		if wait := s.login.retryAfter("key:"+addr, now); wait > 0 {
+			return User{}, ErrTooManyAttempts{RetryAfter: wait}
+		}
+	}
 	var userID string
 	if err := s.DB.QueryRow("SELECT user FROM api_keys WHERE hash=?", hashToken(key)).
 		Scan(&userID); err != nil {
+		if addr != "" {
+			s.login.fail("key:"+addr, now)
+		}
+		metrics.Count("grimoire_key_failures_total", "Rejected API keys.", nil)
 		return User{}, ErrNoSuchUser
+	}
+	if addr != "" {
+		s.login.succeed("key:" + addr)
 	}
 	// Stamping last_used on EVERY request put a write in front of every agent
 	// call — and with one SQLite connection, a write serializes against every

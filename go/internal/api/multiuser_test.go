@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 )
@@ -569,5 +570,55 @@ func TestTheOtherContentSurfacesRespectTheRulesToo(t *testing.T) {
 	if w := do(t, h, "POST", "/api/attach", nil); w.Code == http.StatusOK ||
 		w.Code == http.StatusCreated {
 		t.Errorf("anonymous upload = %d", w.Code)
+	}
+}
+
+// An attachment is a file somebody uploaded. Served same-origin with its own
+// content type, an .html or .svg runs JavaScript with the viewer's session —
+// nosniff does not prevent that, it only prevents MIME sniffing.
+func TestUploadedDocumentsCannotActAsTheApp(t *testing.T) {
+	s, _ := testServer(t)
+	h := s.Routes()
+	// Write the files directly: the upload route has its own tests.
+	for _, name := range []string{"evil.html", "evil.svg", "fine.png"} {
+		if _, err := s.Vault.SafeRawPath("attachments/" + name); err != nil {
+			t.Fatal(err)
+		}
+	}
+	dir := s.Vault.Root + "/attachments"
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range map[string]string{
+		"evil.html": "<script>fetch('/api/secrets')</script>",
+		"evil.svg":  `<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>`,
+		"fine.png":  "\x89PNG\r\n\x1a\nnot really",
+	} {
+		if err := os.WriteFile(dir+"/"+name, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	for _, name := range []string{"evil.html", "evil.svg"} {
+		w := do(t, h, "GET", "/api/file/attachments/"+name, nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("%s = %d", name, w.Code)
+		}
+		csp := w.Header().Get("Content-Security-Policy")
+		if !strings.Contains(csp, "sandbox") || !strings.Contains(csp, "default-src 'none'") {
+			t.Errorf("%s served without a sandbox CSP: %q", name, csp)
+		}
+		if !strings.HasPrefix(w.Header().Get("Content-Disposition"), "attachment") {
+			t.Errorf("%s is rendered rather than downloaded: %q", name,
+				w.Header().Get("Content-Disposition"))
+		}
+	}
+	// An image is still an image: the fix must not break what attachments are for.
+	w := do(t, h, "GET", "/api/file/attachments/fine.png", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("png = %d", w.Code)
+	}
+	if strings.HasPrefix(w.Header().Get("Content-Disposition"), "attachment") {
+		t.Error("an image was forced to download, which breaks inline previews")
 	}
 }
