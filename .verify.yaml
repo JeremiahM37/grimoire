@@ -49,3 +49,66 @@ steps:
         title, a markdown formatting toolbar (B / I / H / list / link), and an editor
         showing note text; warm paper-colored background; it is a working app UI, not
         a blank white page, not an error message, not a stack trace
+
+  - name: memory reconciles instead of accumulating
+    actions:
+      # A belief, then one that contradicts it. The second must supersede the
+      # first rather than sit beside it — the whole point of the engine.
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/memory
+          -H 'Content-Type: application/json'
+          -d '{"topic":"verify-prefs","text":"the user prefers spaces","agent":"verify"}'
+          | grep -q '"op":"ADD"'
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/memory
+          -H 'Content-Type: application/json'
+          -d '{"topic":"verify-prefs","text":"the user prefers tabs","agent":"verify"}'
+          | grep -q '"op":"UPDATE"'
+      # Recall returns only what is currently believed…
+      - shell: >
+          curl -sf 'http://127.0.0.1:9119/api/memory?q=indentation+preference'
+          | grep -q 'prefers tabs'
+      - shell: >
+          test -z "$(curl -sf 'http://127.0.0.1:9119/api/memory?q=indentation+preference'
+          | grep -o 'prefers spaces')"
+      # …and the replaced belief is still in the note, struck through, so the
+      # human can see what the agent used to think.
+      - shell: >
+          curl -sf http://127.0.0.1:9119/api/notes/memory/verify-prefs.md
+          | grep -q 'prefers spaces'
+      - shell: >
+          curl -sf 'http://127.0.0.1:9119/api/memory?include_superseded=1'
+          | grep -q 'superseded_by'
+
+  - name: memory scoping, expiry and retraction work end to end
+    actions:
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/memory
+          -H 'Content-Type: application/json'
+          -d '{"topic":"verify-scope","text":"the staging box is smaller","agent":"verify","session":"run-42","category":"infra"}'
+          | grep -q '"op":"ADD"'
+      - shell: >
+          curl -sf 'http://127.0.0.1:9119/api/memory?session=run-42' | grep -q 'staging box'
+      - shell: >
+          test -z "$(curl -sf 'http://127.0.0.1:9119/api/memory?session=run-nonexistent' | grep -o 'staging box')"
+      # An already-past expiry is the observable side of a TTL in one run.
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/memory
+          -H 'Content-Type: application/json'
+          -d '{"topic":"verify-scope","text":"a fact that has already expired","agent":"verify","expires":"2020-01-01T00:00:00Z"}'
+      - shell: >
+          test -z "$(curl -sf 'http://127.0.0.1:9119/api/memory?q=expired' | grep -o 'already expired')"
+      - shell: >
+          curl -sf 'http://127.0.0.1:9119/api/memory/facets' | grep -q 'run-42'
+
+  - name: the memory CLI reaches the same engine with no server
+    actions:
+      - shell: >
+          GRIMOIRE_VAULT=/tmp/grimoire-verify-cli ./go/grimoire remember
+          "the deploy needs a VPN reset" --topic ops | grep -q remembered
+      - shell: >
+          GRIMOIRE_VAULT=/tmp/grimoire-verify-cli ./go/grimoire remember
+          "The deploy needs a VPN reset." --topic ops | grep -q unchanged
+      - shell: >
+          GRIMOIRE_VAULT=/tmp/grimoire-verify-cli ./go/grimoire recall
+          | grep -q "VPN reset"
