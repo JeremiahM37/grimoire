@@ -95,6 +95,20 @@ CREATE TABLE IF NOT EXISTS space_members(
   PRIMARY KEY(space, user)
 );
 CREATE INDEX IF NOT EXISTS idx_space_members_user ON space_members(user);
+-- Connectors: configured sources, and what each has already pulled. See
+-- internal/connectors.
+CREATE TABLE IF NOT EXISTS connectors(
+  id TEXT PRIMARY KEY, kind TEXT NOT NULL, name TEXT NOT NULL,
+  config TEXT NOT NULL DEFAULT '{}', secret TEXT DEFAULT '',
+  prefix TEXT NOT NULL, interval INTEGER DEFAULT 0, enabled INTEGER DEFAULT 1,
+  cursor TEXT DEFAULT '', last_run TEXT DEFAULT '', last_ok INTEGER DEFAULT 1,
+  last_error TEXT DEFAULT '', docs INTEGER DEFAULT 0, created TEXT
+);
+CREATE TABLE IF NOT EXISTS connector_docs(
+  connector TEXT NOT NULL, external_id TEXT NOT NULL, path TEXT NOT NULL,
+  hash TEXT, updated TEXT, PRIMARY KEY(connector, external_id)
+);
+CREATE INDEX IF NOT EXISTS idx_connector_docs_path ON connector_docs(path);
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE IF NOT EXISTS grants(
   token TEXT PRIMARY KEY, secret TEXT, grantee TEXT, scope TEXT,

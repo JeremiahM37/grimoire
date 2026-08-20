@@ -23,6 +23,7 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/ai"
 	"github.com/JeremiahM37/grimoire/go/internal/api"
 	"github.com/JeremiahM37/grimoire/go/internal/auth"
+	"github.com/JeremiahM37/grimoire/go/internal/connectors"
 	"github.com/JeremiahM37/grimoire/go/internal/crdtstore"
 	"github.com/JeremiahM37/grimoire/go/internal/db"
 	"github.com/JeremiahM37/grimoire/go/internal/embed"
@@ -86,6 +87,7 @@ func newEnv(fetchModel bool) (*env, error) {
 
 	vaultSecrets := secrets.New(grimoireDir)
 	accounts := auth.New(database)
+	connectorStore := connectors.NewStore(database)
 	store := settings.New(grimoireDir)
 	emb := newEmbedder(store, fetchModel)
 	ix := index.New(database, v, emb)
@@ -102,6 +104,7 @@ func newEnv(fetchModel bool) (*env, error) {
 		CRDT:         crdt,
 		AI:           ai.New(store, vaultSecrets.Get),
 		Auth:         accounts,
+		Connectors:   connectorStore,
 		Sync:         syncer,
 		SyncPeer:     os.Getenv("GRIMOIRE_SYNC_PEER"),
 		SyncToken:    os.Getenv("GRIMOIRE_SYNC_TOKEN"),
@@ -118,6 +121,14 @@ func newEnv(fetchModel bool) (*env, error) {
 	// dependency on accounts: with none configured it stamps everything
 	// "commons", exactly as a single-user vault always has.
 	ix.Spaces = srv
+	// The runner writes through the server, which owns note writing, indexing
+	// and spaces — so a pulled document is an ordinary note the moment it
+	// lands, with nothing special about it downstream.
+	srv.Runner = &connectors.Runner{
+		Store: connectorStore, Writer: srv,
+		Secrets: api.SecretsForConnectors{Server: srv},
+		Client:  connectorClient(),
+	}
 
 	return &env{vault: v, index: ix, db: database, settings: store, sync: syncer,
 		server: srv, handler: srv.Routes(), embedder: emb, auth: accounts,
@@ -239,6 +250,13 @@ func run(args []string) error {
 			time.Duration(syncInterval)*time.Second, done)
 	}
 
+	// Connectors on their schedules. One goroutine, one connector at a time:
+	// these are network-bound, and a self-hosted instance would rather be
+	// polite to the systems it pulls from than fast.
+	if e.server.Runner != nil {
+		go e.server.Runner.Loop(30*time.Second, done)
+	}
+
 	// watch for edits made outside grimoire (another editor, a sync client)
 	watch := watcher.New(v, ix, 0)
 	if os.Getenv("GRIMOIRE_NO_WATCHER") == "" {
@@ -307,4 +325,15 @@ func envOr(key, def string) string {
 		return v
 	}
 	return def
+}
+
+// connectorClient is the HTTP client connectors pull with.
+//
+// Separate from the credential broker's guarded client on purpose: the broker
+// refuses private addresses because an agent chooses its target, while a
+// connector's target is configured by an administrator — and self-hosted
+// Confluence, Jira and GitHub Enterprise all live on private networks. The
+// timeout is generous because these are paged APIs on other people's servers.
+func connectorClient() *http.Client {
+	return &http.Client{Timeout: 90 * time.Second}
 }

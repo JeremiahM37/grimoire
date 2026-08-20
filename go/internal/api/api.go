@@ -22,6 +22,7 @@ import (
 
 	"github.com/JeremiahM37/grimoire/go/internal/ai"
 	"github.com/JeremiahM37/grimoire/go/internal/auth"
+	"github.com/JeremiahM37/grimoire/go/internal/connectors"
 	"github.com/JeremiahM37/grimoire/go/internal/crdtstore"
 	"github.com/JeremiahM37/grimoire/go/internal/history"
 	"github.com/JeremiahM37/grimoire/go/internal/index"
@@ -43,6 +44,8 @@ type Server struct {
 	CRDT         *crdtstore.Store
 	AI           *ai.Client
 	Auth         *auth.Store
+	Connectors   *connectors.Store
+	Runner       *connectors.Runner
 	Sync         *gsync.Client
 	SyncPeer     string
 	SyncToken    string
@@ -70,6 +73,7 @@ func (s *Server) Routes() http.Handler {
 
 	mux.HandleFunc("GET /api/health", s.health)
 	s.authRoutes(mux)
+	s.connectorRoutes(mux)
 	mux.HandleFunc("POST /api/reindex", s.adminOnly(s.reindex))
 	mux.HandleFunc("GET /api/aliases", s.aliases)
 	mux.HandleFunc("GET /api/notes", s.listNotes)
