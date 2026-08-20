@@ -484,6 +484,14 @@ Stated here rather than discovered later:
   process is down, it is down.
 - **Administrators can read every space.** A deliberate simplification: the
   alternative is an administrator who cannot fix a space they cannot see.
+- **Plugins are trusted code, not sandboxed.** A plugin is an ES module the
+  console imports with full page privileges, in every user's browser. Installing
+  one is equivalent to letting its author act as whoever opens the console, so
+  installation is administrators-only and a plugin should be read before it is
+  enabled.
+- **Sync moves whole notes.** A peer holding the sync token is treated as the
+  deployment's own device and gets everything; a person syncing gets what they
+  can read. Do not hand the sync token to someone you would not give the vault.
 - **No SSO, no SCIM, no audit export.** Accounts are local.
 
 ## Watching it run

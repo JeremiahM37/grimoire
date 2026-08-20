@@ -375,3 +375,104 @@ func TestAPulledDocumentCanBeRestrictedToOnePerson(t *testing.T) {
 		t.Errorf("a member mapped an identity: %d", w.Code)
 	}
 }
+
+// Sync is a bulk read of note bodies, and it predates every access control in
+// this server: the manifest listed every note and pull returned any body, to an
+// unauthenticated caller, on a multi-user instance. It answers to the same
+// rules as every other read now.
+func TestSyncIsNotAWayAroundTheAccessRules(t *testing.T) {
+	s, h := testServer(t)
+	adminKey := makeUser(t, s, h, "", "admin", "admin")
+	aliceKey := makeUser(t, s, h, adminKey, "alice", "member")
+	bobKey := makeUser(t, s, h, adminKey, "bob", "member")
+
+	if w := asKey(t, h, aliceKey, "POST", "/api/notes", map[string]any{
+		"path": "users/alice/diary.md", "body": "# Diary\n\nSYNCSECRET"}); w.Code != http.StatusCreated {
+		t.Fatalf("alice could not write her own note: %d %s", w.Code, w.Body)
+	}
+	if w := asKey(t, h, bobKey, "POST", "/api/notes", map[string]any{
+		"path": "shared.md", "body": "# Shared\n\neveryone can read this"}); w.Code != http.StatusCreated {
+		t.Fatal("bob could not write to the commons")
+	}
+
+	pull := func(key, path string) string {
+		body := map[string]any{"paths": []string{path}}
+		if key == "" {
+			return do(t, h, "POST", "/api/sync/pull", body).Body.String()
+		}
+		return asKey(t, h, key, "POST", "/api/sync/pull", body).Body.String()
+	}
+
+	// A member sees neither the path nor the body of another's personal note.
+	manifest := asKey(t, h, bobKey, "GET", "/api/sync/manifest", nil).Body.String()
+	if strings.Contains(manifest, "users/alice") {
+		t.Errorf("the manifest told bob what alice has: %s", manifest)
+	}
+	if !strings.Contains(manifest, "shared.md") {
+		t.Errorf("the manifest hid a note bob can read: %s", manifest)
+	}
+	if got := pull(bobKey, "users/alice/diary.md"); strings.Contains(got, "SYNCSECRET") {
+		t.Errorf("bob pulled alice's note: %s", got)
+	}
+
+	// Alice syncs her own note, so sync still works for the person it belongs to.
+	if got := pull(aliceKey, "users/alice/diary.md"); !strings.Contains(got, "SYNCSECRET") {
+		t.Errorf("alice cannot sync her own note: %s", got)
+	}
+
+	// And an unauthenticated caller gets nothing at all.
+	if w := do(t, h, "GET", "/api/sync/manifest", nil); w.Code != http.StatusUnauthorized {
+		t.Errorf("anonymous manifest = %d, want 401", w.Code)
+	}
+	if got := pull("", "users/alice/diary.md"); strings.Contains(got, "SYNCSECRET") {
+		t.Errorf("an unauthenticated caller pulled a note: %s", got)
+	}
+	if w := do(t, h, "POST", "/api/sync/push", map[string]any{"changes": []any{}}); w.Code != http.StatusUnauthorized {
+		t.Errorf("anonymous push = %d, want 401", w.Code)
+	}
+}
+
+// A single-user deployment has no accounts, so sync must work exactly as it
+// always has — device sync is the original reason it exists.
+func TestSyncIsUnchangedWithoutAccounts(t *testing.T) {
+	s, h := testServer(t)
+	if _, err := s.WriteNote("note.md", "# Note\n\nbody", nil); err != nil {
+		t.Fatal(err)
+	}
+	if w := do(t, h, "GET", "/api/sync/manifest", nil); w.Code != http.StatusOK ||
+		!strings.Contains(w.Body.String(), "note.md") {
+		t.Fatalf("manifest = %d %s", w.Code, w.Body)
+	}
+	got := do(t, h, "POST", "/api/sync/pull", map[string]any{"paths": []string{"note.md"}}).Body.String()
+	if !strings.Contains(got, "body") {
+		t.Fatalf("pull = %s", got)
+	}
+}
+
+// A plugin is an ES module the console imports with full page privileges, in
+// EVERY user's browser. Scaffolding one writes JavaScript into the vault that
+// everyone then executes, so installing a plugin is equivalent to running code
+// as whoever opens the console — including the administrator.
+func TestOnlyAdministratorsCanInstallPlugins(t *testing.T) {
+	s, h := testServer(t)
+	adminKey := makeUser(t, s, h, "", "admin", "admin")
+	bobKey := makeUser(t, s, h, adminKey, "bob", "member")
+
+	if w := asKey(t, h, bobKey, "POST", "/api/plugins/scaffold",
+		map[string]any{"name": "member-plugin"}); w.Code != http.StatusForbidden {
+		t.Errorf("a member scaffolded a plugin: %d %s", w.Code, w.Body)
+	}
+	if w := asKey(t, h, bobKey, "POST", "/api/plugins/katex/enable",
+		map[string]any{"enabled": true}); w.Code != http.StatusForbidden {
+		t.Errorf("a member enabled a plugin: %d", w.Code)
+	}
+	// Reading the list is not installing, and the console needs it.
+	if w := asKey(t, h, bobKey, "GET", "/api/plugins", nil); w.Code != http.StatusOK {
+		t.Errorf("a member cannot list plugins: %d", w.Code)
+	}
+	// An administrator still can.
+	if w := asKey(t, h, adminKey, "POST", "/api/plugins/scaffold",
+		map[string]any{"name": "admin-plugin"}); w.Code != http.StatusCreated && w.Code != http.StatusOK {
+		t.Errorf("an administrator could not scaffold: %d %s", w.Code, w.Body)
+	}
+}

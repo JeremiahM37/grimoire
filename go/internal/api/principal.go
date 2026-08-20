@@ -416,7 +416,7 @@ func adminSurface(path string) bool {
 	for _, p := range []string{
 		"/api/vault/", "/api/secrets", "/api/grants", "/api/audit",
 		"/api/connectors", "/api/users", "/api/spaces", "/api/keys",
-		"/api/reindex", "/api/settings",
+		"/api/reindex", "/api/settings", "/api/plugins/",
 	} {
 		if strings.HasPrefix(path, p) {
 			return true

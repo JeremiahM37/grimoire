@@ -140,9 +140,15 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/sync/manifest", s.syncManifest)
 	mux.HandleFunc("GET /api/export/vault", s.exportVault)
 	mux.HandleFunc("POST /api/import/vault", s.importVault)
+	// Listing is a read; INSTALLING is not. A plugin is an ES module imported
+	// into the console with full page privileges — same origin, the viewer's
+	// session, every API they can reach — and it runs in EVERY user's browser.
+	// Scaffolding one writes JavaScript into the vault that everyone will then
+	// execute, so on a multi-user instance an ungated scaffold is a member
+	// running code as the administrator.
 	mux.HandleFunc("GET /api/plugins", s.listPlugins)
-	mux.HandleFunc("POST /api/plugins/scaffold", s.scaffoldPlugin)
-	mux.HandleFunc("POST /api/plugins/{name}/enable", s.enablePlugin)
+	mux.HandleFunc("POST /api/plugins/scaffold", s.adminOnly(s.scaffoldPlugin))
+	mux.HandleFunc("POST /api/plugins/{name}/enable", s.adminOnly(s.enablePlugin))
 	mux.HandleFunc("GET /plugins/{name}/{rel...}", s.servePluginAsset)
 	mux.HandleFunc("POST /api/query", s.runQuery)
 	mux.HandleFunc("GET /api/trash", s.listTrash)
