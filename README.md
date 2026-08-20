@@ -346,6 +346,18 @@ notes (you can inspect exactly what it retrieved) → it calls an API with
 learned → you open `memory/` in the console, read the note it wrote, edit one
 line, roll back another. That loop is the product.
 
+## Publishing a subset
+
+Mark a note `publish: true` and it appears on a public read-only site at
+`/published` — or in a static copy from `grimoire export --published`.
+
+It is off until you turn it on (`GRIMOIRE_PUBLISH=1`), because a surface with
+no principal behind it should not appear because somebody typed a frontmatter
+key. Inside it, links resolve only to other published notes and backlinks come
+only from them, so a draft cannot become a working URL or announce itself in
+someone else's footer. If you set `GRIMOIRE_AUTH_TOKEN`, this is gated with
+everything else — closing the server closes it.
+
 ## The human console
 
 A substrate needs a place where the human reads, reviews, and decides — so
