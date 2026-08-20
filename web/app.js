@@ -1848,8 +1848,18 @@ function renderPluginPanels() {
   // what they chose with whatever was first, seconds after they chose it. That
   // race was always there; adding one request to boot made it reachable.
   const nothingOpened = () => openSeq === 0 && !state.path;
-  if (hash) await openNote(hash).catch(() => nothingOpened() && state.notes[0] && openNote(state.notes[0].path));
-  else if (state.notes[0] && nothingOpened()) openNote(state.notes[0].path);
+  // The hash open has to lose to the person too, and it did not. openSeq
+  // orders opens that are already in flight, so a click made AFTER boot's open
+  // starts wins — but a click made BEFORE it starts claims an earlier number
+  // and is then overwritten seconds later by the hash. It is reachable
+  // whenever the list renders faster than boot finishes: open a deep link,
+  // click something else while it loads, and the app drags you back. CI caught
+  // it as a note from an entirely different test appearing in the editor.
+  if (hash && nothingOpened()) {
+    await openNote(hash).catch(() => nothingOpened() && state.notes[0] && openNote(state.notes[0].path));
+  } else if (!hash && state.notes[0] && nothingOpened()) {
+    openNote(state.notes[0].path);
+  }
   renderIdentity(me);
   // readiness beacon: handlers are wired and the editor is mounted (e2e + probes)
   document.body.dataset.ready = "1";
