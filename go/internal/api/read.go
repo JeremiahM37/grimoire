@@ -41,10 +41,15 @@ func readPage(title, body string) string {
 // their extension.
 func stripMD(path string) string { return strings.TrimSuffix(path, ".md") }
 
-// readIndex lists every public note.
-func (s *Server) readIndex(w http.ResponseWriter, _ *http.Request) {
+// readIndex lists the public notes this caller may see.
+//
+// "private=0" was the whole filter, which on a single-user vault is the right
+// one and on a multi-user one is none at all: an anonymous visitor could list
+// every colleague's notes here, and read them below. The e-ink surface is a
+// READ surface, so it answers to the same rules as every other read.
+func (s *Server) readIndex(w http.ResponseWriter, r *http.Request) {
 	rows, err := s.Index.DB.Query(
-		"SELECT path, title FROM notes WHERE private=0 ORDER BY title")
+		"SELECT path, title, acl FROM notes WHERE private=0 ORDER BY title")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -52,10 +57,13 @@ func (s *Server) readIndex(w http.ResponseWriter, _ *http.Request) {
 	defer rows.Close()
 	var items strings.Builder
 	for rows.Next() {
-		var path, title string
-		if err := rows.Scan(&path, &title); err != nil {
+		var path, title, acl string
+		if err := rows.Scan(&path, &title, &acl); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
+		}
+		if !s.canReadNote(r, path, acl) {
+			continue
 		}
 		items.WriteString(fmt.Sprintf(`<a href="/read/%s">%s</a>`,
 			stripMD(path), htmlEscape(title)))
@@ -72,6 +80,12 @@ func (s *Server) readIndex(w http.ResponseWriter, _ *http.Request) {
 // readNote renders one public note.
 func (s *Server) readNote(w http.ResponseWriter, r *http.Request) {
 	rel := normPath(r.PathValue("path"))
+	if !s.canRead(r, rel) {
+		// Absent rather than forbidden, like every other read of a note the
+		// caller may not see.
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
 	var title, body string
 	err := s.Index.DB.QueryRow(
 		"SELECT title, body FROM notes WHERE path=? AND private=0", rel).Scan(&title, &body)

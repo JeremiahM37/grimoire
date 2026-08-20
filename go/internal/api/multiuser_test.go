@@ -476,3 +476,98 @@ func TestOnlyAdministratorsCanInstallPlugins(t *testing.T) {
 		t.Errorf("an administrator could not scaffold: %d %s", w.Code, w.Body)
 	}
 }
+
+// The write half of sync. Requiring a principal to CALL push says nothing about
+// where they may write.
+func TestSyncPushCannotWriteWhereTheCallerCannot(t *testing.T) {
+	s, h := testServer(t)
+	adminKey := makeUser(t, s, h, "", "admin", "admin")
+	aliceKey := makeUser(t, s, h, adminKey, "alice", "member")
+	bobKey := makeUser(t, s, h, adminKey, "bob", "member")
+
+	if w := asKey(t, h, aliceKey, "POST", "/api/notes", map[string]any{
+		"path": "users/alice/diary.md", "body": "# Diary\n\nMINE"}); w.Code != http.StatusCreated {
+		t.Fatal("alice could not write her own note")
+	}
+
+	// Bob pushes over it.
+	overwrite := "# Diary\n\nBOBWASHERE"
+	w := asKey(t, h, bobKey, "POST", "/api/sync/push", map[string]any{
+		"device":  "bobs-laptop",
+		"changes": []map[string]any{{"path": "users/alice/diary.md", "content": overwrite}},
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("push = %d %s", w.Code, w.Body)
+	}
+	if !strings.Contains(w.Body.String(), "refused") {
+		t.Errorf("push into another member's space was not refused: %s", w.Body)
+	}
+	note := asKey(t, h, aliceKey, "GET", "/api/notes/users/alice/diary.md", nil).Body.String()
+	if strings.Contains(note, "BOBWASHERE") {
+		t.Fatal("bob overwrote alice's note through sync")
+	}
+	if !strings.Contains(note, "MINE") {
+		t.Fatal("alice's note was damaged")
+	}
+
+	// Alice can still push to her own space, so sync works for its owner.
+	w = asKey(t, h, aliceKey, "POST", "/api/sync/push", map[string]any{
+		"device":  "alices-phone",
+		"changes": []map[string]any{{"path": "users/alice/notes.md", "content": "# From my phone\n"}},
+	})
+	if w.Code != http.StatusOK || strings.Contains(w.Body.String(), "refused") {
+		t.Fatalf("alice could not push to her own space: %s", w.Body)
+	}
+}
+
+// The surfaces that are not /api/notes: the e-ink read view, the vault export,
+// and attachment upload. Each returns or accepts note content, and each was
+// written for a server where one person owned everything.
+func TestTheOtherContentSurfacesRespectTheRulesToo(t *testing.T) {
+	s, h := testServer(t)
+	adminKey := makeUser(t, s, h, "", "admin", "admin")
+	aliceKey := makeUser(t, s, h, adminKey, "alice", "member")
+	bobKey := makeUser(t, s, h, adminKey, "bob", "member")
+
+	if w := asKey(t, h, aliceKey, "POST", "/api/notes", map[string]any{
+		"path": "users/alice/diary.md", "body": "# Diary\n\nREADSECRET"}); w.Code != http.StatusCreated {
+		t.Fatal("alice could not write her note")
+	}
+
+	// The e-ink surface lists and renders notes; it filtered on `private` only.
+	for _, c := range []struct{ who, key string }{{"a member", bobKey}, {"nobody", ""}} {
+		index := ""
+		note := ""
+		if c.key == "" {
+			index = do(t, h, "GET", "/read", nil).Body.String()
+			note = do(t, h, "GET", "/read/users/alice/diary", nil).Body.String()
+		} else {
+			index = asKey(t, h, c.key, "GET", "/read", nil).Body.String()
+			note = asKey(t, h, c.key, "GET", "/read/users/alice/diary", nil).Body.String()
+		}
+		if strings.Contains(index, "users/alice") {
+			t.Errorf("/read listed alice's note to %s", c.who)
+		}
+		if strings.Contains(note, "READSECRET") {
+			t.Errorf("/read rendered alice's note to %s", c.who)
+		}
+	}
+	// Alice still reads her own through it.
+	if body := asKey(t, h, aliceKey, "GET", "/read/users/alice/diary", nil).Body.String(); !strings.Contains(body, "READSECRET") {
+		t.Error("alice cannot read her own note on the read surface")
+	}
+
+	// A zip of the vault is the most complete read there is.
+	if w := do(t, h, "GET", "/api/export/vault", nil); w.Code != http.StatusUnauthorized {
+		t.Errorf("anonymous vault export = %d, want 401", w.Code)
+	}
+	if body := asKey(t, h, bobKey, "GET", "/api/export/vault", nil).Body.String(); strings.Contains(body, "READSECRET") {
+		t.Error("the vault export handed a member another's note")
+	}
+
+	// Uploading writes to the vault, so it needs an account.
+	if w := do(t, h, "POST", "/api/attach", nil); w.Code == http.StatusOK ||
+		w.Code == http.StatusCreated {
+		t.Errorf("anonymous upload = %d", w.Code)
+	}
+}

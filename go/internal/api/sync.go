@@ -251,6 +251,14 @@ func (s *Server) syncPush(w http.ResponseWriter, r *http.Request) {
 	}
 	results := make([]gsync.Result, 0, len(in.Changes))
 	for _, ch := range in.Changes {
+		// Push WRITES. Requiring a principal to call the route said nothing
+		// about where they may write, so a member could push over a
+		// colleague's personal note or into a space they only read.
+		if !s.canWriteSync(r, ch.Path) {
+			results = append(results, gsync.Result{Path: ch.Path, Status: "refused",
+				Detail: "you cannot write there"})
+			continue
+		}
 		results = append(results, s.Sync.Apply(ch))
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"results": results})
@@ -274,7 +282,13 @@ func (s *Server) syncNow(w http.ResponseWriter, _ *http.Request) {
 
 // exportVault streams the whole vault as a zip — plain markdown, so the archive
 // is useful without grimoire.
-func (s *Server) exportVault(w http.ResponseWriter, _ *http.Request) {
+func (s *Server) exportVault(w http.ResponseWriter, r *http.Request) {
+	// A zip of the whole vault is the most complete read there is, and it
+	// answered anyone. It exports what the caller can read — which for a
+	// single-user deployment is still everything.
+	if !s.requireUser(w, r) {
+		return
+	}
 	rels, err := s.Vault.Walk()
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
@@ -285,6 +299,9 @@ func (s *Server) exportVault(w http.ResponseWriter, _ *http.Request) {
 	zw := zip.NewWriter(w)
 	defer zw.Close()
 	for _, rel := range rels {
+		if !s.canRead(r, rel) {
+			continue
+		}
 		note, err := s.Vault.Read(rel)
 		if err != nil {
 			continue
@@ -386,6 +403,15 @@ func (s *Server) isSyncPeer(r *http.Request) bool {
 	want := sha256.Sum256([]byte(s.SyncToken))
 	got := sha256.Sum256([]byte(presented))
 	return subtle.ConstantTimeCompare(got[:], want[:]) == 1
+}
+
+// canWriteSync is the write half: a peer is the deployment's own device, and
+// anyone else may only write where they could write through any other route.
+func (s *Server) canWriteSync(r *http.Request, path string) bool {
+	if s.isSyncPeer(r) {
+		return true
+	}
+	return s.canWrite(r, normPath(path))
 }
 
 // canReadSync is canRead for the sync routes, with the peer exemption.

@@ -35,6 +35,11 @@ var imageExts = map[string]bool{
 // attach stores an uploaded file and returns the relative path the editor
 // embeds as ![[path]] for an image or [[path]] for anything else.
 func (s *Server) attach(w http.ResponseWriter, r *http.Request) {
+	// Uploading writes a file into the vault, so it is a write: an
+	// unauthenticated caller must not be able to fill a disk with it.
+	if !s.requireUser(w, r) {
+		return
+	}
 	if err := r.ParseMultipartForm(MaxAttachBytes); err != nil {
 		writeErr(w, http.StatusBadRequest, "expected a multipart upload")
 		return
