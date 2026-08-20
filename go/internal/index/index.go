@@ -153,6 +153,18 @@ func (ix *Index) insertFTS(rel, title, body string) error {
 func (ix *Index) Remove(rel string) error {
 	ix.writeMu.Lock()
 	defer ix.writeMu.Unlock()
+	if err := ix.removeRows(rel); err != nil {
+		return err
+	}
+	ix.bumpRev()
+	return ix.resolveAll()
+}
+
+// removeRows deletes one note's rows. The caller holds the write lock and owns
+// the revision bump and link resolution, so a batch — a sync that found ten
+// deleted notes — resolves links once rather than once per note, which is the
+// difference between linear and quadratic on a large vault.
+func (ix *Index) removeRows(rel string) error {
 	for _, stmt := range []string{
 		"DELETE FROM notes WHERE path=?",
 		"DELETE FROM links WHERE src=?",
@@ -164,11 +176,7 @@ func (ix *Index) Remove(rel string) error {
 			return err
 		}
 	}
-	if err := ix.dropFTS(rel); err != nil {
-		return err
-	}
-	ix.bumpRev()
-	return ix.resolveAll()
+	return ix.dropFTS(rel)
 }
 
 func (ix *Index) writeNoteRows(note *vault.Note) error {

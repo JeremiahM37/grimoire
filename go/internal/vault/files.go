@@ -225,3 +225,21 @@ func (v *Vault) WalkDir(sub string) ([]string, error) {
 	}
 	return out, err
 }
+
+// Stat reports a note's modification time without reading it.
+//
+// A startup sync over a large vault is dominated by what it reads: opening and
+// hashing every file, then re-embedding it, costs orders of magnitude more than
+// asking the filesystem when it changed. Stat is how the sync decides which
+// notes it needs to look at at all.
+func (v *Vault) Stat(rel string) (mtime float64, size int64, err error) {
+	p, err := v.SafePath(rel)
+	if err != nil {
+		return 0, 0, err
+	}
+	info, err := os.Stat(p)
+	if err != nil {
+		return 0, 0, err
+	}
+	return float64(info.ModTime().UnixNano()) / 1e9, info.Size(), nil
+}

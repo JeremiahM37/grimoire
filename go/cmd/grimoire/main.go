@@ -177,12 +177,16 @@ func run(args []string) error {
 		}
 	}
 
+	// Incremental: a restart re-reads only what changed on disk, and
+	// re-embeds only that. A full rebuild still happens when the embedding
+	// model or the row shape changes, because rows from two models are not
+	// comparable. See internal/index/sync.go.
 	log.Printf("indexing vault %s with %s", e.vault.Root, e.embedder.Signature())
-	n, err := e.index.Reindex()
+	stats, err := e.index.Sync()
 	if err != nil {
-		return fmt.Errorf("reindexing: %w", err)
+		return fmt.Errorf("indexing: %w", err)
 	}
-	log.Printf("indexed %d notes", n)
+	log.Printf("indexed %s", stats)
 
 	v, ix, syncer := e.vault, e.index, e.sync
 	syncPeer, syncToken, syncInterval := e.server.SyncPeer, e.server.SyncToken, e.server.SyncInterval
