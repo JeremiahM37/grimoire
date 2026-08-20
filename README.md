@@ -437,6 +437,23 @@ Connector credentials are named, never stored by the connector, and never
 returned. Web fetching goes through the credential broker's outbound guard,
 because the URL comes from whoever is asking.
 
+Reads of **restricted** documents are recorded — allowed and denied alike — with
+the account, the path, the route and the address, readable by an administrator
+at `GET /api/admin/reads` or on the box with `grimoire audit [--denied]`. A
+permission model answers "may they read this" and cannot answer "who did",
+which is the question actually asked after a document turns out to have been in
+the wrong space for a month. Two limits keep it from becoming surveillance of
+ordinary work: only restricted documents are recorded, never a note everyone
+can read, and never search — a hit list is a record of what someone was looking
+for, which is a more invasive thing than a record of what they opened. Records
+are kept 90 days (`GRIMOIRE_READ_AUDIT_DAYS`, `0` keeps everything), because a
+permanent list of who read which sensitive document is its own liability.
+Nothing is written on a single-user instance, where nothing is restricted.
+A denial is recorded for any path, including one that does not exist — walking
+paths you cannot open is what the trail should show — so denials are bounded at
+120 per actor per minute and counted past that, keeping the signal without
+letting a loop over invented paths write rows forever.
+
 Two options trade a property for availability, so they are off by default and
 worth naming here rather than in a footnote:
 

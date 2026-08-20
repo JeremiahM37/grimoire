@@ -241,8 +241,10 @@ func (s *Server) canWrite(r *http.Request, path string) bool {
 // exists, which is often the sensitive part.
 func (s *Server) requireRead(w http.ResponseWriter, r *http.Request, path string) bool {
 	if s.canRead(r, path) {
+		s.auditRead(r, path, true)
 		return true
 	}
+	s.auditRead(r, path, false)
 	writeErr(w, http.StatusNotFound, "no such note")
 	return false
 }

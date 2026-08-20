@@ -27,6 +27,7 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/history"
 	"github.com/JeremiahM37/grimoire/go/internal/index"
 	"github.com/JeremiahM37/grimoire/go/internal/markdown"
+	"github.com/JeremiahM37/grimoire/go/internal/readlog"
 	"github.com/JeremiahM37/grimoire/go/internal/secrets"
 	"github.com/JeremiahM37/grimoire/go/internal/settings"
 	gsync "github.com/JeremiahM37/grimoire/go/internal/sync"
@@ -45,6 +46,7 @@ type Server struct {
 	CRDT         *crdtstore.Store
 	AI           *ai.Client
 	Auth         *auth.Store
+	Reads        *readlog.Log
 	Connectors   *connectors.Store
 	Runner       *connectors.Runner
 	Web          *websearch.Client
@@ -77,6 +79,7 @@ func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /api/health", s.health)
+	mux.HandleFunc("GET /api/admin/reads", s.readAudit)
 	s.authRoutes(mux)
 	s.connectorRoutes(mux)
 	s.webRoutes(mux)

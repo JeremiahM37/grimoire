@@ -42,6 +42,7 @@ const (
 
 var routeAccess = map[string]access{
 	// --- public, on purpose ---
+	"GET /api/admin/reads":         admin,  // who opened which restricted document
 	"GET /api/health":              public, // liveness; reveals counts, not content
 	"GET /api/me":                  public, // the console asks this BEFORE signing in
 	"POST /api/auth/login":         public, // the sign-in route itself
