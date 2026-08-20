@@ -275,7 +275,11 @@ grimoire space add Engineering team/eng
 grimoire space member team/eng bob --read
 ```
 
-Access is **spaces**: a subtree of the vault plus the people who may see it. A
+Access is **spaces**: a subtree of the vault plus the people who may see it.
+A note can additionally carry a `readers:` list in its frontmatter, which
+*narrows* access within its space — that is how a pulled Slack thread keeps the
+channel's membership. It travels in the file, so it survives a reindex and is
+visible to whoever opens the note. A
 path prefix rather than a per-note access list, because the files outlive the
 app — a prefix is visible in the file tree and survives being copied to another
 machine, while a per-note ACL lives only in an index that is meant to be
@@ -451,15 +455,17 @@ worth naming here rather than in a footnote:
 
 Stated here rather than discovered later:
 
-- **Connectors do not carry the source's permissions.** A pulled Confluence page
-  belongs to whichever space its path maps to, not to whoever could read it in
-  Confluence — and if someone loses access at the source, nothing here notices.
-  What you *can* do is route on the source's own structure (`route_by` /
+- **Source permissions are mirrored, not synced.** Two mechanisms narrow the
+  gap. Routing sends a source's own structure to different folders (`route_by` /
   `route_map`: a Confluence space, a Slack channel, a Jira project each into
-  their own folder), so different parts of a source land in Grimoire spaces with
-  matching membership. That narrows the gap; it does not close it. Mirroring
-  per-document ACLs is the single biggest thing an enterprise search product
-  does that this does not.
+  their own space). And a document can carry a **reader list**: Slack's
+  `mirror_members` restricts each pulled conversation to that channel's members,
+  mapped to accounts through an explicit identity table, and a member with no
+  mapped account cannot read it — the safe direction. A reader list can only
+  narrow: it never grants access to a space you cannot already read.
+  What is still missing is the *sync*: if someone's access changes at the
+  source, nothing here notices until the next pull, and Confluence and Jira
+  restrictions are not read at all yet.
 - **Connectors notice deletions only where the source enumerates.** An
   incremental sync asks "what changed since the cursor", and a deleted document
   did not change — it is indistinguishable from an untouched one. A source that

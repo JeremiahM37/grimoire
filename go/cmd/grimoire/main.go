@@ -138,8 +138,9 @@ func newEnv(fetchModel bool) (*env, error) {
 	// lands, with nothing special about it downstream.
 	srv.Runner = &connectors.Runner{
 		Store: connectorStore, Writer: srv,
-		Secrets: api.SecretsForConnectors{Server: srv},
-		Client:  connectorClient(),
+		Secrets:    api.SecretsForConnectors{Server: srv},
+		Identities: accounts,
+		Client:     connectorClient(),
 	}
 
 	return &env{vault: v, index: ix, db: database, settings: store, sync: syncer,

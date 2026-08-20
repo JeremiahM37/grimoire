@@ -41,6 +41,12 @@ type Document struct {
 	Author     string
 	// Extra frontmatter, e.g. channel, project, labels.
 	Meta map[string]string
+	// Readers are the source's own identities allowed to read this document —
+	// Slack user ids, Atlassian account ids. Empty means the source did not
+	// say, and the destination space decides. Non-empty NARROWS access: the
+	// runner maps these to accounts through the identity table, and an
+	// identity nobody has mapped is nobody.
+	Readers []string
 }
 
 // Page is one batch of documents plus the cursor to resume from.

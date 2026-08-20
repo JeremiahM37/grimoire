@@ -287,3 +287,59 @@ func TestLoginIssuesASessionAndLogoutEndsIt(t *testing.T) {
 		t.Fatalf("session survived logout: %v", me)
 	}
 }
+
+// End-to-end: a pulled document restricted to one person, over HTTP.
+//
+// This is the gap the README named as the biggest thing an enterprise search
+// product does that this did not. It is narrower than a full ACL mirror — the
+// source's identities have to be mapped to accounts explicitly — but the
+// property it buys is the one that matters: a document one colleague may read
+// is invisible to another, through every surface.
+func TestAPulledDocumentCanBeRestrictedToOnePerson(t *testing.T) {
+	s, h := testServer(t)
+	adminKey := makeUser(t, s, h, "", "admin", "admin")
+	aliceKey := makeUser(t, s, h, adminKey, "alice", "member")
+	bobKey := makeUser(t, s, h, adminKey, "bob", "member")
+	alice, err := s.Auth.ByName("alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The administrator maps Slack's idea of alice to this instance's.
+	if w := asKey(t, h, adminKey, "POST", "/api/identities", map[string]any{
+		"source": "slack", "external": "U_ALICE", "user": "alice"}); w.Code != http.StatusCreated {
+		t.Fatalf("mapping an identity = %d %s", w.Code, w.Body)
+	}
+
+	// A connector writes a note carrying that reader list. (Written directly:
+	// the runner's own resolution is covered in the connectors package.)
+	if _, err := s.WriteNote("connectors/slack/private-thread.md",
+		"# Private thread\n\nthe kestrel decision", map[string]any{
+			"title": "Private thread", "source": "slack",
+			"readers": alice.ID,
+		}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Alice sees it everywhere; Bob nowhere.
+	for _, path := range []string{
+		"/api/search?q=kestrel", "/api/retrieve?q=kestrel&k=10", "/api/notes",
+	} {
+		if body := asKey(t, h, aliceKey, "GET", path, nil).Body.String(); !strings.Contains(body, "private-thread") {
+			t.Errorf("alice cannot see a document she is named on: %s -> %s", path, body)
+		}
+		if body := asKey(t, h, bobKey, "GET", path, nil).Body.String(); strings.Contains(body, "kestrel decision") {
+			t.Errorf("%s leaked a restricted document to bob: %s", path, body)
+		}
+	}
+	// Retrieval is the surface that matters most: the chunk text must not
+	// appear even though the note is in a space bob CAN read.
+	if body := asKey(t, h, bobKey, "GET", "/api/retrieve?q=kestrel&k=10", nil).Body.String(); strings.Contains(body, "kestrel decision") {
+		t.Error("retrieval returned a restricted chunk")
+	}
+	// And a member cannot grant themselves access by mapping an identity.
+	if w := asKey(t, h, bobKey, "POST", "/api/identities", map[string]any{
+		"source": "slack", "external": "U_ALICE", "user": "bob"}); w.Code != http.StatusForbidden {
+		t.Errorf("a member mapped an identity: %d", w.Code)
+	}
+}

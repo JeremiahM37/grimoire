@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/JeremiahM37/grimoire/go/internal/markdown"
 )
 
 // fixedSpaces assigns notes to spaces by path prefix, the way the auth package
@@ -160,5 +162,126 @@ func TestCorpusStatsAndWholeCorpusRespectSpaces(t *testing.T) {
 	}
 	if len(empty) != 0 {
 		t.Fatalf("an anonymous caller got %d chunks of the whole corpus", len(empty))
+	}
+}
+
+// Per-note reader lists: the mechanism a pulled document uses when its source
+// already knows who may read it.
+
+func aclNote(t *testing.T, ix *Index, path, body string, readers ...string) {
+	t.Helper()
+	fm := markdown.NewFrontmatter()
+	if len(readers) > 0 {
+		fm.Set("readers", strings.Join(readers, ", "))
+	}
+	if _, err := ix.Vault.Write(path, body, fm); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ix.Upsert(path); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestReaderListsNarrowAccessWithinASpace(t *testing.T) {
+	ix := testIndex(t)
+	aclNote(t, ix, "open.md", "# Open\n\nkestrel for everyone")
+	aclNote(t, ix, "restricted.md", "# Restricted\n\nkestrel for alice only", "user-alice")
+
+	alice := Filter{IncludePrivate: true, User: "user-alice"}
+	bob := Filter{IncludePrivate: true, User: "user-bob"}
+	nobody := Filter{IncludePrivate: true}
+
+	for name, c := range map[string]struct {
+		filter Filter
+		want   []string
+	}{
+		"named reader":   {alice, []string{"open.md", "restricted.md"}},
+		"another member": {bob, []string{"open.md"}},
+		"no account":     {nobody, []string{"open.md"}},
+	} {
+		hits, err := ix.RetrieveFor("kestrel", 10, c.filter)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := map[string]bool{}
+		for _, h := range hits {
+			got[h.Path] = true
+		}
+		if len(got) != len(c.want) {
+			t.Errorf("%s got %v, want %v", name, paths(hits), c.want)
+			continue
+		}
+		for _, w := range c.want {
+			if !got[w] {
+				t.Errorf("%s is missing %s (got %v)", name, w, paths(hits))
+			}
+		}
+	}
+}
+
+// A reader list can only narrow. A connector writing one must not be able to
+// widen access beyond the space the document was pulled into.
+func TestAReaderListCannotWidenAccess(t *testing.T) {
+	ix := testIndex(t)
+	ix.Spaces = fixedSpaces{"private-space/": "space-private"}
+	aclNote(t, ix, "private-space/doc.md", "# Doc\n\nkestrel", "user-bob")
+
+	// Bob is on the reader list but cannot read the space.
+	hits, err := ix.RetrieveFor("kestrel", 10, Filter{
+		IncludePrivate: true, User: "user-bob",
+		Spaces: map[string]bool{CommonsSpace: true}, // not space-private
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(hits) != 0 {
+		t.Fatalf("a reader list granted access to a space the caller cannot read: %v", paths(hits))
+	}
+}
+
+// The same reasoning as spaces: statistics must be computed over what the
+// caller can see, or the contents of restricted documents move visible scores.
+func TestRestrictedDocumentsDoNotMoveVisibleScores(t *testing.T) {
+	ix := testIndex(t)
+	aclNote(t, ix, "visible.md", "# Visible\n\nkestrel migration notes")
+	bob := Filter{IncludePrivate: true, User: "user-bob"}
+
+	before, err := ix.RetrieveFor("kestrel", 5, bob)
+	if err != nil || len(before) == 0 {
+		t.Fatalf("no baseline: %v", err)
+	}
+	for i := 0; i < 30; i++ {
+		aclNote(t, ix, fmt.Sprintf("secret%02d.md", i),
+			"# Secret\n\nkestrel kestrel kestrel", "user-alice")
+	}
+	after, err := ix.RetrieveFor("kestrel", 5, bob)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(after) != len(before) {
+		t.Fatalf("hit count changed: %v -> %v", paths(before), paths(after))
+	}
+	for i := range before {
+		if before[i].Path != after[i].Path || before[i].Score != after[i].Score {
+			t.Fatalf("%s scored %.6f then %.6f — documents the caller cannot read moved it",
+				before[i].Path, before[i].Score, after[i].Score)
+		}
+	}
+}
+
+func TestACLEncodingCannotMatchAPartialID(t *testing.T) {
+	acl := EncodeACL([]string{"abcdef", "ghijkl"})
+	for _, id := range []string{"abcdef", "ghijkl"} {
+		if !aclAllows(acl, id) {
+			t.Errorf("%s was refused by its own list", id)
+		}
+	}
+	for _, id := range []string{"abc", "def", "hij", "", "abcdefg"} {
+		if aclAllows(acl, id) {
+			t.Errorf("%q matched a list it is not on", id)
+		}
+	}
+	if !aclAllows("", "anyone") {
+		t.Error("an empty list must defer to the space, not deny")
 	}
 }

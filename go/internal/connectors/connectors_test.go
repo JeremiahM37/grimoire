@@ -640,3 +640,81 @@ func TestDocumentsRouteToFoldersBySourceStructure(t *testing.T) {
 		}
 	})
 }
+
+// mapOnly resolves the identities a test has decided exist.
+type mapOnly map[string]string
+
+func (m mapOnly) ResolveIdentities(source string, external []string) ([]string, int, error) {
+	var users []string
+	unmapped := 0
+	for _, e := range external {
+		if u, ok := m[e]; ok {
+			users = append(users, u)
+		} else {
+			unmapped++
+		}
+	}
+	return users, unmapped, nil
+}
+
+// A source's reader list must reach the note as accounts, and an identity
+// nobody has mapped must be nobody — the direction that makes an incomplete
+// mapping safe rather than a leak.
+func TestSourceReaderListsBecomeAccountReaderLists(t *testing.T) {
+	src := &stubSource{pages: []Page{{Docs: []Document{
+		{ExternalID: "1", Title: "Private thread", Body: "secret",
+			Readers: []string{"U_ALICE", "U_BOB", "U_STRANGER"}},
+		{ExternalID: "2", Title: "Open thread", Body: "public"},
+	}}}}
+	r, w, _, _ := runnerFixture(t, src)
+	r.Identities = mapOnly{"U_ALICE": "user-alice", "U_BOB": "user-bob"}
+
+	if _, err := r.Run(context.Background(), "c1"); err != nil {
+		t.Fatal(err)
+	}
+	var restricted, open map[string]any
+	for path, fm := range w.fm {
+		if strings.Contains(path, "private") {
+			restricted = fm
+		}
+		if strings.Contains(path, "open") {
+			open = fm
+		}
+	}
+	if restricted == nil || open == nil {
+		t.Fatalf("both documents should be written: %v", keysOf(w.notes))
+	}
+	readers, _ := restricted["readers"].(string)
+	if !strings.Contains(readers, "user-alice") || !strings.Contains(readers, "user-bob") {
+		t.Errorf("mapped identities missing from the reader list: %q", readers)
+	}
+	if strings.Contains(readers, "U_STRANGER") {
+		t.Errorf("an unmapped identity reached the reader list: %q", readers)
+	}
+	if restricted["readers_unmapped"] != "1" {
+		t.Errorf("the count of unmapped readers is not reported: %v", restricted["readers_unmapped"])
+	}
+	if _, has := open["readers"]; has {
+		t.Error("a document whose source said nothing got a reader list anyway")
+	}
+}
+
+// If NOBODY here can read it, pulling it writes a note that answers to no one —
+// visible in the file tree, absent from every search. Skipping is clearer.
+func TestDocumentsNobodyCanReadAreNotPulled(t *testing.T) {
+	src := &stubSource{pages: []Page{{Docs: []Document{
+		{ExternalID: "1", Title: "Nobody", Body: "x", Readers: []string{"U_STRANGER"}},
+	}}}}
+	r, w, _, _ := runnerFixture(t, src)
+	r.Identities = mapOnly{}
+	res, err := r.Run(context.Background(), "c1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Written != 0 || res.Skipped != 1 {
+		t.Fatalf("result = %+v, want it skipped", res)
+	}
+	if len(w.notes) != 0 {
+		t.Fatalf("wrote %v", keysOf(w.notes))
+	}
+}
