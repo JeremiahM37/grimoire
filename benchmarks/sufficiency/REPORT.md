@@ -233,12 +233,62 @@ and a caller that treats `ungrounded` as final will be told the notes are
 silent about things they do say.
 
 Both numbers are properties of a **4-billion-parameter local reader**, not of
-the design. The obvious next experiment is the same 120 questions against a
-larger reader (the harness takes `--reader`), which would separate "small model
-is over-cautious" from "this prompt is over-cautious". That has not been run,
-so nothing here should be read as predicting it.
+the design — which section 5 establishes rather than assumes: the same 120
+questions against a larger reader move balanced accuracy from 62.5% to 79.2%,
+significant on both axes.
 
-## 5. Aside: retrieval latency is not the bottleneck
+## 5. It was the model, not the design
+
+Section 4 ended on an open question: the verdict declines 55% of answerable
+questions, and that could be the design being over-cautious or a
+4-billion-parameter model being over-cautious. The two have opposite
+consequences, so it was worth an hour of GPU time to tell them apart.
+
+Same 120 questions, same prompt, same retrieval, same seed — only
+`GRIMOIRE_LLM_MODEL` changed. Every question took the retrieval path in both
+runs, and `compare_readers.py` refuses to report anything unless the shared
+question ids name the same questions, so the pairing is checked rather than
+assumed.
+
+| reader | refuses unanswerable | answers answerable | balanced |
+|---|---|---|---|
+| `qwen3.5:4b` (product default) | 80.0% | 45.0% | 62.5% |
+| `qwen3.5:35b-a3b` | **95.0%** | **63.3%** | **79.2%** |
+
+**+16.7 points from changing nothing but the reader**, and it is better on both
+axes at once rather than trading one for the other. Paired, on the questions
+where they disagree:
+
+- **unanswerable**: the large reader refuses 9 that the small one let through,
+  and misses none that the small one caught — 0 vs 9, exact McNemar
+  **p = 0.0039**.
+- **answerable**: 17 refused only by the small reader against 6 only by the
+  large one — **p = 0.0347**.
+
+Verdict/answer disagreement falls the same way: **7.4% → 2.5%**. (That is also
+why the metric in section 4 had to be fixed first — measured the old way, as
+"cites a source", the rate barely moved between the two models, which is not
+how a capability defect behaves. The wrong metric was hiding the effect.)
+
+### What this changes
+
+The design is sound and the default reader is the limiting factor. A verdict
+that refuses 95% of unanswerable questions while still answering 63% of
+answerable ones is a usable signal; one that refuses 55% of the answerable ones
+is a tax.
+
+Worth keeping in proportion: 63.3% is answered against evidence that is present
+about **76.8%** of the time (section 4), so the large reader is much closer to
+the retrieval ceiling than to a free lunch. The remaining gap is roughly
+thirteen points, not thirty-five.
+
+And the shipped default stays the 4B model, because that is what runs on a
+laptop with no external service. What changes is the documentation: the verdict
+is worth acting on, and it gets substantially more worth acting on with a
+larger reader — which is a sentence the product can now say with a number
+behind it.
+
+## 6. Aside: retrieval latency is not the bottleneck
 
 Worth measuring before optimizing it. Ranking cost against corpus size
 (`go test -bench BenchmarkRetrieve -benchtime=50x -count=3`, median of three,
