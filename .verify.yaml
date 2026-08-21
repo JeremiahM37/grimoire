@@ -361,3 +361,20 @@ steps:
           -H 'Content-Type: application/json'
           -d '{"q":"what does the verify note link to","smart":true}'
           | grep -q '"supported"'
+
+  - name: the timeline joins the three records it claims to
+    actions:
+      # Assembly, not mechanism -- but the failure mode is a leg silently
+      # returning nothing, which reads as "the agent did nothing" rather than
+      # as a broken join. Assert the shape and the honesty flag, not a count:
+      # a hermetic vault has no credential rows to show.
+      - shell: >
+          curl -sf 'http://127.0.0.1:9119/api/timeline?limit=5'
+          | grep -q '"events"'
+      - shell: >
+          curl -sf 'http://127.0.0.1:9119/api/timeline?limit=5'
+          | grep -q '"credentials_hidden"'
+      - shell: >
+          curl -sf 'http://127.0.0.1:9119/api/timeline?kind=memory&limit=5'
+          | python3 -c "import json,sys; e=json.load(sys.stdin)['events']; assert all(x['kind']=='memory' for x in e), e; print('kind filter holds')"
+
