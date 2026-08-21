@@ -25,6 +25,18 @@ CREATE TABLE IF NOT EXISTS notes(
   created TEXT, updated TEXT,
   space TEXT NOT NULL DEFAULT 'commons'
 );
+-- Requests for a credential grant that nobody has issued yet. An agent that
+-- needs a secret it has no grant for can ask, and a person answers. Without
+-- this the only workable habit is to pre-grant broadly, which is the failure
+-- mode scoped, time-boxed grants exist to prevent. See internal/secrets.
+CREATE TABLE IF NOT EXISTS grant_requests(
+  id TEXT PRIMARY KEY, secret TEXT NOT NULL, grantee TEXT NOT NULL,
+  scope TEXT NOT NULL DEFAULT '', reason TEXT NOT NULL DEFAULT '',
+  ttl INTEGER NOT NULL DEFAULT 900, state TEXT NOT NULL DEFAULT 'pending',
+  created TEXT, decided TEXT, decided_by TEXT, token TEXT NOT NULL DEFAULT '',
+  note TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_grant_requests_state ON grant_requests(state);
 CREATE TABLE IF NOT EXISTS links(
   src TEXT NOT NULL, target TEXT NOT NULL, dst TEXT, alias TEXT DEFAULT '',
   resolved INTEGER DEFAULT 0
@@ -272,6 +284,7 @@ func Open(path string) (*DB, error) {
 const lateIndexes = `
 CREATE INDEX IF NOT EXISTS idx_notes_space ON notes(space);
 CREATE INDEX IF NOT EXISTS idx_vectors_space ON vectors(space);
+CREATE INDEX IF NOT EXISTS idx_notes_untrusted ON notes(untrusted);
 `
 
 // addedColumns are columns introduced after their table shipped.
@@ -283,6 +296,23 @@ var addedColumns = []struct{ table, column, decl string }{
 	// writes and every note that existed before this column did.
 	{"notes", "acl", "TEXT NOT NULL DEFAULT ''"},
 	{"vectors", "acl", "TEXT NOT NULL DEFAULT ''"},
+	// Where the text came from, and whether it may be read as instructions.
+	// Denormalized onto vectors for the same reason space is: the trust
+	// filter has to apply INSIDE ranking, and a join per candidate row would
+	// undo the whole point of the corpus cache. Both default to the trusted
+	// side, so every note that existed before this column keeps behaving as
+	// the operator's own writing — which it was.
+	{"notes", "origin", "TEXT NOT NULL DEFAULT ''"},
+	// When a person last said this note is still true — the `verified:`
+	// frontmatter date. Distinct from `updated`, which a typo bumps: a note
+	// edited to fix a spelling is not a note somebody re-checked.
+	{"notes", "verified", "TEXT NOT NULL DEFAULT ''"},
+	{"notes", "untrusted", "INTEGER NOT NULL DEFAULT 0"},
+	{"vectors", "origin", "TEXT NOT NULL DEFAULT ''"},
+	{"vectors", "untrusted", "INTEGER NOT NULL DEFAULT 0"},
+	// A fact's own origin, which is not the same as the note's: an agent can
+	// write a fact it read in an untrusted document into a memory note it owns.
+	{"memory_entries", "origin", "TEXT NOT NULL DEFAULT ''"},
 }
 
 func hasColumn(conn *sql.DB, table, column string) (bool, error) {

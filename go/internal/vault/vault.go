@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/JeremiahM37/grimoire/go/internal/markdown"
+	"github.com/JeremiahM37/grimoire/go/internal/trust"
 )
 
 // ErrVault is the base for every rejection, so callers can distinguish a
@@ -145,7 +146,20 @@ type Note struct {
 	Encrypted   bool
 	MTime       float64
 	Hash        string
+
+	// Origin is where the text came from — "connector:slack:C123",
+	// "web:example.com", or empty for a note the operator wrote. Trust is
+	// derived from it (see internal/trust) rather than stored on its own, so
+	// "why is this untrusted?" always has an answer in the file itself.
+	Origin string
+	// Trust is the derived level, resolved once here so that everything
+	// downstream — the index, retrieval, the reader prompt — agrees on it
+	// without re-implementing the rule.
+	Trust trust.Level
 }
+
+// Untrusted reports whether this note's text may be read as instructions.
+func (n *Note) Untrusted() bool { return n.Trust == trust.Untrusted }
 
 // NoteFromText parses note text into its indexed form.
 func NoteFromText(rel, text string, mtime float64) *Note {
@@ -161,6 +175,7 @@ func NoteFromText(rel, text string, mtime float64) *Note {
 	if !encrypted {
 		links = markdown.ExtractLinks(body)
 	}
+	origin := fm.StringVal("origin")
 	return &Note{
 		Path:        rel,
 		Title:       markdown.DeriveTitle(fm, body, stem),
@@ -173,6 +188,8 @@ func NoteFromText(rel, text string, mtime float64) *Note {
 		Encrypted:   encrypted,
 		MTime:       mtime,
 		Hash:        hashText(text),
+		Origin:      origin,
+		Trust:       trust.Of(origin, fm.StringVal("trust")),
 	}
 }
 

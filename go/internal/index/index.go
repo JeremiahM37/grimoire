@@ -276,11 +276,16 @@ func (ix *Index) writeNoteRows(note *vault.Note) error {
 	// a reindex and is visible to whoever opens the file — the same property
 	// that makes a path prefix a better boundary than a database row.
 	acl := EncodeACL(splitList(note.Frontmatter.StringVal("readers")))
+	untrusted := 0
+	if note.Untrusted() {
+		untrusted = 1
+	}
 	if err := ix.DB.Exec(
-		"INSERT INTO notes(path,title,body,frontmatter_json,private,mtime,hash,created,updated,space,acl)"+
-			" VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+		"INSERT INTO notes(path,title,body,frontmatter_json,private,mtime,hash,created,updated,space,acl,origin,untrusted,verified)"+
+			" VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
 		rel, note.Title, note.Body, fmJSON, private, note.MTime, note.Hash,
 		note.Frontmatter.StringVal("created"), note.Frontmatter.StringVal("updated"), space, acl,
+		note.Origin, untrusted, note.Frontmatter.StringVal("verified"),
 	); err != nil {
 		return err
 	}
@@ -341,11 +346,17 @@ func (ix *Index) embedNote(note *vault.Note) error {
 	if note.Private {
 		private = 1
 	}
+	untrusted := 0
+	if note.Untrusted() {
+		untrusted = 1
+	}
 	for i, c := range chunks {
 		if err := ix.DB.Exec(
-			"INSERT INTO vectors(note,chunk_idx,chunk,embedding,private,space,acl) VALUES(?,?,?,?,?,?,?)",
+			"INSERT INTO vectors(note,chunk_idx,chunk,embedding,private,space,acl,origin,untrusted)"+
+				" VALUES(?,?,?,?,?,?,?,?,?)",
 			note.Path, i, c, Pack(vecs[i]), private, ix.spaceOf(note.Path),
-			EncodeACL(splitList(note.Frontmatter.StringVal("readers")))); err != nil {
+			EncodeACL(splitList(note.Frontmatter.StringVal("readers"))),
+			note.Origin, untrusted); err != nil {
 			return err
 		}
 	}
