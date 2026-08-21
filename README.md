@@ -308,9 +308,10 @@ govern everything else govern who may vote.
 A retrieval layer that always returns its ten best chunks always looks
 confident. Ask it something your notes never covered and it returns ten
 on-topic passages with respectable scores, and the reader writes a fluent
-wrong answer from them — the failure Google's *sufficient context* work
-measured as an error rate jumping from 10% with no context to 66% with
-insufficient context.
+wrong answer from them. Google's *sufficient context* work measured that
+directly: for Gemma, the wrong-answer rate went from 10.2% with **no** context
+to 66.1% with **insufficient** context — retrieval made hallucination more
+likely, not less, because context makes a model confident.
 
 The obvious fix is a similarity threshold. **It does not work, and it is not
 close.** Measured on the 446 adversarial questions LoCoMo ships and every
