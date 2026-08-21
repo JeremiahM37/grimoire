@@ -180,7 +180,7 @@ measured at its best).
 |---|---|---|---|
 | **verdict** | **80.0%** | 45.0% | **62.5%** |
 | prose match | 78.3% | 46.7% | 62.5% |
-| retrieval threshold | — | — | 43.9% (AUC, section 1) |
+| retrieval threshold | — | — | 55.0% (AUC, section 1) |
 
 Every reply carried a parseable verdict — **0 of 120 unknown**.
 
@@ -188,7 +188,7 @@ Every reply carried a parseable verdict — **0 of 120 unknown**.
 
 **A reader can do what no retrieval statistic could.** 80% of unanswerable
 questions correctly refused, against a retrieval-side family that spans
-0.414–0.581 and whose best member is below a coin flip. The judgement has to be
+0.414–0.581 and whose best member barely clears one. The judgement has to be
 made by something that reads, and putting it in the completion that already
 happens makes it free.
 

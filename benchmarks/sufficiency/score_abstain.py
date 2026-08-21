@@ -14,6 +14,19 @@ import sys
 from pathlib import Path
 
 
+def _retrieval_threshold(path="signals.jsonl"):
+    """The standard heuristic's AUC, read from the probe's committed output."""
+    p = Path(__file__).resolve().parent / path
+    if not p.exists():
+        return None
+    from analyse import auc
+    recs = [json.loads(l) for l in p.open()]
+    pos = [r["top_cosine"] for r in recs if r["label"] == "answerable"]
+    neg = [r["top_cosine"] for r in recs if r["label"] == "unanswerable"]
+    return auc(pos, neg) if pos and neg else None
+
+
+
 def mcnemar(b: int, c: int) -> float:
     """Exact two-sided binomial test on the discordant pairs."""
     n = b + c
@@ -42,8 +55,16 @@ def main(path="abstain.jsonl"):
         tnr = rate(U, pred)
         tpr = 1 - rate(A, pred)
         print(f"{name:20s} {tnr:20.1%} {tpr:19.1%} {(tnr + tpr) / 2:12.1%}")
-    print(f"{'retrieval threshold':20s} {'—':>20s} {'—':>19s} {0.439:12.1%}"
-          "   (AUC from probe.py; below chance)")
+    # Computed from the retrieval probe's own output rather than pasted in. A
+    # hardcoded baseline goes stale silently: this one still read 43.9% after
+    # the probe was re-sampled and the real figure became 0.550.
+    threshold = _retrieval_threshold()
+    if threshold is None:
+        print(f"{'retrieval threshold':20s} {'—':>20s} {'—':>19s} "
+              f"{'(run probe.py)':>12s}")
+    else:
+        print(f"{'retrieval threshold':20s} {'—':>20s} {'—':>19s} {threshold:12.1%}"
+              "   (top_cosine AUC from signals.jsonl)")
 
     # Where the verdict and the prose baseline disagree, on unanswerable
     # questions: the cell that matters, since that is where a caller either
