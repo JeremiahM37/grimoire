@@ -200,7 +200,13 @@ describe('against the real AI SDK', { skip: ai ? false : 'the ai package is not 
     assert.equal(seen.length, 1, `requests: ${seen}`)
     assert.ok(seen[0].includes('q=indentation'), seen[0])
     assert.ok(seen[0].includes('limit=3'), seen[0])
-    assert.equal(result.toolResults[0].toolName, 'recallMemory')
-    assert.equal(result.toolResults[0].output[0].text, 'the user prefers tabs')
+    // Read the results off the steps, not off `result.toolResults`: v7 flat-maps
+    // every step, v6 returns only the final one — and the final step here is the
+    // text, so on v6 the top-level list is empty and the tool looks unexecuted.
+    // Which major CI installs is not ours to choose: `ai` 7 needs node >= 22, so
+    // on the node 20 the workflow pins, `npm install ai` resolves 6.
+    const toolResults = result.steps.flatMap((step) => step.toolResults)
+    assert.equal(toolResults[0].toolName, 'recallMemory')
+    assert.equal(toolResults[0].output[0].text, 'the user prefers tabs')
   })
 })
