@@ -1117,6 +1117,41 @@ async function openBeliefChanges() {
   } catch (e) { b.innerHTML = `<p class="vault-note">${esc(e.message)}</p>`; }
 }
 
+/* Everything an agent did, as one sequence: reads, memory writes, credentials.
+   Three records that already existed and were never joined — the order is the
+   thing you are trying to read, so refusals stay in line rather than being
+   filed on their own screen. */
+async function openAgentTimeline() {
+  $("#inspect-title").textContent = "⏱ Everything your agents did";
+  $("#inspect-modal").classList.remove("hidden");
+  const b = $("#inspect-body");
+  b.innerHTML = '<p class="vault-note">Loading…</p>';
+  try {
+    const d = await api("/timeline?limit=100");
+    const icon = { read: "👁", memory: "🧠", credential: "🔑" };
+    const hidden = d.credentials_hidden
+      ? '<p class="vault-note">🔒 Credential events are hidden while the vault is locked — unlock it to see the whole sequence.</p>'
+      : "";
+    if (!d.events.length) {
+      b.innerHTML = hidden + '<p class="vault-note">Nothing recorded yet.</p>';
+      return;
+    }
+    b.innerHTML = hidden + d.events.map((e) => `
+      <div class="inspect-chunk${e.denied ? " untrusted" : ""}">
+        <div class="ic-head">
+          <span>${icon[e.kind] || "·"} ${esc(e.actor || "unknown")}</span>
+          <span class="ic-score">${esc(e.at || "")}</span>
+        </div>
+        <div class="ic-text">${e.denied ? "⚠ " : ""}${esc(e.what)}
+          ${e.path ? `<div class="replaced"><a class="wikilink" data-path="${esc(e.path)}">${esc(e.path)}</a></div>` : ""}
+        </div>
+      </div>`).join("");
+    b.querySelectorAll("a.wikilink").forEach((a) => (a.onclick = () => {
+      $("#inspect-modal").classList.add("hidden"); openNote(a.dataset.path);
+    }));
+  } catch (e) { b.innerHTML = `<p class="vault-note">${esc(e.message)}</p>`; }
+}
+
 /* Agents asking for a credential they have no grant for. */
 async function openGrantRequests() {
   $("#inspect-title").textContent = "🔑 Credential requests";
@@ -1206,6 +1241,7 @@ const COMMANDS = [
   { icon: "↻", name: "What your agents changed their mind about", run: openBeliefChanges },
   { icon: "🔑", name: "Credential requests (approve or deny)", run: openGrantRequests },
   { icon: "👁", name: "Unusual reading (audit-trail bursts)", run: openReadAnomalies },
+  { icon: "⏱", name: "Everything your agents did (one timeline)", run: openAgentTimeline },
   { icon: "🤖", name: "Agent memories (recent)", run: async () => {
     // shape=notes, not the default: /api/memory returns individual FACTS now,
     // ordered by a minute-resolution timestamp with ties broken on a content
