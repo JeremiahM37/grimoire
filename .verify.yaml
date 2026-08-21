@@ -8,7 +8,11 @@ backend: web
 launch:
   # port 9119, NOT 9111 — the production service runs on 9111; using it here
   # would fail to bind, silently test against production, and pollute the live vault.
-  command: ./go/grimoire
+  # Wipe the scratch vaults first: every memory step below asserts a first
+  # write is an ADD, and a vault left over from the previous run answers NOOP
+  # ("already recorded") instead — three steps fail for state, not for code.
+  # `exec` keeps the pid the runner kills.
+  command: sh -c 'rm -rf /tmp/grimoire-verify-vault /tmp/grimoire-verify-cli && exec ./go/grimoire'
   url: http://127.0.0.1:9119
   env:
     GRIMOIRE_VAULT: /tmp/grimoire-verify-vault
