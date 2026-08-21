@@ -20,9 +20,10 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Mapping
+from typing import Any, Iterable, Mapping, TypedDict
 
 __all__ = [
+    "Answer",
     "Grimoire",
     "GrimoireError",
     "NotFound",
@@ -118,6 +119,24 @@ class Memory:
             score=float(raw.get("score", 0.0) or 0.0),
             scores=raw.get("scores") or {},
         )
+
+
+class Answer(TypedDict):
+    """What :meth:`Grimoire.ask` returns.
+
+    A TypedDict rather than a dataclass: it is the server's JSON, and callers
+    already index it like a dict. This adds the editor's knowledge of the keys
+    without changing what comes back.
+    """
+
+    answer: str
+    citations: list[dict[str, Any]]
+    #: "retrieved" when passages were ranked, "full" when the whole corpus fit.
+    mode: str
+    #: "grounded" | "ungrounded" | "unknown". "unknown" means nothing judged
+    #: it — the offline extractive floor quotes passages rather than judging
+    #: them — and is NOT the same as grounded.
+    supported: str
 
 
 @dataclass(frozen=True)
@@ -386,8 +405,15 @@ class Grimoire:
 
     # ---- knowledge ----------------------------------------------------
 
-    def ask(self, question: str, *, limit: int = 8) -> dict[str, Any]:
-        """Ask the knowledge base, with citations."""
+    def ask(self, question: str, *, limit: int = 8) -> "Answer":
+        """Ask the knowledge base, with citations and a grounding verdict.
+
+        The ``supported`` key is the one worth branching on: ``"ungrounded"``
+        means the notes are on-topic but do not contain the answer, and acting
+        on it is the point — no retrieval score can tell you that (a
+        top-cosine threshold separates answerable from unanswerable questions
+        at AUC 0.55, and inverts on multi-hop).
+        """
         return self._request("POST", "/api/ask", {"question": question, "k": limit})
 
     def search_notes(self, query: str, *, limit: int = 20) -> list[dict[str, Any]]:

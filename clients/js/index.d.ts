@@ -116,6 +116,27 @@ export interface Graph {
   entries: Memory[]
 }
 
+/** What `ask` returns. */
+export interface Answer {
+  answer: string
+  citations: Array<{ path: string; title: string; score: number }>
+  /** "retrieved" when passages were ranked, "full" when the whole corpus fit. */
+  mode: 'retrieved' | 'full'
+  /**
+   * Whether the notes actually supported the answer.
+   *
+   * `grounded` — the notes state what was asked.
+   * `ungrounded` — they are on-topic but do not contain the answer.
+   * `unknown` — nothing judged it (the offline extractive floor quotes
+   * passages rather than judging them); NOT the same as grounded.
+   *
+   * Judged by the reader in the same completion as the answer, because no
+   * retrieval score can do it — a top-cosine threshold separates answerable
+   * from unanswerable questions at AUC 0.55 and inverts on multi-hop.
+   */
+  supported: 'grounded' | 'ungrounded' | 'unknown'
+}
+
 export interface Scopes {
   agents: Record<string, number>
   sessions: Record<string, number>
@@ -179,7 +200,7 @@ export class Grimoire {
   }>
   consolidate(options?: { topic?: string; path?: string }): Promise<Record<string, unknown>>
 
-  ask(question: string, options?: { limit?: number }): Promise<Record<string, unknown>>
+  ask(question: string, options?: { limit?: number }): Promise<Answer>
   searchNotes(query: string, options?: { limit?: number }): Promise<Array<Record<string, unknown>>>
   readNote(path: string): Promise<Record<string, unknown>>
   writeNote(path: string, body: string, frontmatter?: Record<string, unknown>): Promise<Record<string, unknown>>
