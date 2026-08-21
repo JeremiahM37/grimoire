@@ -88,17 +88,21 @@ def main(path="abstain.jsonl"):
                       f"{1 - rate(sub, verdict_abstain):22.1%}")
 
     # Verdict/answer disagreement: the model says the notes do not support an
-    # answer and then writes a cited one anyway. It is a defect of the signal,
-    # not of the questions, and reporting the rate is the difference between a
-    # measurement and an advertisement.
-    import re as _re
-    cited = _re.compile(r"\[\d+\]")
+    # answer and then writes one anyway.
+    #
+    # NOT "cites a source", which is what this counted first and got wrong. The
+    # prompt asks an ungrounded reply to say what the notes DO NOT say, and the
+    # useful way to do that is to cite what they do — "Gina made a limited
+    # edition line of hoodies [2], but the notes never mention Jon making one"
+    # is a correct refusal, and counting it as a defect inflated the rate
+    # roughly threefold. The real defect is a reply that claims no support and
+    # then reads as a plain answer, with no abstention anywhere in it.
     inconsistent = [r for r in recs
-                    if r["supported"] == "ungrounded" and cited.search(r["answer"])]
+                    if r["supported"] == "ungrounded" and not r["prose_abstained"]]
     if inconsistent:
         print(f"\nverdict/answer disagreement: {len(inconsistent)} of "
               f"{sum(1 for r in recs if r['supported'] == 'ungrounded')} "
-              f"'ungrounded' replies still cite sources "
+              f"'ungrounded' replies answer anyway, with no abstention in the text "
               f"({len(inconsistent) / max(1, sum(1 for r in recs if r['supported'] == 'ungrounded')):.1%})")
 
     unknown = sum(1 for r in recs if r["supported"] == "unknown")

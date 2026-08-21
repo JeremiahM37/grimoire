@@ -207,9 +207,17 @@ The verdict refuses **55% of answerable questions**. That is not retrieval
 missing the evidence: measured on the same binary and embedder, evidence-turn
 recall is **76.8%** (`../locomo/dev_recall_http.py`, 203 evidence turns) — so
 the evidence usually reached the context and the reader declined anyway. It is
-corroborated from inside the run: **18.5% of `ungrounded` replies still cite
-sources**, the model judging its own evidence insufficient and then answering
-from it.
+corroborated from inside the run: **7.4% of `ungrounded` replies answer
+anyway** — no abstention anywhere in the text — the model judging its own
+evidence insufficient and then answering from it.
+
+> *An earlier version of this paragraph said 18.5%, counting any `ungrounded`
+> reply that cited a source. That was wrong: the prompt asks such a reply to
+> say what the notes do NOT say, and the useful way to do that is to cite what
+> they do — "Gina made a limited edition line of hoodies [2], but the notes
+> never mention Jon making one" is a correct refusal, not a contradiction. The
+> metric now looks for a reply that claims no support and contains no
+> abstention at all, which is a third of the rate.*
 
 So on this configuration the verdict trades away roughly half of the
 answerable questions to catch four fifths of the unanswerable ones. For an
