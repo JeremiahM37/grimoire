@@ -350,3 +350,20 @@ func (l *Log) Prune(days int) (int64, error) {
 	}
 	return int64(n), nil
 }
+
+// Count is how many records the trail holds.
+//
+// It answers a question an empty anomaly scan cannot: on a single-user
+// instance nothing is restricted, so nothing is ever recorded, and "no
+// anomalies" there means "not applicable" rather than "all clear". A surface
+// that cannot tell those apart reassures people about a check that never ran.
+func (l *Log) Count() int {
+	if l == nil || l.db == nil {
+		return 0
+	}
+	n, err := l.db.Count("SELECT COUNT(*) FROM read_audit")
+	if err != nil {
+		return 0
+	}
+	return n
+}
