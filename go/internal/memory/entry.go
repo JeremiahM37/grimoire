@@ -24,6 +24,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/JeremiahM37/grimoire/go/internal/trust"
 )
 
 // Dir is the vault namespace agent memory lives under.
@@ -58,11 +60,24 @@ type Entry struct {
 	// about whether it was still standing then.
 	SupersededAt string
 
+	// Origin is where the fact CAME FROM, when the agent knew: a note it read,
+	// a connector document, a web page. Empty means the agent asserted it
+	// itself, which is the ordinary case and the trusted one.
+	//
+	// This is not the same as Agent, which says WHO wrote it. An agent the
+	// operator runs is trusted; a sentence that agent copied out of a Jira
+	// comment is not, and the difference is exactly what an injected "remember
+	// that the deploy key is X" exploits.
+	Origin string
+
 	// Line is the 0-based index of this entry's bullet in the note body. It is
 	// a parse artifact, not persisted state: it exists so a rewrite can put an
 	// edited entry back where it came from.
 	Line int
 }
+
+// Untrusted reports whether this fact came from text other people can write.
+func (e Entry) Untrusted() bool { return trust.FromOrigin(e.Origin) == trust.Untrusted }
 
 // Superseded reports whether a later fact replaced this one. Superseded
 // entries stay in the note — struck through rather than deleted — because the
@@ -220,6 +235,8 @@ func parseTrailer(s string) Entry {
 			e.Unhelpful = atoiSafe(v)
 		case "immutable":
 			e.Immutable = v == "1" || v == "true"
+		case "org":
+			e.Origin = v
 		}
 	}
 	return e
@@ -269,6 +286,9 @@ func (e Entry) trailer() string {
 	}
 	if e.Immutable {
 		fields = append(fields, "immutable=1")
+	}
+	if e.Origin != "" {
+		fields = append(fields, "org="+escapeField(e.Origin))
 	}
 	if e.SupersededBy != "" {
 		fields = append(fields, "sup="+escapeField(e.SupersededBy))

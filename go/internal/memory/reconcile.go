@@ -3,6 +3,8 @@ package memory
 import (
 	"regexp"
 	"strings"
+
+	"github.com/JeremiahM37/grimoire/go/internal/trust"
 )
 
 // Reconciliation — deciding what a new fact does to what is already known.
@@ -18,6 +20,18 @@ import (
 // when one is not. The rules are not a degraded mode: they cover the shape
 // that actually recurs — an attribute of a subject changing value — and they
 // are deterministic, which is what lets the behaviour be tested at all.
+//
+// There are TWO rule paths, and the second exists because the first was
+// measured and found to miss almost everything real:
+//
+//	Attribute   "SUBJECT PREDICATE VALUE" — the shape an agent writes once it
+//	            has decided what the fact is
+//	ValueUpdate same discriminative terms, different value of the same kind —
+//	            the shape a fact ARRIVES in when a person states it twice,
+//	            months apart, in two different sentences
+//
+// On LongMemEval's knowledge-update transcripts the first path fired on 0.8%
+// of writes. See slots.go.
 
 // Op is what a fact does to the existing set.
 type Op string
@@ -200,9 +214,30 @@ const (
 // Candidates should be the entries retrieval considered closest; the caller
 // decides how many, and passing all of them is correct for a small vault.
 func Decide(fact string, candidates []Entry) Decision {
+	return DecideFrom(fact, "", candidates)
+}
+
+// DecideFrom is Decide for a fact with a known origin.
+//
+// The rule it adds is one line and is the whole point: a fact whose source is
+// text other people can write MAY NOT supersede or retract a fact that came
+// from the operator. Without it, the memory engine is the most attractive
+// target in the system — an agent that reads a poisoned Jira comment and
+// dutifully remembers "the deploy host is now evil.example" does not merely
+// answer one question wrongly, it overwrites the true fact, strikes it
+// through, and every later recall returns the attacker's version. Reconciling
+// is a WRITE, and a write is exactly what untrusted text must not be able to
+// direct.
+//
+// It is deliberately the same shape as Immutable: an untrusted fact is not
+// discarded — discarding it would lose information an operator might want to
+// see — it is added ALONGSIDE, where a person and a reader can both see the
+// two claims disagree. Silence would be worse than a contradiction.
+func DecideFrom(fact, origin string, candidates []Entry) Decision {
 	if strings.TrimSpace(fact) == "" {
 		return Decision{Op: OpNoop, Why: "empty"}
 	}
+	untrusted := trust.FromOrigin(origin) == trust.Untrusted
 	negated := IsNegation(fact)
 	subject, predicate, value, structured := Attribute(fact)
 
@@ -224,7 +259,7 @@ func Decide(fact string, candidates []Entry) Decision {
 		// changed. This is checked before similarity because the two texts can
 		// be lexically distant ("prefers tabs" vs "prefers four-space
 		// indentation") and still be the same belief being overwritten.
-		if structured && !c.Immutable {
+		if structured && !c.Immutable && !blocks(untrusted, c) {
 			cs, cp, cv, cok := Attribute(c.Text)
 			if cok && cs == subject && cp == predicate {
 				if cv == value && !negated {
@@ -239,6 +274,18 @@ func Decide(fact string, candidates []Entry) Decision {
 					Why: "supersedes: " + c.Text}
 			}
 		}
+		// The value-slot path. Tried AFTER Attribute, so a canonical fact
+		// keeps taking the precise route, and before the similarity
+		// fallback, because "same slot, different number" is a stronger
+		// signal than lexical overlap and means the opposite thing: two
+		// statements that share most of their words but differ in the one
+		// number are a correction, not a duplicate.
+		if !negated && !c.Immutable && !blocks(untrusted, c) {
+			if kind, ok := ValueUpdate(c.Text, fact); ok {
+				return Decision{Op: OpUpdate, Text: fact, Target: c.ID,
+					Why: "supersedes (" + kind + " value changed): " + c.Text}
+			}
+		}
 		if sim > bestSim {
 			bestSim, bestEntry, haveBest = sim, c, true
 		}
@@ -250,12 +297,30 @@ func Decide(fact string, candidates []Entry) Decision {
 	case bestSim >= duplicateThreshold && !negated:
 		return Decision{Op: OpNoop, Target: bestEntry.ID,
 			Why: "already recorded: " + bestEntry.Text}
-	case negated && bestSim >= relatedThreshold && !bestEntry.Immutable:
+	case negated && bestSim >= relatedThreshold && !bestEntry.Immutable &&
+		!blocks(untrusted, bestEntry):
 		return Decision{Op: OpDelete, Target: bestEntry.ID,
 			Why: "retracts: " + bestEntry.Text}
+	case untrusted && blocks(untrusted, bestEntry):
+		// Recorded, not silently dropped, and the reason is in the response so
+		// a caller can surface the disagreement rather than discovering later
+		// that two contradictory facts are both being recalled.
+		return Decision{Op: OpAdd, Text: fact,
+			Why: "recorded alongside (untrusted source may not supersede): " + bestEntry.Text}
 	default:
 		return Decision{Op: OpAdd, Text: fact, Why: "nothing related on file"}
 	}
+}
+
+// blocks reports whether an untrusted new fact is forbidden from superseding
+// this existing entry.
+//
+// Untrusted-over-untrusted is allowed: a connector re-pulling a document that
+// has since been edited should update what it said before, and refusing that
+// would make every re-sync accumulate a contradiction. What is refused is a
+// stranger's text overwriting the operator's.
+func blocks(untrusted bool, existing Entry) bool {
+	return untrusted && !existing.Untrusted()
 }
 
 // sentenceRE splits on sentence terminators followed by whitespace. Clause
