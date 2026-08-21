@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -1157,5 +1158,60 @@ func TestVectorSearchNeedsSomethingToSearchWith(t *testing.T) {
 	if w := do(t, h, "POST", "/api/memory/search",
 		map[string]any{"limit": 5}); w.Code != http.StatusBadRequest {
 		t.Errorf("empty search = %d, want 400", w.Code)
+	}
+}
+
+// The value-slot rule reaching the engine through HTTP, and staying inside the
+// bounds every other supersession respects.
+func TestAValueUpdateSupersedesThroughTheAPI(t *testing.T) {
+	_, h := testServer(t)
+	remember(t, h, map[string]any{"topic": "run", "agent": "probe",
+		"text": "I set a personal best time in the charity 5K run with a time of 27:12"})
+	out := remember(t, h, map[string]any{"topic": "run", "agent": "probe",
+		"text": "I'm hoping to beat my personal best time of 25:50 this time around"})
+	if out["op"] != "UPDATE" {
+		t.Fatalf("op = %v (%v) — a numeric correction was stored beside the "+
+			"fact it corrects", out["op"], out["results"])
+	}
+
+	// Recall returns the CURRENT value only. That is the whole point: the
+	// reader is not handed two numbers and asked to pick.
+	var facts []map[string]any
+	decode(t, do(t, h, "GET", "/api/memory?q=personal+best+5K+time&limit=10", nil), &facts)
+	var texts []string
+	for _, f := range facts {
+		texts = append(texts, fmt.Sprint(f["text"]))
+	}
+	joined := strings.Join(texts, " | ")
+	if !strings.Contains(joined, "25:50") {
+		t.Errorf("current value missing from recall: %s", joined)
+	}
+	if strings.Contains(joined, "27:12") {
+		t.Errorf("superseded value is still recalled: %s", joined)
+	}
+
+	// …and the old value is still IN the note, struck through, because that is
+	// what makes an agent's correction reviewable.
+	var note map[string]any
+	decode(t, do(t, h, "GET", "/api/notes/memory/run.md", nil), &note)
+	if !strings.Contains(fmt.Sprint(note["body"]), "27:12") {
+		t.Errorf("the superseded value was deleted rather than struck through")
+	}
+}
+
+func TestAValueUpdateIsReportedInTheBeliefDigest(t *testing.T) {
+	// A numeric correction is exactly the kind of change a person wants to see
+	// in the weekly digest, and it only appears there if it reconciled.
+	_, h := testServer(t)
+	remember(t, h, map[string]any{"topic": "run", "agent": "probe",
+		"text": "I set a personal best time in the charity 5K run with a time of 27:12"})
+	remember(t, h, map[string]any{"topic": "run", "agent": "probe",
+		"text": "I'm hoping to beat my personal best time of 25:50 this time around"})
+
+	var out map[string]any
+	decode(t, do(t, h, "GET", "/api/memory/changes?since=1d", nil), &out)
+	body := fmt.Sprint(out)
+	if !strings.Contains(body, "changed") || !strings.Contains(body, "27:12") {
+		t.Errorf("the digest does not show the correction:\n%s", body)
 	}
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/JeremiahM37/grimoire/go/internal/embed"
 	"github.com/JeremiahM37/grimoire/go/internal/fts"
+	"github.com/JeremiahM37/grimoire/go/internal/trust"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
 )
 
@@ -38,6 +39,12 @@ type searchHit struct {
 	Snippet   string `json:"snippet"`
 	Body      string `json:"body,omitempty"`
 	Excerpted bool   `json:"excerpted,omitempty"`
+	// Provenance travels with a search result too. Search is how an agent
+	// finds a note before reading it, so a result that does not say where the
+	// text came from just moves the decision one call later, to a surface that
+	// has forgotten to ask.
+	Origin string `json:"origin,omitempty"`
+	Trust  string `json:"trust"`
 }
 
 func (s *Server) search(w http.ResponseWriter, r *http.Request) {
@@ -50,6 +57,10 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	full := truthy(r.URL.Query().Get("full"))
+	// Full-text search does not go through the ranking filter, so the trust
+	// floor has to be applied here by hand. It is the same parameter — a
+	// caller must not have to learn which of two search surfaces it reached.
+	trustedOnly := wantsTrustedOnly(r)
 
 	// operators: tag:X  is:pinned  path:X — everything else is full text
 	wantPinned := false
@@ -69,12 +80,16 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	type row struct{ path, title, snippet, acl string }
+	type row struct {
+		path, title, snippet, acl, origin string
+		untrusted                         bool
+	}
 	var rows []row
 
 	if len(terms) > 0 {
 		query := "SELECT f.path, f.title, snippet(fts, 2, '[', ']', ' … ', 12) AS snippet, " +
-			"COALESCE(n.acl,'') FROM fts f LEFT JOIN notes n ON n.path=f.path " +
+			"COALESCE(n.acl,''), COALESCE(n.origin,''), COALESCE(n.untrusted,0) " +
+			"FROM fts f LEFT JOIN notes n ON n.path=f.path " +
 			"WHERE fts MATCH ? ORDER BY bm25(fts) LIMIT 500"
 		// The closure returns an error rather than swallowing one. Returning
 		// an empty slice on failure made a broken query indistinguishable from
@@ -90,9 +105,11 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 			defer rs.Close()
 			for rs.Next() {
 				var x row
-				if err := rs.Scan(&x.path, &x.title, &x.snippet, &x.acl); err != nil {
+				var untrusted int
+				if err := rs.Scan(&x.path, &x.title, &x.snippet, &x.acl, &x.origin, &untrusted); err != nil {
 					return nil, err
 				}
+				x.untrusted = untrusted != 0
 				out = append(out, x)
 			}
 			return out, rs.Err()
@@ -113,18 +130,21 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 		}
 	} else if opTag != "" || wantPinned || pathLike != "" {
 		rs, err := s.Index.DB.Query(
-			"SELECT path, title, '', acl FROM notes ORDER BY updated DESC, path LIMIT 500")
+			"SELECT path, title, '', acl, COALESCE(origin,''), COALESCE(untrusted,0) " +
+				"FROM notes ORDER BY updated DESC, path LIMIT 500")
 		if err != nil {
 			writeErr(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 		for rs.Next() {
 			var x row
-			if err := rs.Scan(&x.path, &x.title, &x.snippet, &x.acl); err != nil {
+			var untrusted int
+			if err := rs.Scan(&x.path, &x.title, &x.snippet, &x.acl, &x.origin, &untrusted); err != nil {
 				rs.Close()
 				writeErr(w, http.StatusInternalServerError, err.Error())
 				return
 			}
+			x.untrusted = untrusted != 0
 			rows = append(rows, x)
 		}
 		err = rs.Err()
@@ -150,6 +170,9 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 		if !s.canReadNote(r, x.path, x.acl) {
 			continue
 		}
+		if trustedOnly && x.untrusted {
+			continue
+		}
 		if opTag != "" {
 			var one int
 			if s.Index.DB.QueryRow("SELECT 1 FROM tags WHERE note=? AND tag=?",
@@ -163,7 +186,11 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 		if wantPinned && !s.isPinned(x.path) {
 			continue
 		}
-		hit := searchHit{Path: x.path, Title: x.title, Snippet: x.snippet}
+		hit := searchHit{Path: x.path, Title: x.title, Snippet: x.snippet,
+			Origin: x.origin, Trust: trust.FromOrigin("").String()}
+		if x.untrusted {
+			hit.Trust = trust.NameUntrusted
+		}
 		if full {
 			var body string
 			if s.Index.DB.QueryRow("SELECT body FROM notes WHERE path=?",

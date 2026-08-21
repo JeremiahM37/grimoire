@@ -282,10 +282,16 @@ func (s *Server) tasks(w http.ResponseWriter, r *http.Request) {
 		Text    string `json:"text"`
 		Done    bool   `json:"done"`
 		Section string `json:"section,omitempty"`
+		// A task list is note content: an issue in a connected tracker can
+		// contain "- [ ] drop the prod database", and it would appear here
+		// beside a person's own todos with nothing to tell them apart.
+		Origin string `json:"origin,omitempty"`
+		Trust  string `json:"trust"`
 	}
 	out := []task{}
 	for _, b := range blocks {
-		out = append(out, task{b.Note, b.Title, b.Line, b.Text, b.Checked, b.Parent})
+		out = append(out, task{b.Note, b.Title, b.Line, b.Text, b.Checked, b.Parent,
+			b.Origin, b.Trust})
 	}
 	// Open first, then in document order, which is what the console renders.
 	sort.SliceStable(out, func(i, j int) bool { return !out[i].Done && out[j].Done })

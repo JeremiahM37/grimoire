@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -983,5 +984,97 @@ func shotgun(aim string, all []string) map[string]any {
 		"key": "k", "value": "v", "text": "x",
 		"body": "# Overwritten\n\nBOBWASHERE",
 		"doc":  map[string]any{}, "frontmatter": map[string]any{},
+	}
+}
+
+// The trail read back: bursts, over HTTP, on the route an operator reaches.
+
+func TestAnomaliesRouteReportsASweepAndItsThresholds(t *testing.T) {
+	s, h := testServer(t)
+	withReads(t, s)
+	aliceKey := makeUser(t, s, h, "", "alice", "admin")
+	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
+
+	// Bob writes a folder of restricted notes and then opens all of them.
+	for i := 0; i < 25; i++ {
+		p := fmt.Sprintf("users/bob/doc-%02d.md", i)
+		if w := asKey(t, h, bobKey, "POST", "/api/notes", map[string]any{
+			"path": p, "body": "# Doc\n\nkestrel"}); w.Code != http.StatusCreated {
+			t.Fatalf("create %s = %d", p, w.Code)
+		}
+		if w := asKey(t, h, bobKey, "GET", "/api/notes/"+p, nil); w.Code != http.StatusOK {
+			t.Fatalf("read %s = %d", p, w.Code)
+		}
+	}
+
+	var out map[string]any
+	w := asKey(t, h, aliceKey, "GET", "/api/admin/reads/anomalies", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("anomalies = %d: %s", w.Code, w.Body)
+	}
+	decode(t, w, &out)
+
+	rows, _ := out["anomalies"].([]any)
+	if len(rows) == 0 {
+		t.Fatalf("a 25-document sweep produced no anomaly: %v", out)
+	}
+	first, _ := rows[0].(map[string]any)
+	if first["kind"] != "breadth" {
+		t.Errorf("kind = %v", first["kind"])
+	}
+	// The thresholds the answer was computed with, so a reader can judge it
+	// without the UI keeping its own copy of the defaults.
+	if out["window"] == nil || out["breadth"] == nil || out["denials"] == nil {
+		t.Errorf("the response does not say what counted as an anomaly: %v", out)
+	}
+	// And whether the trail can answer at all.
+	if out["records"].(float64) == 0 {
+		t.Error("records = 0 while reporting an anomaly")
+	}
+}
+
+func TestAnomaliesRouteIsAdminOnly(t *testing.T) {
+	s, h := testServer(t)
+	withReads(t, s)
+	aliceKey := makeUser(t, s, h, "", "alice", "admin")
+	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
+
+	if w := asKey(t, h, bobKey, "GET", "/api/admin/reads/anomalies", nil); w.Code < 400 {
+		t.Fatalf("a member read the anomaly report: %d", w.Code)
+	}
+	if w := do(t, h, "GET", "/api/admin/reads/anomalies", nil); w.Code < 400 {
+		t.Fatalf("an anonymous caller read the anomaly report: %d", w.Code)
+	}
+}
+
+func TestAnomaliesRouteRefusesNonsenseThresholds(t *testing.T) {
+	s, h := testServer(t)
+	withReads(t, s)
+	aliceKey := makeUser(t, s, h, "", "alice", "admin")
+	for _, q := range []string{"?breadth=0", "?breadth=lots", "?denials=-1",
+		"?window=soon", "?since=tuesday"} {
+		if w := asKey(t, h, aliceKey, "GET", "/api/admin/reads/anomalies"+q, nil); w.Code != http.StatusBadRequest {
+			t.Errorf("%s = %d, want 400", q, w.Code)
+		}
+	}
+}
+
+func TestAQuietInstanceReportsNoAnomaliesAndSaysWhy(t *testing.T) {
+	// A single-user instance restricts nothing, so nothing is recorded — and
+	// an empty answer there means "not applicable", not "all clear".
+	s, h := testServer(t)
+	withReads(t, s)
+	do(t, h, "POST", "/api/notes", map[string]any{"path": "a.md", "body": "hello"})
+	do(t, h, "GET", "/api/notes/a.md", nil)
+
+	var out map[string]any
+	decode(t, do(t, h, "GET", "/api/admin/reads/anomalies", nil), &out)
+	rows, _ := out["anomalies"].([]any)
+	if len(rows) != 0 {
+		t.Errorf("anomalies on a single-user instance: %v", rows)
+	}
+	if out["records"].(float64) != 0 {
+		t.Errorf("records = %v; a single-user instance restricts nothing",
+			out["records"])
 	}
 }
