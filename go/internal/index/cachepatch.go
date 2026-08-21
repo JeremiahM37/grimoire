@@ -110,8 +110,10 @@ func (c *corpusCache) tombstone(path string) {
 // appendNoteRows reads one note's chunks from SQLite and appends them to the
 // cache, mirroring what buildCache does for the whole corpus.
 func (ix *Index) appendNoteRows(c *corpusCache, path string) error {
-	var title string
-	err := ix.DB.QueryRow("SELECT title FROM notes WHERE path=?", path).Scan(&title)
+	var title, origin, verified string
+	var mtime float64
+	err := ix.DB.QueryRow("SELECT title, origin, verified, mtime FROM notes WHERE path=?",
+		path).Scan(&title, &origin, &verified, &mtime)
 	if err == sql.ErrNoRows {
 		return nil // the note was deleted; tombstoning was the whole job
 	}
@@ -123,13 +125,23 @@ func (ix *Index) appendNoteRows(c *corpusCache, path string) error {
 	if !ok {
 		ni = int32(len(c.notes))
 		c.noteIdx[path] = ni
-		c.notes = append(c.notes, noteMeta{path: path, title: title})
+		c.notes = append(c.notes, noteMeta{path: path, title: title, origin: origin,
+			fresh: freshness{verified: verified, mtime: mtime}})
 	} else {
 		c.notes[ni].title = title // a rename or retitle must not keep the old one
+		// Origin and freshness can change on an edit too — a person promoting a
+		// pulled note or confirming an old one rewrites its frontmatter — and a
+		// stale copy here would keep answering with the old value until the next
+		// full rebuild. Every field the cache holds per note has to be refreshed
+		// here, not just the one that was added first: the e2e suite caught
+		// exactly this, with `verified:` set on a note whose row was patched in
+		// rather than rebuilt, so the note never reported itself stale.
+		c.notes[ni].origin = origin
+		c.notes[ni].fresh = freshness{verified: verified, mtime: mtime}
 	}
 
 	rows, err := ix.DB.Query(
-		"SELECT chunk, chunk_idx, embedding, private, space, acl FROM vectors WHERE note=? ORDER BY chunk_idx",
+		"SELECT chunk, chunk_idx, embedding, private, space, acl, untrusted FROM vectors WHERE note=? ORDER BY chunk_idx",
 		path)
 	if err != nil {
 		return err
@@ -140,10 +152,10 @@ func (ix *Index) appendNoteRows(c *corpusCache, path string) error {
 	tf := make(map[string]int32)
 	for rows.Next() {
 		var chunk string
-		var ci, private int
+		var ci, private, untrusted int
 		var space, acl string
 		var blob []byte
-		if err := rows.Scan(&chunk, &ci, &blob, &private, &space, &acl); err != nil {
+		if err := rows.Scan(&chunk, &ci, &blob, &private, &space, &acl, &untrusted); err != nil {
 			return err
 		}
 		if c.dim == 0 {
@@ -178,7 +190,7 @@ func (ix *Index) appendNoteRows(c *corpusCache, path string) error {
 		c.rows = append(c.rows, cachedRow{
 			note: ni, ci: int32(ci), total: total,
 			chars: int32(len(chunk)), space: c.spaceID(space), acl: c.aclID(acl),
-			private: isPrivate,
+			private: isPrivate, untrusted: untrusted != 0,
 		})
 		c.nAll++
 		c.lenAll += float64(total)
