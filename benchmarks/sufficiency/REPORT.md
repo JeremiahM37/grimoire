@@ -78,6 +78,28 @@ score measures proximity between the query and the corpus; answerability is
 whether the corpus states the asked-for fact.** They coincide only for
 lookups.
 
+### Nor does any combination of them
+
+The obvious objection to a table of single signals is that a *combination*
+might work. It does not. `combine.py` fits plain logistic regression over
+thirteen of them and tests it split **by conversation** — not by question,
+because these signals are partly properties of the conversation (how long its
+sessions are, how much vocabulary its questions share with it), so a
+question-level split would measure memorization of the conversation rather
+than generalization to a new one.
+
+| | AUC |
+|---|---|
+| learned combination, training conversations | 0.651 |
+| learned combination, **held-out conversations** | **0.564** |
+| best single signal on the same held-out set | 0.395 (inverted) |
+
+It reaches 0.651 where it was fitted and 0.564 where it was not — still under
+the bar, and the gap is the finding: what little signal exists is
+conversation-specific rather than a general property of retrieval. There is no
+threshold, no weighting and no learned rule over these statistics that tells
+an answerable question from an unanswerable one.
+
 ### Correction: the first run of this table was sampled wrong
 
 The first version of section 1 reported `max_lexical` at AUC 0.277 and
@@ -98,7 +120,7 @@ flattered the finding, which is the direction to be most suspicious of.
 `Hit.Score` is a reciprocal-rank value, `1/(60+rank)` summed over the two
 legs. Rank 0 is rank 0 whether the chunk answers the question exactly or is
 the least bad of ten poor matches — which is why `top_score` above is
-essentially constant (0.0324 vs 0.0328) and why no caller could ever have
+essentially constant (0.0326 vs 0.0328) and why no caller could ever have
 built a relevance floor on it.
 
 `/api/retrieve` now returns each hit's `cosine` and `lexical` alongside it.
@@ -125,7 +147,7 @@ completion, and returns it as `supported: grounded | ungrounded | unknown`.
   extractive offline floor reports `unknown` because it quotes passages rather
   than judging them.
 
-Measured on the same questions: see section 4.
+Measured on the same questions: section 4.
 
 ## 5. Aside: retrieval latency is not the bottleneck
 
