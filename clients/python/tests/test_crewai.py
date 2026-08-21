@@ -16,7 +16,6 @@ import pytest
 pytest.importorskip("crewai", reason="crewai is not installed")
 
 from crewai.memory.types import MemoryRecord  # noqa: E402
-
 from grimoire_client import Grimoire  # noqa: E402
 from grimoire_client.crewai import (  # noqa: E402
     GrimoireEmbedder,

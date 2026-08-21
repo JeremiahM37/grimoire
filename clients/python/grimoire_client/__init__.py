@@ -19,8 +19,9 @@ import json
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Mapping, TypedDict
+from typing import Any, TypedDict
 
 __all__ = [
     "Answer",
@@ -99,7 +100,7 @@ class Memory:
         return bool(self.superseded_by)
 
     @classmethod
-    def from_json(cls, raw: Mapping[str, Any]) -> "Memory":
+    def from_json(cls, raw: Mapping[str, Any]) -> Memory:
         # Constructed field by field rather than with **raw: a server that
         # grows a field must not break a client that has not been updated.
         return cls(
@@ -156,7 +157,7 @@ class Result:
         return self.op in ("ADD", "UPDATE")
 
     @classmethod
-    def from_json(cls, raw: Mapping[str, Any]) -> "Result":
+    def from_json(cls, raw: Mapping[str, Any]) -> Result:
         return cls(
             op=raw.get("op", ""),
             id=raw.get("id", ""),
@@ -405,7 +406,7 @@ class Grimoire:
 
     # ---- knowledge ----------------------------------------------------
 
-    def ask(self, question: str, *, limit: int = 8) -> "Answer":
+    def ask(self, question: str, *, limit: int = 8) -> Answer:
         """Ask the knowledge base, with citations and a grounding verdict.
 
         The ``supported`` key is the one worth branching on: ``"ungrounded"``

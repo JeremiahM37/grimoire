@@ -27,7 +27,7 @@ FEATURES = ["top_cosine", "max_cosine", "mean_cosine", "cosine_gap",
 
 
 def standardize(rows):
-    cols = list(zip(*rows))
+    cols = list(zip(*rows, strict=True))
     stats = []
     for c in cols:
         mu = sum(c) / len(c)
@@ -37,7 +37,7 @@ def standardize(rows):
 
 
 def apply(rows, stats):
-    return [[(x - mu) / sd for x, (mu, sd) in zip(r, stats)] for r in rows]
+    return [[(x - mu) / sd for x, (mu, sd) in zip(r, stats, strict=True)] for r in rows]
 
 
 def fit(X, y, epochs=4000, lr=0.05, l2=0.01):
@@ -47,8 +47,8 @@ def fit(X, y, epochs=4000, lr=0.05, l2=0.01):
     for _ in range(epochs):
         gw = [0.0] * len(w)
         gb = 0.0
-        for xi, yi in zip(X, y):
-            z = b + sum(wj * xj for wj, xj in zip(w, xi))
+        for xi, yi in zip(X, y, strict=True):
+            z = b + sum(wj * xj for wj, xj in zip(w, xi, strict=True))
             p = 1 / (1 + math.exp(-max(-30, min(30, z))))
             d = p - yi
             for j, xj in enumerate(xi):
@@ -61,11 +61,11 @@ def fit(X, y, epochs=4000, lr=0.05, l2=0.01):
 
 
 def score(X, w, b):
-    return [b + sum(wj * xj for wj, xj in zip(w, xi)) for xi in X]
+    return [b + sum(wj * xj for wj, xj in zip(w, xi, strict=True)) for xi in X]
 
 
 def main(path="signals.jsonl"):
-    recs = [json.loads(l) for l in Path(path).open()]
+    recs = [json.loads(line) for line in Path(path).open()]
     convs = sorted({r["conv"] for r in recs})
     train_convs = set(convs[: len(convs) // 2])
     tr = [r for r in recs if r["conv"] in train_convs]
@@ -79,8 +79,8 @@ def main(path="signals.jsonl"):
     w, b = fit(apply(Xtr, stats), ytr)
 
     def split(rows, scores):
-        pos = [s for r, s in zip(rows, scores) if r["label"] == "answerable"]
-        neg = [s for r, s in zip(rows, scores) if r["label"] == "unanswerable"]
+        pos = [s for r, s in zip(rows, scores, strict=True) if r["label"] == "answerable"]
+        neg = [s for r, s in zip(rows, scores, strict=True) if r["label"] == "unanswerable"]
         return pos, neg
 
     ptr, ntr = split(tr, score(apply(Xtr, stats), w, b))

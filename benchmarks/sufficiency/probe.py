@@ -23,8 +23,8 @@ import argparse
 import collections
 import json
 import math
-import re
 import random
+import re
 import sys
 import urllib.parse
 import urllib.request

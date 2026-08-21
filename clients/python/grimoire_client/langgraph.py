@@ -26,8 +26,9 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime, timezone
-from typing import Any, Iterable
+from collections.abc import Iterable
+from datetime import UTC, datetime
+from typing import Any
 
 from . import Grimoire, NotFound
 
@@ -269,7 +270,7 @@ def _filters(filter: dict[str, Any] | None) -> dict[str, str]:
 def _stamp(stamp: str) -> datetime:
     for layout in ("%Y-%m-%d %H:%M", "%Y-%m-%d"):
         try:
-            return datetime.strptime(stamp, layout).replace(tzinfo=timezone.utc)
+            return datetime.strptime(stamp, layout).replace(tzinfo=UTC)
         except ValueError:
             continue
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)

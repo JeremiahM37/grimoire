@@ -20,7 +20,7 @@ def _retrieval_threshold(path="signals.jsonl"):
     if not p.exists():
         return None
     from analyse import auc
-    recs = [json.loads(l) for l in p.open()]
+    recs = [json.loads(line) for line in p.open()]
     pos = [r["top_cosine"] for r in recs if r["label"] == "answerable"]
     neg = [r["top_cosine"] for r in recs if r["label"] == "unanswerable"]
     return auc(pos, neg) if pos and neg else None
@@ -38,7 +38,7 @@ def mcnemar(b: int, c: int) -> float:
 
 
 def main(path="abstain.jsonl"):
-    recs = [json.loads(l) for l in Path(path).open()]
+    recs = [json.loads(line) for line in Path(path).open()]
     A = [r for r in recs if r["label"] == "answerable"]
     U = [r for r in recs if r["label"] == "unanswerable"]
     print(f"n = {len(A)} answerable / {len(U)} unanswerable\n")
