@@ -31,7 +31,7 @@ rather than in a vector database.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from . import Grimoire, NotFound
@@ -302,7 +302,7 @@ def _as_dict(fact) -> dict[str, Any]:
 def _stamp(stamp: str) -> datetime:
     for layout in ("%Y-%m-%d %H:%M", "%Y-%m-%d"):
         try:
-            return datetime.strptime(stamp, layout).replace(tzinfo=timezone.utc)
+            return datetime.strptime(stamp, layout).replace(tzinfo=UTC)
         except ValueError:
             continue
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)

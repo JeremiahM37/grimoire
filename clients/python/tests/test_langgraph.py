@@ -27,6 +27,7 @@ from grimoire_client.langgraph import (  # noqa: E402
     slugify,
 )
 
+
 @pytest.fixture
 def store(live_server, request):
     # A namespace per test, so tests cannot see each other's facts.

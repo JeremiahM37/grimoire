@@ -24,13 +24,13 @@ def auc(pos, neg):
         for k in range(i, j + 1):
             ranks[k] = r
         i = j + 1
-    rp = sum(ranks[k] for k, (v, l) in enumerate(allv) if l == 1)
+    rp = sum(ranks[k] for k, (_, lab) in enumerate(allv) if lab == 1)
     n1, n0 = len(pos), len(neg)
     return (rp - n1 * (n1 + 1) / 2) / (n1 * n0)
 
 
 def main(path="signals.jsonl", fields=None):
-    recs = [json.loads(l) for l in Path(path).open()]
+    recs = [json.loads(line) for line in Path(path).open()]
     A = [r for r in recs if r["label"] == "answerable"]
     U = [r for r in recs if r["label"] == "unanswerable"]
     print(f"n = {len(A)} answerable / {len(U)} unanswerable\n")

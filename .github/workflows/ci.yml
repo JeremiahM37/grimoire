@@ -127,7 +127,10 @@ jobs:
           path: ~/.cache/huggingface
           key: model2vec-${{ runner.os }}-potion-base-8M
       - name: Lint the harness
-        run: ruff check tests/ benchmarks/
+        # clients/ is in scope too: they are shipped packages, and the lint
+        # that catches a stale import in a benchmark should catch one in the
+        # thing people pip install.
+        run: ruff check tests/ benchmarks/ clients/
       - name: Real-browser flows against the built binary
         timeout-minutes: 15
         run: pytest -q tests/e2e
