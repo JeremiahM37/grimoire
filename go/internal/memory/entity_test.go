@@ -26,7 +26,10 @@ func TestEntitiesFindsNamesAndIdentifiers(t *testing.T) {
 		{"run `grimoire reindex` after upgrading", []string{"grimoire reindex"}},
 		{"tagged #homelab by @jeremiah", []string{"homelab", "jeremiah"}},
 		{"the API returns JSON", []string{"api", "json"}},
-		{"reachable at 100.96.103.31", []string{"100.96.103.31"}},
+		// RFC 5737 documentation range, not a real address from anywhere: this
+		// is a public repo, and a test fixture is a poor reason to publish a
+		// machine's actual IP.
+		{"reachable at 192.0.2.31", []string{"192.0.2.31"}},
 		{"the host is aiserver.tail878d9e.ts.net", []string{"aiserver.tail878d9e.ts.net"}},
 	}
 	for _, c := range cases {
