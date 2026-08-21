@@ -7,6 +7,29 @@ reader `claude-haiku-4-5`, strict blind judge `claude-sonnet-5` (v2). Run
 on 2026-07-20 with the round-5 product code — no product changes were made
 for or after this run; it is a single-shot validation on a second dataset.
 
+> ### ⚠ Correction: the `ss-preference` column is an artifact
+>
+> Every condition scores 15–31% on `single-session-preference`, including
+> `full`, which is handed the entire haystack and therefore has perfect
+> information. That category's gold answers are **rubrics** describing an
+> elaborated, personalised recommendation, and the reader prompt used for every
+> category here says "reply with ONLY the short answer (a few words)". The
+> reader was graded against a form the prompt forbids.
+>
+> Re-read with a prompt fitted to the question, same context, same judge:
+> **23.1% → 76.9%** (7 fixed, 0 broken, p = 0.0156).
+>
+> Run across **all six categories, all 200 questions**, the effect is entirely
+> local: preference +53.8, everything else between 0.0 and +4.2 with p = 1.00
+> throughout, and across the 187 non-preference questions the fitted prompt
+> fixed 7 and broke 5. Overall **72.5% → 77.5% (+5.0)** on the condition
+> measured.
+>
+> So every condition's preference column — and by ~5 points, every condition's
+> overall — is understated. **The ranking between conditions is unaffected**,
+> since they all shared the prompt. The tables below are left exactly as that
+> run measured them; see [REPORT-preference.md](REPORT-preference.md).
+
 | condition | knowledge-update | multi-session | ss-assistant | ss-preference | ss-user | temporal | **overall** | context tokens* |
 |---|---|---|---|---|---|---|---|---|
 | none | 3.2% | 0.0% | 20.8% | 7.7% | 7.4% | 7.4% | **6.5%** | 0 |
@@ -30,11 +53,31 @@ embedder: 6 wins / 7 losses, exact McNemar p = 1.00 — indistinguishable.
   defensible claim is parity at massive compression; the 4.5-point lead is
   a trend, not significance at this sample size.
 - The gap pattern inverts vs LoCoMo: here the haystack is ~117k tokens, and
-  the reader's needle-finding visibly degrades — full context loses to
-  focused retrieval on temporal reasoning (68.5% vs 81.5%) and
-  multi-session questions (54.9% vs 60.8%), the two types that require
-  connecting facts across a huge transcript. LoCoMo's conversations
-  (~24k tokens) fit comfortably, so full context stayed ahead there.
+  the reader's needle-finding visibly degrades. **The whole of that inversion
+  is one category.** Tested per category, shipping retrieval against full
+  context on the same 200 questions:
+
+  | category | n | retrieval | full context | delta | discordant | p |
+  |---|---|---|---|---|---|---|
+  | temporal-reasoning | 54 | 85.2% | 68.5% | **+16.7** | 15/6 | 0.078 |
+  | single-session-user | 27 | 88.9% | 85.2% | +3.7 | 2/1 | 1.00 |
+  | multi-session | 51 | 56.9% | 54.9% | +2.0 | 9/8 | 1.00 |
+  | knowledge-update | 31 | 80.6% | 80.6% | 0.0 | 3/3 | 1.00 |
+  | single-session-preference | 13 | 30.8% | 30.8% | 0.0 | 2/2 | 1.00 |
+  | single-session-assistant | 24 | 87.5% | 100.0% | −12.5 | 0/3 | 0.25 |
+
+  Every other category is flat. The direction on temporal held for **all nine**
+  retrieval configurations measured (+11.1 to +18.5pp), and the best of them
+  reaches p = 0.031 — but that is the best of nine, and six categories were
+  tested, so **none of this survives multiple-comparison correction**. It is a
+  hypothesis with a plausible mechanism (a temporal question needs two facts
+  from distant sessions plus their dates, which is the shape a 118k-token read
+  degrades on), not an established result.
+
+  It is registered for replication on disjoint questions in
+  [PROTOCOL-temporal.md](PROTOCOL-temporal.md), and until that runs the honest
+  summary is the one above: suggestive, one category, not significant after
+  correction.
 - The two embedders are statistically indistinguishable (p = 0.52); the
   30 MB pip-installable model2vec config needs no external service.
 - `none` at 6.5% confirms the questions aren't guessable.
