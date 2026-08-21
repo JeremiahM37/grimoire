@@ -981,7 +981,12 @@ const COMMANDS = [
   { icon: "🔎", name: "What would the agent see… (retrieval inspection)", run: openInspect },
   { icon: "📋", name: "Agent briefing (standing context)", run: openBriefing },
   { icon: "🤖", name: "Agent memories (recent)", run: async () => {
-    const mems = await api("/memory");
+    // shape=notes, not the default: /api/memory returns individual FACTS now,
+    // ordered by a minute-resolution timestamp with ties broken on a content
+    // hash. This opens a note, so it wants the note view — asking for facts
+    // and taking the first one opened an arbitrary memory note whenever two
+    // were written in the same minute.
+    const mems = await api("/memory?shape=notes");
     if (!mems.length) return toast("No agent memories yet — agents write them via the MCP remember tool");
     openNote(mems[0].path);
   } },
