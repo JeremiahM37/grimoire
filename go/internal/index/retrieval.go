@@ -42,6 +42,26 @@ type Hit struct {
 	Chunk    string  `json:"chunk"`
 	Score    float64 `json:"score"`
 	ChunkIdx int     `json:"-"`
+
+	// Cosine and Lexical are the two legs' RAW scores for this chunk, before
+	// fusion.
+	//
+	// Score is a reciprocal-rank value: 1/(60+rank) summed over the legs. It
+	// orders results correctly and says NOTHING about how good they are — the
+	// top hit scores about the same whether it answers the question exactly or
+	// is the least bad of ten poor matches, because rank 0 is rank 0 either
+	// way. Anything downstream that wants to know whether retrieval actually
+	// found something — an agent deciding whether to answer, a caller setting
+	// a relevance floor — cannot get that from a rank, and measuring it here
+	// showed the fused score is worse than useless for the purpose: on 498
+	// LoCoMo questions it ranked UNANSWERABLE ones slightly higher than
+	// answerable ones (AUC 0.363, benchmarks/sufficiency/).
+	//
+	// So the legs' own magnitudes travel with the hit. Cosine is a similarity
+	// in [-1,1]; Lexical is a BM25 sum, unbounded above and comparable only
+	// within one query's results.
+	Cosine  float64 `json:"cosine"`
+	Lexical float64 `json:"lexical"`
 }
 
 // ---------------------------------------------------------------- the cache
@@ -1024,6 +1044,8 @@ func (ix *Index) finalize(c *corpusCache, cands []candidate, order []int32, k in
 			Title:    c.notes[r.note].title,
 			ChunkIdx: int(r.ci),
 			Score:    math.Round(cand.rrf*10000) / 10000,
+			Cosine:   math.Round(cand.cos*10000) / 10000,
+			Lexical:  math.Round(cand.lex*10000) / 10000,
 		}
 		if len(out) < mergeTopHits {
 			// Small-to-big, selected by RELEVANCE within the note rather than

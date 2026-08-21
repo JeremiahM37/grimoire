@@ -1,7 +1,9 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -238,5 +240,103 @@ func TestTemplateCannotReachANoteTheCallerCannotRead(t *testing.T) {
 		map[string]any{"block": "use: restricted"}).Body.String()
 	if strings.Contains(strings.ToLower(body), "severance") {
 		t.Errorf("a template block read a note bob cannot open:\n%s", body)
+	}
+}
+
+// --- retrieval scores and grounding ----------------------------------------
+
+func TestRetrieveReportsTheLegsRawScores(t *testing.T) {
+	// `score` is a reciprocal-rank value: the top hit scores about the same
+	// whether it answers the question exactly or is the least bad of ten poor
+	// matches. Anything downstream that wants to know how good the match
+	// actually is needs the legs' own magnitudes, so they travel with the hit.
+	_, h := testServer(t)
+	// Two notes, not one. BM25's IDF is log(N/df), which is exactly zero for a
+	// term that appears in EVERY chunk — so on a single-note vault the lexical
+	// leg contributes nothing and this would assert against a degenerate
+	// corpus rather than against the feature.
+	for _, note := range []map[string]any{
+		{"title": "Ops", "body": "# Ops\n\nthe deploy script lives at /usr/local/bin/deploy.sh\n"},
+		{"title": "Cats", "body": "# Cats\n\nmarmalade sleeps on the windowsill\n"},
+	} {
+		if w := do(t, h, "POST", "/api/notes", note); w.Code != http.StatusCreated {
+			t.Fatalf("seed = %d: %s", w.Code, w.Body)
+		}
+	}
+	var hits []map[string]any
+	decode(t, do(t, h, "GET", "/api/retrieve?q=deploy+script&k=5", nil), &hits)
+	if len(hits) == 0 {
+		t.Fatal("nothing retrieved")
+	}
+	for _, field := range []string{"cosine", "lexical", "score"} {
+		if _, ok := hits[0][field]; !ok {
+			t.Errorf("hit does not report %q: %v", field, hits[0])
+		}
+	}
+	if hits[0]["lexical"].(float64) <= 0 {
+		t.Errorf("a hit matching two query terms reported no lexical score: %v", hits[0])
+	}
+}
+
+func TestAskReportsWhetherTheNotesSupportedTheAnswer(t *testing.T) {
+	// With no reader configured the answer is extractive, which quotes
+	// passages rather than judging them — so the honest verdict is "unknown",
+	// and a caller that reads that as "grounded" has mistaken the absence of a
+	// check for a passed one.
+	_, h := testServer(t)
+	do(t, h, "POST", "/api/notes", map[string]any{
+		"title": "Ops", "body": "# Ops\n\nthe deploy needs a VPN reset first\n"})
+
+	var out map[string]any
+	decode(t, do(t, h, "POST", "/api/ask", map[string]any{"q": "what does the deploy need"}), &out)
+	if out["supported"] != "unknown" {
+		t.Errorf("supported = %v, want unknown with no reader", out["supported"])
+	}
+	if out["answer"] == "" {
+		t.Error("no answer")
+	}
+
+	// Nothing retrieved is the one case that needs no reader to judge.
+	_, empty := testServer(t)
+	decode(t, do(t, empty, "POST", "/api/ask", map[string]any{"q": "anything at all"}), &out)
+	if out["supported"] != "ungrounded" {
+		t.Errorf("supported = %v on an empty vault, want ungrounded", out["supported"])
+	}
+}
+
+func TestAskPropagatesTheReadersVerdict(t *testing.T) {
+	// The whole chain, with a stub reader: prompt in, verdict out, and the
+	// verdict line stripped from the answer the caller shows a person.
+	s, h := testServer(t)
+	do(t, h, "POST", "/api/notes", map[string]any{
+		"title": "Ops", "body": "# Ops\n\nthe deploy needs a VPN reset first\n"})
+
+	reply := "SUPPORTED: no\nThe notes discuss the deploy but never give a port."
+	stub := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"response": reply})
+	}))
+	defer stub.Close()
+	if err := s.Settings.Update(map[string]string{"ollama_url": stub.URL}); err != nil {
+		t.Fatal(err)
+	}
+
+	var out map[string]any
+	decode(t, do(t, h, "POST", "/api/ask", map[string]any{"q": "what port"}), &out)
+	if out["supported"] != "ungrounded" {
+		t.Errorf("supported = %v, want ungrounded", out["supported"])
+	}
+	answer, _ := out["answer"].(string)
+	if strings.Contains(answer, "SUPPORTED") {
+		t.Errorf("the verdict line reached the caller's answer: %q", answer)
+	}
+	if !strings.Contains(answer, "never give a port") {
+		t.Errorf("the answer was lost: %q", answer)
+	}
+
+	reply = "SUPPORTED: yes\nIt needs a VPN reset [1]."
+	decode(t, do(t, h, "POST", "/api/ask", map[string]any{"q": "what does the deploy need"}), &out)
+	if out["supported"] != "grounded" {
+		t.Errorf("supported = %v, want grounded", out["supported"])
 	}
 }
