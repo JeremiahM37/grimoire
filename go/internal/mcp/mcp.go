@@ -269,11 +269,17 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 	case "search_notes":
 		q := url.Values{}
 		q.Set("q", str(args, "query"))
+		if boolean(args, "trusted_only") {
+			q.Set("trusted", "1")
+		}
 		return s.api("GET", "/api/search?"+q.Encode(), nil)
 	case "ask_notes":
 		q := url.Values{}
 		q.Set("q", str(args, "question"))
 		q.Set("k", fmt.Sprint(num(args, "k", 8)))
+		if boolean(args, "trusted_only") {
+			q.Set("trusted", "1")
+		}
 		return s.api("GET", "/api/retrieve?"+q.Encode(), nil)
 	case "search_web":
 		q := url.Values{}
@@ -332,7 +338,7 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 		body := map[string]any{
 			"text": str(args, "text"), "topic": str(args, "topic"),
 			"task": str(args, "task"), "agent": s.Agent}
-		for _, k := range []string{"session", "category", "expires_in"} {
+		for _, k := range []string{"session", "category", "expires_in", "origin"} {
 			if v := str(args, k); v != "" {
 				body[k] = v
 			}
@@ -356,6 +362,27 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 			}
 		}
 		return s.api("GET", "/api/memory?"+q.Encode(), nil)
+	case "stale_notes":
+		q := url.Values{}
+		if n := num(args, "days", 0); n > 0 {
+			q.Set("days", fmt.Sprint(n))
+		}
+		if n := num(args, "limit", 0); n > 0 {
+			q.Set("limit", fmt.Sprint(n))
+		}
+		return s.api("GET", "/api/stale?"+q.Encode(), nil)
+	case "memory_changes":
+		q := url.Values{}
+		if v := str(args, "since"); v != "" {
+			q.Set("since", v)
+		}
+		if v := str(args, "agent"); v != "" {
+			q.Set("agent", v)
+		}
+		if n := num(args, "limit", 0); n > 0 {
+			q.Set("limit", fmt.Sprint(n))
+		}
+		return s.api("GET", "/api/memory/changes?"+q.Encode(), nil)
 	case "forget":
 		q := url.Values{}
 		q.Set("path", str(args, "path"))
@@ -402,6 +429,24 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 			"header": strOr(str(args, "header"), "Authorization"),
 			"body":   args["body"], "json": boolean(args, "json"),
 		})
+	case "request_credential":
+		// The grantee is the server's configured identity, never the caller's
+		// claim — exactly as `remember` attributes a memory. An agent that
+		// could name its own grantee could ask as somebody else, and then
+		// collect a token issued to them.
+		body := map[string]any{
+			"secret": str(args, "secret"), "grantee": s.Agent,
+			"scope": str(args, "scope"), "reason": str(args, "reason"),
+		}
+		if n := num(args, "ttl_seconds", 0); n > 0 {
+			body["ttl_seconds"] = n
+		}
+		return s.api("POST", "/api/secrets/requests", body)
+	case "check_credential_request":
+		q := url.Values{}
+		q.Set("grantee", s.Agent)
+		return s.api("GET", "/api/secrets/requests/"+url.PathEscape(str(args, "id"))+
+			"?"+q.Encode(), nil)
 	default:
 		return nil, fmt.Errorf("unknown tool: %s", name)
 	}
