@@ -20,6 +20,12 @@ type Block struct {
 	markdown.Block
 	Note  string `json:"note"`
 	Title string `json:"title"`
+	// Provenance from the block's note. A task list is note content: an issue
+	// in a connected tracker can contain "- [ ] drop the prod database", and a
+	// person scanning their own task view should be able to see that it is not
+	// theirs.
+	Origin string `json:"origin,omitempty"`
+	Trust  string `json:"trust"`
 }
 
 // BlockQuery selects blocks.
@@ -123,6 +129,15 @@ func (ix *Index) Blocks(q BlockQuery) ([]Block, error) {
 	if !q.Filter.IncludePrivate {
 		where = append(where, "b.private=0")
 	}
+	// The blocks table carries no trust column of its own — a block belongs to
+	// a note, and the note owns the provenance — so this joins. It is here at
+	// all because Filter is built in ONE place for every content route: a
+	// caller that passes trusted=1 to /api/tasks and silently gets a GitHub
+	// issue's checklist back would be worse off than if the parameter did not
+	// exist, since it would believe it had asked.
+	if q.Filter.TrustedOnly {
+		where = append(where, "COALESCE(n.untrusted,0)=0")
+	}
 	if q.Filter.Spaces != nil {
 		names := make([]string, 0, len(q.Filter.Spaces))
 		for name, ok := range q.Filter.Spaces {
@@ -141,7 +156,8 @@ func (ix *Index) Blocks(q BlockQuery) ([]Block, error) {
 
 	rows, err := ix.DB.Query(
 		"SELECT b.note, b.kind, b.text, b.level, b.line, b.checked, b.parent, b.acl, "+
-			"COALESCE(n.title,'') FROM blocks b LEFT JOIN notes n ON n.path=b.note WHERE "+
+			"COALESCE(n.title,''), COALESCE(n.origin,''), COALESCE(n.untrusted,0) "+
+			"FROM blocks b LEFT JOIN notes n ON n.path=b.note WHERE "+
 			strings.Join(where, " AND ")+
 			" ORDER BY b.note, b.line LIMIT ?", append(args, q.Limit)...)
 	if err != nil {
@@ -152,12 +168,13 @@ func (ix *Index) Blocks(q BlockQuery) ([]Block, error) {
 	out := []Block{}
 	for rows.Next() {
 		var b Block
-		var checked int
+		var checked, untrusted int
 		var acl string
 		if err := rows.Scan(&b.Note, &b.Kind, &b.Text, &b.Level, &b.Line,
-			&checked, &b.Parent, &acl, &b.Title); err != nil {
+			&checked, &b.Parent, &acl, &b.Title, &b.Origin, &untrusted); err != nil {
 			return nil, err
 		}
+		b.Trust = levelName(untrusted != 0)
 		b.Checked = checked == 1
 		if !q.Filter.IgnoreACLs && !aclAllows(acl, q.Filter.User) {
 			continue

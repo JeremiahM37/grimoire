@@ -159,11 +159,11 @@ func (ix *Index) writeMemoryRows(note *vault.Note) error {
 		if err := ix.DB.Exec(
 			"INSERT OR IGNORE INTO memory_entries(id,note,text,agent,task,session,stamp,category,"+
 				"expires,immutable,superseded_by,superseded_at,helpful,unhelpful,line,"+
-				"embedding,space,acl,private)"+
-				" VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+				"embedding,space,acl,private,origin)"+
+				" VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
 			e.ID, note.Path, e.Text, e.Agent, e.Task, e.Session, e.Stamp, e.Category,
 			e.Expires, immutable, e.SupersededBy, e.SupersededAt, e.Helpful,
-			e.Unhelpful, e.Line, blob, space, acl, private,
+			e.Unhelpful, e.Line, blob, space, acl, private, e.Origin,
 		); err != nil {
 			return err
 		}
@@ -242,7 +242,7 @@ func (ix *Index) MemoryEntries(q MemoryQuery) ([]MemoryHit, error) {
 	rows, err := ix.DB.Query(
 		"SELECT id,note,text,agent,task,session,stamp,category,expires,immutable,"+
 			"superseded_by,superseded_at,helpful,unhelpful,line,embedding,space,acl,"+
-			"private FROM memory_entries WHERE "+
+			"private,origin FROM memory_entries WHERE "+
 			strings.Join(where, " AND "), args...)
 	if err != nil {
 		return nil, err
@@ -261,7 +261,7 @@ func (ix *Index) MemoryEntries(q MemoryQuery) ([]MemoryHit, error) {
 			&r.hit.Task, &r.hit.Session, &r.hit.Stamp, &r.hit.Category,
 			&r.hit.Expires, &immutable, &r.hit.SupersededBy, &r.hit.SupersededAt,
 			&r.hit.Helpful, &r.hit.Unhelpful, &r.hit.Line, &blob, &r.sp, &r.acl,
-			&private); err != nil {
+			&private, &r.hit.Origin); err != nil {
 			return nil, err
 		}
 		r.hit.Immutable = immutable == 1

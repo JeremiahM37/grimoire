@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"github.com/JeremiahM37/grimoire/go/internal/metrics"
+	"github.com/JeremiahM37/grimoire/go/internal/trust"
+	"github.com/JeremiahM37/grimoire/go/internal/vault"
 	"math"
 	"regexp"
 	"runtime"
@@ -62,7 +64,31 @@ type Hit struct {
 	// within one query's results.
 	Cosine  float64 `json:"cosine"`
 	Lexical float64 `json:"lexical"`
+
+	// Origin says where the chunk's note came from and Trust is the verdict
+	// derived from it — "trusted" for anything the operator wrote, "untrusted"
+	// for anything a connector or the web put there. They travel with every
+	// hit, on every surface, for the same reason Cosine and Lexical do: a
+	// caller that cannot see a property cannot act on it, and "is this text
+	// allowed to give me instructions" is a question no ranking answers.
+	Origin string `json:"origin,omitempty"`
+	Trust  string `json:"trust"`
+
+	// AgeDays is how long since the note was last CONFIRMED — a `verified:`
+	// date if it has one, its modification time otherwise — and Verified says
+	// which. Stale is the derived verdict against the configured threshold.
+	//
+	// Reported, never acted on: retrieval does not down-rank an old note. See
+	// freshness.go for why decaying knowledge the way memory decays would bury
+	// a vault's most considered writing under its most recent.
+	AgeDays  int  `json:"age_days"`
+	Verified bool `json:"verified,omitempty"`
+	Stale    bool `json:"stale,omitempty"`
 }
+
+// Untrusted reports whether this passage came from somewhere other people can
+// write to.
+func (h Hit) Untrusted() bool { return h.Trust == trust.NameUntrusted }
 
 // ---------------------------------------------------------------- the cache
 
@@ -72,6 +98,13 @@ type Hit struct {
 type noteMeta struct {
 	path  string
 	title string
+	fresh freshness
+	// origin is per NOTE, not per chunk, so it is interned here rather than
+	// copied onto each of the note's ~8 rows. The derived trust level lives on
+	// the row instead: it is read on the ranking hot path for every candidate,
+	// where an extra indirection would be paid a million times a query, and it
+	// costs nothing there — cachedRow had a spare byte of padding.
+	origin string
 }
 
 // The ordering view: row positions in corpus order — by note path, then chunk
@@ -116,6 +149,9 @@ type cachedRow struct {
 	space   int32 // index into corpusCache.spaces
 	acl     int32 // index into corpusCache.acls; 0 is the empty ACL
 	private bool
+	// untrusted mirrors notes.untrusted: the chunk's text arrived from a
+	// system other people can write to.
+	untrusted bool
 	// dead marks a row whose note has been rewritten or deleted since the
 	// cache was built. Rows are tombstoned rather than removed because the
 	// postings lists address rows by position; compaction is a rebuild.
@@ -252,8 +288,8 @@ func (c *corpusCache) count(includePrivate bool) int {
 // price of BM25 being scored against the caller's corpus rather than the whole
 // one. It is O(rows) of int32 reads against a query that already walks every
 // row for cosine.
-func (c *corpusCache) countFor(includePrivate bool, allowed []bool) int {
-	if allowed == nil {
+func (c *corpusCache) countFor(includePrivate bool, allowed []bool, trustedOnly bool) int {
+	if allowed == nil && !trustedOnly {
 		return c.count(includePrivate)
 	}
 	n := 0
@@ -262,15 +298,18 @@ func (c *corpusCache) countFor(includePrivate bool, allowed []bool) int {
 		if r.dead || (!includePrivate && r.private) {
 			continue
 		}
-		if int(r.space) < len(allowed) && allowed[r.space] {
+		if trustedOnly && r.untrusted {
+			continue
+		}
+		if allowed == nil || (int(r.space) < len(allowed) && allowed[r.space]) {
 			n++
 		}
 	}
 	return n
 }
 
-func (c *corpusCache) avgLenFor(includePrivate bool, allowed []bool) float64 {
-	if allowed == nil {
+func (c *corpusCache) avgLenFor(includePrivate bool, allowed []bool, trustedOnly bool) float64 {
+	if allowed == nil && !trustedOnly {
 		return c.avgLen(includePrivate)
 	}
 	total, n := 0.0, 0
@@ -279,7 +318,10 @@ func (c *corpusCache) avgLenFor(includePrivate bool, allowed []bool) float64 {
 		if r.dead || (!includePrivate && r.private) {
 			continue
 		}
-		if int(r.space) < len(allowed) && allowed[r.space] {
+		if trustedOnly && r.untrusted {
+			continue
+		}
+		if allowed == nil || (int(r.space) < len(allowed) && allowed[r.space]) {
 			total += float64(r.total)
 			n++
 		}
@@ -306,6 +348,16 @@ func (c *corpusCache) avgLen(includePrivate bool) float64 {
 		avg = 1
 	}
 	return avg
+}
+
+// levelName renders a row's trust for the wire. A named function rather than
+// an inline conditional because every surface that builds a Hit has to agree,
+// and the one that quietly wrote "" would look like a trusted hit.
+func levelName(untrusted bool) string {
+	if untrusted {
+		return trust.NameUntrusted
+	}
+	return trust.NameTrusted
 }
 
 // cosine scores row i against a query vector, reproducing index.Cosine exactly
@@ -426,13 +478,13 @@ func (ix *Index) buildCache(rev int64) (*corpusCache, error) {
 	// onto the chunk scan made SQLite materialize, and the driver allocate, one
 	// title string for every chunk — tens of copies of the same string per
 	// note, on a scan whose cost is dominated by per-row allocation.
-	titles, err := ix.noteTitles()
+	titles, err := ix.noteInfo()
 	if err != nil {
 		return nil, err
 	}
 
 	rows, err := ix.DB.Query(
-		"SELECT note, chunk, chunk_idx, embedding, private, space, acl FROM vectors " +
+		"SELECT note, chunk, chunk_idx, embedding, private, space, acl, untrusted FROM vectors " +
 			"ORDER BY note, chunk_idx")
 	if err != nil {
 		return nil, err
@@ -455,7 +507,7 @@ func (ix *Index) buildCache(rev int64) (*corpusCache, error) {
 	for rows.Next() {
 		var chunk string
 		var ci int
-		var private int
+		var private, untrusted int
 		var space, acl string
 		var blob []byte
 		// The note path repeats for every chunk of a note. Scanning it as raw
@@ -463,7 +515,7 @@ func (ix *Index) buildCache(rev int64) (*corpusCache, error) {
 		// one allocation per chunk into one per note; the map lookup on
 		// string(note) is compiled without a copy.
 		var note sql.RawBytes
-		if err := rows.Scan(&note, &chunk, &ci, &blob, &private, &space, &acl); err != nil {
+		if err := rows.Scan(&note, &chunk, &ci, &blob, &private, &space, &acl, &untrusted); err != nil {
 			return nil, err
 		}
 
@@ -476,14 +528,15 @@ func (ix *Index) buildCache(rev int64) (*corpusCache, error) {
 			// leaves vectors behind has happened here before, and without this
 			// check those orphans would surface as untitled search results
 			// still carrying the deleted note's text.
-			title, exists := titles[path]
+			info, exists := titles[path]
 			if !exists {
 				continue
 			}
 			ni = int32(len(c.notes))
 			noteIdx[path] = ni
 			c.noteIdx[path] = ni
-			c.notes = append(c.notes, noteMeta{path: path, title: title})
+			c.notes = append(c.notes, noteMeta{path: path, title: info.title,
+				origin: info.origin, fresh: info.fresh})
 		}
 
 		if c.dim == 0 {
@@ -533,7 +586,7 @@ func (ix *Index) buildCache(rev int64) (*corpusCache, error) {
 		c.rows = append(c.rows, cachedRow{
 			note: ni, ci: int32(ci), total: total,
 			chars: int32(len(chunk)), space: c.spaceID(space), acl: c.aclID(acl),
-			private: isPrivate,
+			private: isPrivate, untrusted: untrusted != 0,
 		})
 		c.nAll++
 		c.lenAll += float64(total)
@@ -560,21 +613,29 @@ func (ix *Index) buildCache(rev int64) (*corpusCache, error) {
 // noteTitles maps note path to title. Titles are only ever needed for the few
 // notes that reach a response, but the map is small (one entry per note) and
 // building it once is far cheaper than joining it onto every chunk.
-func (ix *Index) noteTitles() (map[string]string, error) {
-	rows, err := ix.DB.Query("SELECT path, title FROM notes")
+func (ix *Index) noteInfo() (map[string]noteRow, error) {
+	rows, err := ix.DB.Query("SELECT path, title, origin, verified, mtime FROM notes")
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	out := map[string]string{}
+	out := map[string]noteRow{}
 	for rows.Next() {
-		var path, title string
-		if err := rows.Scan(&path, &title); err != nil {
+		var path, title, origin, verified string
+		var mtime float64
+		if err := rows.Scan(&path, &title, &origin, &verified, &mtime); err != nil {
 			return nil, err
 		}
-		out[path] = title
+		out[path] = noteRow{title: title, origin: origin,
+			fresh: freshness{verified: verified, mtime: mtime}}
 	}
 	return out, rows.Err()
+}
+
+// noteRow is the per-note metadata the cache builder reads once per note.
+type noteRow struct {
+	title, origin string
+	fresh         freshness
 }
 
 // CorpusStats reports the size of the retrievable corpus: how many chunks and
@@ -588,13 +649,13 @@ func (ix *Index) CorpusStats(includePrivate bool) (chunks, notes int, chars int6
 // corpus-fits decision is made against the corpus that caller would receive.
 func (ix *Index) CorpusStatsFor(f Filter) (chunks, notes int, chars int64, err error) {
 	err = ix.withCache(func(c *corpusCache) error {
-		chunks, notes, chars = c.stats(f.IncludePrivate, c.allowedSpaces(f.Spaces))
+		chunks, notes, chars = c.stats(f.IncludePrivate, c.allowedSpaces(f.Spaces), f.TrustedOnly)
 		return nil
 	})
 	return chunks, notes, chars, err
 }
 
-func (c *corpusCache) stats(includePrivate bool, allowed []bool) (chunks, notes int, chars int64) {
+func (c *corpusCache) stats(includePrivate bool, allowed []bool, trustedOnly bool) (chunks, notes int, chars int64) {
 	seen := make(map[int32]bool, len(c.notes))
 	for i := range c.rows {
 		// Tombstoned rows belong to notes that have since been rewritten or
@@ -607,11 +668,14 @@ func (c *corpusCache) stats(includePrivate bool, allowed []bool) (chunks, notes 
 		if allowed != nil && !(int(r.space) < len(allowed) && allowed[r.space]) {
 			continue
 		}
+		if trustedOnly && r.untrusted {
+			continue
+		}
 		chunks++
 		chars += int64(r.chars)
 		seen[r.note] = true
 	}
-	if allowed == nil {
+	if allowed == nil && !trustedOnly {
 		if includePrivate {
 			return chunks, len(seen), c.charsAll
 		}
@@ -634,7 +698,8 @@ func (ix *Index) WholeCorpus(includePrivate bool) ([]Hit, error) {
 
 // WholeCorpusFor is WholeCorpus restricted to what a principal may read.
 func (ix *Index) WholeCorpusFor(f Filter) ([]Hit, error) {
-	q := "SELECT v.note, n.title, v.chunk FROM vectors v JOIN notes n ON n.path=v.note"
+	q := "SELECT v.note, n.title, v.chunk, n.origin, v.untrusted" +
+		" FROM vectors v JOIN notes n ON n.path=v.note"
 	where := []string{}
 	args := []any{}
 	if !f.IncludePrivate {
@@ -670,6 +735,14 @@ func (ix *Index) WholeCorpusFor(f Filter) ([]Hit, error) {
 			args = append(args, ","+f.User+",")
 		}
 	}
+	// The trust filter belongs here for the same reason the reader list does:
+	// this is the path where nothing is ranked, so a check that lives only in
+	// ranking is not applied at all. A small vault is exactly where a caller
+	// asking for trusted-only context would otherwise receive every pulled
+	// Slack message in it.
+	if f.TrustedOnly {
+		where = append(where, "v.untrusted=0")
+	}
 	if len(where) > 0 {
 		q += " WHERE " + strings.Join(where, " AND ")
 	}
@@ -682,9 +755,11 @@ func (ix *Index) WholeCorpusFor(f Filter) ([]Hit, error) {
 	var out []Hit
 	for rows.Next() {
 		var h Hit
-		if err := rows.Scan(&h.Path, &h.Title, &h.Chunk); err != nil {
+		var untrusted int
+		if err := rows.Scan(&h.Path, &h.Title, &h.Chunk, &h.Origin, &untrusted); err != nil {
 			return nil, err
 		}
+		h.Trust = levelName(untrusted != 0)
 		out = append(out, h)
 	}
 	return out, rows.Err()
@@ -731,6 +806,20 @@ type Filter struct {
 	// them. Same deliberate simplification as spaces: an administrator who
 	// cannot see a document cannot fix it. Never set from a request.
 	IgnoreACLs bool
+	// TrustedOnly excludes chunks whose note came from a system other people
+	// can write to — see internal/trust.
+	//
+	// Like the space filter and unlike a post-filter, it applies INSIDE
+	// ranking, and for a reason of its own rather than by analogy. Spaces are
+	// filtered inside because corpus statistics would otherwise leak a private
+	// note's contents through the ranking of public ones. Untrusted text is
+	// not secret, so that argument does not apply — but a worse one does: BM25
+	// IDF is computed over the corpus, so an attacker who can write into a
+	// connected Slack channel could shift the ranking of the operator's OWN
+	// notes by flooding it with terms. Excluding untrusted rows from the
+	// statistics as well as the results is what makes "trusted only" mean the
+	// corpus is trusted, not merely the output.
+	TrustedOnly bool
 }
 
 // Everything is the filter a single-user deployment retrieves with.
@@ -771,7 +860,7 @@ func (ix *Index) RetrieveFor(query string, k int, f Filter) ([]Hit, error) {
 func (ix *Index) rank(c *corpusCache, query string, k int, f Filter) ([]Hit, error) {
 	includePrivate := f.IncludePrivate
 	allowed := c.allowedSpaces(f.Spaces)
-	n := c.countFor(includePrivate, allowed)
+	n := c.countFor(includePrivate, allowed, f.TrustedOnly)
 	if n == 0 || strings.TrimSpace(query) == "" {
 		return nil, nil
 	}
@@ -779,7 +868,7 @@ func (ix *Index) rank(c *corpusCache, query string, k int, f Filter) ([]Hit, err
 	qterms := queryTerms(query)
 
 	nChunks := float64(n)
-	avglen := c.avgLenFor(includePrivate, allowed)
+	avglen := c.avgLenFor(includePrivate, allowed, f.TrustedOnly)
 
 	// visible reports whether a row participates. Every statistic below —
 	// document frequency, corpus size, average length — is computed over the
@@ -799,6 +888,9 @@ func (ix *Index) rank(c *corpusCache, query string, k int, f Filter) ([]Hit, err
 			if int(r.acl) >= len(c.acls) || !aclAllows(c.acls[r.acl], f.User) {
 				return false
 			}
+		}
+		if f.TrustedOnly && r.untrusted {
+			return false
 		}
 		return true
 	}
@@ -1029,6 +1121,12 @@ func (ix *Index) finalize(c *corpusCache, cands []candidate, order []int32, k in
 		ci   int32
 	}
 	covered := map[key]bool{}
+	// The freshness threshold is read ONCE per query rather than per hit: it
+	// comes from the environment, and a per-row getenv on a ranking loop is
+	// the kind of thing that does not show up until somebody profiles it.
+	now := vault.Now()
+	staleAfter := StaleAfter()
+	staleDays := int(staleAfter.Hours() / 24)
 	out := []Hit{}
 	for _, idx := range ordered {
 		if k > 0 && len(out) >= k {
@@ -1046,7 +1144,11 @@ func (ix *Index) finalize(c *corpusCache, cands []candidate, order []int32, k in
 			Score:    math.Round(cand.rrf*10000) / 10000,
 			Cosine:   math.Round(cand.cos*10000) / 10000,
 			Lexical:  math.Round(cand.lex*10000) / 10000,
+			Origin:   c.notes[r.note].origin,
+			Trust:    levelName(r.untrusted),
 		}
+		h.AgeDays, h.Verified = c.notes[r.note].fresh.ageDays(now)
+		h.Stale = staleAfter > 0 && h.AgeDays >= staleDays
 		if len(out) < mergeTopHits {
 			// Small-to-big, selected by RELEVANCE within the note rather than
 			// by adjacency.
