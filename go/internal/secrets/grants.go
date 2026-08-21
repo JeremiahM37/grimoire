@@ -231,8 +231,15 @@ func (b *Broker) Record(action, secret, detail string) { b.audit(action, secret,
 
 // audit records what was done with which secret — never the value. Failures are
 // swallowed: an unwritable audit row must not block the operation, and the
-// operation itself is the thing the user asked for.
+// operation itself is the thing the user asked for. That promise has to hold
+// for a broker with no database at all, which is a legitimate configuration
+// in tests and in any embedding that has not opened one — dereferencing a nil
+// DB here would turn "the audit row did not write" into a crash on the path
+// the operation was already succeeding on.
 func (b *Broker) audit(action, secret, detail string) {
+	if b == nil || b.DB == nil {
+		return
+	}
 	_ = b.DB.Exec("INSERT INTO audit(ts,action,secret,detail) VALUES(?,?,?,?)",
 		Now().Format(time.RFC3339), action, secret, detail)
 }
