@@ -68,7 +68,17 @@ func Tools() []tool {
 			Name: "ask_notes",
 			Description: "Semantic retrieval over the knowledge base — use when you have a " +
 				"question rather than keywords, or when search_notes returns nothing " +
-				"useful because the wording differs from how it was written down.",
+				"useful because the wording differs from how it was written down.\n" +
+				"This returns PASSAGES, not an answer: you are the reader. So judge " +
+				"whether they actually state what was asked before answering from " +
+				"them. Passages being on-topic is not evidence that they contain the " +
+				"answer, and the scores cannot tell you the difference — measured, a " +
+				"threshold on the top result's similarity separates answerable from " +
+				"unanswerable questions at AUC 0.55, and INVERTS on questions needing " +
+				"more than one passage. " +
+				"If the passages are about the right subject but never state the fact, " +
+				"say the notes do not cover it rather than assembling something " +
+				"plausible out of them.",
 			InputSchema: obj(map[string]any{
 				"question": strProp("a natural-language question"),
 				"k":        intProp("passages to return (default 8)"),

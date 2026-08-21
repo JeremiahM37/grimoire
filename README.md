@@ -303,6 +303,56 @@ rank close and cannot bury one that is the only answer to some other question.
 It writes to the note the fact lives in, so the spaces and reader lists that
 govern everything else govern who may vote.
 
+## Knowing when your notes don't have the answer
+
+A retrieval layer that always returns its ten best chunks always looks
+confident. Ask it something your notes never covered and it returns ten
+on-topic passages with respectable scores, and the reader writes a fluent
+wrong answer from them — the failure Google's *sufficient context* work
+measured as an error rate jumping from 10% with no context to 66% with
+insufficient context.
+
+The obvious fix is a similarity threshold. **It does not work, and it is not
+close.** Measured on the 446 adversarial questions LoCoMo ships and every
+memory system excludes:
+
+| signal | AUC at telling answerable from unanswerable |
+|---|---|
+| top result's cosine (the standard heuristic) | 0.550 |
+| best chunk's BM25 | 0.415 |
+| fused rank score | 0.448 |
+| *fifteen signals tried; none reached 0.60* | |
+
+0.5 is a coin flip, and the whole field spans 0.414–0.581. Splitting by
+question type shows why: the scores carry a little signal on **single-hop**
+lookups (cosine 0.617) and **invert** on everything harder — on multi-hop
+questions the best chunk's BM25 reads **0.192**, worse than guessing. A
+well-formed unanswerable question is built out of the corpus's own vocabulary
+("How does Deborah plan to involve local engineers in her idea of teaching
+STEM to underprivileged kids?") while a real one paraphrases ("What is
+Caroline's relationship status?"). A retrieval score measures proximity;
+answerability is whether the corpus states the fact. Those coincide only for
+lookups.
+
+So the judgement is made by the thing that reads, and it costs nothing: the
+reader emits a one-line verdict in the **same completion** as the answer, and
+`ask` returns it.
+
+```bash
+curl -s localhost:9111/api/ask -d '{"q":"what did we decide about the migration?"}'
+# {"answer":"The notes discuss the migration but never record a decision.",
+#  "supported":"ungrounded", ...}
+```
+
+`grounded` · `ungrounded` · `unknown`. No second model call, no classifier, no
+cross-encoder — every alternative in the literature costs a call per query or
+per document.
+
+Agents that mount `ask_notes` get the passages instead and are the reader
+themselves, so that tool carries the finding rather than the verdict: judge
+whether the passages state what was asked, because the scores cannot tell you.
+Full study and protocol: [benchmarks/sufficiency/](benchmarks/sufficiency/).
+
 ## Credentials your agent can use but never read
 
 Giving an agent an API key means the key is in its context — and therefore in

@@ -440,8 +440,14 @@ func (s *Server) ask(w http.ResponseWriter, r *http.Request) {
 	for _, h := range cited {
 		s.auditRead(r, h.Path, true)
 	}
+	answer, support := s.AI.AnswerGrounded(q, contexts)
 	writeJSON(w, http.StatusOK, map[string]any{
-		"answer": s.AI.Answer(q, contexts), "citations": citations, "mode": mode})
+		"answer": answer, "citations": citations, "mode": mode,
+		// Whether the notes actually supported the answer, so a caller can
+		// act on it — abstain, ask elsewhere, or tell the person the vault
+		// does not know. "unknown" means no reader judged it (the offline
+		// extractive floor), which is not the same as "grounded".
+		"supported": support.String()})
 }
 
 // askContext is bestContext with the answering path's smarter retrieval on the
