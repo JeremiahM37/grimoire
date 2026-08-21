@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/JeremiahM37/grimoire/go/internal/memory"
+	"github.com/JeremiahM37/grimoire/go/internal/trust"
 )
 
 // The model-assisted half of the memory engine.
@@ -69,16 +70,34 @@ func (c *Client) ExtractFacts(text string) []string {
 // immutable candidate is never offered as a target, so no prompt can talk the
 // server into overwriting a fact its owner pinned.
 func (c *Client) DecideMemory(fact string, candidates []memory.Entry) memory.Decision {
-	rule := memory.Decide(fact, candidates)
+	return c.DecideMemoryFrom(fact, "", candidates)
+}
+
+// DecideMemoryFrom is DecideMemory for a fact with a known origin.
+//
+// The trust rule is enforced the same way the immutable rule is, and for the
+// same reason: by not OFFERING the forbidden candidates rather than by
+// checking the model's answer afterwards. A fact whose source is text other
+// people can write never sees a trusted fact in its candidate list, so there
+// is no index it could name to overwrite one — no prompt, however
+// well-crafted, can talk the model into an edit it has no way to express.
+// Filtering the reply instead would put the defence downstream of the thing
+// being defended against.
+func (c *Client) DecideMemoryFrom(fact, origin string, candidates []memory.Entry) memory.Decision {
+	rule := memory.DecideFrom(fact, origin, candidates)
 	backend := c.Backend()
 	if backend == "" || len(candidates) == 0 {
 		return rule
 	}
+	untrusted := trust.FromOrigin(origin) == trust.Untrusted
 	// Only live, mutable candidates may be targeted. Superseding an already
 	// superseded fact rewrites history rather than extending it.
 	var offered []memory.Entry
 	for _, e := range candidates {
 		if e.Superseded() || e.Immutable {
+			continue
+		}
+		if untrusted && !e.Untrusted() {
 			continue
 		}
 		offered = append(offered, e)

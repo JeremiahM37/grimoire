@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/JeremiahM37/grimoire/go/internal/memory"
+	"github.com/JeremiahM37/grimoire/go/internal/trust"
 	"unicode/utf8"
 )
 
@@ -226,6 +227,12 @@ type Context struct {
 	Path  string
 	Title string
 	Chunk string
+	// Origin and Untrusted carry the passage's provenance from retrieval to
+	// the prompt. Without them the reader receives a Slack message and a
+	// runbook in identical, unlabelled blocks, and has no basis on which to
+	// refuse an instruction inside one of them. See internal/trust.
+	Origin    string
+	Untrusted bool
 }
 
 // Answer synthesizes an answer from retrieved contexts: generative when an LLM
@@ -293,16 +300,43 @@ func (c *Client) AnswerGrounded(question string, contexts []Context) (string, Su
 }
 
 func (c *Client) llmAnswer(question string, contexts []Context, backend string) (string, error) {
+	return c.Complete(RenderReaderPrompt(question, contexts), backend)
+}
+
+// RenderReaderPrompt builds the prompt the reader answers from.
+//
+// Exported and pure so the prompt can be TESTED. It is the only place the
+// untrusted-document rule is applied, and the fence is by definition invisible
+// in any HTTP response — a test that could only see the answer could never
+// tell whether a passage had been fenced, labelled, or handed over raw.
+func RenderReaderPrompt(question string, contexts []Context) string {
 	n := min(len(contexts), 6)
 	parts := make([]string, n)
+	fenced := false
 	for i, ctx := range contexts[:n] {
+		if ctx.Untrusted {
+			// The passage goes inside a fence that names its origin, and
+			// cannot close that fence from inside. See internal/trust/fence.go.
+			parts[i] = fmt.Sprintf("[%d] (%s)\n%s", i+1, ctx.Title,
+				trust.Fence(i+1, ctx.Origin, ctx.Chunk))
+			fenced = true
+			continue
+		}
 		parts[i] = fmt.Sprintf("[%d] (%s)\n%s", i+1, ctx.Title, ctx.Chunk)
+	}
+	// The preamble is charged only when something is actually fenced. A vault
+	// with no connectors retrieves nothing untrusted, and a paragraph of rules
+	// about markers that do not appear is pure prompt overhead — the same
+	// argument that keeps num_ctx honest.
+	rules := ""
+	if fenced {
+		rules = trust.Preamble + "\n"
 	}
 	// The verdict comes FIRST. Asked for after the answer, a model that has
 	// just written three confident sentences rates its own evidence to match
 	// them; asked first, it is judging the notes rather than defending a
 	// paragraph it already wrote.
-	prompt := "Answer the question using ONLY the notes below.\n\n" +
+	return "Answer the question using ONLY the notes below.\n\n" + rules +
 		"Begin your reply with exactly one of these lines:\n" +
 		"SUPPORTED: yes   — the notes state what the question asks for\n" +
 		"SUPPORTED: no    — the notes are about the right topic but do not " +
@@ -313,7 +347,6 @@ func (c *Client) llmAnswer(question string, contexts []Context, backend string) 
 		"Then, on the following lines, give the answer, citing sources as [n]. " +
 		"If you answered 'no', say what the notes do not say.\n\nNOTES:\n" +
 		strings.Join(parts, "\n\n") + "\n\nQUESTION: " + question + "\n\nREPLY:"
-	return c.Complete(prompt, backend)
 }
 
 // The verdict token at the start of a line. Trailing text on that line is
@@ -365,10 +398,29 @@ func ExtractiveAnswer(question string, contexts []Context) string {
 			}
 			snippet = cut + " …"
 		}
-		parts = append(parts, fmt.Sprintf("- %s  ([[%s|%s]])", snippet, stem(ctx.Path), ctx.Title))
+		// The offline floor quotes rather than judges, so the ONLY defence it
+		// can offer is to say where a passage came from. An unlabelled quote
+		// of an untrusted document is the same failure as an unfenced one,
+		// arriving through the path that runs when no model is configured —
+		// which on a self-hosted install is the common case, not the edge.
+		mark := ""
+		if ctx.Untrusted {
+			mark = " [untrusted: " + originLabel(ctx.Origin) + "]"
+		}
+		parts = append(parts, fmt.Sprintf("- %s  ([[%s|%s]]%s)",
+			snippet, stem(ctx.Path), ctx.Title, mark))
 	}
 	return fmt.Sprintf("From your notes on “%s”:\n\n%s",
 		strings.TrimSpace(question), strings.Join(parts, "\n"))
+}
+
+// originLabel is an origin rendered for a person: never empty, since "[untrusted: ]"
+// reads as a bug rather than as a document whose source did not identify itself.
+func originLabel(origin string) string {
+	if strings.TrimSpace(origin) == "" {
+		return "unknown source"
+	}
+	return origin
 }
 
 // runeCut truncates to n CHARACTERS, not bytes — Python slices strings by
