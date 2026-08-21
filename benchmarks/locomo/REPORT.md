@@ -309,3 +309,26 @@ returned was **byte-identical to plain retrieval for 200/200** — median 13k
 characters against a 150k budget. Identical strings produce identical scores,
 so that dataset's numbers are unchanged by construction rather than by
 re-measurement.
+
+## Follow-up: the answer-precision measure round 7 asked for
+
+Round 7 ended on "future changes here need an answer-precision measure, not
+just a recall one." That measure exists now, and it is a different study rather
+than another round of this one: [../sufficiency/](../sufficiency/).
+
+It uses the **446 category-5 questions this protocol excludes** — adversarial,
+unanswerable, no gold answer to grade — as the precision axis, and scores them
+without a reader or a judge, which is what makes it able to resolve differences
+this harness no longer can.
+
+Two results bear on the rounds above:
+
+- **No retrieval statistic separates answerable from unanswerable.** Fifteen
+  signals span AUC 0.414–0.581 on a stratified sample of 498; no learned
+  combination generalizes across conversations (0.651 fitted, 0.564 held out);
+  the result is the same on both embedders. So the "relevance gate" that
+  recovered multi-hop in round 7 cannot be turned into a general
+  answerability check — it works by removing material, not by knowing whether
+  the material answers anything.
+- **A reader can, and it is free.** A grounding verdict emitted in the same
+  completion as the answer refuses 80% of the unanswerable questions.
