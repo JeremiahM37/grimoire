@@ -535,6 +535,27 @@ details.folder .folder-head[data-dir="memory"] { color: var(--accent); }
 .ic-score { color: var(--ink-soft); font: 600 11px var(--mono); }
 .ic-text { font-size: 12.5px; color: var(--ink-soft); white-space: pre-wrap; max-height: 120px; overflow: hidden; }
 
+/* Untrusted content. A warm amber rather than an alarm red: a pulled Slack
+   thread is not a security incident, it is text with a different provenance,
+   and a UI that shouts about every connector document trains people to stop
+   seeing the colour at all. */
+.untrusted-badge { margin-right: 4px; font-size: 12px; color: #b4741a; }
+.inspect-chunk.untrusted { border-color: color-mix(in srgb, #b4741a 45%, var(--line)); }
+.inspect-chunk.pending { border-color: var(--accent); }
+.ic-trust { color: #b4741a; font: 600 11px var(--mono); margin-left: auto; margin-right: 8px; }
+.ic-stale { color: var(--ink-soft); font: 600 11px var(--mono); margin-right: 8px; }
+.vault-note.untrusted { color: #b4741a; }
+.vault-note.untrusted a { color: inherit; cursor: pointer; text-decoration: underline; }
+#provenance.untrusted { background: color-mix(in srgb, #b4741a 12%, transparent);
+  border-bottom-color: color-mix(in srgb, #b4741a 35%, var(--line)); }
+#provenance.untrusted a { color: #b4741a; }
+.replaced { margin-top: 4px; font-size: 11.5px; color: var(--ink-soft); }
+.replaced s { opacity: 0.75; }
+.inspect-chunk button { font-size: 11.5px; padding: 3px 9px; margin: 6px 6px 0 0;
+  border: 1px solid var(--line); border-radius: 6px; background: transparent;
+  color: var(--ink); cursor: pointer; }
+.inspect-chunk button:hover { border-color: var(--accent); color: var(--accent); }
+
 /* credential audit log (vault modal) */
 #v-audit { margin-top: 12px; font-size: 13px; }
 #v-audit summary { cursor: pointer; color: var(--muted, #8a8478); padding: 4px 0; }
