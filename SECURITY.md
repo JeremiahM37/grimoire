@@ -11,6 +11,12 @@ controls that back it. Security-relevant code: `go/internal/crypto`,
 2. **Note contents you mark encrypted** — sealed on disk, out of index/search/RAG.
 3. **The confidentiality boundary between the AI and raw secrets** — the AI can
    trigger *scoped, audited* use of a secret but never receives its value.
+4. **The integrity boundary between text you wrote and text somebody else
+   wrote** — connectors put other people's writing into the same corpus an
+   agent reads from, and that text must not be able to instruct the agent or
+   overwrite what you told it. See *Untrusted content* below. This one is
+   partly a mitigation rather than a guarantee, and is measured rather than
+   asserted: `benchmarks/injection/`.
 
 ## Secret vault
 
@@ -70,6 +76,66 @@ value is not.
   leaked grant token alone cannot broker anything.
 - Only `http`/`https` schemes are permitted (no `file:`, `gopher:`, …).
 
+## Untrusted content
+
+Connectors (Slack, Confluence, Jira, Drive, GitHub, RSS) and web fetching bring
+in text that people outside this vault can write. It lands as ordinary markdown
+notes in the same index, retrieved into the same context as your own notes, and
+handed to a reader that also holds the credential broker.
+
+Every note carries an `origin` in its frontmatter, and a binary trust level
+derived from it (`go/internal/trust`). A note with no origin is trusted —
+that is every note written before this existed, and every note a person types.
+A note whose origin names a connector, a feed or a host is untrusted. A person
+may override either way with `trust: trusted|untrusted`; an unrecognised value
+is ignored rather than guessed at, so a typo cannot silently promote a document.
+
+What that enforces:
+
+- **Retrieval reports it and can exclude it.** Every hit carries `trust` and
+  `origin`; `trusted=1` on any content route drops untrusted rows. The filter
+  is applied INSIDE ranking, not to its output — BM25 IDF is computed over the
+  corpus, so an attacker who can post in a connected channel could otherwise
+  shift the ranking of your own notes by flooding it with terms.
+- **The reader is told.** Untrusted passages are wrapped in
+  `<<<UNTRUSTED DOCUMENT n — origin: … >>>` markers with a one-paragraph rule
+  above them. The fenced text cannot close its own fence (`trust.Neutralize`),
+  which is the mechanical half; the rest is a prompt, and a prompt is not a
+  boundary. `benchmarks/injection/` measures what it is worth.
+- **Untrusted text cannot rewrite memory.** A fact whose origin is untrusted may
+  not supersede or retract a fact that came from you. On the model-assisted
+  path this is enforced by never OFFERING trusted facts as candidates, so no
+  prompt can name one to overwrite — the same mechanism that protects an
+  `immutable` fact.
+
+**Not claimed:** that a determined injection cannot get through. It can. The
+controls here reduce a class of it, are measured against a no-intervention
+baseline, and are not a substitute for the credential broker's scope checks —
+which are the control that actually stops a stolen instruction from being
+useful, because an injected URL is not on the grant's origin.
+
+## Requesting a credential
+
+An agent may ASK for a grant it does not have (`POST /api/secrets/requests`).
+Asking issues nothing: a pending request confers no access, and the response
+carries no token. A person approves or denies.
+
+- Asking does **not** require an unlocked vault — that is precisely when nobody
+  is present. Approving does, because approving mints a credential. Denying
+  does not: needing to unlock the credential store to refuse access to it is
+  backwards.
+- Asking for a secret that does not exist is accepted rather than refused, so
+  the route cannot be used to enumerate which secrets a vault holds. The name
+  is validated at approval, in front of a person.
+- `GET /api/secrets/requests/{id}` is the one read in the product that can
+  return a live grant token. It answers only the grantee the request was
+  created for; an empty or mismatched grantee gets a 404, and the same 404
+  covers "no such request" so the route is not an oracle for request ids.
+  Listings never carry tokens, and the approval response does not show one to
+  the approver.
+- A decided request cannot be decided again. An approval that can be replayed
+  is one anybody holding the id can replay, minting a fresh grant per attempt.
+
 ## Encrypted notes
 
 Marking a note encrypted seals its body with the vault key. The plaintext never
@@ -102,6 +168,18 @@ and never needs the key. Editing requires an unlocked vault.
   `/api/file` route and vault export exclude `.grimoire` so the secret store and
   index never leave.
 - **No CORS headers** are set → browsers enforce same-origin for API calls.
+
+## Reading the read audit
+
+The restricted-read trail (`read_audit`) is now queried as well as written:
+`GET /api/admin/reads/anomalies` reports bursts — many distinct documents by
+one caller in a short sliding window, or a run of denials. Administrator-only,
+like the trail itself. It computes on demand and reports; there is no daemon,
+no stored threshold state and no notification path, deliberately. Sample
+document paths in a result are capped, because a response that quoted every
+restricted document a caller touched would be its own disclosure. An empty
+result where nothing is recorded is reported as "not applicable", not as
+"clear".
 
 ## Sync
 
