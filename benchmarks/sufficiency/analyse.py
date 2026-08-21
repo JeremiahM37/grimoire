@@ -34,8 +34,12 @@ def main(path="signals.jsonl", fields=None):
     A = [r for r in recs if r["label"] == "answerable"]
     U = [r for r in recs if r["label"] == "unanswerable"]
     print(f"n = {len(A)} answerable / {len(U)} unanswerable\n")
+    # `category` IS the label — category 5 is the definition of unanswerable —
+    # so it scores a perfect inverted AUC and means nothing. Leaving it in a
+    # table of "signals" would read as a leak.
+    skip = {"conv", "ndocs", "category"}
     fields = fields or [k for k, v in A[0].items()
-                        if isinstance(v, (int, float)) and k not in ("conv", "ndocs")]
+                        if isinstance(v, (int, float)) and k not in skip]
     rows = []
     for f in fields:
         a = [r[f] for r in A]
