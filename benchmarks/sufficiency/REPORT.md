@@ -166,7 +166,63 @@ completion, and returns it as `supported: grounded | ungrounded | unknown`.
   extractive offline floor reports `unknown` because it quotes passages rather
   than judging them.
 
-Measured on the same questions: section 4.
+## 4. What the verdict actually buys
+
+120 questions, balanced 60/60, stratified by category, reader `qwen3.5:4b` over
+Ollama through `/api/ask`. Every question took the retrieval path — recorded
+per question, `mode: retrieved` for all 120 — because the whole-corpus budget
+is pinned off. Baselines: the retrieval threshold from section 1, and
+string-matching the free-text answer for "the notes don't say", which is what a
+caller had before this change (regex deliberately generous, so the baseline is
+measured at its best).
+
+| signal | refuses unanswerable | answers answerable | balanced |
+|---|---|---|---|
+| **verdict** | **80.0%** | 45.0% | **62.5%** |
+| prose match | 78.3% | 46.7% | 62.5% |
+| retrieval threshold | — | — | 43.9% (AUC, section 1) |
+
+Every reply carried a parseable verdict — **0 of 120 unknown**.
+
+### Two honest readings of that table
+
+**A reader can do what no retrieval statistic could.** 80% of unanswerable
+questions correctly refused, against a retrieval-side family that spans
+0.414–0.581 and whose best member is below a coin flip. The judgement has to be
+made by something that reads, and putting it in the completion that already
+happens makes it free.
+
+**But the verdict is not MORE ACCURATE than string-matching the prose.**
+62.5% against 62.5%; on unanswerable questions they disagree on three of sixty
+(exact McNemar p = 1.00). Anyone claiming this change improves abstention
+accuracy would be reading noise. What it improves is the *contract*: a field
+with three defined values instead of a regex over English, which is brittle
+across models, phrasings and languages, and which fails silently when it
+breaks. That is an engineering argument, not an accuracy one, and it should be
+made as one.
+
+### The cost, which is real
+
+The verdict refuses **55% of answerable questions**. That is not retrieval
+missing the evidence: measured on the same binary and embedder, evidence-turn
+recall is **76.8%** (`../locomo/dev_recall_http.py`, 203 evidence turns) — so
+the evidence usually reached the context and the reader declined anyway. It is
+corroborated from inside the run: **18.5% of `ungrounded` replies still cite
+sources**, the model judging its own evidence insufficient and then answering
+from it.
+
+So on this configuration the verdict trades away roughly half of the
+answerable questions to catch four fifths of the unanswerable ones. For an
+agent acting on someone's notes that is often the right trade — a wrong answer
+about your own vault is worse than "the notes don't say" — but it is a trade,
+and a caller that treats `ungrounded` as final will be told the notes are
+silent about things they do say.
+
+Both numbers are properties of a **4-billion-parameter local reader**, not of
+the design. The obvious next experiment is the same 120 questions against a
+larger reader (the harness takes `--reader`), which would separate "small model
+is over-cautious" from "this prompt is over-cautious". That has not been run,
+so nothing here should be read as predicting it.
 
 ## 5. Aside: retrieval latency is not the bottleneck
 
@@ -181,7 +237,7 @@ AMD Ryzen AI Max+ 395):
 | 50k chunks | 9.3 ms | 4.8 MB |
 | 200k chunks | 37.6 ms | 20 MB |
 
-A reader call in the run above takes **8–10 s**. So on a 200k-chunk vault —
+A reader call in the run above averages **~7 s** (120 questions in ~920 s). So on a 200k-chunk vault —
 larger than most people's — ranking is **~0.4% of the time an agent spends
 answering a question**, and on a normal vault it is a few hundredths of a
 percent. Making it twice as fast would be invisible.
