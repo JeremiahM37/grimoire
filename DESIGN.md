@@ -189,6 +189,38 @@ Status: **v0.1–v0.9 shipped** (2026-07-16) — deployed, 160 hermetic tests + 
 - **v0.6–v0.9 ✅ (best-in-class):** tag browsing, graph view, task checkboxes, command palette (Ctrl-K), real editor (toolbar/smart-lists/tab), image/file attachments, theme toggle, outline/TOC, note templates, per-note HTML export, in-app settings, **encryption-at-rest for private notes**, soft-delete/trash + undo, aliases, word count, pin/favorite, calendar.
 - **v0.10–v0.13 ✅:** tables, find & replace, unlinked mentions, random/duplicate, zip import/export, search operators, properties editor, tag rename, **desktop-first-class** (split view + draggable divider, collapsible/resizable sidebar, context menu, focus mode, keyboard nav), callouts/highlights, code syntax highlighting, tag autocomplete + browser, note hover previews, offline draft protection, **security hardening** (Argon2id, lockout, idle-lock, SSRF guard, scope-bypass fix, CSP, rotation, revocation — see SECURITY.md), **background auto-sync** with a peer.
 - **v1.0 ✅ true CRDT sync:** `go/internal/crdt` is a real sequence CRDT (fractional-index / Logoot). Concurrent edits to the same note auto-merge with no conflict copies (proven by a randomized fuzz test); the body is CRDT'd while frontmatter converges deterministically; independent same-name histories are conflict-copied rather than garbled.
+- **v2.5 — the trust boundary made true, and three things that were written but never read:**
+  - **Untrusted content** (`internal/trust`). Connectors put other people's
+    writing into the corpus an agent reads from; nothing distinguished it. Now
+    every note carries an `origin`, every content surface reports and can
+    filter on the derived trust level, untrusted passages are fenced before a
+    reader sees them, and an untrusted fact may not supersede a trusted one.
+    Measured against a no-intervention baseline in `benchmarks/injection/`
+    rather than asserted.
+  - **`grimoire eval`** (`internal/eval`). The benchmark discipline pointed at
+    the operator's own vault: a frozen question set, scored with no reader and
+    no judge, so changing an embedder is a number instead of a feeling.
+  - **Just-in-time grants**. An agent can ASK for a credential it has no grant
+    for, and a person approves or denies. Grants that must exist before the
+    need select for pre-granting everything, which is the failure least
+    privilege exists to prevent.
+  - **The belief digest**. Superseded facts were kept and only ever read
+    backwards (`as_of`); `GET /api/memory/changes` reads them forwards, which
+    is the direction people actually ask about.
+  - **Staleness**. Memory had a temporal model and knowledge had none, so the
+    half of the corpus most likely to be wrong carried no signal. Age is
+    reported on every hit, never acted on, and there is a review queue.
+  - **The read audit reads itself**. The trail added in v2.4.5 had never been
+    queried. A burst detector over it looks for breadth, not depth.
+  - **Value-slot reconciliation** (`internal/memory/slots.go`). Benchmarking
+    the memory engine for the first time found that write-time reconciliation
+    recognised **1 of 72** real update pairs on LongMemEval's knowledge-update
+    transcripts: `Attribute` reads SUBJECT PREDICATE VALUE, which is what an
+    agent writes, not how a fact arrives. A second rule — same discriminative
+    terms, different value of the same kind — takes it to 20/72 for one extra
+    false positive in 400, deterministic, ~48 µs per comparison. The
+    competitors do this with a model call per write; this is the version that
+    can sit on an agent's hot path.
 - **remaining:** rename off the "grimoire" placeholder, publish (OSP).
 
 ## 10. Risks & threat model (sketch — expanded per phase)
