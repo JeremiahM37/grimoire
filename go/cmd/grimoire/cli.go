@@ -66,6 +66,7 @@ const usage = `grimoire — local-first AI-native notes
   grimoire restore FILE [--into DIR]  restore an archive and rebuild the index
   grimoire audit [--denied] [--path P] [--user U] [--limit N]
                                       who opened which restricted document
+  grimoire eval build|run|compare     measure retrieval on your own vault
   grimoire version                    print the build version
 
 Env: GRIMOIRE_VAULT (default ~/notes)`
@@ -86,7 +87,7 @@ func commands() map[string]func([]string) int {
 		"fetch-model": cmdFetchModel,
 		"user":        cmdUser, "space": cmdSpace,
 		"backup": cmdBackup, "restore": cmdRestore,
-		"audit": cmdAudit,
+		"audit": cmdAudit, "eval": cmdEval,
 	}
 }
 
