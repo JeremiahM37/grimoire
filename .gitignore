@@ -26,3 +26,9 @@ dist/
 # what stops the next `git add -A` from doing it again.
 grimoire-export/
 grimoire-backup-*.tar.gz
+
+# Injection-benchmark scratch: the harness rewrites a whole vault per attack
+# under .work/, and the per-run console logs are reproducible from results/.
+# The scored JSON in benchmarks/*/results/ IS committed — that is the evidence.
+benchmarks/injection/.work/
+benchmarks/injection/run*.log
