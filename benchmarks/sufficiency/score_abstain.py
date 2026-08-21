@@ -66,6 +66,20 @@ def main(path="abstain.jsonl"):
                 print(f"{names.get(cat, cat):22s} {len(sub):4d} "
                       f"{1 - rate(sub, verdict_abstain):22.1%}")
 
+    # Verdict/answer disagreement: the model says the notes do not support an
+    # answer and then writes a cited one anyway. It is a defect of the signal,
+    # not of the questions, and reporting the rate is the difference between a
+    # measurement and an advertisement.
+    import re as _re
+    cited = _re.compile(r"\[\d+\]")
+    inconsistent = [r for r in recs
+                    if r["supported"] == "ungrounded" and cited.search(r["answer"])]
+    if inconsistent:
+        print(f"\nverdict/answer disagreement: {len(inconsistent)} of "
+              f"{sum(1 for r in recs if r['supported'] == 'ungrounded')} "
+              f"'ungrounded' replies still cite sources "
+              f"({len(inconsistent) / max(1, sum(1 for r in recs if r['supported'] == 'ungrounded')):.1%})")
+
     unknown = sum(1 for r in recs if r["supported"] == "unknown")
     if unknown:
         print(f"\n{unknown} of {len(recs)} replies carried no verdict line "
