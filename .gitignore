@@ -17,3 +17,12 @@ go/grimoire
 go/grimoire-mcp
 .verify-artifacts/
 dist/
+
+# Artifacts the CLI writes into whatever directory you run it from. `grimoire
+# export` defaults to ./grimoire-export/ and `grimoire backup` to
+# ./grimoire-backup-<stamp>.tar.gz — and those are an export and a backup of a
+# REAL vault: the notes, and .grimoire/secrets.json. Both were committed by
+# accident once and had to be purged from history; ignoring them by pattern is
+# what stops the next `git add -A` from doing it again.
+grimoire-export/
+grimoire-backup-*.tar.gz
