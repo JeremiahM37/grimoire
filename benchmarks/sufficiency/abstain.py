@@ -73,6 +73,7 @@ def main() -> int:
     ap.add_argument("--port", type=int, default=9133)
     ap.add_argument("--vault", default="/tmp/abstain-vault")
     ap.add_argument("--per-conv", type=int, default=5, help="questions per class per conversation")
+    ap.add_argument("--reader", default="", help="override GRIMOIRE_LLM_MODEL")
     ap.add_argument("--out", default=str(HERE / "abstain.jsonl"))
     args = ap.parse_args()
 
@@ -130,7 +131,9 @@ def main() -> int:
                                   # RETRIEVED context is insufficient;
                                   # full-corpus reading is not RAG and has no
                                   # retrieval to judge.
-                                  "GRIMOIRE_CONTEXT_BUDGET": "0"}):
+                                  "GRIMOIRE_CONTEXT_BUDGET": "0",
+                                  **({"GRIMOIRE_LLM_MODEL": args.reader}
+                                     if args.reader else {})}):
             for label, qs in (("answerable", answerable), ("unanswerable", unanswerable)):
                 for qi, q in enumerate(qs):
                     res = None
@@ -162,6 +165,7 @@ def main() -> int:
                         # Recorded so the report can PROVE no question took the
                         # whole-corpus path rather than asserting it.
                         "mode": res.get("mode", ""),
+                        "reader": args.reader or "qwen3.5:4b",
                         "prose_abstained": bool(PROSE_ABSTAIN.search(answer)),
                         "answer": answer[:400],
                     }

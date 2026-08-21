@@ -78,6 +78,24 @@ score measures proximity between the query and the corpus; answerability is
 whether the corpus states the asked-for fact.** They coincide only for
 lookups.
 
+### Nor is it an artifact of one embedder
+
+Repeating the whole probe with the zero-dependency hashing embedder
+(`--embed off`, the as-shipped offline default) rather than model2vec:
+
+| | model2vec | hashing |
+|---|---|---|
+| `top_cosine` | 0.550 | **0.496** |
+| `max_cosine` | 0.581 | 0.490 |
+| `max_lexical` | 0.415 | 0.405 |
+| `legs_agree` | 0.456 | 0.500 |
+| range across all signals | 0.414–0.581 | 0.392–0.506 |
+
+The hashing embedder is *flatter still* — its `top_cosine` is a coin flip to
+three decimal places. Whatever separates an answerable question from an
+unanswerable one, neither embedding space encodes it, and the result does not
+depend on which one is installed.
+
 ### Nor does any combination of them
 
 The obvious objection to a table of single signals is that a *combination*
