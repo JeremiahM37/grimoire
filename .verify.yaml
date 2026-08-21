@@ -112,3 +112,30 @@ steps:
       - shell: >
           GRIMOIRE_VAULT=/tmp/grimoire-verify-cli ./go/grimoire recall
           | grep -q "VPN reset"
+
+  - name: ask reports whether the notes supported the answer
+    actions:
+      # The field exists on the shipped path, not only in tests. With no reader
+      # configured the honest verdict is "unknown" — the extractive floor
+      # quotes passages rather than judging them, and a caller that reads that
+      # as "grounded" has mistaken the absence of a check for a passed one.
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/ask
+          -H 'Content-Type: application/json'
+          -d '{"q":"what does the verify note link to"}'
+          | grep -q '"supported":"unknown"'
+      # A nonsense query still returns hits here — retrieval falls back to
+      # any-term matching on purpose — so this is not the empty-context case
+      # and must not assert "ungrounded". What it pins is that the verdict is
+      # always one of the three values, on every answer. (The empty-context
+      # case is a Go test; it needs a vault with nothing in it.)
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/ask
+          -H 'Content-Type: application/json'
+          -d '{"q":"zzqqxx nothing in this vault mentions this at all"}'
+          | grep -qE '"supported":"(grounded|ungrounded|unknown)"'
+      # And a retrieval hit carries the legs' raw magnitudes, not just the
+      # rank-derived fused score.
+      - shell: >
+          curl -sf 'http://127.0.0.1:9119/api/retrieve?q=links&k=3'
+          | grep -q '"cosine"'

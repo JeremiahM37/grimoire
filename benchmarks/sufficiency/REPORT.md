@@ -130,14 +130,15 @@ Measured on the same questions: see section 4.
 ## 5. Aside: retrieval latency is not the bottleneck
 
 Worth measuring before optimizing it. Ranking cost against corpus size
-(`go test -bench BenchmarkRetrieve`, AMD Ryzen AI Max+ 395):
+(`go test -bench BenchmarkRetrieve -benchtime=50x -count=3`, median of three,
+AMD Ryzen AI Max+ 395):
 
-| corpus | per query |
-|---|---|
-| 1k chunks | 0.40 ms |
-| 10k chunks | 2.4 ms |
-| 50k chunks | 10.0 ms |
-| 200k chunks | 38.0 ms |
+| corpus | per query | allocated |
+|---|---|---|
+| 1k chunks | 0.40 ms | 78 KB |
+| 10k chunks | 2.2 ms | 832 KB |
+| 50k chunks | 9.3 ms | 4.8 MB |
+| 200k chunks | 37.6 ms | 20 MB |
 
 A reader call in the run above takes **8–10 s**. So on a 200k-chunk vault —
 larger than most people's — ranking is **~0.4% of the time an agent spends
