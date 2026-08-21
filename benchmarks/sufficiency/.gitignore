@@ -1,4 +1,5 @@
-# Reader outputs are regenerated per run and carry model text; the retrieval
-# probe's signals.jsonl IS committed, because it is the evidence for the
-# report's central table and it is deterministic given the binary.
-abstain.jsonl
+# Nothing. Both probes' outputs are committed: signals.jsonl is the evidence
+# for section 1 and abstain.jsonl for section 4, and a report whose numbers
+# cannot be recomputed from committed data is an assertion rather than a
+# measurement. They are small, and the retrieval one is deterministic given
+# the binary.

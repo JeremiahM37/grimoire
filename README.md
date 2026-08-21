@@ -349,6 +349,14 @@ curl -s localhost:9111/api/ask -d '{"q":"what did we decide about the migration?
 cross-encoder — every alternative in the literature costs a call per query or
 per document.
 
+Measured on 120 of those questions with the default local reader, it refuses
+**80%** of the unanswerable ones. Two things it does *not* do, both measured:
+it is no more accurate than string-matching the answer text for "the notes
+don't say" (62.5% vs 62.5%, p = 1.00) — what it buys is a field with three
+defined values instead of a regex over English — and it is over-cautious,
+declining 55% of answerable questions on a 4B reader that usually had the
+evidence in front of it.
+
 Agents that mount `ask_notes` get the passages instead and are the reader
 themselves, so that tool carries the finding rather than the verdict: judge
 whether the passages state what was asked, because the scores cannot tell you.
