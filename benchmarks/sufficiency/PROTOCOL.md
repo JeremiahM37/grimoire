@@ -88,3 +88,34 @@ For the reader verdict, also the two rates a caller actually cares about:
   artifact and be actively harmful on real questions.
 - The reader verdict is judged on both rates together. Refusing everything
   scores 100% abstention and is worthless.
+
+## Amendments
+
+Both were made before any reported number, and both because the run as first
+written measured something other than what this document says it measures.
+
+**A1 — stratified sampling (2026-08-20).** "Taken in dataset order" was wrong.
+The file is not ordered randomly: taking the first N answerable questions per
+conversation caught **4 single-hop questions out of 249**, of the category that
+is 55% of LoCoMo. Single-hop is the one category where the retrieval scores are
+not inverted, so excluding it made the finding look about twice as strong as it
+is. Both probes now sample the answerable side stratified by category with
+`random.seed(42)` — the seed the LoCoMo harness freezes — and both report a
+per-category breakdown. The first, unstratified numbers were published and are
+corrected in the report rather than removed.
+
+**A2 — the reader probe was not measuring retrieval (2026-08-20).**
+`/api/ask` reads the WHOLE corpus instead of retrieving when the corpus fits a
+100k-character budget, and a LoCoMo conversation sits right at that boundary.
+An unknown fraction of questions were therefore answered from the full
+transcript with no retrieval involved — long-context, not RAG, and with no
+retrieval to judge. `GRIMOIRE_CONTEXT_BUDGET=0` now pins every question to the
+retrieval path, and the mode is recorded per question so the report can show it
+rather than claim it.
+
+**A3 — verdict parsing (2026-08-20).** The first parser required the verdict
+line to end after `yes`/`no`. Models write `SUPPORTED: no — the notes mention
+X but never state Y`, so 31% of real replies went unparsed and were scored as
+"did not refuse". That was a parser bug being counted as a model failure; the
+pattern now accepts trailing text and keeps it, since it is the most useful
+sentence in the reply. Fixed before the reported run.
