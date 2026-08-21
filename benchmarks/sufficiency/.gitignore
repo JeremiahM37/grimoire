@@ -1,0 +1,4 @@
+# Reader outputs are regenerated per run and carry model text; the retrieval
+# probe's signals.jsonl IS committed, because it is the evidence for the
+# report's central table and it is deterministic given the binary.
+abstain.jsonl
