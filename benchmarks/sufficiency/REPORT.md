@@ -113,7 +113,8 @@ than generalization to a new one.
 | best single signal on the same held-out set | 0.395 (inverted) |
 
 It reaches 0.651 where it was fitted and 0.564 where it was not — still under
-the bar, and the gap is the finding: what little signal exists is
+the bar. With the hashing embedder the same fit gives 0.656 / **0.549**, the
+same pattern. The gap between fitted and held-out is the finding: what little signal exists is
 conversation-specific rather than a general property of retrieval. There is no
 threshold, no weighting and no learned rule over these statistics that tells
 an answerable question from an unanswerable one.
