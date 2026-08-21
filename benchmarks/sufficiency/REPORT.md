@@ -10,6 +10,11 @@ resolve differences of this size: 8–12% of its answers flip on byte-identical
 input (`../locomo/REPORT.md`, round 6). The retrieval probe involves no reader
 and no judge at all.
 
+Section 1 is reproducible in the strongest sense available: re-running
+`probe.py` against the committed binary regenerates `signals.jsonl`
+**byte-identically**, all 498 records. Section 4 involves a sampling reader, so
+it is reproducible only in distribution; its raw replies are committed instead.
+
 ## 1. No retrieval statistic can do it
 
 498 questions (249 answerable / 249 unanswerable), `/api/retrieve?k=10`,
