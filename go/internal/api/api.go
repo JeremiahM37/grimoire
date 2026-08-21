@@ -140,6 +140,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/stale", s.staleNotes)
 	mux.HandleFunc("POST /api/stale/verify", s.userOnly(s.verifyNote))
 	mux.HandleFunc("POST /api/trust/vouch", s.userOnly(s.trustVouch))
+	mux.HandleFunc("GET /api/timeline", s.userOnly(s.timeline))
 	// The credential vault is instance-wide, so managing it is an
 	// administrator's job: one shared store of secrets, and a grant issued
 	// from it acts with the instance's authority rather than the caller's.

@@ -121,6 +121,10 @@ var routeAccess = map[string]access{
 	// note's own write check inside the handler as well.
 	"POST /api/stale/verify": authed,
 	"POST /api/trust/vouch":  authed,
+	// The joined audit trail: read paths, agent memory, and -- when the
+	// vault is unlocked -- secret names and brokered URLs. Strictly more
+	// revealing than any one of its three sources, so it is never public.
+	"GET /api/timeline": authed,
 	// An agent asking for a credential it has no grant for. It issues nothing
 	// — a pending request confers no access — so it cannot be admin-gated, or
 	// no agent could ever ask.
