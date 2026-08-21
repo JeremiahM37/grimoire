@@ -15,6 +15,7 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/markdown"
 	"github.com/JeremiahM37/grimoire/go/internal/queries"
 	"github.com/JeremiahM37/grimoire/go/internal/render"
+	"github.com/JeremiahM37/grimoire/go/internal/trust"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
 )
 
@@ -392,7 +393,28 @@ func (s *Server) ask(w http.ResponseWriter, r *http.Request) {
 	if k <= 0 {
 		k = 6
 	}
-	smart := in.Smart == nil || *in.Smart
+	// Decomposition and reranking are OPT-IN, and were the default until they
+	// were measured.
+	//
+	// On LongMemEval's `multi-session` questions — the category the mechanism
+	// exists for — plain single-query retrieval scored 49.0%, decomposition
+	// with a 4B decomposer 47.1%, and with a 36B one 45.1%. Neither is
+	// distinguishable from plain (p = 1.00 and p = 0.80), plain is nominally
+	// the best of the three, and a 9x larger model did not help — so the
+	// problem is not the decomposer's size. It costs two model calls and about
+	// 70x the retrieval latency (0.1s -> 6.9s measured) per question.
+	//
+	// A second reason, independent of the accuracy: every published benchmark
+	// number for this project was measured on the PLAIN path, because that is
+	// what /api/retrieve did and the harness called it. With decomposition on
+	// by default, the numbers in benchmarks/ did not describe what a user got.
+	// Now they do.
+	//
+	// `smart: true` still turns it on for a caller that wants it, and n=51
+	// cannot rule out a small benefit — but a default that spends two model
+	// calls a question needs evidence, and the only measurement there is says
+	// no. See benchmarks/longmemeval/REPORT-multihop.md.
+	smart := in.Smart != nil && *in.Smart
 	// If the whole corpus fits the context budget, read it rather than rank
 	// it: decomposition and reranking exist to choose what to leave out, and
 	// there is nothing to leave out. See internal/api/context.go.
@@ -413,19 +435,35 @@ func (s *Server) ask(w http.ResponseWriter, r *http.Request) {
 	}
 	citations := []map[string]any{}
 	for _, h := range cited {
-		citations = append(citations, map[string]any{
-			"path": h.Path, "title": h.Title, "score": h.Score})
+		c := map[string]any{"path": h.Path, "title": h.Title, "score": h.Score,
+			"trust": h.Trust}
+		if h.Origin != "" {
+			c["origin"] = h.Origin
+		}
+		citations = append(citations, c)
 	}
 	contexts := make([]ai.Context, 0, len(hits))
+	untrustedShown := 0
 	for _, h := range hits {
-		contexts = append(contexts, ai.Context{Path: h.Path, Title: h.Title, Chunk: h.Chunk})
+		contexts = append(contexts, ai.Context{Path: h.Path, Title: h.Title, Chunk: h.Chunk,
+			Origin: h.Origin, Untrusted: h.Untrusted()})
+		if h.Untrusted() {
+			untrustedShown++
+		}
 	}
 	if in.Web {
 		// Web passages are appended and cited like any other, so the answer
 		// shows which parts came from outside the vault.
 		for _, p := range s.webContext(r, q, 3) {
+			// A live web page is the least trusted text in the building: it
+			// was fetched seconds ago from a host chosen by a search engine.
+			// Marking it here rather than relying on the note path is what
+			// makes the fence apply to a passage that was never a note.
+			origin := trust.Web(hostOf(p["path"]))
 			contexts = append(contexts, ai.Context{
-				Path: p["path"].(string), Title: p["title"].(string), Chunk: p["chunk"].(string)})
+				Path: p["path"].(string), Title: p["title"].(string), Chunk: p["chunk"].(string),
+				Origin: origin, Untrusted: true})
+			untrustedShown++
 			citations = append(citations, map[string]any{
 				"path": p["path"], "title": p["title"], "web": true})
 		}
@@ -447,7 +485,14 @@ func (s *Server) ask(w http.ResponseWriter, r *http.Request) {
 		// act on it — abstain, ask elsewhere, or tell the person the vault
 		// does not know. "unknown" means no reader judged it (the offline
 		// extractive floor), which is not the same as "grounded".
-		"supported": support.String()})
+		"supported": support.String(),
+		// How many of the passages the reader saw came from somewhere other
+		// people can write to. A caller that wants to treat an answer built
+		// partly out of a Slack thread differently — flag it, re-ask with
+		// trusted=1, show a badge — cannot do that from an answer string, and
+		// asking it to re-derive the count from the citations means every
+		// caller reimplements the rule.
+		"untrusted_context": untrustedShown})
 }
 
 // askContext is bestContext with the answering path's smarter retrieval on the
@@ -509,7 +554,8 @@ func (s *Server) smartRetrieve(r *http.Request, q string, k int, includePrivate,
 	byKey := map[string]index.Hit{}
 	ctxs := make([]ai.Context, 0, len(pool))
 	for _, h := range pool {
-		c := ai.Context{Path: h.Path, Title: h.Title, Chunk: h.Chunk}
+		c := ai.Context{Path: h.Path, Title: h.Title, Chunk: h.Chunk,
+			Origin: h.Origin, Untrusted: h.Untrusted()}
 		byKey[c.Path+"\x00"+firstN(c.Chunk, 80)] = h
 		ctxs = append(ctxs, c)
 	}
