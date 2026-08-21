@@ -14,6 +14,7 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/index"
 	"github.com/JeremiahM37/grimoire/go/internal/markdown"
 	"github.com/JeremiahM37/grimoire/go/internal/memory"
+	"github.com/JeremiahM37/grimoire/go/internal/trust"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
 )
 
@@ -75,6 +76,16 @@ type memoryIn struct {
 	// Immutable pins a fact: reconciliation may never supersede or retract it,
 	// and it is never offered to the model as a target.
 	Immutable bool `json:"immutable"`
+
+	// Origin is where the agent GOT this fact, when it did not think of it
+	// itself: "connector:slack:C123", "web:example.com", or the path of an
+	// untrusted note it was reading. An agent that summarises a pulled
+	// document into a memory is laundering it — the fact loses the provenance
+	// the document had, and lands in the store as if the agent had asserted
+	// it. Passing the origin through is what stops that, and it is why
+	// `remember` advertises the field to agents rather than inferring it: only
+	// the caller knows what it was reading.
+	Origin string `json:"origin"`
 
 	// Infer defaults to true. Setting it false stores the text verbatim as one
 	// fact with no extraction and no reconciliation — the escape hatch for a
@@ -244,7 +255,7 @@ func (s *Server) reconcileFact(w http.ResponseWriter, r *http.Request, rel, fact
 			candidates = append(candidates, h.Entry)
 			byID[h.ID] = h
 		}
-		decision = s.AI.DecideMemory(fact, candidates)
+		decision = s.AI.DecideMemoryFrom(fact, strings.TrimSpace(m.Origin), candidates)
 		if decision.Target != "" {
 			target, ok := byID[decision.Target]
 			if !ok {
@@ -339,6 +350,7 @@ func (s *Server) appendEntry(w http.ResponseWriter, r *http.Request, rel, fact,
 		Task: task, Session: strings.TrimSpace(m.Session), Stamp: stamp,
 		Category: strings.TrimSpace(m.Category), Expires: expires,
 		Immutable: m.Immutable, SupersededBy: supersededBy,
+		Origin: strings.TrimSpace(m.Origin),
 	}
 
 	existing, readErr := s.Vault.Read(rel)
@@ -478,6 +490,14 @@ type entryOut struct {
 	Unhelpful    int     `json:"unhelpful,omitempty"`
 	Score        float64 `json:"score"`
 
+	// Where the fact came from, and the verdict derived from it. An agent
+	// deciding whether to ACT on a recalled fact needs this as much as a
+	// reader deciding whether to obey a passage: "the deploy host is X" is a
+	// different claim depending on whether the operator said it or a ticket
+	// comment did.
+	Origin string `json:"origin,omitempty"`
+	Trust  string `json:"trust"`
+
 	// Why this fact was recalled, for the surface that has to justify it.
 	Scores *scoreBreakdown `json:"scores,omitempty"`
 }
@@ -499,6 +519,7 @@ func entriesOut(hits []index.MemoryHit, explain bool) []entryOut {
 			Expires: h.Expires, Immutable: h.Immutable,
 			SupersededBy: h.SupersededBy, Helpful: h.Helpful,
 			Unhelpful: h.Unhelpful, Score: h.Score,
+			Origin: h.Origin, Trust: trust.FromOrigin(h.Origin).String(),
 		}
 		if explain {
 			e.Scores = &scoreBreakdown{Semantic: h.Semantic, Keyword: h.Keyword,
@@ -754,11 +775,23 @@ func (s *Server) briefing(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	// What CHANGED since the last time anybody looked, not just what is
+	// currently believed. An agent joining a session is told the state; a
+	// person reading the briefing wants the delta, and it is the delta that
+	// surfaces an agent having quietly replaced a correct fact with a wrong
+	// one. Counts only here — the full digest is /api/memory/changes — because
+	// a briefing is read before work starts and must stay small.
+	changed, retracted := s.recentBeliefChanges(r)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"pinned":          dedupe(pinned),
 		"onboarding":      dedupe(onboarding),
 		"recent_memories": dedupe(recent),
 		"recent_facts":    entriesOut(facts, false),
+		"belief_changes": map[string]any{
+			"window":    "7d",
+			"changed":   changed,
+			"retracted": retracted,
+		},
 	})
 }
 

@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/JeremiahM37/grimoire/go/internal/metrics"
+	"github.com/JeremiahM37/grimoire/go/internal/trust"
 	"log"
 	"net/http"
 	"regexp"
@@ -272,6 +273,14 @@ func (r *Runner) write(c Connector, docs []Document) (written, skipped int, err 
 			"source":      c.Kind,
 			"connector":   c.Name,
 			"external_id": d.ExternalID,
+			// Provenance the rest of the system enforces on, not just
+			// documentation. `source` has been here since connectors shipped
+			// and nothing downstream read it; `origin` is the same fact in the
+			// form the index, retrieval and the reader prompt all agree on.
+			// A pulled document is text other people can write — that is the
+			// whole point of pulling it — so it must not be able to instruct
+			// an agent. See internal/trust.
+			"origin": trust.Connector(c.Kind, c.ID),
 		}
 		// A reader list from the source, mapped to accounts here. Written into
 		// the note's frontmatter so it survives a reindex and is visible to

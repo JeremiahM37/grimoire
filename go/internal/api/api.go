@@ -80,6 +80,7 @@ func (s *Server) Routes() http.Handler {
 
 	mux.HandleFunc("GET /api/health", s.health)
 	mux.HandleFunc("GET /api/admin/reads", s.readAudit)
+	mux.HandleFunc("GET /api/admin/reads/anomalies", s.readAnomalies)
 	s.authRoutes(mux)
 	s.connectorRoutes(mux)
 	s.webRoutes(mux)
@@ -116,6 +117,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/memory", s.remember)
 	mux.HandleFunc("GET /api/memory", s.recall)
 	mux.HandleFunc("GET /api/memory/export", s.exportMemory)
+	mux.HandleFunc("GET /api/memory/changes", s.memoryChanges)
 	mux.HandleFunc("GET /api/memory/facets", s.memoryFacets)
 	mux.HandleFunc("GET /api/memory/graph", s.memoryGraph)
 	mux.HandleFunc("POST /api/memory/search", s.searchMemoryByVector)
@@ -125,6 +127,10 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("PATCH /api/memory/entry", s.patchEntry)
 	mux.HandleFunc("DELETE /api/memory/entry", s.forgetEntry)
 	mux.HandleFunc("GET /api/briefing", s.briefing)
+	mux.HandleFunc("GET /api/trust", s.trustOverview)
+	mux.HandleFunc("GET /api/stale", s.staleNotes)
+	mux.HandleFunc("POST /api/stale/verify", s.userOnly(s.verifyNote))
+	mux.HandleFunc("POST /api/trust/vouch", s.userOnly(s.trustVouch))
 	// The credential vault is instance-wide, so managing it is an
 	// administrator's job: one shared store of secrets, and a grant issued
 	// from it acts with the instance's authority rather than the caller's.
@@ -145,6 +151,11 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("DELETE /api/secrets/{name}", s.adminOnly(s.deleteSecret))
 	mux.HandleFunc("POST /api/secrets/{name}/grant", s.adminOnly(s.makeGrant))
 	mux.HandleFunc("POST /api/secrets/broker", s.brokerUse)
+	mux.HandleFunc("POST /api/secrets/requests", s.userOnly(s.requestGrant))
+	mux.HandleFunc("GET /api/secrets/requests", s.adminOnly(s.listGrantRequests))
+	mux.HandleFunc("GET /api/secrets/requests/{id}", s.userOnly(s.pollGrantRequest))
+	mux.HandleFunc("POST /api/secrets/requests/{id}/approve", s.adminOnly(s.approveGrantRequest))
+	mux.HandleFunc("POST /api/secrets/requests/{id}/deny", s.adminOnly(s.denyGrantRequest))
 	mux.HandleFunc("GET /api/grants", s.adminOnly(s.listGrants))
 	mux.HandleFunc("DELETE /api/grants", s.adminOnly(s.revokeAllGrants))
 	mux.HandleFunc("DELETE /api/grants/{token}", s.adminOnly(s.revokeGrant))
@@ -298,6 +309,11 @@ type noteView struct {
 	Tags        []string       `json:"tags"`
 	Encrypted   bool           `json:"encrypted"`
 	Locked      bool           `json:"locked"`
+	// Provenance, so the console can badge a pulled note without re-deriving
+	// the rule from frontmatter in JavaScript — two implementations of a trust
+	// decision is one more than there should be.
+	Origin string `json:"origin,omitempty"`
+	Trust  string `json:"trust"`
 }
 
 // viewOf presents a note for the console. An encrypted note is decrypted when
@@ -337,6 +353,7 @@ func viewOf(n *vault.Note) noteView {
 		Created:     n.Frontmatter.StringVal("created"),
 		Updated:     n.Frontmatter.StringVal("updated"),
 		Frontmatter: fm, Tags: tags, Encrypted: n.Encrypted, Locked: false,
+		Origin: n.Origin, Trust: n.Trust.String(),
 	}
 }
 
@@ -418,6 +435,9 @@ type listItem struct {
 	Updated string `json:"updated"`
 	Private bool   `json:"private"`
 	Pinned  bool   `json:"pinned"`
+	// Untrusted lets the console badge a pulled note in the list, where a
+	// person scanning their vault sees it before they open it.
+	Untrusted bool `json:"untrusted,omitempty"`
 }
 
 func (s *Server) listNotes(w http.ResponseWriter, r *http.Request) {
@@ -433,12 +453,14 @@ func (s *Server) listNotes(w http.ResponseWriter, r *http.Request) {
 	// LIMIT would silently return fewer notes than asked for, and the shortfall
 	// would be exactly the notes the caller cannot see.
 	where, spaceArgs := s.whereSpace(r, "space", "")
-	query := "SELECT path, title, updated, private, frontmatter_json, acl FROM notes" +
+	query := "SELECT path, title, updated, private, frontmatter_json, acl, " +
+		"COALESCE(untrusted,0) FROM notes" +
 		where + " ORDER BY updated DESC, path LIMIT ?"
 	args := append(append([]any{}, spaceArgs...), limit)
 	if tag != "" {
 		nWhere, nSpaceArgs := s.whereSpace(r, "n.space", " WHERE t.tag=?")
-		query = "SELECT n.path, n.title, n.updated, n.private, n.frontmatter_json, n.acl FROM notes n " +
+		query = "SELECT n.path, n.title, n.updated, n.private, n.frontmatter_json, n.acl, " +
+			"COALESCE(n.untrusted,0) FROM notes n " +
 			"JOIN tags t ON t.note=n.path" + nWhere + " ORDER BY n.updated DESC, n.path LIMIT ?"
 		args = append(append([]any{tag}, nSpaceArgs...), limit)
 	}
@@ -452,12 +474,14 @@ func (s *Server) listNotes(w http.ResponseWriter, r *http.Request) {
 	items := []listItem{}
 	for rows.Next() {
 		var it listItem
-		var private int
+		var private, untrusted int
 		var fmJSON, acl string
-		if err := rows.Scan(&it.Path, &it.Title, &it.Updated, &private, &fmJSON, &acl); err != nil {
+		if err := rows.Scan(&it.Path, &it.Title, &it.Updated, &private, &fmJSON, &acl,
+			&untrusted); err != nil {
 			writeErr(w, http.StatusInternalServerError, err.Error())
 			return
 		}
+		it.Untrusted = untrusted != 0
 		// The reader list is selected with the row rather than looked up: a
 		// query inside an open cursor waits for the connection the cursor
 		// holds, which on one connection is a deadlock.
@@ -733,6 +757,20 @@ func (s *Server) randomNote(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"path": path})
 }
 
+// retrieve ranks passages for a query.
+//
+// `smart=1` runs the SAME multi-hop path `/api/ask` uses: decompose the
+// question into sub-questions, retrieve for each, and rerank the pool. That
+// path has always existed and has never been reachable on its own, which had
+// two consequences worth fixing together. The console's "what would the agent
+// see" showed the plain ranking while the agent answering the same question
+// saw a different one — an inspection surface that inspects something else is
+// worse than none. And every published benchmark number was measured on plain
+// retrieval, so the shipped answering path had never been measured at all.
+//
+// With no LLM configured `Decompose` returns the question unchanged and this
+// is exactly the plain path, which is why it is safe as a parameter rather
+// than a mode.
 func (s *Server) retrieve(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query().Get("q")
 	k := 8
@@ -741,7 +779,13 @@ func (s *Server) retrieve(w http.ResponseWriter, r *http.Request) {
 			k = n
 		}
 	}
-	hits, err := s.Index.RetrieveFor(q, k, filterFor(r, false))
+	var hits []index.Hit
+	var err error
+	if truthy(r.URL.Query().Get("smart")) {
+		hits, err = s.smartRetrieve(r, q, k, false, true)
+	} else {
+		hits, err = s.Index.RetrieveFor(q, k, filterFor(r, false))
+	}
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return

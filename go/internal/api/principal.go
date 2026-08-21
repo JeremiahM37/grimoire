@@ -6,6 +6,7 @@ import (
 	"crypto/subtle"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/auth"
 	"github.com/JeremiahM37/grimoire/go/internal/index"
 	"github.com/JeremiahM37/grimoire/go/internal/queries"
+	"github.com/JeremiahM37/grimoire/go/internal/trust"
 )
 
 // Who is asking, and what they may see.
@@ -113,9 +115,17 @@ func callerOf(r *http.Request) *caller {
 func principal(r *http.Request) *auth.Principal { return callerOf(r).principal }
 
 // filterFor is what this caller may retrieve.
+//
+// The trust filter is read here, in the ONE place every content surface builds
+// its filter, rather than added handler by handler. That is the lesson of the
+// v2.4.x access holes written down as code: the routes that leak are the ones
+// nobody remembered to update, so the parameter is honoured by search, ask,
+// retrieve, context, memory recall and the query engine the moment it exists,
+// including on routes added later by somebody who has never read this comment.
 func filterFor(r *http.Request, includePrivate bool) index.Filter {
 	p := principal(r)
-	f := index.Filter{IncludePrivate: includePrivate, Spaces: p.ReadableSpaces()}
+	f := index.Filter{IncludePrivate: includePrivate, Spaces: p.ReadableSpaces(),
+		TrustedOnly: wantsTrustedOnly(r)}
 	if !p.Anonymous && !p.Unrestricted {
 		f.User = p.User.ID
 	}
@@ -124,6 +134,22 @@ func filterFor(r *http.Request, includePrivate bool) index.Filter {
 	// document FROM, so reader lists do not apply.
 	f.IgnoreACLs = p.Unrestricted || p.IsAdmin()
 	return f
+}
+
+// wantsTrustedOnly reads the per-request trust floor.
+//
+// Opt-in, not the default. Fencing untrusted passages costs nothing and is
+// therefore always on; EXCLUDING them is a different trade — it makes the
+// connectors an operator deliberately configured invisible — and a default
+// that quietly empties half of somebody's corpus is not a safe default, it is
+// a broken one. An agent that wants to answer only from the operator's own
+// writing asks for it.
+func wantsTrustedOnly(r *http.Request) bool {
+	q := r.URL.Query()
+	if truthy(q.Get("trusted")) {
+		return true
+	}
+	return strings.EqualFold(q.Get("trust"), trust.NameTrusted)
 }
 
 // SpaceOf implements index.Spaces, so rows are written with their space.
@@ -531,13 +557,41 @@ func (s *Server) requireAdminToken(next http.Handler) http.Handler {
 // see. A query block lists notes by tag, folder or field, so it is a read of
 // the vault wearing a different shape.
 func (s *Server) readableRows(r *http.Request, res *queries.Result) *queries.Result {
-	if res == nil || principal(r).Unrestricted {
+	if res == nil {
 		return res
+	}
+	trustedOnly := wantsTrustedOnly(r)
+	// An unrestricted principal (no accounts configured) skips the access
+	// check but NOT the trust filter — they are different questions. The first
+	// asks who may see a note; the second asks whether the caller wanted other
+	// people's writing in this listing, and a single-user vault with a Slack
+	// connector has exactly as much reason to ask it as a team does.
+	if principal(r).Unrestricted && !trustedOnly {
+		return res
+	}
+	// Loaded ONCE. A lookup per row would be a query inside a loop that the
+	// caller may already be iterating, which on one SQLite connection is the
+	// deadlock this file warns about twice already.
+	untrusted := map[string]bool{}
+	if trustedOnly {
+		if rows, err := s.Index.DB.Query(
+			"SELECT path FROM notes WHERE untrusted=1"); err == nil {
+			for rows.Next() {
+				var p string
+				if rows.Scan(&p) == nil {
+					untrusted[p] = true
+				}
+			}
+			rows.Close()
+		}
 	}
 	kept := make([]map[string]any, 0, len(res.Rows))
 	for _, row := range res.Rows {
 		path, _ := row["path"].(string)
-		if path != "" && !s.canRead(r, path) {
+		if path != "" && !principal(r).Unrestricted && !s.canRead(r, path) {
+			continue
+		}
+		if trustedOnly && untrusted[path] {
 			continue
 		}
 		kept = append(kept, row)
@@ -545,4 +599,17 @@ func (s *Server) readableRows(r *http.Request, res *queries.Result) *queries.Res
 	res.Rows = kept
 	res.Count = len(kept)
 	return res
+}
+
+// hostOf pulls the host out of a web-context "path", which is a URL. A URL
+// that will not parse still has to produce a usable origin: reporting it as
+// untrusted from an unnamed host is right, and dropping the marking because
+// url.Parse failed is not.
+func hostOf(v any) string {
+	s, _ := v.(string)
+	u, err := url.Parse(s)
+	if err != nil || u.Host == "" {
+		return ""
+	}
+	return u.Hostname()
 }

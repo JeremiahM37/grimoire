@@ -45,13 +45,14 @@ const (
 
 var routeAccess = map[string]access{
 	// --- public, on purpose ---
-	"GET /api/admin/reads":  admin,  // who opened which restricted document
-	"GET /api/health":       public, // liveness; reveals counts, not content
-	"GET /api/me":           public, // the console asks this BEFORE signing in
-	"POST /api/auth/login":  public, // the sign-in route itself
-	"POST /api/auth/logout": public,
-	"POST /api/users":       public, // ONLY when no account exists; admin-gated after
-	"GET /metrics":          public, // route classes and counts, never content
+	"GET /api/admin/reads":           admin,  // who opened which restricted document
+	"GET /api/admin/reads/anomalies": admin,  // bursts in that trail
+	"GET /api/health":                public, // liveness; reveals counts, not content
+	"GET /api/me":                    public, // the console asks this BEFORE signing in
+	"POST /api/auth/login":           public, // the sign-in route itself
+	"POST /api/auth/logout":          public,
+	"POST /api/users":                public, // ONLY when no account exists; admin-gated after
+	"GET /metrics":                   public, // route classes and counts, never content
 	// The published site. Public BY DESIGN and the only routes here that serve
 	// note content to nobody in particular — which is why they exist only when
 	// the operator turns publishing on, and serve only notes whose author
@@ -62,30 +63,38 @@ var routeAccess = map[string]access{
 	"GET /plugins/{name}/{rel...}": public, // static plugin assets, no note content
 
 	// --- content: space + reader list ---
-	"GET /api/notes":               scoped,
-	"GET /api/notes/random":        scoped,
-	"GET /api/notes/{path...}":     scoped,
-	"PUT /api/notes/{path...}":     scoped,
-	"POST /api/notes/{path...}":    scoped,
-	"DELETE /api/notes/{path...}":  scoped,
-	"POST /api/notes":              scoped,
-	"GET /api/search":              scoped,
-	"GET /api/retrieve":            scoped,
-	"GET /api/context":             scoped,
-	"POST /api/ask":                scoped,
-	"GET /api/graph":               scoped,
-	"GET /api/tags":                scoped,
-	"GET /api/tasks":               scoped,
-	"GET /api/blocks":              scoped, // the lines inside notes
-	"GET /api/bookmarks":           scoped, // resolves to notes the caller may read
-	"GET /api/facts":               scoped,
-	"GET /api/complete":            scoped,
-	"GET /api/memory":              scoped,
-	"GET /api/memory/export":       scoped, // every fact the caller may read
-	"GET /api/memory/facets":       scoped, // scope names are drawn from facts
-	"GET /api/memory/graph":        scoped, // entities and the facts behind them
-	"POST /api/memory/search":      scoped, // recall, ranked by a supplied vector
-	"GET /api/briefing":            scoped,
+	"GET /api/notes":              scoped,
+	"GET /api/notes/random":       scoped,
+	"GET /api/notes/{path...}":    scoped,
+	"PUT /api/notes/{path...}":    scoped,
+	"POST /api/notes/{path...}":   scoped,
+	"DELETE /api/notes/{path...}": scoped,
+	"POST /api/notes":             scoped,
+	"GET /api/search":             scoped,
+	"GET /api/retrieve":           scoped,
+	"GET /api/context":            scoped,
+	"POST /api/ask":               scoped,
+	"GET /api/graph":              scoped,
+	"GET /api/tags":               scoped,
+	"GET /api/tasks":              scoped,
+	"GET /api/blocks":             scoped, // the lines inside notes
+	"GET /api/bookmarks":          scoped, // resolves to notes the caller may read
+	"GET /api/facts":              scoped,
+	"GET /api/complete":           scoped,
+	"GET /api/memory":             scoped,
+	"GET /api/memory/export":      scoped, // every fact the caller may read
+	"GET /api/memory/changes":     scoped, // fact text, so the same filter as recall
+	"GET /api/memory/facets":      scoped, // scope names are drawn from facts
+	"GET /api/memory/graph":       scoped, // entities and the facts behind them
+	"POST /api/memory/search":     scoped, // recall, ranked by a supplied vector
+	"GET /api/briefing":           scoped,
+	// Counts per origin, filtered per caller. It says how much of the corpus
+	// came from where — never which notes, so it cannot be used to enumerate
+	// content the caller could not already list.
+	"GET /api/trust": scoped,
+	// The review queue: note paths and titles, so the same filter as any
+	// listing. Bodies are never included.
+	"GET /api/stale":               scoped,
 	"GET /api/file/{path...}":      scoped,
 	"GET /read":                    scoped,
 	"GET /notes/{path...}":         scoped, // the HTML export, served without /api
@@ -107,40 +116,52 @@ var routeAccess = map[string]access{
 	"GET /api/templates":           scoped,
 
 	// --- writes and actions that need an account ---
-	"POST /api/memory":              authed,
-	"POST /api/bookmarks":           authed,
-	"DELETE /api/bookmarks":         authed,
-	"POST /api/memory/batch":        authed,
-	"POST /api/memory/feedback":     authed,
-	"POST /api/memory/consolidate":  authed,
-	"PATCH /api/memory/entry":       authed,
-	"DELETE /api/memory/entry":      authed,
-	"POST /api/facts":               authed,
-	"POST /api/capture":             authed,
-	"POST /api/attach":              authed,
-	"POST /api/audio":               authed,
-	"POST /api/actions":             authed,
-	"POST /api/templates":           authed,
-	"POST /api/templates/apply":     authed,
-	"POST /api/canvas":              authed,
-	"POST /api/import/vault":        authed, // writes notes from an uploaded archive
-	"POST /api/trash/{tid}/restore": authed,
-	"DELETE /api/trash/{tid}":       authed,
-	"POST /api/tags/rename":         authed,
-	"GET /api/web/search":           authed,
-	"POST /api/embed":               authed, // vectors from the local model; no note content
-	"POST /api/web/fetch":           authed,
-	"GET /api/keys":                 authed,
-	"POST /api/keys":                authed,
-	"DELETE /api/keys/{id}":         authed,
-	"POST /api/auth/password":       authed,
-	"GET /api/spaces":               authed, // filtered to what the caller may read
-	"GET /api/plugins":              authed,
-	"GET /api/sync/status":          authed,
-	"POST /api/sync/now":            admin, // a whole-vault transfer to the peer
-	"GET /api/crdt/doc/{path...}":   scoped,
-	"POST /api/crdt/merge":          scoped,
-	"GET /api/vault/status":         authed, // lock state only, never a name or value
+	"POST /api/memory": authed,
+	// Vouching for a pulled note rewrites its frontmatter, so it takes the
+	// note's own write check inside the handler as well.
+	"POST /api/stale/verify": authed,
+	"POST /api/trust/vouch":  authed,
+	// An agent asking for a credential it has no grant for. It issues nothing
+	// — a pending request confers no access — so it cannot be admin-gated, or
+	// no agent could ever ask.
+	"POST /api/secrets/requests": authed,
+	// The asker collecting its own answer. This is the one read that can
+	// return a live grant token, and the handler checks the grantee: a caller
+	// gets its OWN request or a 404, never somebody else's.
+	"GET /api/secrets/requests/{id}": authed,
+	"POST /api/bookmarks":            authed,
+	"DELETE /api/bookmarks":          authed,
+	"POST /api/memory/batch":         authed,
+	"POST /api/memory/feedback":      authed,
+	"POST /api/memory/consolidate":   authed,
+	"PATCH /api/memory/entry":        authed,
+	"DELETE /api/memory/entry":       authed,
+	"POST /api/facts":                authed,
+	"POST /api/capture":              authed,
+	"POST /api/attach":               authed,
+	"POST /api/audio":                authed,
+	"POST /api/actions":              authed,
+	"POST /api/templates":            authed,
+	"POST /api/templates/apply":      authed,
+	"POST /api/canvas":               authed,
+	"POST /api/import/vault":         authed, // writes notes from an uploaded archive
+	"POST /api/trash/{tid}/restore":  authed,
+	"DELETE /api/trash/{tid}":        authed,
+	"POST /api/tags/rename":          authed,
+	"GET /api/web/search":            authed,
+	"POST /api/embed":                authed, // vectors from the local model; no note content
+	"POST /api/web/fetch":            authed,
+	"GET /api/keys":                  authed,
+	"POST /api/keys":                 authed,
+	"DELETE /api/keys/{id}":          authed,
+	"POST /api/auth/password":        authed,
+	"GET /api/spaces":                authed, // filtered to what the caller may read
+	"GET /api/plugins":               authed,
+	"GET /api/sync/status":           authed,
+	"POST /api/sync/now":             admin, // a whole-vault transfer to the peer
+	"GET /api/crdt/doc/{path...}":    scoped,
+	"POST /api/crdt/merge":           scoped,
+	"GET /api/vault/status":          authed, // lock state only, never a name or value
 
 	// --- instance administration ---
 	"POST /api/vault/init":                       admin,
@@ -152,6 +173,9 @@ var routeAccess = map[string]access{
 	"DELETE /api/secrets/{name}":                 admin,
 	"POST /api/secrets/{name}/grant":             admin,
 	"POST /api/secrets/broker":                   authed, // the grant token IS the capability
+	"GET /api/secrets/requests":                  admin,  // the human's approval queue
+	"POST /api/secrets/requests/{id}/approve":    admin,  // mints a grant
+	"POST /api/secrets/requests/{id}/deny":       admin,
 	"GET /api/grants":                            admin,
 	"DELETE /api/grants":                         admin,
 	"DELETE /api/grants/{token}":                 admin,

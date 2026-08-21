@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/JeremiahM37/grimoire/go/internal/auth"
 	"github.com/JeremiahM37/grimoire/go/internal/readlog"
@@ -77,4 +78,75 @@ func (s *Server) readAudit(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"reads": rows, "dropped": s.Reads.Dropped(), "suppressed": s.Reads.Suppressed()})
+}
+
+// GET /api/admin/reads/anomalies — the audit trail read back.
+//
+// The trail was written for the incident and, like every audit log, was never
+// queried. This is the query, offered where an operator already looks. See
+// internal/readlog/anomaly.go for why breadth rather than depth is the signal,
+// and why this reports rather than alerts.
+func (s *Server) readAnomalies(w http.ResponseWriter, r *http.Request) {
+	if !s.requireAdmin(w, r) {
+		return
+	}
+	opt := readlog.Options{OnlyUser: strings.TrimSpace(r.URL.Query().Get("user"))}
+	for name, dst := range map[string]*int{
+		"breadth": &opt.Breadth,
+		"denials": &opt.Denials,
+	} {
+		if v := strings.TrimSpace(r.URL.Query().Get(name)); v != "" {
+			n, err := strconv.Atoi(v)
+			if err != nil || n <= 0 {
+				writeErr(w, http.StatusBadRequest, name+" must be a positive number")
+				return
+			}
+			*dst = n
+		}
+	}
+	if v := strings.TrimSpace(r.URL.Query().Get("window")); v != "" {
+		d, err := time.ParseDuration(v)
+		if err != nil || d <= 0 {
+			writeErr(w, http.StatusBadRequest, "window must be a duration like 5m")
+			return
+		}
+		opt.Window = d
+	}
+	if v := strings.TrimSpace(r.URL.Query().Get("since")); v != "" {
+		t, err := time.Parse(time.RFC3339, v)
+		if err != nil {
+			writeErr(w, http.StatusBadRequest, "since must be RFC3339")
+			return
+		}
+		opt.Since = t
+	}
+
+	// Anything buffered but not yet written would otherwise be invisible to a
+	// scan run seconds after the reads it is about — which is exactly when an
+	// operator runs one.
+	s.Reads.Flush()
+
+	found, err := s.Reads.Anomalies(opt)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if found == nil {
+		found = []readlog.Anomaly{}
+	}
+	opts := opt
+	writeJSON(w, http.StatusOK, map[string]any{
+		"anomalies": found,
+		// The thresholds the answer was computed with, echoed back. A caller
+		// shown "3 anomalies" cannot judge them without knowing what counted
+		// as one, and a UI that hardcoded its own copy of the defaults would
+		// drift from the server's the first time either changed.
+		"window":  opts.WithDefaultsPublic().Window.String(),
+		"breadth": opts.WithDefaultsPublic().Breadth,
+		"denials": opts.WithDefaultsPublic().Denials,
+		// Whether the trail can answer at all. On a single-user instance
+		// nothing is restricted, so nothing is ever recorded — and an empty
+		// answer there means "not applicable", not "all clear".
+		"records": s.Reads.Count(),
+	})
 }

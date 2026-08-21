@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/JeremiahM37/grimoire/go/internal/markdown"
+	"github.com/JeremiahM37/grimoire/go/internal/trust"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
 )
 
@@ -137,6 +138,17 @@ func (s *Server) capture(w http.ResponseWriter, r *http.Request) {
 	fm.Set("source", c.Source)
 	if c.URL != "" {
 		fm.Set("url", c.URL)
+		// A clipped web page is somebody else's writing. The browser extension
+		// is how most of it arrives, and a clipping that looked like the
+		// operator's own note would be the widest hole in the trust model —
+		// wider than the connectors, because anybody can get a person to clip
+		// a page. A capture with no URL is text the person typed or pasted
+		// themselves, and stays trusted.
+		if host := hostOf(c.URL); host != "" {
+			fm.Set("origin", trust.Web(host))
+		} else {
+			fm.Set("origin", trust.Web(""))
+		}
 	}
 	if _, err := s.Vault.Write(rel, body, fm); err != nil {
 		writeErr(w, statusForVaultErr(err), err.Error())
