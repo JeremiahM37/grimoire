@@ -76,6 +76,15 @@ type Server struct {
 // ordering explicit documents the same hazard the Python side has, where a
 // greedy /notes/{path} would otherwise swallow /notes/random.
 func (s *Server) Routes() http.Handler {
+	// Attach the provenance gate here rather than at every construction site.
+	// It is a security control, so the safe state is on-by-default: a caller
+	// that forgets to wire it would silently get the weaker broker, and the
+	// difference is invisible until an injection uses it. An explicitly-set
+	// checker is left alone so a test or an embedder can still override.
+	if s.Broker != nil && s.Broker.Provenance == nil && s.Index != nil && s.Index.DB != nil &&
+		!strings.EqualFold(os.Getenv("GRIMOIRE_PROVENANCE_GATE"), "off") {
+		s.Broker.Provenance = notesProvenance{db: s.Index.DB}
+	}
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /api/health", s.health)
