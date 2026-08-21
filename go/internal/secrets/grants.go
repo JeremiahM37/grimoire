@@ -41,6 +41,11 @@ type Broker struct {
 	DB           *db.DB
 	Client       *http.Client
 	AllowPrivate bool
+	// Provenance, when set, refuses a state-changing call whose target URL
+	// only untrusted content mentions. Nil leaves the broker exactly as it
+	// was, which is what keeps every existing deployment and test unchanged.
+	// See provenance.go for what this does and does not claim.
+	Provenance ProvenanceChecker
 }
 
 func NewBroker(v *Vault, database *db.DB) *Broker {
@@ -171,6 +176,12 @@ func (b *Broker) Use(token, method, targetURL, header, body string) (map[string]
 		b.audit("denied", g.Secret, "url="+targetURL+" scope="+g.Scope)
 		return nil, err
 	}
+	// Scope says WHERE the call may go. This says WHO chose the destination.
+	// It runs before the secret is read out of the vault, so a refused call
+	// never decrypts the value at all.
+	if err := b.checkProvenance(g, method, targetURL); err != nil {
+		return nil, err
+	}
 	value, err := b.Vault.Get(g.Secret)
 	if err != nil {
 		return nil, err
@@ -223,6 +234,25 @@ func (b *Broker) Use(token, method, targetURL, header, body string) (map[string]
 		"status": resp.StatusCode,
 		"body":   string(raw),
 	}, nil
+}
+
+// checkProvenance refuses a state-changing call to a URL that only untrusted
+// content mentions. A checker that errors is treated as a pass: a broken
+// lookup must not take the broker offline, and the scope check has already
+// confined the target to the grant.
+func (b *Broker) checkProvenance(g Grant, method, targetURL string) error {
+	if b.Provenance == nil || !Gated(method) {
+		return nil
+	}
+	note, alsoTrusted, err := b.Provenance.UntrustedMention(normalizeTarget(targetURL))
+	if err != nil || note == "" || alsoTrusted {
+		return nil
+	}
+	b.audit("denied", g.Secret, fmt.Sprintf(
+		"%s %s reason=provenance note=%s", strings.ToUpper(method), targetURL, note))
+	return fmt.Errorf("%w: %q is named only in %s, which you did not write — "+
+		"vouch for that note if the call is legitimate",
+		ErrUntrustedTarget, normalizeTarget(targetURL), note)
 }
 
 // Record writes an audit entry from outside this package (secret set/delete),
