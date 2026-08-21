@@ -354,8 +354,13 @@ Measured on 120 of those questions with the default local reader, it refuses
 it is no more accurate than string-matching the answer text for "the notes
 don't say" (62.5% vs 62.5%, p = 1.00) — what it buys is a field with three
 defined values instead of a regex over English — and it is over-cautious,
-declining 55% of answerable questions on a 4B reader that usually had the
-evidence in front of it.
+declining 55% of answerable questions on the default 4B reader.
+
+That last one turned out to be the model rather than the design. The same 120
+questions with a 35B reader — nothing else changed — refuse **95%** of the
+unanswerable ones while answering **63%** of the answerable ones, up from
+80%/45%: significant on both axes (p = 0.0039 and p = 0.0347, paired), and
+verdict/answer disagreement falls from 7.4% to 2.5%.
 
 Agents that mount `ask_notes` get the passages instead and are the reader
 themselves, so that tool carries the finding rather than the verdict: judge

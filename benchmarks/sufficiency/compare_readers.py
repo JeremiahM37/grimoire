@@ -70,11 +70,14 @@ def main(a_path="abstain.jsonl", b_path="abstain-35b.jsonl"):
               f"only by the large one {only_b}, exact McNemar p = "
               f"{mcnemar(only_a, only_b):.4f}")
 
-    cited = __import__("re").compile(r"\[\d+\]")
+    # A reply that claims no support and then answers anyway, with no
+    # abstention in the text. NOT "cites a source": the prompt asks an
+    # ungrounded reply to say what the notes do not say, and citing what they
+    # DO say is the correct way to do that.
     for name, data in ((a_path, a), (b_path, b)):
         ung = [data[q] for q in shared if data[q]["supported"] == "ungrounded"]
-        bad = [r for r in ung if cited.search(r["answer"])]
-        print(f"\n{name}: {len(bad)}/{len(ung)} 'ungrounded' replies still cite sources"
+        bad = [r for r in ung if not r["prose_abstained"]]
+        print(f"\n{name}: {len(bad)}/{len(ung)} 'ungrounded' replies answer anyway"
               f" ({len(bad) / len(ung):.1%})" if ung else f"\n{name}: no refusals")
 
 
