@@ -32,3 +32,9 @@ grimoire-backup-*.tar.gz
 # The scored JSON in benchmarks/*/results/ IS committed — that is the evidence.
 benchmarks/injection/.work/
 benchmarks/injection/run*.log
+
+# Memory-arm harness scratch: the ingest logs are reproducible from
+# results_memory/contexts.jsonl, and the per-question stores under /tmp are
+# rebuilt by `run_memory_arm.py ingest`.
+benchmarks/longmemeval/ingest*.log
+benchmarks/longmemeval/*.log
