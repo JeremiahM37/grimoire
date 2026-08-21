@@ -56,7 +56,13 @@ function noteRow(n, snippets) {
   row.className = "note-row" + (n.path === state.path ? " active" : "");
   row.dataset.path = n.path;
   const memBadge = n.path.startsWith("memory/") ? '<span class="mem-badge" title="agent memory">🤖</span>' : "";
-  row.innerHTML = `<div class="t">${n.pinned ? '<span class="pin">📌</span>' : ""}${memBadge}${esc(n.title || n.path)}</div>` +
+  // A pulled note is marked in the LIST, before anyone opens it: the whole
+  // point of the trust tier is that you can tell your own writing from a
+  // stranger's at a glance, and a badge that only appears after you have
+  // already read the note is a badge that arrives too late.
+  const trustBadge = n.untrusted
+    ? '<span class="untrusted-badge" title="pulled from a source other people can write to">⚠</span>' : "";
+  row.innerHTML = `<div class="t">${n.pinned ? '<span class="pin">📌</span>' : ""}${memBadge}${trustBadge}${esc(n.title || n.path)}</div>` +
     (snippets && n.snippet ? `<div class="snip">${n.snippet.replace(/\[(.*?)\]/g, "<b>$1</b>")}</div>`
       : `<div class="m">${esc(n.path)}</div>`);
   row.onclick = (e) => (e.ctrlKey || e.metaKey) ? openSplit(n.path) : openNote(n.path);
@@ -899,12 +905,40 @@ function presentNote() {
 function renderProvenance(n) {
   const el = $("#provenance");
   const fm = n.frontmatter || {};
-  if (!fm.memory && !n.path.startsWith("memory/")) { el.classList.add("hidden"); return; }
+  const isMemory = fm.memory || n.path.startsWith("memory/");
+  // An untrusted note gets the louder banner, and it wins over the memory one:
+  // "an agent wrote this" is interesting, "somebody outside this vault wrote
+  // this" is the thing you must not miss.
+  if (n.trust === "untrusted") {
+    el.classList.remove("hidden");
+    el.classList.add("untrusted");
+    el.innerHTML = `⚠ <b>untrusted source</b> — pulled from <code>${esc(n.origin || "an unknown source")}</code>.`
+      + ` Agents read this as data, never as instructions.`
+      + ` · <a id="prov-vouch">I have read this — mark it trusted</a>`;
+    $("#prov-vouch").onclick = () => vouchForNote(n.path);
+    return;
+  }
+  el.classList.remove("untrusted");
+  if (!isMemory) { el.classList.add("hidden"); return; }
   el.classList.remove("hidden");
   el.innerHTML = `🤖 <b>agent memory</b> — last written by <code>${esc(fm.agent || "unknown")}</code>`
     + (fm.task ? ` (task <code>${esc(fm.task)}</code>)` : "")
     + ` · every entry is editable — <a id="prov-history">history & rollback</a>`;
   $("#prov-history").onclick = () => openHistory();
+}
+
+/* Promoting a pulled note. Writes `trust: trusted` into the note's own
+   frontmatter — a decision that belongs in the file, where it survives a
+   reindex and shows up in a diff. */
+async function vouchForNote(path) {
+  if (!confirm("Mark this note as trusted?\n\nAgents will then be allowed to "
+    + "read it as instructions, and it will appear in trusted-only retrieval.")) return;
+  try {
+    await api("/trust/vouch", { method: "POST", body: { path } });
+    toast("Marked trusted");
+    await openNote(path);
+    await loadList();
+  } catch (e) { toast(e.message, true); }
 }
 
 /* Ranking scores are reciprocal-rank-fusion values (small absolute numbers);
@@ -920,21 +954,40 @@ function relevance(items) {
 async function openInspect() {
   const q = prompt("What would the agent see for…");
   if (!q) return;
-  $("#inspect-title").textContent = "🔎 What the agent sees";
+  return inspectQuery(q, false);
+}
+
+/* trustedOnly re-runs the same query with the pulled content excluded, which is
+   what an agent about to ACT on an answer would ask for. */
+async function inspectQuery(q, trustedOnly) {
+  $("#inspect-title").textContent = trustedOnly
+    ? "🔎 What the agent sees (trusted sources only)" : "🔎 What the agent sees";
   $("#inspect-modal").classList.remove("hidden");
   const b = $("#inspect-body");
   b.innerHTML = '<p class="vault-note">Retrieving…</p>';
   try {
-    const chunks = await api(`/retrieve?q=${encodeURIComponent(q)}&k=8`);
+    // smart=1 is the path /api/ask actually answers with — decompose the
+    // question, retrieve for each part, rerank. Inspecting the PLAIN ranking
+    // while the agent answers from a different one is an inspection surface
+    // that inspects something else.
+    const chunks = await api(`/retrieve?q=${encodeURIComponent(q)}&k=8&smart=1${trustedOnly ? "&trusted=1" : ""}`);
     if (!chunks.length) { b.innerHTML = '<p class="vault-note">Nothing retrieved — the agent would answer from nothing.</p>'; return; }
     const rel = relevance(chunks);
+    const untrusted = chunks.filter((c) => c.trust === "untrusted").length;
     b.innerHTML = `<p class="vault-note">Top ${chunks.length} chunks for <b>${esc(q)}</b> — this is the agent's entire retrieved context (private notes excluded, exactly as the agent sees it):</p>`
+      + (untrusted
+        ? `<p class="vault-note untrusted">⚠ ${untrusted} of these came from a source other people can write to. They are fenced as data before a reader sees them. <a id="ic-trusted-only">Show only trusted context</a></p>`
+        : "")
       + chunks.map((c) => `
-        <div class="inspect-chunk">
+        <div class="inspect-chunk${c.trust === "untrusted" ? " untrusted" : ""}">
           <div class="ic-head"><a class="wikilink" data-path="${esc(c.path)}">${esc(c.title || c.path)}</a>
+            ${c.trust === "untrusted" ? `<span class="ic-trust" title="${esc(c.origin || "unknown source")}">⚠ untrusted</span>` : ""}
+            ${c.stale ? `<span class="ic-stale" title="last confirmed ${c.age_days} days ago">◷ stale</span>` : ""}
             <span class="ic-score">${rel(c.score)}%</span></div>
           <div class="ic-text">${esc(c.chunk)}</div>
         </div>`).join("");
+    const only = b.querySelector("#ic-trusted-only");
+    if (only) only.onclick = () => inspectQuery(q, true);
     b.querySelectorAll("a.wikilink").forEach((a) => (a.onclick = () => {
       $("#inspect-modal").classList.add("hidden"); openNote(a.dataset.path);
     }));
@@ -969,6 +1022,174 @@ async function openBriefing() {
   } catch (e) { b.innerHTML = `<p class="vault-note">${esc(e.message)}</p>`; }
 }
 
+/* ---------- the four operator views added alongside the trust model ----------
+
+   All four reuse the inspect modal rather than growing four more dialogs. They
+   are read-only reports with at most one action each, and a report that needs
+   its own chrome is usually a report nobody opens. */
+
+/* Where the vault's text came from. */
+async function openTrustOverview() {
+  $("#inspect-title").textContent = "⚠ Where this vault's text came from";
+  $("#inspect-modal").classList.remove("hidden");
+  const b = $("#inspect-body");
+  b.innerHTML = '<p class="vault-note">Loading…</p>';
+  try {
+    const t = await api("/trust");
+    if (!t.enabled) {
+      b.innerHTML = `<p class="vault-note">Every one of your ${t.trusted} notes is your own writing.
+        Nothing here was pulled from a system other people can write to, so there is nothing to filter.</p>`;
+      return;
+    }
+    b.innerHTML = `<p class="vault-note"><b>${t.untrusted}</b> of ${t.trusted + t.untrusted} notes
+      came from somewhere other people can write to. Agents read those as data, never as instructions.</p>`
+      + t.origins.map((o) => `
+        <div class="inspect-chunk untrusted">
+          <div class="ic-head"><span>${esc(o.origin)}</span><span class="ic-score">${o.notes} notes</span></div>
+          <div class="ic-text">source group: ${esc(o.source)}</div>
+        </div>`).join("");
+  } catch (e) { b.innerHTML = `<p class="vault-note">${esc(e.message)}</p>`; }
+}
+
+/* Notes nobody has confirmed in a long time. */
+async function openReviewQueue() {
+  $("#inspect-title").textContent = "◷ Knowledge that needs re-checking";
+  $("#inspect-modal").classList.remove("hidden");
+  const b = $("#inspect-body");
+  b.innerHTML = '<p class="vault-note">Loading…</p>';
+  try {
+    const q = await api("/stale?limit=25");
+    if (!q.notes.length) {
+      b.innerHTML = `<p class="vault-note">Nothing is overdue at ${q.threshold} days.</p>`;
+      return;
+    }
+    b.innerHTML = `<p class="vault-note">${q.total} note(s) unconfirmed for more than ${q.threshold} days,
+      most-depended-on first. ${q.reviewed} note(s) in this vault have ever been explicitly confirmed.</p>`
+      + q.notes.map((n) => `
+        <div class="inspect-chunk">
+          <div class="ic-head"><a class="wikilink" data-path="${esc(n.path)}">${esc(n.title || n.path)}</a>
+            <span class="ic-score">${n.age_days}d${n.inbound ? ` · ${n.inbound} link(s) in` : ""}</span></div>
+          <div class="ic-text">
+            <button class="verify-btn" data-path="${esc(n.path)}">Still true — confirm</button>
+            ${n.verified ? " last confirmed explicitly" : " never explicitly confirmed"}
+          </div>
+        </div>`).join("");
+    b.querySelectorAll("a.wikilink").forEach((a) => (a.onclick = () => {
+      $("#inspect-modal").classList.add("hidden"); openNote(a.dataset.path);
+    }));
+    b.querySelectorAll(".verify-btn").forEach((btn) => (btn.onclick = async () => {
+      try {
+        await api("/stale/verify", { method: "POST", body: { path: btn.dataset.path } });
+        toast("Confirmed");
+        await openReviewQueue();
+      } catch (e) { toast(e.message, true); }
+    }));
+  } catch (e) { b.innerHTML = `<p class="vault-note">${esc(e.message)}</p>`; }
+}
+
+/* What the agents learned, and what they changed their mind about. */
+async function openBeliefChanges() {
+  $("#inspect-title").textContent = "↻ What your agents changed their mind about";
+  $("#inspect-modal").classList.remove("hidden");
+  const b = $("#inspect-body");
+  b.innerHTML = '<p class="vault-note">Loading…</p>';
+  try {
+    const d = await api("/memory/changes?since=7d&limit=50");
+    if (!d.changes.length) {
+      b.innerHTML = '<p class="vault-note">Nothing moved in the last week.</p>';
+      return;
+    }
+    const icon = { learned: "＋", changed: "↻", retracted: "✕", expired: "◷" };
+    b.innerHTML = `<p class="vault-note">Last 7 days: ${d.counts.learned} learned,
+      ${d.counts.changed} changed, ${d.counts.retracted} retracted, ${d.counts.expired} expired.</p>`
+      + d.changes.map((c) => `
+        <div class="inspect-chunk${c.trust === "untrusted" ? " untrusted" : ""}">
+          <div class="ic-head"><a class="wikilink" data-path="${esc(c.path)}">${icon[c.kind] || "·"} ${esc(c.topic || c.path)}</a>
+            <span class="ic-score">${esc(c.at)}</span></div>
+          <div class="ic-text">${esc(c.text)}
+            ${c.replaced_text ? `<div class="replaced">replaced: <s>${esc(c.replaced_text)}</s></div>` : ""}
+            ${c.trust === "untrusted" ? `<div class="replaced">⚠ from ${esc(c.origin || "an untrusted source")}</div>` : ""}
+          </div>
+        </div>`).join("");
+    b.querySelectorAll("a.wikilink").forEach((a) => (a.onclick = () => {
+      $("#inspect-modal").classList.add("hidden"); openNote(a.dataset.path);
+    }));
+  } catch (e) { b.innerHTML = `<p class="vault-note">${esc(e.message)}</p>`; }
+}
+
+/* Agents asking for a credential they have no grant for. */
+async function openGrantRequests() {
+  $("#inspect-title").textContent = "🔑 Credential requests";
+  $("#inspect-modal").classList.remove("hidden");
+  const b = $("#inspect-body");
+  b.innerHTML = '<p class="vault-note">Loading…</p>';
+  try {
+    const d = await api("/secrets/requests?limit=50");
+    if (!d.requests.length) {
+      b.innerHTML = '<p class="vault-note">No agent has asked for a credential.</p>';
+      return;
+    }
+    b.innerHTML = `<p class="vault-note"><b>${d.pending}</b> waiting for you.
+      Approving mints a scoped, expiring grant — the agent never sees the value.</p>`
+      + d.requests.map((r) => `
+        <div class="inspect-chunk${r.state === "pending" ? " pending" : ""}">
+          <div class="ic-head"><span><code>${esc(r.grantee)}</code> wants <code>${esc(r.secret)}</code></span>
+            <span class="ic-score">${esc(r.state)}</span></div>
+          <div class="ic-text">
+            <div>${esc(r.reason || "(no reason given)")}</div>
+            <div class="replaced">scope: ${esc(r.scope || "(any url — consider narrowing)")} · ${r.ttl_seconds}s</div>
+            ${r.state === "pending" ? `
+              <button class="gr-approve" data-id="${esc(r.id)}">Approve</button>
+              <button class="gr-approve-short" data-id="${esc(r.id)}">Approve for 10 min</button>
+              <button class="gr-deny" data-id="${esc(r.id)}">Deny</button>` : ""}
+            ${r.note ? `<div class="replaced">answered: ${esc(r.note)}</div>` : ""}
+          </div>
+        </div>`).join("");
+    const decide = async (id, path, body) => {
+      try {
+        await api(`/secrets/requests/${encodeURIComponent(id)}/${path}`, { method: "POST", body });
+        await openGrantRequests();
+      } catch (e) { toast(e.message, true); }
+    };
+    b.querySelectorAll(".gr-approve").forEach((x) => (x.onclick = () => decide(x.dataset.id, "approve", {})));
+    b.querySelectorAll(".gr-approve-short").forEach((x) =>
+      (x.onclick = () => decide(x.dataset.id, "approve", { ttl_seconds: 600 })));
+    b.querySelectorAll(".gr-deny").forEach((x) => (x.onclick = () => {
+      const note = prompt("Why not? (the agent reads this and can act on it)") || "";
+      return decide(x.dataset.id, "deny", { note });
+    }));
+  } catch (e) { b.innerHTML = `<p class="vault-note">${esc(e.message)}</p>`; }
+}
+
+/* Bursts in the read-audit trail. */
+async function openReadAnomalies() {
+  $("#inspect-title").textContent = "👁 Unusual reading";
+  $("#inspect-modal").classList.remove("hidden");
+  const b = $("#inspect-body");
+  b.innerHTML = '<p class="vault-note">Loading…</p>';
+  try {
+    const d = await api("/admin/reads/anomalies");
+    if (!d.records) {
+      b.innerHTML = '<p class="vault-note">No restricted documents on this instance, so nothing is recorded — '
+        + 'this is "not applicable", not "all clear".</p>';
+      return;
+    }
+    if (!d.anomalies.length) {
+      b.innerHTML = `<p class="vault-note">Nothing unusual in ${d.records} recorded reads
+        (more than ${d.breadth} documents or ${d.denials} refusals in ${esc(d.window)}).</p>`;
+      return;
+    }
+    b.innerHTML = `<p class="vault-note">Thresholds: ${d.breadth} documents or ${d.denials} refusals in ${esc(d.window)}.</p>`
+      + d.anomalies.map((a) => `
+        <div class="inspect-chunk untrusted">
+          <div class="ic-head"><span>${esc(a.name || a.user || a.addr || "(anonymous)")} — ${esc(a.kind)}</span>
+            <span class="ic-score">${a.count}</span></div>
+          <div class="ic-text">${esc(a.first)} → ${esc(a.last)}
+            <div class="replaced">${a.documents.map(esc).join(", ")}</div></div>
+        </div>`).join("");
+  } catch (e) { b.innerHTML = `<p class="vault-note">${esc(e.message)}</p>`; }
+}
+
 /* ---------- command palette (Ctrl/Cmd-K quick switcher) ---------- */
 const COMMANDS = [
   { icon: "＋", name: "New note", run: newNote },
@@ -980,6 +1201,11 @@ const COMMANDS = [
   { icon: "⚖", name: "Agent grants & audit (credential console)", run: openVault },
   { icon: "🔎", name: "What would the agent see… (retrieval inspection)", run: openInspect },
   { icon: "📋", name: "Agent briefing (standing context)", run: openBriefing },
+  { icon: "⚠", name: "Where this vault's text came from (trusted vs pulled)", run: openTrustOverview },
+  { icon: "◷", name: "Knowledge that needs re-checking (stale notes)", run: openReviewQueue },
+  { icon: "↻", name: "What your agents changed their mind about", run: openBeliefChanges },
+  { icon: "🔑", name: "Credential requests (approve or deny)", run: openGrantRequests },
+  { icon: "👁", name: "Unusual reading (audit-trail bursts)", run: openReadAnomalies },
   { icon: "🤖", name: "Agent memories (recent)", run: async () => {
     // shape=notes, not the default: /api/memory returns individual FACTS now,
     // ordered by a minute-resolution timestamp with ties broken on a content
