@@ -232,15 +232,64 @@ type Context struct {
 // is available, extractive otherwise. An LLM failure falls through to
 // extractive rather than failing the request.
 func (c *Client) Answer(question string, contexts []Context) string {
+	answer, _ := c.AnswerGrounded(question, contexts)
+	return answer
+}
+
+// Support is what the reader concluded about its own evidence.
+type Support int
+
+// The three states. Unknown is not a hedge: it is what an offline or failed
+// read honestly reports, and a caller that treats it as "supported" has
+// mistaken the absence of a check for a passed one.
+const (
+	SupportUnknown Support = iota
+	SupportGrounded
+	SupportUngrounded
+)
+
+func (s Support) String() string {
+	switch s {
+	case SupportGrounded:
+		return "grounded"
+	case SupportUngrounded:
+		return "ungrounded"
+	}
+	return "unknown"
+}
+
+// AnswerGrounded answers, and says whether the notes actually supported it.
+//
+// The verdict costs nothing extra. It comes back in the SAME completion as the
+// answer — a few output tokens, no second call, no classifier, no reranker —
+// which matters because the alternatives in the literature all cost a model
+// call per query or per document.
+//
+// It is a reader-side judgement on purpose. Retrieval statistics cannot do
+// this job: measured over 498 LoCoMo questions, fifteen retrieval-side signals
+// span AUC 0.414 to 0.581 and not one reaches the 0.60 bar declared before the
+// run. Worse, they INVERT on the questions that need synthesis — the best
+// chunk's BM25 reads 0.192 on multi-hop — because a well-formed unanswerable
+// question is built out of the corpus's own vocabulary while a real question
+// paraphrases. A similarity threshold is not merely a weak sufficiency signal;
+// on anything but a direct lookup it points the wrong way. See
+// benchmarks/sufficiency/REPORT.md.
+func (c *Client) AnswerGrounded(question string, contexts []Context) (string, Support) {
 	if len(contexts) == 0 {
-		return "I couldn't find anything in your notes about that."
+		// Nothing retrieved is the one case that needs no model to judge.
+		return "I couldn't find anything in your notes about that.", SupportUngrounded
 	}
 	if backend := c.Backend(); backend != "" {
 		if out, err := c.llmAnswer(question, contexts, backend); err == nil && out != "" {
-			return out
+			answer, support := splitVerdict(out)
+			if answer != "" {
+				return answer, support
+			}
 		}
 	}
-	return ExtractiveAnswer(question, contexts)
+	// The extractive floor quotes passages rather than judging them, so it
+	// reports Unknown rather than claiming a verdict it did not make.
+	return ExtractiveAnswer(question, contexts), SupportUnknown
 }
 
 func (c *Client) llmAnswer(question string, contexts []Context, backend string) (string, error) {
@@ -249,10 +298,56 @@ func (c *Client) llmAnswer(question string, contexts []Context, backend string) 
 	for i, ctx := range contexts[:n] {
 		parts[i] = fmt.Sprintf("[%d] (%s)\n%s", i+1, ctx.Title, ctx.Chunk)
 	}
-	prompt := "Answer the question using ONLY the notes below. Cite sources as [n]. " +
-		"If the notes don't contain the answer, say so.\n\nNOTES:\n" +
-		strings.Join(parts, "\n\n") + "\n\nQUESTION: " + question + "\n\nANSWER:"
+	// The verdict comes FIRST. Asked for after the answer, a model that has
+	// just written three confident sentences rates its own evidence to match
+	// them; asked first, it is judging the notes rather than defending a
+	// paragraph it already wrote.
+	prompt := "Answer the question using ONLY the notes below.\n\n" +
+		"Begin your reply with exactly one of these lines:\n" +
+		"SUPPORTED: yes   — the notes state what the question asks for\n" +
+		"SUPPORTED: no    — the notes are about the right topic but do not " +
+		"state the answer\n" +
+		"Being on-topic is NOT support. If the notes mention the people or " +
+		"things in the question but never state the specific fact asked for, " +
+		"that is 'no'.\n" +
+		"Then, on the following lines, give the answer, citing sources as [n]. " +
+		"If you answered 'no', say what the notes do not say.\n\nNOTES:\n" +
+		strings.Join(parts, "\n\n") + "\n\nQUESTION: " + question + "\n\nREPLY:"
 	return c.Complete(prompt, backend)
+}
+
+// The verdict token at the start of a line. Trailing text on that line is
+// EXPECTED, not a format violation: models overwhelmingly write
+// "SUPPORTED: no — the notes mention X but never state Y", and anchoring the
+// pattern to the end of the line rejects every one of them. Measured on a 4B
+// reader, the anchored version left 31% of real replies unparsed, which the
+// evaluation then counted as "did not refuse" — a parser bug reading as a
+// model failure.
+var verdictRE = regexp.MustCompile(`(?im)^[\s>*_-]*supported\s*[:\-]\s*(yes|no|true|false)\b[\s.,:;—-]*`)
+
+// splitVerdict peels the verdict line off the reply.
+//
+// A reply with no verdict line is Unknown rather than assumed grounded: the
+// model not following the format is not evidence that the notes contained the
+// answer, and silently upgrading it would make the signal least trustworthy
+// exactly when the model is least reliable.
+func splitVerdict(out string) (answer string, support Support) {
+	m := verdictRE.FindStringSubmatchIndex(out)
+	if m == nil {
+		return strings.TrimSpace(out), SupportUnknown
+	}
+	word := strings.ToLower(out[m[2]:m[3]])
+	support = SupportUngrounded
+	if word == "yes" || word == "true" {
+		support = SupportGrounded
+	}
+	answer = strings.TrimSpace(out[:m[0]] + out[m[1]:])
+	if answer == "" {
+		// A verdict and nothing else still answered the question in the only
+		// way it could.
+		answer = "The notes don't contain the answer to that."
+	}
+	return answer, support
 }
 
 // ExtractiveAnswer stitches the best passages together with wiki-link

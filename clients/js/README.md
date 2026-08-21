@@ -89,6 +89,23 @@ competing with the old one.
 dependencies. Leave it out and `inputSchema` stays a plain JSON Schema object,
 which most other frameworks accept as-is.
 
+## Knowing when the notes don't say
+
+`ask` returns a `supported` verdict alongside the answer:
+
+```
+await g.ask('what port does the deploy use?')
+# {"answer": "...", "supported": "ungrounded", "citations": [...]}
+```
+
+`grounded` means the notes state what you asked for, `ungrounded` means they
+are about the right topic but do not contain the answer, `unknown` means no
+reader judged it. Acting on `ungrounded` is the point — retrieved passages
+being on-topic is not evidence that they answer the question, and the
+similarity scores cannot tell you the difference (measured: a top-cosine
+threshold scores AUC 0.55 on that task, and inverts on multi-hop questions). The verdict
+costs no extra model call; it rides in the same completion as the answer.
+
 ## Beyond memory
 
 `ask`, `searchNotes`, `readNote`, `writeNote`, `getFact`, `briefing`, `health`.

@@ -226,3 +226,145 @@ func TestNoCustomPromptAddsNothing(t *testing.T) {
 		t.Errorf("an unset prompt added something:\n%s", prompt)
 	}
 }
+
+// --- grounded answers -------------------------------------------------------
+
+// The verdict is the product of benchmarks/sufficiency: no retrieval statistic
+// can tell an answerable question from an unanswerable one, so the judgement
+// has to come from whatever reads the context — and it has to cost nothing
+// extra, which means riding in the answer's own completion.
+
+func TestAnswerReportsGroundedWhenTheNotesSupportIt(t *testing.T) {
+	srv, seen := fakeOllama(t, "SUPPORTED: yes\nThe port is 8443 [1].")
+	c := New(mapSettings{"ollama_url": srv.URL}, nil)
+	answer, support := c.AnswerGrounded("what port", []Context{
+		{Path: "ops.md", Title: "Ops", Chunk: "port:: 8443"}})
+
+	if support != SupportGrounded {
+		t.Errorf("support = %v, want grounded", support)
+	}
+	if answer != "The port is 8443 [1]." {
+		t.Errorf("the verdict line was left in the answer: %q", answer)
+	}
+	prompt := (*seen)[0]["prompt"].(string)
+	// The verdict is asked for FIRST. After writing three confident sentences a
+	// model rates its evidence to match them; asked first it is judging the
+	// notes rather than defending a paragraph it already wrote.
+	if !strings.Contains(prompt, "Begin your reply with") {
+		t.Errorf("prompt does not ask for the verdict first:\n%s", prompt)
+	}
+	if !strings.Contains(prompt, "Being on-topic is NOT support") {
+		t.Errorf("prompt does not distinguish relevance from sufficiency:\n%s", prompt)
+	}
+}
+
+func TestAnswerReportsUngroundedWhenTheNotesDoNot(t *testing.T) {
+	srv, _ := fakeOllama(t, "SUPPORTED: no\nThe notes discuss the deploy but never give a port.")
+	c := New(mapSettings{"ollama_url": srv.URL}, nil)
+	answer, support := c.AnswerGrounded("what port", []Context{
+		{Path: "ops.md", Title: "Ops", Chunk: "we deployed on friday"}})
+	if support != SupportUngrounded {
+		t.Errorf("support = %v, want ungrounded", support)
+	}
+	if strings.Contains(answer, "SUPPORTED") {
+		t.Errorf("verdict leaked into the answer: %q", answer)
+	}
+}
+
+func TestVerdictParsingIsForgivingButNotCredulous(t *testing.T) {
+	cases := map[string]Support{
+		"SUPPORTED: yes\nanswer":  SupportGrounded,
+		"supported: YES\nanswer":  SupportGrounded,
+		"SUPPORTED: true\nanswer": SupportGrounded,
+		"  SUPPORTED: no  \nnope": SupportUngrounded,
+		"SUPPORTED: false\nnope":  SupportUngrounded,
+		"SUPPORTED: no.\nnope":    SupportUngrounded,
+		// No verdict line is UNKNOWN, not grounded. A model failing to follow
+		// the format is not evidence that the notes contained the answer, and
+		// upgrading it would make the signal least trustworthy exactly when
+		// the model is least reliable.
+		"The port is 8443.":                    SupportUnknown,
+		"SUPPORTEDISH: yes\nx":                 SupportUnknown,
+		"the answer is SUPPORTED: yes because": SupportUnknown,
+		// What models actually write. Requiring the line to end after the
+		// verdict rejected 31% of real replies from a 4B model, and the
+		// measurement counted every one of them as "did not refuse" — a
+		// parser bug that read as a model failure.
+		"SUPPORTED: no \u2014 the notes mention it but never say when": SupportUngrounded,
+		"SUPPORTED: yes \u2014 the notes state what was asked":         SupportGrounded,
+		"**SUPPORTED: no** the notes are about the right topic":        SupportUngrounded,
+	}
+	for reply, want := range cases {
+		got, support := splitVerdict(reply)
+		if support != want {
+			t.Errorf("%q -> %v, want %v", reply, support, want)
+		}
+		if strings.HasPrefix(got, "SUPPORTED:") {
+			t.Errorf("%q left the verdict in the answer: %q", reply, got)
+		}
+	}
+}
+
+func TestVerdictKeepsTheReasoningAfterIt(t *testing.T) {
+	// "the notes mention X but never state Y" is the most useful sentence in
+	// the reply when the answer is that the notes do not say it.
+	answer, support := splitVerdict(
+		"SUPPORTED: no \u2014 the notes mention the deploy but never give a port.")
+	if support != SupportUngrounded {
+		t.Fatalf("support = %v", support)
+	}
+	if !strings.Contains(answer, "never give a port") {
+		t.Errorf("the reasoning was stripped with the verdict: %q", answer)
+	}
+	if strings.Contains(answer, "SUPPORTED") {
+		t.Errorf("the verdict token survived: %q", answer)
+	}
+}
+
+func TestVerdictOnlyReplyStillAnswers(t *testing.T) {
+	answer, support := splitVerdict("SUPPORTED: no")
+	if support != SupportUngrounded {
+		t.Fatalf("support = %v", support)
+	}
+	if answer == "" {
+		t.Error("a verdict with no prose left the caller with nothing to show")
+	}
+}
+
+func TestNoContextIsUngroundedWithoutAskingAModel(t *testing.T) {
+	// The one case that needs no model to judge.
+	srv, seen := fakeOllama(t, "SUPPORTED: yes\nmade up")
+	c := New(mapSettings{"ollama_url": srv.URL}, nil)
+	_, support := c.AnswerGrounded("what port", nil)
+	if support != SupportUngrounded {
+		t.Errorf("support = %v, want ungrounded", support)
+	}
+	if len(*seen) != 0 {
+		t.Error("a model was consulted about an empty context")
+	}
+}
+
+func TestOfflineAnswerReportsUnknownRatherThanGrounded(t *testing.T) {
+	// The extractive floor quotes passages; it does not judge them. Claiming a
+	// verdict it never made would be the one failure that matters here.
+	c := New(mapSettings{}, nil)
+	answer, support := c.AnswerGrounded("what port", []Context{
+		{Path: "ops.md", Title: "Ops", Chunk: "port:: 8443"}})
+	if support != SupportUnknown {
+		t.Errorf("support = %v, want unknown", support)
+	}
+	if answer == "" {
+		t.Error("the offline floor stopped answering")
+	}
+}
+
+func TestAnswerKeepsItsOldSignature(t *testing.T) {
+	// Answer is on the console's path and in the MCP tools; the verdict is
+	// additive, not a breaking change.
+	srv, _ := fakeOllama(t, "SUPPORTED: yes\nThe port is 8443 [1].")
+	c := New(mapSettings{"ollama_url": srv.URL}, nil)
+	if got := c.Answer("what port", []Context{{Title: "Ops", Chunk: "port:: 8443"}}); got !=
+		"The port is 8443 [1]." {
+		t.Errorf("Answer = %q", got)
+	}
+}

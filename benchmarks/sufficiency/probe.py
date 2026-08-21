@@ -24,6 +24,7 @@ import collections
 import json
 import math
 import re
+import random
 import sys
 import urllib.parse
 import urllib.request
@@ -35,6 +36,8 @@ sys.path.insert(0, str(HERE.parent / "locomo"))
 
 import goserver  # noqa: E402
 from run_locomo import load_data, session_docs  # noqa: E402
+
+SEED = 42  # same seed the LoCoMo harness freezes its sample with
 
 WORD = re.compile(r"[a-z0-9']+")
 # Stopwords carry no evidence, so they must not count toward "is this question
@@ -152,9 +155,29 @@ def main() -> int:
         # Balanced per conversation: the class prior is a property of the
         # dataset, not of the signal, and an unbalanced probe would let a
         # constant predictor look good.
+        #
+        # The answerable side is sampled STRATIFIED by category, not taken in
+        # file order. Taking the first N caught 4 single-hop questions out of
+        # 249 — of the category that is 55% of LoCoMo — because the file is
+        # not ordered randomly. The finding survived that, but a sample that
+        # under-represents the dominant category by two orders of magnitude is
+        # not one to report from.
         take = min(len(unanswerable), args.n)
-        answerable = answerable[:take]
-        unanswerable = unanswerable[:take]
+        by_cat = collections.defaultdict(list)
+        for q in answerable:
+            by_cat[int(q["category"])].append(q)
+        total = sum(len(v) for v in by_cat.values()) or 1
+        rng = random.Random(SEED)
+        sampled: list = []
+        for cat in sorted(by_cat):
+            want = round(take * len(by_cat[cat]) / total)
+            sampled += rng.sample(by_cat[cat], min(want, len(by_cat[cat])))
+        # Rounding can leave the two classes uneven; top up or trim to match.
+        pool = [q for q in answerable if q not in sampled]
+        while len(sampled) < take and pool:
+            sampled.append(pool.pop(rng.randrange(len(pool))))
+        answerable = sampled[:take]
+        unanswerable = rng.sample(unanswerable, take)
 
         vault = Path(args.vault)
         build_vault(vault, conv)
