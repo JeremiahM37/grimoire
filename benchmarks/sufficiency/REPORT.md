@@ -12,7 +12,8 @@ and no judge at all.
 
 Section 1 is reproducible in the strongest sense available: re-running
 `probe.py` against the committed binary regenerates `signals.jsonl`
-**byte-identically**, all 498 records. Section 4 involves a sampling reader, so
+**byte-identically**, all 498 records — and the same holds for
+`hashing_signals.jsonl` on the other embedder. Section 4 involves a sampling reader, so
 it is reproducible only in distribution; its raw replies are committed instead.
 
 ## 1. No retrieval statistic can do it
