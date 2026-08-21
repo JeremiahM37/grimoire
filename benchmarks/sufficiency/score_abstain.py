@@ -53,6 +53,19 @@ def main(path="abstain.jsonl"):
     print(f"\nunanswerable, verdict vs prose: {b} verdict-only / {c} prose-only, "
           f"exact McNemar p = {mcnemar(b, c):.3f}")
 
+    # The same per-category split the retrieval probe gets. The scores were
+    # useful only on single-hop lookups and inverted on everything harder, so
+    # the question for the reader is whether it holds up where they failed.
+    names = {1: "multi-hop", 2: "temporal", 3: "open-domain", 4: "single-hop"}
+    cats = sorted({r.get("category", 0) for r in A})
+    if len(cats) > 1:
+        print(f"\n{'answerable category':22s} {'n':>4s} {'answered (not refused)':>23s}")
+        for cat in cats:
+            sub = [r for r in A if r.get("category") == cat]
+            if sub:
+                print(f"{names.get(cat, cat):22s} {len(sub):4d} "
+                      f"{1 - rate(sub, verdict_abstain):22.1%}")
+
     unknown = sum(1 for r in recs if r["supported"] == "unknown")
     if unknown:
         print(f"\n{unknown} of {len(recs)} replies carried no verdict line "

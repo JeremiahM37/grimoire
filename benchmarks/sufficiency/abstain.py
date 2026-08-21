@@ -19,12 +19,16 @@ the shipped path, not a bespoke prompt.
 from __future__ import annotations
 
 import argparse
+import collections
 import json
+import random
 import re
 import sys
 import time
 import urllib.request
 from pathlib import Path
+
+SEED = 42  # the seed the LoCoMo harness freezes its sample with
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
@@ -79,10 +83,29 @@ def main() -> int:
     t0 = time.monotonic()
     for ci, conv in enumerate(data):
         qa = conv.get("qa", [])
-        answerable = [q for q in qa if int(q.get("category", 0)) in (1, 2, 3, 4)][:args.per_conv]
-        unanswerable = [q for q in qa if int(q.get("category", 0)) == 5][:args.per_conv]
+        answerable = [q for q in qa if int(q.get("category", 0)) in (1, 2, 3, 4)]
+        unanswerable = [q for q in qa if int(q.get("category", 0)) == 5]
         if not unanswerable:
             continue
+        # Stratified by category, same seed as probe.py and the LoCoMo harness.
+        # Taking the first N in file order caught 4 single-hop questions out of
+        # 249 in the retrieval probe — of the category that is 55% of LoCoMo —
+        # and made its headline number look twice as strong as it was.
+        take = min(len(unanswerable), args.per_conv)
+        by_cat = collections.defaultdict(list)
+        for q in answerable:
+            by_cat[int(q["category"])].append(q)
+        total = sum(len(v) for v in by_cat.values()) or 1
+        rng = random.Random(SEED)
+        sampled = []
+        for cat in sorted(by_cat):
+            want = round(take * len(by_cat[cat]) / total)
+            sampled += rng.sample(by_cat[cat], min(want, len(by_cat[cat])))
+        pool = [q for q in answerable if q not in sampled]
+        while len(sampled) < take and pool:
+            sampled.append(pool.pop(rng.randrange(len(pool))))
+        answerable = sampled[:take]
+        unanswerable = rng.sample(unanswerable, take)
         vault = Path(args.vault)
         build_vault(vault, conv)
         # A port per conversation. Reusing one meant a launch that lost the
@@ -97,7 +120,17 @@ def main() -> int:
         # documented switch, not a workaround: without it the run silently
         # measures HTTP 429s instead of the reader.
         with goserver.launch(args.binary, vault, port, embed="ollama",
-                             env={"GRIMOIRE_RATE_LIMIT": "off"}):
+                             env={"GRIMOIRE_RATE_LIMIT": "off",
+                                  # /api/ask reads the WHOLE corpus instead of
+                                  # retrieving when it fits a 100k-character
+                                  # budget, and a LoCoMo conversation sits right
+                                  # at that boundary — so some questions would
+                                  # bypass retrieval entirely. What is under
+                                  # test is whether the system can tell that
+                                  # RETRIEVED context is insufficient;
+                                  # full-corpus reading is not RAG and has no
+                                  # retrieval to judge.
+                                  "GRIMOIRE_CONTEXT_BUDGET": "0"}):
             for label, qs in (("answerable", answerable), ("unanswerable", unanswerable)):
                 for qi, q in enumerate(qs):
                     res = None
@@ -124,7 +157,11 @@ def main() -> int:
                     rec = {
                         "qid": f"c{ci}{label[:3]}{qi}", "conv": ci, "label": label,
                         "question": q["question"],
+                        "category": int(q.get("category", 0)),
                         "supported": res.get("supported", "unknown"),
+                        # Recorded so the report can PROVE no question took the
+                        # whole-corpus path rather than asserting it.
+                        "mode": res.get("mode", ""),
                         "prose_abstained": bool(PROSE_ABSTAIN.search(answer)),
                         "answer": answer[:400],
                     }
