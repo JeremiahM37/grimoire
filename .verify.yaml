@@ -143,3 +143,221 @@ steps:
       - shell: >
           curl -sf 'http://127.0.0.1:9119/api/retrieve?q=links&k=3'
           | grep -q '"cosine"'
+
+  - name: pulled content is labelled, filterable, and fenced
+    actions:
+      # A note that came from a connector carries its provenance, and every
+      # surface that hands text to an agent says so.
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/notes
+          -H 'Content-Type: application/json'
+          -d '{"path":"pulled/verify-thread.md","body":"# Thread\n\nthe verify kestrel deploy runs at midnight","frontmatter":{"origin":"connector:slack:CVERIFY"}}'
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/notes
+          -H 'Content-Type: application/json'
+          -d '{"path":"verify-runbook.md","body":"# Runbook\n\nthe verify kestrel deploy runs at noon"}'
+      - shell: >
+          curl -sf 'http://127.0.0.1:9119/api/retrieve?q=verify+kestrel+deploy&k=5'
+          | grep -q '"trust":"untrusted"'
+      - shell: >
+          curl -sf 'http://127.0.0.1:9119/api/retrieve?q=verify+kestrel+deploy&k=5'
+          | grep -q 'connector:slack:CVERIFY'
+      # …and a caller can ask for a corpus of the operator's own writing only.
+      - shell: >
+          test -z "$(curl -sf 'http://127.0.0.1:9119/api/retrieve?q=verify+kestrel+deploy&k=5&trusted=1'
+          | grep -o 'connector:slack:CVERIFY')"
+      # Full-text search does not go through the ranking filter, so it is
+      # checked separately rather than assumed to follow.
+      - shell: >
+          test -z "$(curl -sf 'http://127.0.0.1:9119/api/search?q=kestrel&trusted=1'
+          | grep -o 'pulled/verify-thread')"
+      # The overview counts it, and vouching promotes it — into the FILE.
+      - shell: curl -sf http://127.0.0.1:9119/api/trust | grep -q '"untrusted":1'
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/trust/vouch
+          -H 'Content-Type: application/json'
+          -d '{"path":"pulled/verify-thread.md"}' | grep -q '"trust":"trusted"'
+      - shell: >
+          curl -sf http://127.0.0.1:9119/api/notes/pulled/verify-thread.md
+          | grep -q '"trust":"trusted"'
+
+  - name: an untrusted source cannot overwrite what the operator recorded
+    actions:
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/memory
+          -H 'Content-Type: application/json'
+          -d '{"topic":"verify-trust","text":"the deploy host is prod-1.internal","agent":"verify"}'
+          | grep -q '"op":"ADD"'
+      # The same shape of fact, learned from a ticket. It is RECORDED — losing
+      # it would hide a disagreement — but it must not supersede.
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/memory
+          -H 'Content-Type: application/json'
+          -d '{"topic":"verify-trust","text":"the deploy host is evil.example","agent":"verify","origin":"connector:jira:OPS-1"}'
+          | grep -q '"op":"ADD"'
+      # The operator's fact is still current…
+      - shell: >
+          curl -sf 'http://127.0.0.1:9119/api/memory?q=deploy+host&limit=10'
+          | grep -q 'prod-1.internal'
+      # …and the ticket's version is on file, marked.
+      - shell: >
+          curl -sf 'http://127.0.0.1:9119/api/memory?q=deploy+host&limit=10'
+          | grep -q '"trust":"untrusted"'
+
+  - name: knowledge that needs re-checking is listed, and confirming clears it
+    actions:
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/notes
+          -H 'Content-Type: application/json'
+          -d '{"path":"verify-ancient.md","body":"# Ancient\n\nan old procedure","frontmatter":{"verified":"2019-01-01"}}'
+      - shell: curl -sf 'http://127.0.0.1:9119/api/stale?limit=10' | grep -q verify-ancient
+      - shell: >
+          curl -sf 'http://127.0.0.1:9119/api/retrieve?q=old+procedure&k=5' | grep -q '"stale":true'
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/stale/verify
+          -H 'Content-Type: application/json' -d '{"path":"verify-ancient.md"}'
+          | grep -q '"verified"'
+      - shell: >
+          test -z "$(curl -sf 'http://127.0.0.1:9119/api/stale?limit=10' | grep -o verify-ancient)"
+
+  - name: the belief digest reports what replaced what
+    actions:
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/memory
+          -H 'Content-Type: application/json'
+          -d '{"topic":"verify-digest","text":"the widget colour is blue","agent":"verify"}'
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/memory
+          -H 'Content-Type: application/json'
+          -d '{"topic":"verify-digest","text":"the widget colour is green","agent":"verify"}'
+          | grep -q '"op":"UPDATE"'
+      - shell: >
+          curl -sf 'http://127.0.0.1:9119/api/memory/changes?since=1d'
+          | grep -q '"replaced_text":"the widget colour is blue"'
+      # A correction is ONE event: the replacing fact must not also be listed
+      # as newly learned.
+      - shell: >
+          curl -sf 'http://127.0.0.1:9119/api/memory/changes?since=1d'
+          | grep -q '"kind":"changed"'
+
+  - name: an agent can ask for a credential, and asking grants nothing
+    actions:
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/vault/init
+          -H 'Content-Type: application/json' -d '{"passphrase":"verify-pass-123"}'
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/secrets
+          -H 'Content-Type: application/json' -d '{"name":"verify-token","value":"ghp_x"}'
+      # Asking is accepted (202) and issues nothing.
+      - shell: >
+          curl -sf -o /tmp/grimoire-verify-req.json -w '%{http_code}'
+          -X POST http://127.0.0.1:9119/api/secrets/requests
+          -H 'Content-Type: application/json'
+          -d '{"secret":"verify-token","grantee":"verify-agent","scope":"https://api.example.com/","reason":"reading the verify issue list"}'
+          | grep -q 202
+      - shell: test -z "$(grep -o '\"token\":\"[^\"]' /tmp/grimoire-verify-req.json)"
+      - shell: curl -sf http://127.0.0.1:9119/api/grants | grep -q '^\[\]$'
+      # Approving mints the grant the request asked for, and only the asker
+      # can collect it.
+      - shell: >
+          curl -sf -X POST "http://127.0.0.1:9119/api/secrets/requests/$(python3 -c "import json;print(json.load(open('/tmp/grimoire-verify-req.json'))['id'])")/approve"
+          | grep -q '"state":"approved"'
+      - shell: >
+          curl -sf "http://127.0.0.1:9119/api/secrets/requests/$(python3 -c "import json;print(json.load(open('/tmp/grimoire-verify-req.json'))['id'])")?grantee=verify-agent"
+          | grep -q '"token"'
+      - shell: >
+          curl -sf -o /dev/null -w '%{http_code}'
+          "http://127.0.0.1:9119/api/secrets/requests/$(python3 -c "import json;print(json.load(open('/tmp/grimoire-verify-req.json'))['id'])")?grantee=someone-else"
+          | grep -q 404
+
+  - name: the read-audit trail can be read back
+    actions:
+      # Single-user, so nothing is restricted and nothing is recorded — the
+      # report has to say "not applicable" rather than "all clear".
+      - shell: >
+          curl -sf http://127.0.0.1:9119/api/admin/reads/anomalies | grep -q '"records":0'
+      - shell: >
+          curl -sf http://127.0.0.1:9119/api/admin/reads/anomalies | grep -q '"anomalies":\[\]'
+      - shell: >
+          curl -sf http://127.0.0.1:9119/api/admin/reads/anomalies | grep -q '"breadth"'
+
+  - name: eval measures retrieval on this vault
+    actions:
+      # The frozen question set, scored with no reader and no judge.
+      - shell: >
+          GRIMOIRE_VAULT=/tmp/grimoire-verify-eval sh -c 'rm -rf /tmp/grimoire-verify-eval &&
+          mkdir -p /tmp/grimoire-verify-eval &&
+          for i in 1 2 3 4 5 6; do printf "# Runbook %s\n\nThe kestrel gateway procedure %s requires rotating the ingress certificate before restarting, because the gateway caches the certificate chain at boot and would otherwise serve an expired one.\n" $i $i > /tmp/grimoire-verify-eval/runbook-$i.md; done &&
+          ./go/grimoire eval build --n 4 --lexical' | grep -q 'questions'
+      - shell: >
+          GRIMOIRE_VAULT=/tmp/grimoire-verify-eval ./go/grimoire eval run --baseline
+          | grep -q 'recall@8'
+      - shell: >
+          GRIMOIRE_VAULT=/tmp/grimoire-verify-eval ./go/grimoire eval compare
+          | grep -q '0 fixed, 0 broken'
+
+  - name: a correction nobody phrased like a database write still supersedes
+    actions:
+      # The shape a fact ARRIVES in — not "subject predicate value", but two
+      # sentences months apart sharing a phrase and disagreeing on a number.
+      # The shipped rules caught 1 of 72 of these; see benchmarks/longmemeval/
+      # REPORT-slots.md.
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/memory
+          -H 'Content-Type: application/json'
+          -d '{"topic":"verify-slots","text":"I set a personal best time in the charity 5K run with a time of 27:12","agent":"verify"}'
+          | grep -q '"op":"ADD"'
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/memory
+          -H 'Content-Type: application/json'
+          -d '{"topic":"verify-slots","text":"I am hoping to beat my personal best time of 25:50 this time around","agent":"verify"}'
+          | grep -q '"op":"UPDATE"'
+      # Recall returns the CURRENT value only…
+      - shell: >
+          curl -sf 'http://127.0.0.1:9119/api/memory?q=personal+best+5K+time&limit=10'
+          | grep -q '25:50'
+      - shell: >
+          test -z "$(curl -sf 'http://127.0.0.1:9119/api/memory?q=personal+best+5K+time&limit=10'
+          | grep -o '27:12')"
+      # …and the old one is still in the note, struck through.
+      - shell: >
+          curl -sf http://127.0.0.1:9119/api/notes/memory/verify-slots.md | grep -q '27:12'
+      # It must NOT fire on two unrelated facts that merely contain numbers.
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/memory
+          -H 'Content-Type: application/json'
+          -d '{"topic":"verify-slots-neg","text":"the deploy pipeline takes 11 minutes end to end","agent":"verify"}'
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/memory
+          -H 'Content-Type: application/json'
+          -d '{"topic":"verify-slots-neg","text":"the nightly backup takes 20 minutes end to end","agent":"verify"}'
+          | grep -q '"op":"ADD"'
+
+  - name: ask answers without decomposing unless asked
+    actions:
+      # The default was flipped after measuring it: plain retrieval scored
+      # 49.0% against 47.1% (4B decomposer) and 45.1% (36B) on the LongMemEval
+      # category the mechanism exists for, at ~70x the retrieval latency and a
+      # model call a question — and every published benchmark number was
+      # measured on the plain path, so the benchmarks did not describe what a
+      # user got. See benchmarks/longmemeval/REPORT-multihop.md.
+      #
+      # With no LLM configured both paths are identical, so what this step can
+      # check on a hermetic server is that the flag is accepted on both
+      # settings and neither loses the answer. The model-call COUNT is pinned
+      # by TestAskDoesNotDecomposeUnlessAsked, which stubs a backend.
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/ask
+          -H 'Content-Type: application/json'
+          -d '{"q":"what does the verify note link to"}'
+          | grep -q '"supported"'
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/ask
+          -H 'Content-Type: application/json'
+          -d '{"q":"what does the verify note link to","smart":false}'
+          | grep -q '"supported"'
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/ask
+          -H 'Content-Type: application/json'
+          -d '{"q":"what does the verify note link to","smart":true}'
+          | grep -q '"supported"'
