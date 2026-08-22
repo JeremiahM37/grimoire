@@ -98,3 +98,18 @@ def live_page(browser, server):
     pg = ctx.new_page()
     yield pg
     ctx.close()
+
+# The app sets body[data-ready] at the END of boot. A reload restarts boot, and
+# boot restores the previously-open note -- so a click issued between the two
+# either misses the row that has not rendered yet, or lands and is then
+# overwritten when the restore finishes. That is what
+# test_alias_wikilink_navigates hit on CI: #title held "Trash E2E", a note from
+# an entirely different module, and the same commit passed on rerun.
+#
+# Waiting on readiness is the fix. A longer expect() timeout is not: the value
+# was already wrong and stayed wrong, so more patience would only have made the
+# failure slower.
+def reload_ready(page, timeout=10000):
+    """Reload and wait for boot to finish before returning."""
+    page.reload()
+    page.wait_for_selector("body[data-ready]", timeout=timeout)
