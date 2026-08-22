@@ -38,6 +38,26 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/websearch"
 )
 
+// watcherWanted reads GRIMOIRE_NO_WATCHER.
+//
+// It used to be a bare presence check, which made GRIMOIRE_NO_WATCHER=0 turn
+// the watcher OFF — the opposite of what anyone setting it that way intends,
+// and unlike every other switch here, which spell disablement `=off` and
+// compare case-insensitively. It cost a benchmark run to find: external edits
+// were never reindexed, so reconciliation compared against stale text, reported
+// "already recorded", and both arms of the experiment scored identically.
+//
+// Falsey values now mean what they say. Any other non-empty value still
+// disables, so an existing GRIMOIRE_NO_WATCHER=1 keeps working.
+func watcherWanted() bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("GRIMOIRE_NO_WATCHER"))) {
+	case "", "0", "false", "off", "no":
+		return true
+	default:
+		return false
+	}
+}
+
 func main() {
 	args := os.Args[1:]
 	if handled, code := runCLI(args); handled {
@@ -306,7 +326,7 @@ func run(args []string) error {
 
 	// watch for edits made outside grimoire (another editor, a sync client)
 	watch := watcher.New(v, ix, 0)
-	if os.Getenv("GRIMOIRE_NO_WATCHER") == "" {
+	if watcherWanted() {
 		if err := watch.Start(); err != nil {
 			log.Printf("watcher unavailable (%v) — external edits need a manual reindex", err)
 		} else {

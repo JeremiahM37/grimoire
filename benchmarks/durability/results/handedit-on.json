@@ -1,0 +1,318 @@
+[
+ {
+  "qid": "6a1eabeb",
+  "v1": "I've been doing some running lately, and I'm happy to say that I recently set a personal best time in a charity 5K run with a time of 27:12",
+  "v2": "By the way, I'm hoping to beat my personal best time of 25:50 this time around",
+  "outcome": "survived",
+  "challenged": true,
+  "topic": "dur-0002"
+ },
+ {
+  "qid": "6aeb4375",
+  "v1": "I've tried three different ones recently, and each has its own unique flavor and style",
+  "v2": "I've tried four different ones so far, and I'm always looking for new recommendations",
+  "outcome": "survived",
+  "challenged": true,
+  "topic": "dur-0004"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "qid": "184da446",
+  "v1": "By the way, I've been reading \"A Short History of Nearly Everything\" and I'm currently on page 200, which has some interesting insights on the history of medicine",
+  "v2": "By the way, I just finished reading about the discovery of DNA structure in \"A Short History of Nearly Everything\" - I'm now on page 220, and it's amazing how much I've learned so far!",
+  "outcome": "survived",
+  "challenged": true,
+  "topic": "dur-0017"
+ },
+ {
+  "qid": "031748ae",
+  "v1": "I lead a team of 4 engineers in my new role as Senior Software Engineer",
+  "v2": "And by the way, I've been enjoying my role as Senior Software Engineer for a while, especially the part where I now lead a team of five engineers - it's been a great experience so far, and I'm excited to see how they'll grow under my guidance",
+  "outcome": "survived",
+  "challenged": true,
+  "topic": "dur-0019"
+ },
+ {
+  "qid": "4d6b87c8",
+  "v1": "I've got a pretty long to-watch list right now, with 20 titles waiting to be checked off",
+  "v2": "I've got a lot of titles on my to-watch list, currently 25, and I'm always looking to add more",
+  "outcome": "survived",
+  "challenged": true,
+  "topic": "dur-0021"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "qid": "45dc21b6",
+  "v1": "Also, by the way, I've been loving Emma's recipes on her channel, I've already tried out two of them",
+  "v2": "By the way, I've tried out 3 of Emma's recipes so far, and they're all amazing!",
+  "outcome": "survived",
+  "challenged": true,
+  "topic": "dur-0029"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "qid": "618f13b2",
+  "v1": "By the way, I just wore my new black Converse to run some errands yesterday, so that's six times now that I've worn them",
+  "v2": "And, I'm happy to report that I've worn my new black Converse Chuck Taylor All Star sneakers four times already, including to my friend's birthday party last Saturday",
+  "outcome": "survived",
+  "challenged": true,
+  "topic": "dur-0034"
+ },
+ {
+  "qid": "72e3ee87",
+  "v1": "Oh, and by the way, I'm currently on episode 10 of the Science series!",
+  "v2": "By the way, I've been watching Crash Course's Science series, and I just completed 50 episodes - it's been really helpful in understanding the basics of science",
+  "outcome": "survived",
+  "challenged": true,
+  "topic": "dur-0036"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "qid": "01493427",
+  "v1": "I've added 17 new ones since I started collecting again, and I'd like to keep track of them",
+  "v2": "Speaking of which, I just realized I've added 25 new postcards to my collection since I started collecting again",
+  "outcome": "survived",
+  "challenged": true,
+  "topic": "dur-0039"
+ },
+ {
+  "qid": "6a27ffc2",
+  "v1": "By the way, I've been brushing up on my Python skills by watching Corey Schafer's Python programming series on YouTube, and I've completed 20 videos so far",
+  "v2": "I've completed 30 videos so far for Corey's series and I'll start with the DataCamp course, it seems like a good starting point",
+  "outcome": "survived",
+  "challenged": true,
+  "topic": "dur-0041"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "qid": "7a87bd0c",
+  "v1": "Oh, and by the way, I've been feeling really proud of myself for sticking to my daily tidying routine - it's already been 3 weeks!",
+  "v2": "By the way, I've been sticking to my daily tidying routine for 4 weeks now, and it's amazing how much of a difference it's made in my apartment",
+  "outcome": "survived",
+  "challenged": true,
+  "topic": "dur-0046"
+ },
+ {
+  "qid": "e61a7584",
+  "v1": "I've had Luna for about 6 months now, and I've been meaning to get her microchipped for a while",
+  "v2": "I've had my cat, Luna, for about 9 months now, and I've been trying to keep her active and engaged",
+  "outcome": "survived",
+  "challenged": true,
+  "topic": "dur-0048"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "qid": "ed4ddc30",
+  "v1": "And by the way, I need to start using up some of our eggs, we have a lot stocked up in the fridge - 30 dozen at the moment!",
+  "v2": "By the way, I was thinking of using some of our fresh eggs from the coop - we've got 20 dozen stocked up in the fridge right now",
+  "outcome": "survived",
+  "challenged": true,
+  "topic": "dur-0051"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "qid": "0e4e4c46",
+  "v1": "Also, by the way, I've been crushing it in Ticket to Ride lately - my highest score so far is 124 points, and I'm eager to keep improving",
+  "v2": "By the way, speaking of building and creating things, I just got my highest score in Ticket to Ride - 132 points",
+  "outcome": "survived",
+  "challenged": true,
+  "topic": "dur-0056"
+ },
+ {
+  "qid": "4b24c848",
+  "v1": "I've already bought three tops from H&M, I'm really loving their summer collection",
+  "v2": "By the way, I've already got five tops from H&M so far, and I'm thinking of getting a few more",
+  "outcome": "survived",
+  "challenged": true,
+  "topic": "dur-0058"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "qid": "603deb26",
+  "v1": "I've tried making it at home for 5 times now since Emma teached me how to make it, and I'm getting closer to getting it just right",
+  "v2": "By the way, I've been perfecting my Negroni game - I've tried making it at home 10 times now since my friend Emma showed me how to make it",
+  "outcome": "survived",
+  "challenged": true,
+  "topic": "dur-0061"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "qid": "5831f84d",
+  "v1": "By the way, I've been keeping track of my educational activities and noticed I've watched a lot of Crash Course videos lately - I've already finished 10 videos in the past few weeks!",
+  "v2": "By the way, I've been on a learning streak lately, having watched 15 Crash Course videos in the past few weeks",
+  "outcome": "survived",
+  "challenged": true,
+  "topic": "dur-0064"
+ },
+ {
+  "qid": "affe2881",
+  "v1": "By the way, speaking of bird identification, I've been keeping track of the species I've seen in my local park, and I've managed to spot 27 different species so far",
+  "v2": "By the way, speaking of woodpeckers, I just saw a Northern Flicker in my local park last weekend, which brings my total species count to 32",
+  "outcome": "survived",
+  "challenged": true,
+  "topic": "dur-0066"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "qid": "dad224aa",
+  "v1": "I've been waking up around 8:30 am on Saturdays, which gives me enough time to fit in a 30-minute jog before showering and getting ready for the day",
+  "v2": "Also, what time do you think I should aim to start my jog, considering I like to wake up at 7:30 am on Saturdays and fit in a cup of coffee beforehand?",
+  "outcome": "survived",
+  "challenged": true,
+  "topic": "dur-0083"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "qid": "0977f2af",
+  "v1": "I'm actually thinking of using my new Instant Pot to make some of these soups and stews",
+  "v2": "I'm actually thinking of using the Air Fryer I got yesterday to make some crispy sweet potato fries to go with the meals",
+  "outcome": "survived",
+  "challenged": true,
+  "topic": "dur-0090"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ },
+ {
+  "outcome": "skip:not-recognised-as-update"
+ }
+]
