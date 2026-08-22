@@ -427,6 +427,59 @@ notes (you can inspect exactly what it retrieved) → it calls an API with
 learned → you open `memory/` in the console, read the note it wrote, edit one
 line, roll back another. That loop is the product.
 
+## Your correction outranks the agent's next write
+
+Being able to edit the memory is worth nothing if the edit does not last. It
+did not: supersession compared facts by recency, so a correction stood until the
+agent wrote on that slot again — and the strike-through recorded **you** as the
+party who had been corrected.
+
+Reconciliation now compares on **authority** before recency:
+
+```
+human   — you: edited in the vault, `--human`, or the console
+  ▲ may supersede
+agent   — written through remember/MCP
+  ▲ may supersede
+pulled  — connector content, already `trust: untrusted`
+```
+
+The bottom rung is the rule that was already there: text other people can write
+may not overwrite yours. The rung above it is authorship, and it is the one that
+makes "fix it in your editor" mean something.
+
+**Nothing has to declare it.** An entry's id is a hash of its own
+`(stamp, agent, text)`, so text that changed after the id was minted is text
+some other hand changed. Editing a line in your editor is self-evident, and no
+vector store has anywhere to put that evidence.
+
+A refused overwrite is not discarded — the agent had a reason, and you may be
+the one who is out of date. It becomes a **challenge** you can settle:
+
+```bash
+grimoire challenges                                  # what your agents dispute
+grimoire challenges --note memory/ops.md --uphold ID   # your fact stands
+grimoire challenges --note memory/ops.md --concede ID  # the agent was right
+```
+
+Which is the shape of a just-in-time credential grant, deliberately: the agent
+may ask, asking grants nothing, and a person answers.
+
+**Measured, with the control published.** On LongMemEval's knowledge-update set,
+reader-free and deterministic
+([benchmarks/durability/](benchmarks/durability/)):
+
+| | survived | resurrected | history inverted |
+|---|---|---|---|
+| recency only *(the old behaviour)* | 0/20 | **20/20** | **20/20** |
+| authority lattice | **20/20** | 0/20 | 0/20 |
+
+Read the denominator before the result: **20 of 72 pairs**, because the other 52
+are not recognised as an update at all, so nothing would have overwritten
+anything and scoring them would hand every arm a free pass. Durability is only
+enforceable where the update is seen — and the cost is real: **100% of refused
+overwrites become a challenge**, which is a decision you now have to make.
+
 ## One timeline for everything an agent did
 
 Three records already existed and none of them were joined: the **read audit**
