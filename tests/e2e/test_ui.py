@@ -3,7 +3,7 @@
 import re
 
 import pytest
-from conftest import DESKTOP, PHONE  # viewports (conftest dir is on sys.path)
+from conftest import DESKTOP, PHONE, reload_ready  # conftest dir is on sys.path
 from playwright.sync_api import expect
 
 VAULT_PASS = "mypassphrase123"
@@ -323,7 +323,7 @@ def test_theme_toggle_cycles_and_persists(page, server):
     assert page.evaluate(get) == "light"
     page.click("#theme-toggle")
     assert page.evaluate(get) == "dark"
-    page.reload()                                     # persists
+    reload_ready(page)                                # persists
     assert page.evaluate(get) == "dark"
     page.click("#theme-toggle")
     assert page.evaluate(get) in (None, "")           # back to auto
@@ -498,7 +498,7 @@ def test_alias_wikilink_navigates(page, server):
         "await p({title:'United States', body:'the country', frontmatter:{aliases:['USA']}});"
         "await p({title:'Geo Note', body:'I live in [[USA]]'}); }")
     _wait_listed(page, server, "geo-note.md")
-    page.reload()   # boot re-fetches notes + aliases
+    reload_ready(page)   # boot re-fetches notes + aliases
     page.click(".note-row .t >> text=Geo Note")
     expect(page.locator("#title")).to_have_value("Geo Note", timeout=8000)
     page.click("#preview-toggle")
@@ -808,7 +808,7 @@ def test_tag_autocomplete(page, server):
     expect(page.locator("#title")).to_have_value("Tag Seed", timeout=8000)
     page.fill("#content", "seeded #zephyrtag here")
     expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
-    page.reload()   # boot re-fetches the tag list
+    reload_ready(page)   # boot re-fetches the tag list
     page.once("dialog", lambda d: d.accept("Tag User"))
     page.click("#new-note")
     expect(page.locator("#title")).to_have_value("Tag User", timeout=8000)

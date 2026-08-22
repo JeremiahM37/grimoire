@@ -1,5 +1,6 @@
 """Power features in the browser: version history modal, note composer
 (extract/merge), folder tree, outgoing links, slides, canvas."""
+from conftest import reload_ready
 from playwright.sync_api import expect
 
 
@@ -106,7 +107,7 @@ def test_outgoing_links_panel(page, server):
     page.fill("#content", "see [[Out Target]] and [[Ghost Note]]")
     expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
     page.goto(server + "/#out-source.md")
-    page.reload()
+    reload_ready(page)
     out = page.locator(".outgoing")
     expect(out).to_be_visible(timeout=8000)
     expect(out.locator("a.wikilink", has_text="Out Target")).to_be_visible()
