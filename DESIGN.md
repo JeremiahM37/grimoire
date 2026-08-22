@@ -180,15 +180,22 @@ Four kinds, all hermetic by default (temp vault, no network, local stub embedder
 - **Install:** `pipx install grimoire` → `grimoire serve --vault ~/notes`; Docker image; systemd unit. "Easy install" is a design constraint, tested.
 
 ## 9. Roadmap
-Status: **1.0** — deployed, hermetic tests + Playwright e2e + `verify` green.
+Status: **1.1.0** — deployed, hermetic tests + Playwright e2e + `verify` green.
 
 > **On the numbering.** The phases below were development milestones, numbered
-> independently of the release tags, which had drifted to v2.4.x. The public
-> version is now **1.0.0**, which is not a cosmetic reset: the Go module lives
-> at `github.com/JeremiahM37/grimoire/go`, and Go requires a `/vN` path suffix
-> for any major version ≥ 2 — so on this path v2.x was never a publishable
-> module version at all, only a git tag that `go install` had to route around.
-> 1.0.0 is the first version this module can actually resolve to.
+> independently of the release tags, which had drifted to v2.4.x. The line
+> restarts at **1.x**, and that is not cosmetic: the Go module lives at
+> `github.com/JeremiahM37/grimoire/go`, and Go requires a `/vN` path suffix for
+> any major version ≥ 2 — so on this path v2.x was never a publishable module
+> version at all, only a git tag that `go install` had to route around, which is
+> why it resolved to a pseudo-version of main.
+>
+> The reset lands on **1.1.0** rather than 1.0.0 because v1.0.0 was already cut
+> on day one and is cached in `proxy.golang.org` with its hash recorded in
+> `sum.golang.org`, which is append-only. Re-pointing a tag the checksum
+> database has already seen makes every later fetch fail with a mismatch, and
+> nothing can undo it — so the tag is spent, and 1.1.0 is the first version the
+> `go/` module can actually resolve to.
 - **v0.1 (core) ✅:** vault + watcher/reindex, note CRUD (files ⇄ index), frontmatter, `[[wiki-links]]` + backlinks, tags, daily notes, FTS5 search, PWA editor, CLI, hermetic test suite + `.verify.yaml`.
 - **v0.2 (AI) ✅:** embeddings + ask-your-notes (auto-Ollama, else offline extractive), grimoire-as-MCP-server, inline AI actions, private-notes exclusion.
 - **v0.3 (secrets) ✅:** encrypted vault, grants + audit, AI secret-broker (USE-not-READ).
