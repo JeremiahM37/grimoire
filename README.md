@@ -2,10 +2,12 @@
 
 # ✦ Grimoire
 
-**A self-hosted personal context server** — one knowledge and trust boundary
-shared by you and your AI agents. Your knowledge base, your credentials, and
-your agents' memory, mounted over MCP. And a full offline notes app you'd run
-on its own, as the console where you review what the agents did.
+**Your agent's memory is a database you can't read.**<br>
+**Grimoire makes it markdown you can.**
+
+Read what your agents believe about you, fix a wrong fact in your own editor,
+diff it across a month, roll it back. Then hand them the credentials to act —
+which they can use but never see. One self-hosted Go binary, mounted over MCP.
 
 <!-- badges -->
 [![CI](https://github.com/JeremiahM37/grimoire/actions/workflows/ci.yml/badge.svg)](https://github.com/JeremiahM37/grimoire/actions/workflows/ci.yml)
@@ -21,6 +23,49 @@ on its own, as the console where you review what the agents did.
 ![Grimoire console](docs/screenshots/hero.png)
 
 </div>
+
+```bash
+go install github.com/JeremiahM37/grimoire/go/cmd/grimoire@latest
+go install github.com/JeremiahM37/grimoire/go/cmd/grimoire-mcp@latest
+
+grimoire serve &                           # your vault, at localhost:9111
+claude mcp add grimoire -- grimoire-mcp    # your agent now has all of it
+```
+
+## Your agent's memory should be a file
+
+Every memory layer worth naming keeps what your agent learns in a store you
+cannot open — a vector database, an embedded blob, a hosted table. So when an
+agent records something wrong about you, and it will, there is no version of
+"open it and fix the sentence". You can delete it and hope it relearns better.
+
+Grimoire writes agent memory to **plain markdown, with provenance**: which
+agent, when, from which task. A fact that contradicts one already on file
+**supersedes** it rather than competing with it, and the replaced line stays in
+the note, struck through. So what your agents believe is a file you can read,
+correct in your own editor, review in a diff, and roll back — and *"what did it
+believe last month?"* has an answer instead of a shrug.
+
+![Agent memory corrected by hand, in a text editor](docs/screenshots/memory-demo.gif)
+
+*(That is the real CLI against a throwaway vault — the tape that renders it is
+[`docs/demo/memory.tape`](docs/demo/memory.tape), so it regenerates rather than
+going quietly out of date.)*
+
+That is the part that is hard to assemble yourself. The rest of this README is
+the three things that come with it: an encrypted credential vault your agent can
+**use but never read**, retrieval over your own notes with citations, and a full
+offline notes app to review it all in.
+
+**Retrieval has to be good too, so it was measured rather than asserted.** On
+LongMemEval — 200 questions, each against its own ~118k-token haystack —
+Grimoire's hybrid retrieval scores **77.5%**: 8.5 points over dense-only
+(p = 0.0005), and 8.5 points over *putting the entire haystack in the context
+window* while spending **15× fewer tokens**. Pre-registered protocol, nulls
+published alongside — including one that cost a feature its default.
+[All the numbers, including the unflattering ones ↓](#benchmarks)
+
+## Everything an agent gets in one mount
 
 Your agents already need four things from you: what you know, a way to search
 it, credentials to act for you, and somewhere to keep what *they* learn. Today
