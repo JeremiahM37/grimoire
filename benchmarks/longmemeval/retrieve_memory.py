@@ -100,12 +100,16 @@ def user_statements(turns: list) -> list[str]:
 def ingest(base: str, entry: dict, *, reconciled: bool, topic: str = "lme") -> dict:
     """Write one haystack into the memory store. Returns write statistics."""
     stats = {"sessions": 0, "items": 0, "ops": {}}
-    for i, (date, turns) in enumerate(sessions_in_date_order(entry)):
+    for i, (_date, turns) in enumerate(sessions_in_date_order(entry)):
         items = user_statements(turns)
         if not items:
             continue
         # The batch endpoint takes a full write per item and caps at 100.
-        def item(text: str) -> dict:
+        # `session` is bound at definition time rather than closed over. It
+        # is correct either way here -- item() is only ever called inside this
+        # same iteration -- but a closure over a loop variable is one edit away
+        # from being wrong, and the edit would be silent.
+        def item(text: str, session: str = f"s{i:03d}") -> dict:
             it = {"topic": topic, "agent": "lme", "text": text}
             if not reconciled:
                 # The control arm. Each session gets its own scope, so a write
@@ -113,7 +117,7 @@ def ingest(base: str, entry: dict, *, reconciled: bool, topic: str = "lme") -> d
                 # sessions the store is append-only. Not a benchmark switch:
                 # this is the shipped `scope` field doing what it documents.
                 it["scope"] = "session"
-                it["session"] = f"s{i:03d}"
+                it["session"] = session
             return it
 
         for start in range(0, len(items), 50):
@@ -121,7 +125,7 @@ def ingest(base: str, entry: dict, *, reconciled: bool, topic: str = "lme") -> d
             try:
                 out = _post(base, "/api/memory/batch",
                             {"items": [item(t) for t in chunk]})
-            except urllib.error.HTTPError as e:
+            except urllib.error.HTTPError:
                 # One rejected batch must not abandon a haystack that takes a
                 # minute to build. The API refuses a statement outside
                 # 1..20000 characters, and a transcript occasionally has one;

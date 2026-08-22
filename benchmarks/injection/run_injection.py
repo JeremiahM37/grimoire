@@ -29,9 +29,8 @@ import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from goserver import OLLAMA_URL, launch  # noqa: E402
-
 from corpus import ATTACKS, Attack  # noqa: E402
+from goserver import OLLAMA_URL, launch  # noqa: E402
 
 PORT = 9134
 

@@ -43,8 +43,8 @@ sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent))
 sys.path.insert(0, str(HERE.parent / "locomo"))
 
-from goserver import OLLAMA_URL, launch  # noqa: E402
 import run_locomo as R  # noqa: E402
+from goserver import OLLAMA_URL, launch  # noqa: E402
 
 DATA = Path("/tmp/lme_dl/longmemeval_s.json")
 RESULTS = HERE / "results"
@@ -143,16 +143,6 @@ def phase_contexts(category: str) -> None:
             "GRIMOIRE_CONTEXT_BUDGET": "0",
         }
 
-    env = {
-        "GRIMOIRE_OLLAMA_URL": OLLAMA_URL,
-        "GRIMOIRE_LLM": "ollama",
-        "GRIMOIRE_LLM_MODEL": "qwen3.5:4b",
-        "GRIMOIRE_RATE_LIMIT": "off",
-        # The corpus-fits shortcut would hand over the whole vault and never
-        # rank, which is a real grimoire behaviour and the wrong thing here:
-        # the question is about RETRIEVAL.
-        "GRIMOIRE_CONTEXT_BUDGET": "0",
-    }
     fh = cfile.open("a")
     for i, q in enumerate(todo, 1):
         entry = by_short.get(q["qid"])
@@ -250,11 +240,11 @@ def phase_report(category: str) -> None:
         if arm == "plain":
             continue
         w = sum(1 for q in ids if not j[(q, "plain")] and j[(q, arm)])
-        l = sum(1 for q in ids if j[(q, "plain")] and not j[(q, arm)])
-        n = w + l
-        p = min(1.0, sum(math.comb(n, k) for k in range(0, min(w, l) + 1))
+        lost = sum(1 for q in ids if j[(q, "plain")] and not j[(q, arm)])
+        n = w + lost
+        p = min(1.0, sum(math.comb(n, k) for k in range(0, min(w, lost) + 1))
                 / 2 ** n * 2) if n else 1.0
-        print(f"{arm} vs plain: fixed {w}, broke {l}, exact McNemar p = {p:.4f}")
+        print(f"{arm} vs plain: fixed {w}, broke {lost}, exact McNemar p = {p:.4f}")
 
 
 def main() -> int:

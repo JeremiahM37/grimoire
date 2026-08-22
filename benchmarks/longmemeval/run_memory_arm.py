@@ -48,9 +48,8 @@ sys.path.insert(0, str(HERE.parent))
 sys.path.insert(0, str(HERE.parent / "locomo"))
 
 import retrieve_memory as M  # noqa: E402
-from goserver import launch  # noqa: E402
-
 import run_locomo as R  # noqa: E402  (claude_call and friends)
+from goserver import launch  # noqa: E402
 
 DATA = Path(os.environ.get("LME_DATA", "/tmp/lme_dl/longmemeval_s.json"))
 RESULTS = Path(os.environ.get("MEM_RESULTS", HERE / "results_memory"))
@@ -264,7 +263,6 @@ def phase_judge(category: str | None, model: str) -> None:
 # ---------------------------------------------------------------- report
 
 def phase_report(category: str | None) -> None:
-    qs = {q["qid"]: q for q in questions(category)}
     judged = collections.defaultdict(dict)
     for line in (RESULTS / "judged.jsonl").open():
         r = json.loads(line)
@@ -326,8 +324,8 @@ def phase_report(category: str | None) -> None:
     for a, b in (("append", "reconciled"), ("append", "slots"),
                  ("reconciled", "slots")):
         if a in have and b in have:
-            w, l, p = mcnemar(a, b)
-            print(f"  {b} vs {a}: +{w} / -{l} discordant, exact p = {p:.4f}")
+            w, lost, p = mcnemar(a, b)
+            print(f"  {b} vs {a}: +{w} / -{lost} discordant, exact p = {p:.4f}")
 
 
 def main() -> int:
