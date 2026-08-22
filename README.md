@@ -137,7 +137,7 @@ desktop assistants, custom agents. Example config:
 // Claude Code's .mcp.json shown; adapt to your client
 { "mcpServers": { "grimoire": {
     "command": "/path/to/grimoire/go/grimoire-mcp",
-    "env": { "GRIMOIRE_API": "http://localhost:9111",
+    "env": { "GRIMOIRE_URL": "http://localhost:9111",
              "GRIMOIRE_AGENT_NAME": "my-agent" } } } }
 ```
 

@@ -158,3 +158,48 @@ func TestREADMEEnvVarsAreImplemented(t *testing.T) {
 			"believing it has a control it does not have.", unimplemented)
 	}
 }
+
+// The README's MCP config block is the snippet people paste into their agent
+// client, so every env key in it must be one this server actually reads.
+//
+// The existing settings check could not catch the failure this was written for.
+// It asks whether the documented name appears anywhere under go/ — and
+// GRIMOIRE_API did appear, in the `agent-setup` command that printed it. A name
+// written twice and read nowhere passes a substring test and still does
+// nothing. This one compares against the names the MCP server reads.
+func TestReadmeMCPConfigUsesEnvTheServerReads(t *testing.T) {
+	root := repoRoot(t)
+	b, err := os.ReadFile(filepath.Join(root, "README.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The env keys grimoire-mcp resolves: the two constants it is launched
+	// with, plus the ones read directly for transport and auth.
+	reads := map[string]bool{
+		EnvURL: true, EnvAgentName: true,
+		"GRIMOIRE_PORT": true, "GRIMOIRE_AUTH_TOKEN": true,
+		"GRIMOIRE_MCP_TRANSPORT": true, "GRIMOIRE_MCP_ADDR": true,
+		"GRIMOIRE_MCP_PORT": true,
+	}
+
+	blocks := regexp.MustCompile("(?s)```jsonc?\n(.*?)```").FindAllStringSubmatch(string(b), -1)
+	envKey := regexp.MustCompile(`"(GRIMOIRE_[A-Z_]+)"\s*:`)
+	checked := 0
+	for _, blk := range blocks {
+		if !strings.Contains(blk[1], "mcpServers") {
+			continue
+		}
+		checked++
+		for _, m := range envKey.FindAllStringSubmatch(blk[1], -1) {
+			if !reads[m[1]] {
+				t.Errorf("README MCP config sets %s, which grimoire-mcp never reads.\n"+
+					"Setting it is a no-op: the server falls back to its default address, "+
+					"which fails only for people not already on it.", m[1])
+			}
+		}
+	}
+	if checked == 0 {
+		t.Fatal("no mcpServers config block found in the README — the anchor moved")
+	}
+}

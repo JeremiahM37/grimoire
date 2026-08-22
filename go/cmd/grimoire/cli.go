@@ -17,6 +17,7 @@ import (
 
 	"github.com/JeremiahM37/grimoire/go/internal/embed"
 	"github.com/JeremiahM37/grimoire/go/internal/markdown"
+	"github.com/JeremiahM37/grimoire/go/internal/mcp"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
 )
 
@@ -759,7 +760,7 @@ func cmdAgentSetup(args []string) int {
 	cfg := map[string]any{"mcpServers": map[string]any{"grimoire": map[string]any{
 		"command": self,
 		"env": map[string]string{
-			"GRIMOIRE_API": apiURL, "GRIMOIRE_AGENT_NAME": "my-agent"}}}}
+			mcp.EnvURL: apiURL, mcp.EnvAgentName: "my-agent"}}}}
 	raw, _ := json.MarshalIndent(cfg, "", "  ")
 
 	fmt.Println("# 1. MCP config (e.g. .mcp.json), or register at user scope for headless runs:")

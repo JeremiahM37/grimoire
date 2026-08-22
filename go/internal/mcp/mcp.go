@@ -31,6 +31,22 @@ import (
 // ProtocolVersion is the MCP revision this server speaks.
 const ProtocolVersion = "2024-11-05"
 
+// The environment an agent's MCP client sets when it launches grimoire-mcp.
+//
+// These are constants rather than string literals because the name is written
+// in three places that must agree — the binary that READS it, the `agent-setup`
+// command that PRINTS it, and the README that documents it — and for a while
+// they did not. `agent-setup` emitted GRIMOIRE_API, which nothing reads. The
+// failure is silent and lands on exactly the people who get furthest: the
+// default is http://127.0.0.1:9111, so anyone on that port never noticed, and
+// anyone on a different port or host got a server that started fine, answered
+// every tool call against the wrong address, and looked identical to "no
+// knowledge exists". A docs-parity test now checks the README against these.
+const (
+	EnvURL       = "GRIMOIRE_URL"        // API base the MCP server talks to
+	EnvAgentName = "GRIMOIRE_AGENT_NAME" // provenance stamped on what it writes
+)
+
 // Instructions are returned on initialize. Agents reliably read these; they are
 // the difference between a mounted knowledge base and a used one.
 const Instructions = "This server is the team's knowledge base and memory: runbooks, " +
