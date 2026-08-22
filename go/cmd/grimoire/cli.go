@@ -39,7 +39,7 @@ const usage = `grimoire — local-first AI-native notes
   grimoire capture [text...]          quick capture → inbox + daily link
   grimoire search QUERY               full-text search the vault
   grimoire remember TEXT [--topic T] [--session S] [--category C]
-                    [--expires-in 72h] [--immutable] [--verbatim]
+                    [--expires-in 72h] [--immutable] [--verbatim] [--human]
                                       record a fact, reconciled against what is known
   grimoire recall [QUERY] [--agent A] [--session S] [--category C]
                   [--limit N] [--all] [--as-of RFC3339] [--why]

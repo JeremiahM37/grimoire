@@ -77,6 +77,17 @@ type memoryIn struct {
 	// and it is never offered to the model as a target.
 	Immutable bool `json:"immutable"`
 
+	// Human says a PERSON is asserting this, not an agent. It puts the write on
+	// the top rung of the authority lattice, where an agent's later write may
+	// not silently supersede it — the correction is durable rather than
+	// standing only until the agent next writes on that slot.
+	//
+	// It is a claim by the caller, so it is worth naming what it is not: an
+	// agent may set it. That is acceptable because the rung it grants is over
+	// the agent's OWN future writes, which it could overwrite freely anyway.
+	// What it cannot do is climb over a pulled origin — see memory.AuthorityOf.
+	Human bool `json:"human"`
+
 	// Origin is where the agent GOT this fact, when it did not think of it
 	// itself: "connector:slack:C123", "web:example.com", or the path of an
 	// untrusted note it was reading. An agent that summarises a pulled
@@ -255,7 +266,7 @@ func (s *Server) reconcileFact(w http.ResponseWriter, r *http.Request, rel, fact
 			candidates = append(candidates, h.Entry)
 			byID[h.ID] = h
 		}
-		decision = s.AI.DecideMemoryFrom(fact, strings.TrimSpace(m.Origin), candidates)
+		decision = s.AI.DecideMemoryAs(fact, strings.TrimSpace(m.Origin), m.Human, candidates)
 		if decision.Target != "" {
 			target, ok := byID[decision.Target]
 			if !ok {
@@ -350,7 +361,7 @@ func (s *Server) appendEntry(w http.ResponseWriter, r *http.Request, rel, fact,
 		Task: task, Session: strings.TrimSpace(m.Session), Stamp: stamp,
 		Category: strings.TrimSpace(m.Category), Expires: expires,
 		Immutable: m.Immutable, SupersededBy: supersededBy,
-		Origin: strings.TrimSpace(m.Origin),
+		Origin: strings.TrimSpace(m.Origin), Human: m.Human,
 	}
 
 	existing, readErr := s.Vault.Read(rel)
@@ -498,6 +509,13 @@ type entryOut struct {
 	Origin string `json:"origin,omitempty"`
 	Trust  string `json:"trust"`
 
+	// Who asserted it: human, agent or pulled. Same argument as Trust — an
+	// agent about to overwrite a fact needs to know it is a person's
+	// correction, and a person reading two facts that disagree needs to know
+	// which one is theirs. It is always present, never omitempty: a missing
+	// authority reads as "unknown", and the whole point is that it is known.
+	Authority string `json:"authority"`
+
 	// Why this fact was recalled, for the surface that has to justify it.
 	Scores *scoreBreakdown `json:"scores,omitempty"`
 }
@@ -520,6 +538,7 @@ func entriesOut(hits []index.MemoryHit, explain bool) []entryOut {
 			SupersededBy: h.SupersededBy, Helpful: h.Helpful,
 			Unhelpful: h.Unhelpful, Score: h.Score,
 			Origin: h.Origin, Trust: trust.FromOrigin(h.Origin).String(),
+			Authority: h.Authority().String(),
 		}
 		if explain {
 			e.Scores = &scoreBreakdown{Semantic: h.Semantic, Keyword: h.Keyword,
@@ -851,6 +870,12 @@ func (s *Server) patchEntry(w http.ResponseWriter, r *http.Request) {
 		// go through, so the pin is checked by reconciliation and not here.
 		if in.Text != nil && strings.TrimSpace(*in.Text) != "" {
 			e.Text = strings.TrimSpace(*in.Text)
+			// This route exists for a person changing a fact deliberately, as
+			// the comment above says. Recording that promotes the entry to the
+			// human rung, so the next agent write cannot quietly put the old
+			// value back — which is what happened before, strike-through and
+			// all, with the person recorded as the party who was corrected.
+			e.Human = true
 		}
 		if in.Category != nil {
 			e.Category = strings.TrimSpace(*in.Category)
