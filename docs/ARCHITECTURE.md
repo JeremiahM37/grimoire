@@ -62,7 +62,7 @@ live editor).
 Retrieval has TWO paths and they are not interchangeable. `/api/retrieve` ranks
 one query; `/api/retrieve?smart=1` decomposes the question, retrieves per
 sub-question and reranks the pool. The second was unreachable on its own until
-v2.5, with two consequences: the console's "what would the agent see" inspected
+1.0, with two consequences: the console's "what would the agent see" inspected
 a different ranking from the one the agent used, and every published benchmark
 number was measured on the plain path rather than the one `/api/ask` used.
 

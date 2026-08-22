@@ -180,7 +180,15 @@ Four kinds, all hermetic by default (temp vault, no network, local stub embedder
 - **Install:** `pipx install grimoire` → `grimoire serve --vault ~/notes`; Docker image; systemd unit. "Easy install" is a design constraint, tested.
 
 ## 9. Roadmap
-Status: **v0.1–v0.9 shipped** (2026-07-16) — deployed, 160 hermetic tests + Playwright e2e + `verify` 3/3.
+Status: **1.0** — deployed, hermetic tests + Playwright e2e + `verify` green.
+
+> **On the numbering.** The phases below were development milestones, numbered
+> independently of the release tags, which had drifted to v2.4.x. The public
+> version is now **1.0.0**, which is not a cosmetic reset: the Go module lives
+> at `github.com/JeremiahM37/grimoire/go`, and Go requires a `/vN` path suffix
+> for any major version ≥ 2 — so on this path v2.x was never a publishable
+> module version at all, only a git tag that `go install` had to route around.
+> 1.0.0 is the first version this module can actually resolve to.
 - **v0.1 (core) ✅:** vault + watcher/reindex, note CRUD (files ⇄ index), frontmatter, `[[wiki-links]]` + backlinks, tags, daily notes, FTS5 search, PWA editor, CLI, hermetic test suite + `.verify.yaml`.
 - **v0.2 (AI) ✅:** embeddings + ask-your-notes (auto-Ollama, else offline extractive), grimoire-as-MCP-server, inline AI actions, private-notes exclusion.
 - **v0.3 (secrets) ✅:** encrypted vault, grants + audit, AI secret-broker (USE-not-READ).
@@ -189,7 +197,7 @@ Status: **v0.1–v0.9 shipped** (2026-07-16) — deployed, 160 hermetic tests + 
 - **v0.6–v0.9 ✅ (best-in-class):** tag browsing, graph view, task checkboxes, command palette (Ctrl-K), real editor (toolbar/smart-lists/tab), image/file attachments, theme toggle, outline/TOC, note templates, per-note HTML export, in-app settings, **encryption-at-rest for private notes**, soft-delete/trash + undo, aliases, word count, pin/favorite, calendar.
 - **v0.10–v0.13 ✅:** tables, find & replace, unlinked mentions, random/duplicate, zip import/export, search operators, properties editor, tag rename, **desktop-first-class** (split view + draggable divider, collapsible/resizable sidebar, context menu, focus mode, keyboard nav), callouts/highlights, code syntax highlighting, tag autocomplete + browser, note hover previews, offline draft protection, **security hardening** (Argon2id, lockout, idle-lock, SSRF guard, scope-bypass fix, CSP, rotation, revocation — see SECURITY.md), **background auto-sync** with a peer.
 - **v1.0 ✅ true CRDT sync:** `go/internal/crdt` is a real sequence CRDT (fractional-index / Logoot). Concurrent edits to the same note auto-merge with no conflict copies (proven by a randomized fuzz test); the body is CRDT'd while frontmatter converges deterministically; independent same-name histories are conflict-copied rather than garbled.
-- **v2.5 — the trust boundary made true, and three things that were written but never read:**
+- **1.0 — the trust boundary made true, and three things that were written but never read:**
   - **Untrusted content** (`internal/trust`). Connectors put other people's
     writing into the corpus an agent reads from; nothing distinguished it. Now
     every note carries an `origin`, every content surface reports and can
@@ -221,7 +229,9 @@ Status: **v0.1–v0.9 shipped** (2026-07-16) — deployed, 160 hermetic tests + 
     false positive in 400, deterministic, ~48 µs per comparison. The
     competitors do this with a model call per write; this is the version that
     can sit on an agent's hot path.
-- **remaining:** rename off the "grimoire" placeholder, publish (OSP).
+- **remaining:** publish (OSP). The name stays **Grimoire** — the placeholder
+  was reviewed against the alternatives and kept, so this line is a decision
+  now rather than a to-do.
 
 ## 10. Risks & threat model (sketch — expanded per phase)
 - **Vault brokering is the crown jewel and the biggest risk.** A compromised unlocked session could request grants. Mitigations: grants are scoped + time-boxed + revocable + audited; secrets never leave the process as plaintext to the client; per-secret allow-lists of which MCP/service a token may be used against; a "panic lock" that drops the in-memory key. Default-deny.
