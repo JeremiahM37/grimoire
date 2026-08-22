@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/JeremiahM37/grimoire/go/internal/mcp"
 )
 
 // The CLI writes to the vault with no server running, which is the whole point
@@ -224,5 +226,16 @@ func TestAgentSetupPointsAtTheGoMCPBinary(t *testing.T) {
 	}
 	if !strings.Contains(out, "http://example:9111") {
 		t.Error("API url not threaded through")
+	}
+	// The name, not just the value. This printed GRIMOIRE_API for several
+	// releases — a variable nothing reads — so the config it emitted pointed a
+	// correctly-specified server at the default address and silently ignored
+	// the URL the user passed in. The assertion above still passed throughout,
+	// because the URL was present; it was attached to the wrong key.
+	if !strings.Contains(out, mcp.EnvURL) {
+		t.Errorf("agent-setup must emit %s, the var grimoire-mcp reads:\n%s", mcp.EnvURL, out)
+	}
+	if strings.Contains(out, "GRIMOIRE_API") {
+		t.Error("GRIMOIRE_API is read by nothing; emitting it produces a dead mount")
 	}
 }

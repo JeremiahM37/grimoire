@@ -24,11 +24,11 @@ func main() {
 			return
 		}
 	}
-	base := os.Getenv("GRIMOIRE_URL")
+	base := os.Getenv(mcp.EnvURL)
 	if base == "" {
 		base = "http://127.0.0.1:" + envOr("GRIMOIRE_PORT", "9111")
 	}
-	srv := mcp.New(base, os.Getenv("GRIMOIRE_AGENT_NAME"))
+	srv := mcp.New(base, os.Getenv(mcp.EnvAgentName))
 
 	// stdio is the default because that is what local desktop agents speak.
 	// The http transport is for web and hosted clients; it binds loopback,
