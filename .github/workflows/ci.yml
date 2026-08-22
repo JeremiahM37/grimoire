@@ -72,8 +72,17 @@ jobs:
         # real generateText loop rather than only against my reading of its
         # docs — the test skips itself where it is absent, which is exactly
         # how a broken adapter would ship unnoticed.
+        #
+        # PINNED, exactly. Unpinned, this step tested whatever npm published
+        # that morning: two pushes failed on `Cannot read properties of
+        # undefined (reading 'toolName')` with nothing changed in this repo,
+        # and both versions pass again today — a bad upstream release came and
+        # went while CI blamed the commit. A caret range would not have helped;
+        # the breakage was inside a single major. The `latest` canary below is
+        # what still notices drift, on its own schedule, without failing a push
+        # that had nothing to do with it.
         run: |
-          npm install --no-save ai
+          npm install --no-save ai@6.0.264
           node --test test/
 
   e2e:
