@@ -59,6 +59,23 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # `go install …@latest` is the install the README leads with, and it did
+      # not resolve to the release. The module lives in the go/ subdirectory, so
+      # Go looks for a tag named go/vX.Y.Z; only vX.Y.Z existed, so @latest fell
+      # back to a pseudo-version of whatever main pointed at — an untagged build
+      # whose `grimoire version` printed v0.0.0-<date>-<sha>, which makes the
+      # one question that command exists to answer unanswerable.
+      #
+      # Mirroring the tag is the whole fix. It runs after the release publishes,
+      # so a failed build never leaves a resolvable module version behind, and
+      # the Go module proxy caches tags permanently — which is why this pushes
+      # only the tag being released and never moves an existing one.
+      - name: Mirror the tag for the go/ submodule
+        run: |
+          set -euo pipefail
+          git tag "go/${GITHUB_REF_NAME}" "${GITHUB_REF_NAME}"
+          git push origin "go/${GITHUB_REF_NAME}"
+
   image:
     runs-on: ubuntu-latest
     timeout-minutes: 30
