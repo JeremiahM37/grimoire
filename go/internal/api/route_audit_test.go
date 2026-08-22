@@ -87,7 +87,9 @@ var routeAccess = map[string]access{
 	"GET /api/memory/facets":      scoped, // scope names are drawn from facts
 	"GET /api/memory/graph":       scoped, // entities and the facts behind them
 	"POST /api/memory/search":     scoped, // recall, ranked by a supplied vector
-	"GET /api/briefing":           scoped,
+	// Fact text on both sides of the disagreement, so the same filter as recall.
+	"GET /api/memory/challenges": scoped,
+	"GET /api/briefing":          scoped,
 	// Counts per origin, filtered per caller. It says how much of the corpus
 	// came from where — never which notes, so it cannot be used to enumerate
 	// content the caller could not already list.
@@ -136,36 +138,38 @@ var routeAccess = map[string]access{
 	"POST /api/bookmarks":            authed,
 	"DELETE /api/bookmarks":          authed,
 	"POST /api/memory/batch":         authed,
-	"POST /api/memory/feedback":      authed,
-	"POST /api/memory/consolidate":   authed,
-	"PATCH /api/memory/entry":        authed,
-	"DELETE /api/memory/entry":       authed,
-	"POST /api/facts":                authed,
-	"POST /api/capture":              authed,
-	"POST /api/attach":               authed,
-	"POST /api/audio":                authed,
-	"POST /api/actions":              authed,
-	"POST /api/templates":            authed,
-	"POST /api/templates/apply":      authed,
-	"POST /api/canvas":               authed,
-	"POST /api/import/vault":         authed, // writes notes from an uploaded archive
-	"POST /api/trash/{tid}/restore":  authed,
-	"DELETE /api/trash/{tid}":        authed,
-	"POST /api/tags/rename":          authed,
-	"GET /api/web/search":            authed,
-	"POST /api/embed":                authed, // vectors from the local model; no note content
-	"POST /api/web/fetch":            authed,
-	"GET /api/keys":                  authed,
-	"POST /api/keys":                 authed,
-	"DELETE /api/keys/{id}":          authed,
-	"POST /api/auth/password":        authed,
-	"GET /api/spaces":                authed, // filtered to what the caller may read
-	"GET /api/plugins":               authed,
-	"GET /api/sync/status":           authed,
-	"POST /api/sync/now":             admin, // a whole-vault transfer to the peer
-	"GET /api/crdt/doc/{path...}":    scoped,
-	"POST /api/crdt/merge":           scoped,
-	"GET /api/vault/status":          authed, // lock state only, never a name or value
+	// Settling a challenge supersedes a fact either way, so it is a write.
+	"POST /api/memory/challenge":    authed,
+	"POST /api/memory/feedback":     authed,
+	"POST /api/memory/consolidate":  authed,
+	"PATCH /api/memory/entry":       authed,
+	"DELETE /api/memory/entry":      authed,
+	"POST /api/facts":               authed,
+	"POST /api/capture":             authed,
+	"POST /api/attach":              authed,
+	"POST /api/audio":               authed,
+	"POST /api/actions":             authed,
+	"POST /api/templates":           authed,
+	"POST /api/templates/apply":     authed,
+	"POST /api/canvas":              authed,
+	"POST /api/import/vault":        authed, // writes notes from an uploaded archive
+	"POST /api/trash/{tid}/restore": authed,
+	"DELETE /api/trash/{tid}":       authed,
+	"POST /api/tags/rename":         authed,
+	"GET /api/web/search":           authed,
+	"POST /api/embed":               authed, // vectors from the local model; no note content
+	"POST /api/web/fetch":           authed,
+	"GET /api/keys":                 authed,
+	"POST /api/keys":                authed,
+	"DELETE /api/keys/{id}":         authed,
+	"POST /api/auth/password":       authed,
+	"GET /api/spaces":               authed, // filtered to what the caller may read
+	"GET /api/plugins":              authed,
+	"GET /api/sync/status":          authed,
+	"POST /api/sync/now":            admin, // a whole-vault transfer to the peer
+	"GET /api/crdt/doc/{path...}":   scoped,
+	"POST /api/crdt/merge":          scoped,
+	"GET /api/vault/status":         authed, // lock state only, never a name or value
 
 	// --- instance administration ---
 	"POST /api/vault/init":                       admin,

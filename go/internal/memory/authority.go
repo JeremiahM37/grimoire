@@ -1,5 +1,11 @@
 package memory
 
+import (
+	"os"
+	"strings"
+	"sync"
+)
+
 // The authority lattice: who is allowed to overwrite whom.
 //
 // Reconciliation has always had one rung of this. `blocks` refused to let a
@@ -61,7 +67,7 @@ func (a Authority) String() string {
 // than the declaration in practice, because a person correcting a fact in their
 // editor does not stop to add a marker — they change the sentence and save.
 func (e Entry) Authority() Authority {
-	if e.Human || e.HandWritten || e.handEdited() {
+	if authorityOn() && (e.Human || e.HandWritten || e.handEdited()) {
 		return AuthorityHuman
 	}
 	if e.Untrusted() {
@@ -83,10 +89,35 @@ func AuthorityOf(origin string, human bool) Authority {
 	if (Entry{Origin: origin}).Untrusted() {
 		return AuthorityPulled
 	}
-	if human {
+	if human && authorityOn() {
 		return AuthorityHuman
 	}
 	return AuthorityAgent
+}
+
+// authorityOn reports whether the AUTHORSHIP rung is in force.
+//
+// GRIMOIRE_MEMORY_AUTHORITY=off collapses human and agent onto one rung, which
+// restores recency-only supersession exactly as it behaved before the lattice
+// existed. It is the control arm for benchmarks/durability — a measurement that
+// cannot reproduce the old behaviour on demand is comparing against a memory of
+// it — and it is deliberately the ONLY thing the switch touches.
+//
+// The pulled rung is not affected and cannot be turned off here. That rule is a
+// security control: untrusted text must not be able to direct a write, and an
+// environment variable that quietly disabled it would be a way to ask for the
+// vulnerability back.
+var authorityOnce struct {
+	sync.Once
+	on bool
+}
+
+func authorityOn() bool {
+	authorityOnce.Do(func() {
+		authorityOnce.on = !strings.EqualFold(
+			strings.TrimSpace(os.Getenv("GRIMOIRE_MEMORY_AUTHORITY")), "off")
+	})
+	return authorityOnce.on
 }
 
 // outranked reports whether a fact written from `incoming` is forbidden from

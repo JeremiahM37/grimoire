@@ -147,6 +147,12 @@ type memoryResult struct {
 	Target string `json:"target,omitempty"`
 	Path   string `json:"path,omitempty"`
 	Why    string `json:"why,omitempty"`
+
+	// Challenges names the fact this write contradicted and was not allowed to
+	// supersede. An agent that gets this back has been told, in the response to
+	// its own write, that a person disagrees — which is the only moment it can
+	// still do something about it.
+	Challenges string `json:"challenges,omitempty"`
 }
 
 // remember records what an agent learned, reconciling each fact against what
@@ -286,12 +292,13 @@ func (s *Server) reconcileFact(w http.ResponseWriter, r *http.Request, rel, fact
 		return memoryResult{Op: string(memory.OpNoop), Target: decision.Target,
 			Text: fact, Why: decision.Why}, nil
 	default:
-		id, err := s.appendEntry(w, r, rel, fact, agent, task, m, expires, "")
+		id, err := s.appendEntryChallenging(w, r, rel, fact, agent, task, m, expires,
+			"", decision.Challenges)
 		if err != nil {
 			return memoryResult{}, err
 		}
 		return memoryResult{Op: string(memory.OpAdd), ID: id, Text: fact,
-			Path: rel, Why: decision.Why}, nil
+			Path: rel, Why: decision.Why, Challenges: decision.Challenges}, nil
 	}
 }
 
@@ -354,6 +361,13 @@ func (*handledError) Error() string { return "request already answered" }
 // use. It returns the new entry's id.
 func (s *Server) appendEntry(w http.ResponseWriter, r *http.Request, rel, fact,
 	agent, task string, m memoryIn, expires, supersededBy string) (string, error) {
+	return s.appendEntryChallenging(w, r, rel, fact, agent, task, m, expires, supersededBy, "")
+}
+
+// appendEntryChallenging is appendEntry for a fact that contradicts an entry it
+// was not allowed to supersede. The contested id rides in the new bullet.
+func (s *Server) appendEntryChallenging(w http.ResponseWriter, r *http.Request, rel, fact,
+	agent, task string, m memoryIn, expires, supersededBy, challenges string) (string, error) {
 
 	stamp := vault.Now().Format("2006-01-02 15:04")
 	e := memory.Entry{
@@ -362,6 +376,7 @@ func (s *Server) appendEntry(w http.ResponseWriter, r *http.Request, rel, fact,
 		Category: strings.TrimSpace(m.Category), Expires: expires,
 		Immutable: m.Immutable, SupersededBy: supersededBy,
 		Origin: strings.TrimSpace(m.Origin), Human: m.Human,
+		Challenges: challenges,
 	}
 
 	existing, readErr := s.Vault.Read(rel)
