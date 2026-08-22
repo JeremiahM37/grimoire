@@ -378,3 +378,11 @@ steps:
           curl -sf 'http://127.0.0.1:9119/api/timeline?kind=memory&limit=5'
           | python3 -c "import json,sys; e=json.load(sys.stdin)['events']; assert all(x['kind']=='memory' for x in e), e; print('kind filter holds')"
 
+  - name: the harness lints clean, the way CI lints it
+    actions:
+      # CI runs `ruff check tests/ benchmarks/ clients/` and verify did not,
+      # so lint debt in a benchmark script reached main twice and turned CI
+      # red on pushes whose code was fine. Same command, same paths, run
+      # before the push instead of after it.
+      - shell: cd /home/admin/projects/grimoire && .venv/bin/ruff check tests/ benchmarks/ clients/
+
