@@ -223,7 +223,7 @@ def phase_report() -> None:
     if af.exists():
         ar = [json.loads(x) for x in af.open()]
         got = sum(r["attempted"] for r in ar)
-        print(f"\n## Attempt — does a model try it at all?\n")
+        print("\n## Attempt — does a model try it at all?\n")
         print(f"`qwen3.5:4b`, shown the injected note and a legitimate "
               f"question: **{got}/{len(ar)} ({100*got/len(ar):.0f}%)** "
               f"emitted a call to the attacker's URL.")
