@@ -20,7 +20,7 @@ func cmdRemember(args []string) int {
 	text := strings.TrimSpace(stdinOrArgs(positional(args)))
 	if text == "" {
 		return fail("usage: grimoire remember TEXT [--topic T] [--session S] " +
-			"[--category C] [--expires-in 72h] [--immutable]")
+			"[--category C] [--expires-in 72h] [--immutable] [--human]")
 	}
 	e, err := openEnv()
 	if err != nil {
@@ -39,6 +39,9 @@ func cmdRemember(args []string) int {
 	}
 	if hasFlag(args, "--immutable") {
 		body["immutable"] = true
+	}
+	if hasFlag(args, "--human") {
+		body["human"] = true
 	}
 	if hasFlag(args, "--verbatim") {
 		body["infer"] = false
@@ -108,6 +111,7 @@ func cmdRecall(args []string) int {
 	var facts []struct {
 		ID, Text, Path, Agent, Session, Category, Stamp string
 		SupersededBy                                    string `json:"superseded_by"`
+		Authority                                       string `json:"authority"`
 		Score                                           float64
 		Scores                                          map[string]float64
 	}
@@ -120,8 +124,16 @@ func cmdRecall(args []string) int {
 	}
 	for _, f := range facts {
 		mark := " "
-		if f.SupersededBy != "" {
+		switch {
+		case f.SupersededBy != "":
 			mark = "×" // replaced later; shown only with --all
+		case f.Authority == "human":
+			// A person asserted this. Worth a column of its own: when two
+			// facts disagree, which one is yours is the first thing you want
+			// to know, and it is the one an agent may not overwrite.
+			mark = "✎"
+		case f.Authority == "pulled":
+			mark = "~" // came from text other people can write
 		}
 		fmt.Printf("%s %-12s %s\n", mark, f.ID, f.Text)
 		meta := []string{f.Stamp}

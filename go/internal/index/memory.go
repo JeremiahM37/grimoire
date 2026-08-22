@@ -142,6 +142,10 @@ func (ix *Index) writeMemoryRows(note *vault.Note) error {
 	vecs := ix.Emb.Embed(texts)
 
 	for i, e := range entries {
+		human := 0
+		if e.Human {
+			human = 1
+		}
 		immutable := 0
 		if e.Immutable {
 			immutable = 1
@@ -159,11 +163,11 @@ func (ix *Index) writeMemoryRows(note *vault.Note) error {
 		if err := ix.DB.Exec(
 			"INSERT OR IGNORE INTO memory_entries(id,note,text,agent,task,session,stamp,category,"+
 				"expires,immutable,superseded_by,superseded_at,helpful,unhelpful,line,"+
-				"embedding,space,acl,private,origin)"+
-				" VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+				"embedding,space,acl,private,origin,human)"+
+				" VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
 			e.ID, note.Path, e.Text, e.Agent, e.Task, e.Session, e.Stamp, e.Category,
 			e.Expires, immutable, e.SupersededBy, e.SupersededAt, e.Helpful,
-			e.Unhelpful, e.Line, blob, space, acl, private, e.Origin,
+			e.Unhelpful, e.Line, blob, space, acl, private, e.Origin, human,
 		); err != nil {
 			return err
 		}
@@ -242,7 +246,7 @@ func (ix *Index) MemoryEntries(q MemoryQuery) ([]MemoryHit, error) {
 	rows, err := ix.DB.Query(
 		"SELECT id,note,text,agent,task,session,stamp,category,expires,immutable,"+
 			"superseded_by,superseded_at,helpful,unhelpful,line,embedding,space,acl,"+
-			"private,origin FROM memory_entries WHERE "+
+			"private,origin,human FROM memory_entries WHERE "+
 			strings.Join(where, " AND "), args...)
 	if err != nil {
 		return nil, err
@@ -254,6 +258,7 @@ func (ix *Index) MemoryEntries(q MemoryQuery) ([]MemoryHit, error) {
 		var (
 			r         memoryRow
 			immutable int
+			human     int
 			private   int
 			blob      []byte
 		)
@@ -261,10 +266,11 @@ func (ix *Index) MemoryEntries(q MemoryQuery) ([]MemoryHit, error) {
 			&r.hit.Task, &r.hit.Session, &r.hit.Stamp, &r.hit.Category,
 			&r.hit.Expires, &immutable, &r.hit.SupersededBy, &r.hit.SupersededAt,
 			&r.hit.Helpful, &r.hit.Unhelpful, &r.hit.Line, &blob, &r.sp, &r.acl,
-			&private, &r.hit.Origin); err != nil {
+			&private, &r.hit.Origin, &human); err != nil {
 			return nil, err
 		}
 		r.hit.Immutable = immutable == 1
+		r.hit.Human = human == 1
 		r.priv = private == 1
 		r.vec = Unpack(blob)
 		if !q.allows(r) {

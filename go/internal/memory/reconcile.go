@@ -3,8 +3,6 @@ package memory
 import (
 	"regexp"
 	"strings"
-
-	"github.com/JeremiahM37/grimoire/go/internal/trust"
 )
 
 // Reconciliation — deciding what a new fact does to what is already known.
@@ -234,10 +232,20 @@ func Decide(fact string, candidates []Entry) Decision {
 // see — it is added ALONGSIDE, where a person and a reader can both see the
 // two claims disagree. Silence would be worse than a contradiction.
 func DecideFrom(fact, origin string, candidates []Entry) Decision {
+	return DecideAs(fact, origin, false, candidates)
+}
+
+// DecideAs is DecideFrom for a fact whose WRITER is also known.
+//
+// `human` says a person is asserting this rather than an agent. It promotes the
+// write to the top of the authority lattice, where it may correct anything and
+// nothing may silently correct it back. See authority.go for why recency alone
+// was the wrong comparison.
+func DecideAs(fact, origin string, human bool, candidates []Entry) Decision {
 	if strings.TrimSpace(fact) == "" {
 		return Decision{Op: OpNoop, Why: "empty"}
 	}
-	untrusted := trust.FromOrigin(origin) == trust.Untrusted
+	incoming := AuthorityOf(origin, human)
 	negated := IsNegation(fact)
 	subject, predicate, value, structured := Attribute(fact)
 
@@ -259,7 +267,7 @@ func DecideFrom(fact, origin string, candidates []Entry) Decision {
 		// changed. This is checked before similarity because the two texts can
 		// be lexically distant ("prefers tabs" vs "prefers four-space
 		// indentation") and still be the same belief being overwritten.
-		if structured && !c.Immutable && !blocks(untrusted, c) {
+		if structured && !c.Immutable && !outranked(incoming, c) {
 			cs, cp, cv, cok := Attribute(c.Text)
 			if cok && cs == subject && cp == predicate {
 				if cv == value && !negated {
@@ -280,7 +288,7 @@ func DecideFrom(fact, origin string, candidates []Entry) Decision {
 		// signal than lexical overlap and means the opposite thing: two
 		// statements that share most of their words but differ in the one
 		// number are a correction, not a duplicate.
-		if !negated && !c.Immutable && !blocks(untrusted, c) {
+		if !negated && !c.Immutable && !outranked(incoming, c) {
 			if kind, ok := ValueUpdate(c.Text, fact); ok {
 				return Decision{Op: OpUpdate, Text: fact, Target: c.ID,
 					Why: "supersedes (" + kind + " value changed): " + c.Text}
@@ -298,29 +306,24 @@ func DecideFrom(fact, origin string, candidates []Entry) Decision {
 		return Decision{Op: OpNoop, Target: bestEntry.ID,
 			Why: "already recorded: " + bestEntry.Text}
 	case negated && bestSim >= relatedThreshold && !bestEntry.Immutable &&
-		!blocks(untrusted, bestEntry):
+		!outranked(incoming, bestEntry):
 		return Decision{Op: OpDelete, Target: bestEntry.ID,
 			Why: "retracts: " + bestEntry.Text}
-	case untrusted && blocks(untrusted, bestEntry):
+	case outranked(incoming, bestEntry):
 		// Recorded, not silently dropped, and the reason is in the response so
 		// a caller can surface the disagreement rather than discovering later
 		// that two contradictory facts are both being recalled.
+		//
+		// The reason names both rungs, because "may not supersede" is now two
+		// different refusals — a stranger's text over the operator's, and an
+		// agent's guess over a person's correction — and a caller deciding
+		// whether to escalate needs to know which one it hit.
 		return Decision{Op: OpAdd, Text: fact,
-			Why: "recorded alongside (untrusted source may not supersede): " + bestEntry.Text}
+			Why: "recorded alongside (" + incoming.String() + " may not supersede " +
+				bestEntry.Authority().String() + "): " + bestEntry.Text}
 	default:
 		return Decision{Op: OpAdd, Text: fact, Why: "nothing related on file"}
 	}
-}
-
-// blocks reports whether an untrusted new fact is forbidden from superseding
-// this existing entry.
-//
-// Untrusted-over-untrusted is allowed: a connector re-pulling a document that
-// has since been edited should update what it said before, and refusing that
-// would make every re-sync accumulate a contradiction. What is refused is a
-// stranger's text overwriting the operator's.
-func blocks(untrusted bool, existing Entry) bool {
-	return untrusted && !existing.Untrusted()
 }
 
 // sentenceRE splits on sentence terminators followed by whitespace. Clause

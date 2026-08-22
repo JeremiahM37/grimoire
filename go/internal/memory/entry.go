@@ -47,6 +47,24 @@ type Entry struct {
 	Expires      string // RFC3339; empty means never
 	Immutable    bool   // reconciliation may not supersede or delete it
 	SupersededBy string // ID of the entry that replaced this one
+
+	// Human records that a PERSON asserted this, declared by `by=human` in the
+	// trailer. It is the top rung of the authority lattice: an agent write may
+	// not supersede it. See authority.go.
+	Human bool
+
+	// HandWritten is the same claim, INFERRED rather than declared, and it is
+	// never serialised — it is recomputed on every parse, because the evidence
+	// for it is the file itself.
+	//
+	// A bullet nothing in this package wrote is recognisable two ways: it has
+	// no trailer at all, or its id no longer matches its own content. The id is
+	// a hash of (stamp, agent, text), so text that changed after the id was
+	// minted is text some other hand changed. That makes the on-disk format
+	// tamper-evident for free, and it is the only reason a store like this one
+	// can tell a person's correction from an agent's write at all — a vector
+	// database has nowhere to put the discrepancy.
+	HandWritten bool
 	// Helpful and Unhelpful count the times a caller reported this fact as
 	// having earned its place in a recall, or not. They ride in the bullet
 	// like everything else, so the signal is as rebuildable — and as visible —
@@ -204,8 +222,44 @@ func ParseLine(line string) (Entry, bool) {
 	// permanent the first time the line is rewritten.
 	if e.ID == "" {
 		e.ID = DeriveID(e.Stamp, e.Agent, e.Text)
+		// No id in the file means no writer in this package produced this
+		// line: a person typed the bullet themselves.
+		e.HandWritten = true
+	} else if looksMinted(e.ID) && !e.idMatchesContent() {
+		// An id that no longer describes its own text is the signature of an
+		// edit made outside the write path — which is exactly the correction
+		// the file format exists to allow.
+		e.HandWritten = true
 	}
 	return e, true
+}
+
+// mintedRE matches an id this package could have produced: twelve lowercase hex
+// characters, optionally with a collision suffix.
+var mintedRE = regexp.MustCompile(`^[0-9a-f]{12}(-[0-9]+)?$`)
+
+// looksMinted reports whether an id is in the format DeriveID produces.
+//
+// The hand-edit inference is only sound for ids this package minted. An id in
+// any other shape — one a test fixture invented, or one a future scheme
+// produces — carries no claim about its own content, so comparing it to a hash
+// proves nothing and must not be read as evidence that a person edited the line.
+func looksMinted(id string) bool { return mintedRE.MatchString(id) }
+
+// idMatchesContent reports whether this entry's id is still the hash of its own
+// (stamp, agent, text).
+//
+// The collision suffix is stripped first: two facts remembered in the same
+// minute by the same agent with the same text mint the same id, and the second
+// gets "-1" appended. That suffix says nothing about whether the text changed.
+func (e Entry) idMatchesContent() bool {
+	base := e.ID
+	if i := strings.LastIndex(base, "-"); i > 0 {
+		if _, err := strconv.Atoi(base[i+1:]); err == nil {
+			base = base[:i]
+		}
+	}
+	return base == DeriveID(e.Stamp, e.Agent, e.Text)
 }
 
 func parseTrailer(s string) Entry {
@@ -237,6 +291,8 @@ func parseTrailer(s string) Entry {
 			e.Immutable = v == "1" || v == "true"
 		case "org":
 			e.Origin = v
+		case "by":
+			e.Human = v == "human"
 		}
 	}
 	return e
@@ -289,6 +345,14 @@ func (e Entry) trailer() string {
 	}
 	if e.Origin != "" {
 		fields = append(fields, "org="+escapeField(e.Origin))
+	}
+	if e.Human || e.HandWritten {
+		// Written for BOTH, so an inferred hand-edit becomes declared the
+		// first time the line is rewritten. Otherwise the inference has to
+		// hold forever against a file the agent keeps touching, and the one
+		// rewrite that re-mints the id would silently demote a person's
+		// correction back to an agent's.
+		fields = append(fields, "by=human")
 	}
 	if e.SupersededBy != "" {
 		fields = append(fields, "sup="+escapeField(e.SupersededBy))

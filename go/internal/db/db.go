@@ -313,6 +313,12 @@ var addedColumns = []struct{ table, column, decl string }{
 	// A fact's own origin, which is not the same as the note's: an agent can
 	// write a fact it read in an untrusted document into a memory note it owns.
 	{"memory_entries", "origin", "TEXT NOT NULL DEFAULT ''"},
+	// Whether a PERSON asserted this fact rather than an agent. Reconciliation
+	// compares candidates loaded from here, so authorship has to survive the
+	// round trip or the authority rule silently stops applying. Defaulting to 0
+	// keeps every fact written before this column an agent fact, which is what
+	// it was.
+	{"memory_entries", "human", "INTEGER NOT NULL DEFAULT 0"},
 }
 
 func hasColumn(conn *sql.DB, table, column string) (bool, error) {

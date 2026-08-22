@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/JeremiahM37/grimoire/go/internal/memory"
-	"github.com/JeremiahM37/grimoire/go/internal/trust"
 )
 
 // The model-assisted half of the memory engine.
@@ -84,12 +83,22 @@ func (c *Client) DecideMemory(fact string, candidates []memory.Entry) memory.Dec
 // Filtering the reply instead would put the defence downstream of the thing
 // being defended against.
 func (c *Client) DecideMemoryFrom(fact, origin string, candidates []memory.Entry) memory.Decision {
-	rule := memory.DecideFrom(fact, origin, candidates)
+	return c.DecideMemoryAs(fact, origin, false, candidates)
+}
+
+// DecideMemoryAs is DecideMemoryFrom for a fact whose writer is also known.
+//
+// The authority rule is withheld from the model the same way the trust rule is.
+// An agent's write never sees a human-authored fact in its candidate list, so
+// there is no index it could name to overwrite a person's correction — the
+// model cannot express the edit, rather than being asked not to make it.
+func (c *Client) DecideMemoryAs(fact, origin string, human bool, candidates []memory.Entry) memory.Decision {
+	rule := memory.DecideAs(fact, origin, human, candidates)
 	backend := c.Backend()
 	if backend == "" || len(candidates) == 0 {
 		return rule
 	}
-	untrusted := trust.FromOrigin(origin) == trust.Untrusted
+	incoming := memory.AuthorityOf(origin, human)
 	// Only live, mutable candidates may be targeted. Superseding an already
 	// superseded fact rewrites history rather than extending it.
 	var offered []memory.Entry
@@ -97,7 +106,7 @@ func (c *Client) DecideMemoryFrom(fact, origin string, candidates []memory.Entry
 		if e.Superseded() || e.Immutable {
 			continue
 		}
-		if untrusted && !e.Untrusted() {
+		if incoming < e.Authority() {
 			continue
 		}
 		offered = append(offered, e)
