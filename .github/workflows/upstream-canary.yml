@@ -1,0 +1,47 @@
+name: Upstream canary
+
+# The framework adapters are tested against the REAL libraries, which is the
+# whole reason to trust them — and is also why an upstream release could turn
+# CI red on a commit that changed nothing. CI now pins those versions, so a
+# push is reproducible. This is where drift gets noticed instead: same tests,
+# newest published dependencies, on a schedule, and it never gates a push.
+#
+# When this goes red, the fix is to reproduce locally, decide whether the
+# adapter or the pin should move, and change it deliberately.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"   # Mondays, 06:00 UTC
+  workflow_dispatch:
+
+jobs:
+  latest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go/go.mod
+          cache-dependency-path: go/go.sum
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Build the server
+        working-directory: go
+        run: go build -o grimoire ./cmd/grimoire
+      - name: Python client against the newest frameworks
+        working-directory: clients/python
+        run: |
+          python -m pip install --upgrade pip pytest langgraph crewai
+          python -m pip list | grep -Ei "langgraph|crewai"
+          PYTHONPATH=. python -m pytest -q
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: JS client against the newest AI SDK
+        working-directory: clients/js
+        run: |
+          npm install --no-save ai
+          node -e "console.log('ai', require('./node_modules/ai/package.json').version)"
+          node --test test/
