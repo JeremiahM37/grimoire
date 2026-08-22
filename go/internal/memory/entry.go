@@ -48,6 +48,12 @@ type Entry struct {
 	Immutable    bool   // reconciliation may not supersede or delete it
 	SupersededBy string // ID of the entry that replaced this one
 
+	// Challenges is the ID of an entry this fact contradicts but was not
+	// allowed to supersede, because that entry outranks this one's writer. It
+	// rides in the bullet like everything else, so an open disagreement is
+	// visible in the file rather than only in an API response nobody reads.
+	Challenges string
+
 	// Human records that a PERSON asserted this, declared by `by=human` in the
 	// trailer. It is the top rung of the authority lattice: an agent write may
 	// not supersede it. See authority.go.
@@ -293,6 +299,8 @@ func parseTrailer(s string) Entry {
 			e.Origin = v
 		case "by":
 			e.Human = v == "human"
+		case "chal":
+			e.Challenges = v
 		}
 	}
 	return e
@@ -345,6 +353,9 @@ func (e Entry) trailer() string {
 	}
 	if e.Origin != "" {
 		fields = append(fields, "org="+escapeField(e.Origin))
+	}
+	if e.Challenges != "" {
+		fields = append(fields, "chal="+escapeField(e.Challenges))
 	}
 	if e.Human || e.HandWritten {
 		// Written for BOTH, so an inferred hand-edit becomes declared the

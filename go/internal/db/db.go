@@ -319,6 +319,9 @@ var addedColumns = []struct{ table, column, decl string }{
 	// keeps every fact written before this column an agent fact, which is what
 	// it was.
 	{"memory_entries", "human", "INTEGER NOT NULL DEFAULT 0"},
+	// The fact this one contradicts but was not allowed to supersede. Stored so
+	// open disagreements are a query rather than a walk of every memory note.
+	{"memory_entries", "challenges", "TEXT NOT NULL DEFAULT ''"},
 }
 
 func hasColumn(conn *sql.DB, table, column string) (bool, error) {

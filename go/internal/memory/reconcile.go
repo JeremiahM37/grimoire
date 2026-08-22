@@ -47,6 +47,16 @@ type Decision struct {
 	Text   string // the fact, as it should be stored (empty for DELETE/NOOP)
 	Target string // ID of the entry being superseded or retracted
 	Why    string // human-readable reason, surfaced in the API response
+
+	// Challenges is the ID of an entry this fact WANTED to supersede and was
+	// not allowed to, because the entry outranks the writer.
+	//
+	// Recording it is the difference between a disagreement and a mess. Two
+	// contradictory facts sitting in a note with nothing connecting them is
+	// what the immutable flag already produced, and it reads as an accumulation
+	// of noise. A challenge says which fact was contested, by what, and leaves
+	// a person something to resolve.
+	Challenges string
 }
 
 // stopwords are dropped before comparing facts. The list is deliberately
@@ -318,7 +328,7 @@ func DecideAs(fact, origin string, human bool, candidates []Entry) Decision {
 		// different refusals — a stranger's text over the operator's, and an
 		// agent's guess over a person's correction — and a caller deciding
 		// whether to escalate needs to know which one it hit.
-		return Decision{Op: OpAdd, Text: fact,
+		return Decision{Op: OpAdd, Text: fact, Challenges: bestEntry.ID,
 			Why: "recorded alongside (" + incoming.String() + " may not supersede " +
 				bestEntry.Authority().String() + "): " + bestEntry.Text}
 	default:

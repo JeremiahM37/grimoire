@@ -214,3 +214,64 @@ var valuedFlags = map[string]bool{
 	"--topic": true, "--task": true, "--session": true, "--category": true,
 	"--expires-in": true, "--agent": true, "--limit": true, "--as-of": true,
 }
+
+// cmdChallenges lists the disagreements an agent has raised against facts a
+// person recorded, and settles them.
+//
+// The list is the point: a refusal nobody sees is a refusal nobody can act on,
+// and the agent may well be right — the operator's fact can be the stale one.
+func cmdChallenges(args []string) int {
+	e, err := openEnv()
+	if err != nil {
+		return fail("%v", err)
+	}
+	defer e.close()
+
+	for flag, res := range map[string]string{"--uphold": "uphold", "--concede": "concede"} {
+		id, ok := flagValue(args, flag)
+		if !ok {
+			continue
+		}
+		note, ok := flagValue(args, "--note")
+		if !ok {
+			return fail("%s needs --note PATH (the note the fact lives in; " +
+				"`grimoire challenges` prints it)")
+		}
+		status, raw := e.callBody("POST", "/api/memory/challenge",
+			map[string]any{"note": note, "id": id, "resolution": res})
+		if status != http.StatusOK {
+			return fail("resolve failed: %s", raw)
+		}
+		fmt.Printf("%s: %s\n", res, raw)
+		return 0
+	}
+
+	status, raw := e.call("GET", "/api/memory/challenges")
+	if status != http.StatusOK {
+		return fail("challenges failed: %s", raw)
+	}
+	var open []struct {
+		ID, Text, Agent, Stamp, Note string
+		ContestedID                  string `json:"contested_id"`
+		ContestedText                string `json:"contested_text"`
+		ContestedAuthority           string `json:"contested_authority"`
+	}
+	if err := json.Unmarshal([]byte(raw), &open); err != nil {
+		return fail("%v", err)
+	}
+	if len(open) == 0 {
+		fmt.Println("no open challenges")
+		return 0
+	}
+	for _, c := range open {
+		fmt.Printf("%-12s %s\n", c.ID, c.Text)
+		fmt.Printf("  %-10s contests %s (%s): %s\n", "", c.ContestedID,
+			c.ContestedAuthority, c.ContestedText)
+		fmt.Printf("  %-10s %s · %s · %s\n", "", c.Stamp, c.Agent, c.Note)
+	}
+	fmt.Printf("\n%d open. Settle with:\n"+
+		"  grimoire challenges --note PATH --uphold ID    (your fact stands)\n"+
+		"  grimoire challenges --note PATH --concede ID   (the agent was right)\n",
+		len(open))
+	return 0
+}
