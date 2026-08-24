@@ -2,12 +2,12 @@
 
 # ✦ Grimoire
 
-**Your agent's memory is a database you can't read.**<br>
-**Grimoire makes it markdown you can.**
+**You already wrote it down. Your agent still can't see it.**
 
-Read what your agents believe about you, fix a wrong fact in your own editor,
-diff it across a month, roll it back. Then hand them the credentials to act —
-which they can use but never see. One self-hosted Go binary, mounted over MCP.
+Grimoire mounts the markdown vault you already have — no migration, no import —
+so your agents **read what you know**, **remember what they learn** back into
+the same files, and **act with credentials they can use but never see**.
+One self-hosted Go binary, mounted over MCP.
 
 <!-- badges -->
 [![CI](https://github.com/JeremiahM37/grimoire/actions/workflows/ci.yml/badge.svg)](https://github.com/JeremiahM37/grimoire/actions/workflows/ci.yml)
@@ -28,23 +28,38 @@ which they can use but never see. One self-hosted Go binary, mounted over MCP.
 go install github.com/JeremiahM37/grimoire/go/cmd/grimoire@latest
 go install github.com/JeremiahM37/grimoire/go/cmd/grimoire-mcp@latest
 
-grimoire serve &                           # your vault, at localhost:9111
-claude mcp add grimoire -- grimoire-mcp    # your agent now has all of it
+GRIMOIRE_VAULT=~/obsidian-vault grimoire serve &   # the folder you already have
+claude mcp add grimoire -- grimoire-mcp            # your agent now has all of it
 ```
 
-## Your agent's memory should be a file
+## Point it at the notes you already keep
 
-Every memory layer worth naming keeps what your agent learns in a store you
-cannot open — a vector database, an embedded blob, a hosted table. So when an
-agent records something wrong about you, and it will, there is no version of
-"open it and fix the sentence". You can delete it and hope it relearns better.
+Every memory layer starts **empty**. mem0, Zep, Letta and the rest accumulate
+what an agent learns from talking to you, which is useful and is not the
+problem: the runbooks, decisions and half-written notes you have been keeping
+for years are already the answer to most of what your agent asks, and it cannot
+see any of them. So you paste. Again.
 
-Grimoire writes agent memory to **plain markdown, with provenance**: which
-agent, when, from which task. A fact that contradicts one already on file
-**supersedes** it rather than competing with it, and the replaced line stays in
-the note, struck through. So what your agents believe is a file you can read,
-correct in your own editor, review in a diff, and roll back — and *"what did it
-believe last month?"* has an answer instead of a shrug.
+Grimoire's substrate is a **folder of markdown you already own**. Point it at an
+existing vault and nothing is copied, converted or locked in — the watcher
+reconciles the edits you make in your own editor as you make them, and editing
+through Grimoire preserves foreign frontmatter byte-for-byte, so the notes app
+you already use keeps working on the same files.
+
+That one decision is what the rest follows from. Because the substrate is your
+files:
+
+- **what the agent learns lands in them too**, as ordinary bullets with
+  provenance — which agent, when, from which task;
+- **you can correct it the way you correct any file**, and the correction
+  outranks the agent's next write rather than lasting until it
+  ([measured, with the control published ↓](#your-correction-outranks-the-agents-next-write));
+- ***"what did it believe last month?"*** is a `git log`, not a support ticket.
+
+Reading and editing agent memory is not the unusual part — Letta has an editor
+for its blocks, mem0 has an API and a dashboard. The unusual part is that there
+is no separate store to read: it is the same vault your knowledge already lives
+in, and your existing tools work on it unchanged.
 
 ![Agent memory corrected by hand, in a text editor](docs/screenshots/memory-demo.gif)
 
@@ -52,10 +67,9 @@ believe last month?"* has an answer instead of a shrug.
 [`docs/demo/memory.tape`](docs/demo/memory.tape), so it regenerates rather than
 going quietly out of date.)*
 
-That is the part that is hard to assemble yourself. The rest of this README is
-the three things that come with it: an encrypted credential vault your agent can
-**use but never read**, retrieval over your own notes with citations, and a full
-offline notes app to review it all in.
+The rest of this README is what comes with that: an encrypted credential vault
+your agent can **use but never read**, retrieval over your own notes with
+citations, and a full offline notes app to review it all in.
 
 **Retrieval has to be good too, so it was measured rather than asserted.** On
 LongMemEval — 200 questions, each against its own ~118k-token haystack —
@@ -433,6 +447,12 @@ Being able to edit the memory is worth nothing if the edit does not last. It
 did not: supersession compared facts by recency, so a correction stood until the
 agent wrote on that slot again — and the strike-through recorded **you** as the
 party who had been corrected.
+
+That is not a Grimoire problem, it was just Grimoire's problem too. Most memory
+layers let you edit — Letta has an editor for its blocks, mem0 an update API —
+but an edit with **no recorded author** has no standing, so it holds only until
+the next write lands on the same slot. Recency is the wrong comparison when the
+writers differ in standing.
 
 Reconciliation now compares on **authority** before recency:
 

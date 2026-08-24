@@ -12,11 +12,15 @@ knowledge-update and contradiction-resolution categories; Memora's FAMA
 penalises answering from superseded memory. All of them measure the value an
 agent **reads**.
 
-None asks whether a correction a **person** made still exists after the agent
-writes again. Not an oversight: in a vector store or an embedded blob a person
-cannot make one, so the question has nowhere to land. Grimoire's memory is
-markdown a person edits, which is the whole pitch, so the question is both
-askable and load-bearing.
+None asks whether a correction a **person** made still **survives** the agent's
+next write.
+
+That is not the same as asking whether a person can correct memory at all — they
+usually can. Letta exposes an editor for its memory blocks; mem0 has an update
+API and a dashboard. What none of them has is a notion of **who wrote a fact**.
+An edit is a write like any other, so it holds until the next write lands on the
+same slot, and nothing in the store can tell that the last one came from a
+person. The question therefore has nowhere to land, and it is not asked.
 
 > Given that a person has corrected a fact, does the correction survive the
 > agent's next write on the same slot?

@@ -6,10 +6,15 @@ Run 2026-08-22 against `main` at the authority-lattice commit, LongMemEval
 
 ## Headline
 
-Under recency-only supersession — the behaviour before the authority lattice —
+Under recency-only supersession — the behaviour before the authority lattice,
+and the behaviour of every memory layer that resolves conflicts by recency —
 **every** correction a person made was destroyed by the agent's next write on
 that slot, and in **every** case the history recorded the person as the party
 who had been corrected.
+
+The point is not that other systems make corrections impossible; most let you
+edit. It is that an edit with no recorded author has no standing, so it lasts
+exactly until the next write.
 
 | arm | survived | resurrected | inverted | challenges opened |
 |---|---|---|---|---|
