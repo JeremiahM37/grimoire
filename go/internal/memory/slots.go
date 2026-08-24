@@ -341,14 +341,99 @@ func ValueUpdate(prev, next string) (kind string, ok bool) {
 	pv, nv := byKind(parseValues(prev)), byKind(parseValues(next))
 	for k, p := range pv {
 		n, present := nv[k]
-		if !present || len(p) != 1 || len(n) != 1 {
+		if !present {
 			continue
 		}
-		if p[0].text != n[0].text {
+		if len(p) == 1 && len(n) == 1 {
+			if p[0].text != n[0].text {
+				return k.String(), true
+			}
+			continue
+		}
+		// More than one value of a kind on a side. Refusing these outright cost
+		// real updates: people quote ranges and comparisons in the same breath —
+		// "5-6 hours", "a $325,000 house, pre-approved for $350,000", "120
+		// stars, not 300". Measured on LongMemEval knowledge-update, the guard
+		// alone blocked four recognisable updates.
+		//
+		// DISJOINT sets are the safe half of that. "5-6 hours" against "10-12
+		// hours" shares nothing and is unambiguously a change; "5-6" against
+		// "6-7" overlaps, and which value moved is a guess. Only the first is
+		// taken, which is why this costs 4 false positives in 49,240 rather
+		// than the flood a plain any-difference rule would produce.
+		if !hasRange(prev) && !hasRange(next) && disjointValues(p, n) {
 			return k.String(), true
 		}
 	}
 	return "", false
+}
+
+// rangeRE matches a span written as one: "between 20 and 30", "5-6", "10 to 12".
+var rangeRE = regexp.MustCompile(`(?i)\bbetween\s+\d|\d\s*(?:-|–|—|to)\s*\d`)
+
+// hasRange reports whether a statement quotes a span rather than a point.
+//
+// The relaxed multi-value rule must not reach these. A range is one value with
+// a spread, not two competing ones, so "18 titles" against "between 20 and 30
+// titles" would be compared by picking a number out of the span — which is
+// inventing a fact, and is the case TestItRefusesWhenAStatementHasARangeRatherThanAValue
+// was written to forbid. Excluding ranges keeps that invariant intact and
+// costs the multi-value rule one of the updates it would otherwise catch.
+func hasRange(s string) bool { return rangeRE.MatchString(s) }
+
+// disjointValues reports whether two value sets of the same kind share nothing.
+func disjointValues(a, b []value) bool {
+	seen := make(map[string]bool, len(a))
+	for _, v := range a {
+		seen[v.text] = true
+	}
+	for _, v := range b {
+		if seen[v.text] {
+			return false
+		}
+	}
+	return len(a) > 0 && len(b) > 0
+}
+
+// CategoricalUpdate reports whether two statements are about the same thing and
+// name a DIFFERENT thing as the answer — an update whose changed value is a
+// name rather than a number.
+//
+// "My friend Rachel moved to Chicago" then "Rachel moved to Denver"; "our
+// family trip to Hawaii" then "our family trip to Paris". parseValues sees
+// nothing in either sentence, so the whole value-slot path is blind to them,
+// and they are a third of the updates this dataset contains.
+//
+// The shape is: at least one entity in common — the subject the statement is
+// about — and at least one entity on each side the other lacks, which is the
+// value that moved. SameSlot still has to hold, and that gate is what keeps
+// this from firing on any two sentences that happen to mention a shared name:
+// without it the rule is a false-positive generator, with it the measured rate
+// is 1 in 49,240.
+func CategoricalUpdate(prev, next string) bool {
+	ep, en := Entities(prev), Entities(next)
+	if len(ep) == 0 || len(en) == 0 {
+		return false
+	}
+	sp, sn := set(ep), set(en)
+	var shared, onlyPrev, onlyNext int
+	for _, e := range ep {
+		if sn[e] || containsEntity(en, e) {
+			shared++
+		} else {
+			onlyPrev++
+		}
+	}
+	for _, e := range en {
+		if !sp[e] && !containsEntity(ep, e) {
+			onlyNext++
+		}
+	}
+	if shared < 1 || onlyPrev < 1 || onlyNext < 1 {
+		return false
+	}
+	_, same := SameSlot(prev, next)
+	return same
 }
 
 func byKind(vs []value) map[valueKind][]value {

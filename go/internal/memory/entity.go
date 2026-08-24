@@ -47,6 +47,35 @@ var sentenceStart = map[string]bool{
 	"in": true, "on": true, "at": true, "and": true, "or": true, "but": true,
 	"is": true, "was": true, "are": true, "were": true, "has": true,
 	"have": true, "will": true, "would": true, "should": true, "can": true,
+	// Discourse openers. "By the way" is the single most common way a person
+	// changes subject mid-message, and it was minting "by" as an entity on
+	// every one of them.
+	"by": true, "so": true, "well": true, "also": true, "just": true,
+	"now": true, "then": true, "actually": true, "speaking": true,
+	"anyway": true, "oh": true, "let": true, "as": true, "since": true,
+}
+
+// clitic splits a contraction so the stoplist can see the word underneath.
+//
+// properRE keeps the apostrophe inside a token, so "I've" arrived here as one
+// string and never matched the "i" already in sentenceStart. The result was
+// that "i've", "i'm" and "i'll" were extracted as ENTITIES — and since almost
+// every conversational sentence opens with one, they matched each other across
+// completely unrelated facts. Measured on LongMemEval knowledge-update, three
+// of them accounted for 1,098 of 1,107 spurious entity matches.
+//
+// That is not only a reconciliation problem: EntityOverlap is the third
+// retrieval signal, so every fact beginning "I've" was scoring an entity hit
+// against every other one.
+var clitic = regexp.MustCompile(`['’](?:ve|m|ll|d|re|s|t)$`)
+
+// isSentenceStart reports whether a candidate is capitalized by grammar rather
+// than by being a name.
+func isSentenceStart(w string) bool {
+	if sentenceStart[w] {
+		return true
+	}
+	return sentenceStart[clitic.ReplaceAllString(w, "")]
 }
 
 // Entities names what a fact is about, normalized for comparison.
@@ -56,7 +85,7 @@ func Entities(text string) []string {
 	add := func(s string) {
 		s = strings.ToLower(strings.TrimSpace(s))
 		s = strings.Trim(s, ".,;:!?'\"()[]")
-		if len(s) < 2 || seen[s] || sentenceStart[s] {
+		if len(s) < 2 || seen[s] || isSentenceStart(s) {
 			return
 		}
 		// A bare stopword is never an entity even when capitalized.
@@ -101,7 +130,7 @@ func stripMarkup(text string) string {
 
 func trimLeadingCommon(run string) string {
 	words := strings.Fields(run)
-	for len(words) > 0 && sentenceStart[strings.ToLower(words[0])] {
+	for len(words) > 0 && isSentenceStart(strings.ToLower(words[0])) {
 		words = words[1:]
 	}
 	return strings.Join(words, " ")

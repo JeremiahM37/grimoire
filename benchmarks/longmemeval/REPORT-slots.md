@@ -141,3 +141,79 @@ marginal cost" means here: the write is not measurably slower.
   realistic chat.
 - The false-positive control is an **upper bound**: some unmarked pairs are
   genuinely updates the dataset had no reason to mark.
+
+---
+
+## Round two, 2026-08-24 — 20/72 → 28/72
+
+Recognition was the ceiling on everything downstream: the authority lattice can
+only protect a correction on a fact the engine recognises as changing, so at
+20/72 it did nothing for three quarters of this set. This round is an error
+analysis of the 52 misses and what came of it.
+
+**Where the 52 went.** Per-fact instrumentation, not guessing: 17 were
+extraction failures (the changed value never reached a fact at all) and 35 were
+matching failures (the fact was extracted and no prior fact was connected to
+it). Of those 35 — 4 blocked by the one-value guard, 11 by `SameSlot`, and 20
+carried no parsed value at all.
+
+| build | updates recognised | share |
+|---|---|---|
+| before | 20/72 | 27.8% |
+| **after** | **28/72** | **38.9%** |
+
+Measured end to end by `slot_probe.py` against a real server, not by the
+harness that designed the change.
+
+### A bug that was costing retrieval, not just reconciliation
+
+`properRE` keeps the apostrophe inside a token, so `I've` never matched the
+`i` already in `sentenceStart` and was extracted as an **entity**. Since almost
+every conversational sentence opens with one, `i've`, `i'm` and `i'll`
+accounted for **1,098 of 1,107** spurious entity matches across the corpus,
+with `by` — from "By the way" — supplying most of the rest.
+
+This was not confined to this experiment. `EntityOverlap` is the third
+retrieval signal, so every fact beginning "I've" was scoring an entity hit
+against every other one. Contractions are now split before the stoplist check
+and the common discourse openers are in it.
+
+### The null: entity overlap is not a slot anchor
+
+The first hypothesis was that a **shared entity** would be a better anchor than
+shared slot terms for conversational paraphrase. Measured, it looked like a
+clear win: 20/72 → 29/72.
+
+It was an artifact. With the entity bug fixed, the same rule scores **20/72 →
+20/72** — every one of those nine catches had been made through `i've` matching
+`i've`. The rule is not in the build. It is written down here because the
+version of this report that did not run the second measurement would have
+claimed a 45% improvement from a rule that does nothing.
+
+### What actually worked
+
+- **Disjoint multi-value.** The one-value guard refused any statement carrying
+  more than one value of a kind, and people quote comparisons in the same
+  breath — "120 stars, not 300", "a $325,000 house, pre-approved for $350,000".
+  Disjoint sets are the safe half: unambiguous change. Overlapping sets are
+  still refused, and so are ranges — `TestItRefusesWhenAStatementHasARangeRatherThanAValue`
+  is an older invariant that outranks this rule, and honouring it cost one of
+  the nine pairs.
+- **Categorical updates.** A third of the misses changed a *name*, not a
+  number: "moved to Chicago" → "moved to Denver". `parseValues` sees nothing in
+  either sentence. The rule is a shared entity (the subject) plus an entity on
+  each side the other lacks (the value that moved), gated by `SameSlot`.
+
+### Precision
+
+5 false positives in **49,240** cross-pair trials — **0.010%** — against the
+~0.25% the existing value-slot rule was accepted at. The `SameSlot` gate is
+what buys that: without it the categorical rule fires on any two sentences
+sharing a name.
+
+### What this does not show
+
+The ceiling is still 39%. 15 misses are extraction failures and 20 carry no
+parsed value and no entity pair, so a value-and-entity approach cannot reach
+them at all — they need either a different representation or a model call, and
+a model call on the write path is the thing this engine exists to avoid.
