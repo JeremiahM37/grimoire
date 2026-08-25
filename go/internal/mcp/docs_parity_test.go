@@ -115,21 +115,31 @@ func TestREADMEToolListMatchesTheServer(t *testing.T) {
 // while doing nothing at all. Two of them were security controls.
 func TestREADMEEnvVarsAreImplemented(t *testing.T) {
 	root := repoRoot(t)
-	readme, err := os.ReadFile(filepath.Join(root, "README.md"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	// Both files, because the check has to follow the content. The config table
+	// moved to docs/CONFIG.md when the README was cut down, and a test that
+	// still read only README.md would have gone on passing while covering
+	// almost nothing — the silent kind of regression this test exists to catch.
 	envRE := regexp.MustCompile(`GRIMOIRE_[A-Z_]+`)
 	documented := map[string]bool{}
-	for _, m := range envRE.FindAllString(string(readme), -1) {
-		documented[m] = true
+	for _, rel := range []string{"README.md", "docs/CONFIG.md"} {
+		b, err := os.ReadFile(filepath.Join(root, rel))
+		if err != nil {
+			t.Fatalf("%s: %v", rel, err)
+		}
+		for _, m := range envRE.FindAllString(string(b), -1) {
+			documented[m] = true
+		}
 	}
-	// GRIMOIRE_LLM_BASE_URL / _API_KEY appear in the README as a "_BASE_URL /
+	if len(documented) < 20 {
+		t.Fatalf("only %d env vars found across the docs; the config table has "+
+			"moved again and this check is no longer looking at it", len(documented))
+	}
+	// GRIMOIRE_LLM_BASE_URL / _API_KEY appear in the docs as a "_BASE_URL /
 	// _API_KEY" pair, which the regex reads as bare suffixes; drop those.
 	delete(documented, "GRIMOIRE_")
 
 	var code strings.Builder
-	err = filepath.Walk(filepath.Join(root, "go"), func(p string, info os.FileInfo, err error) error {
+	err := filepath.Walk(filepath.Join(root, "go"), func(p string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() || !strings.HasSuffix(p, ".go") {
 			return err
 		}
