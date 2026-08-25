@@ -303,15 +303,6 @@ func DecideAs(fact, origin string, human bool, candidates []Entry) Decision {
 				return Decision{Op: OpUpdate, Text: fact, Target: c.ID,
 					Why: "supersedes (" + kind + " value changed): " + c.Text}
 			}
-			// The categorical path, tried last of the three because it is the
-			// weakest evidence: no grammar parsed, no number moved, only that
-			// the two statements are about the same thing and name different
-			// things as the answer. It is what catches "moved to Chicago" ->
-			// "moved to Denver", which the value path cannot see at all.
-			if CategoricalUpdate(c.Text, fact) {
-				return Decision{Op: OpUpdate, Text: fact, Target: c.ID,
-					Why: "supersedes (names a different thing): " + c.Text}
-			}
 		}
 		if sim > bestSim {
 			bestSim, bestEntry, haveBest = sim, c, true

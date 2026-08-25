@@ -121,7 +121,7 @@ one that cost a feature its default. Full methods and per-question data in
 |---|---|
 | **LongMemEval** — hybrid retrieval | **77.5%**, +8.5 over dense-only (p=0.0005) and over full-context at **15× fewer tokens** |
 | **Correction durability** | recency-only loses **20/20** hand corrections; authority lattice keeps **20/20** |
-| **Update recognition** | 28/72 knowledge updates, up from 20/72 |
+| **Update recognition** | 17/37 held-out knowledge updates, up from 14/37, at no cost in false supersessions |
 | **Prompt injection** | 0/40 injected instructions obeyed when fenced — *but the pre-declared bar was not met; see the report* |
 
 ## Running it

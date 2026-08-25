@@ -395,47 +395,6 @@ func disjointValues(a, b []value) bool {
 	return len(a) > 0 && len(b) > 0
 }
 
-// CategoricalUpdate reports whether two statements are about the same thing and
-// name a DIFFERENT thing as the answer — an update whose changed value is a
-// name rather than a number.
-//
-// "My friend Rachel moved to Chicago" then "Rachel moved to Denver"; "our
-// family trip to Hawaii" then "our family trip to Paris". parseValues sees
-// nothing in either sentence, so the whole value-slot path is blind to them,
-// and they are a third of the updates this dataset contains.
-//
-// The shape is: at least one entity in common — the subject the statement is
-// about — and at least one entity on each side the other lacks, which is the
-// value that moved. SameSlot still has to hold, and that gate is what keeps
-// this from firing on any two sentences that happen to mention a shared name:
-// without it the rule is a false-positive generator, with it the measured rate
-// is 1 in 49,240.
-func CategoricalUpdate(prev, next string) bool {
-	ep, en := Entities(prev), Entities(next)
-	if len(ep) == 0 || len(en) == 0 {
-		return false
-	}
-	sp, sn := set(ep), set(en)
-	var shared, onlyPrev, onlyNext int
-	for _, e := range ep {
-		if sn[e] || containsEntity(en, e) {
-			shared++
-		} else {
-			onlyPrev++
-		}
-	}
-	for _, e := range en {
-		if !sp[e] && !containsEntity(ep, e) {
-			onlyNext++
-		}
-	}
-	if shared < 1 || onlyPrev < 1 || onlyNext < 1 {
-		return false
-	}
-	_, same := SameSlot(prev, next)
-	return same
-}
-
 func byKind(vs []value) map[valueKind][]value {
 	out := map[valueKind][]value{}
 	for _, v := range vs {

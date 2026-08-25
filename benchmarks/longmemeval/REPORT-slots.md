@@ -144,76 +144,100 @@ marginal cost" means here: the write is not measurably slower.
 
 ---
 
-## Round two, 2026-08-24 — 20/72 → 28/72
+## Round two, 2026-08-25 — held-out 14/37 → 17/37, false positives unchanged
 
-Recognition was the ceiling on everything downstream: the authority lattice can
-only protect a correction on a fact the engine recognises as changing, so at
-20/72 it did nothing for three quarters of this set. This round is an error
-analysis of the 52 misses and what came of it.
+Recognition is the ceiling on everything downstream: the authority lattice can
+only protect a correction on a fact the engine sees changing, so at 20/72 it did
+nothing for three quarters of this set.
 
-**Where the 52 went.** Per-fact instrumentation, not guessing: 17 were
-extraction failures (the changed value never reached a fact at all) and 35 were
-matching failures (the fact was extracted and no prior fact was connected to
-it). Of those 35 — 4 blocked by the one-value guard, 11 by `SameSlot`, and 20
-carried no parsed value at all.
+| build | dev | **held-out (primary)** | all | false positives |
+|---|---|---|---|---|
+| `slots+words` — previous | 6/35 | **14/37 (37.8%)** | 20/72 | 3/400 (0.75%) |
+| **`+ entity fix + disjoint multi-value`** | 9/35 | **17/37 (45.9%)** | 26/72 | **3/400 (0.75%)** |
 
-| build | updates recognised | share |
-|---|---|---|
-| before | 20/72 | 27.8% |
-| **after** | **28/72** | **38.9%** |
+Six more real updates recognised, and **not one additional wrong supersession**.
+Dev and held-out moved by exactly +3 each, which is what a rule capturing a real
+phenomenon looks like rather than one memorising examples.
 
-Measured end to end by `slot_probe.py` against a real server, not by the
-harness that designed the change.
+### A protocol violation, reported because it changes how the number should be read
 
-### A bug that was costing retrieval, not just reconciliation
+This protocol says misses are read **on dev only** and the held-out half is
+"scored once per build and never inspected". **The first pass of this round
+violated that** — the error analysis printed misses across all 72 pairs, held-out
+included — and it substituted an ad-hoc cross-pair false-positive measure for the
+400-pair control declared above.
 
-`properRE` keeps the apostrophe inside a token, so `I've` never matched the
-`i` already in `sentenceStart` and was extracted as an **entity**. Since almost
-every conversational sentence opens with one, `i've`, `i'm` and `i'll`
-accounted for **1,098 of 1,107** spurious entity matches across the corpus,
-with `by` — from "By the way" — supplying most of the rest.
+Both are corrected here: the numbers in the table come from `slot_probe.py` and
+`slot_falsepos.py` against the pre-registered split (`sha256(qid) % 2 == 1`,
+n=37), and the split was verified by reproducing the previous build's 14/37
+exactly before anything new was scored.
 
-This was not confined to this experiment. `EntityOverlap` is the third
+The honest consequence: **for this round the held-out half is not clean.** The
+even +3/+3 split is evidence the rules generalise, but it is weaker evidence than
+an uninspected half would have given. A genuinely independent validation set is
+the outstanding work.
+
+### The entity extractor was corrupting retrieval, not just reconciliation
+
+`properRE` keeps the apostrophe inside a token, so `I've` never matched the `i`
+already in `sentenceStart` and was extracted as an **entity**. Almost every
+conversational sentence opens with one: `i've`, `i'm` and `i'll` accounted for
+**1,098 of 1,107** spurious entity matches, with `by` — from "By the way" —
+supplying most of the rest.
+
+This was never confined to reconciliation. `EntityOverlap` is the third
 retrieval signal, so every fact beginning "I've" was scoring an entity hit
 against every other one. Contractions are now split before the stoplist check
 and the common discourse openers are in it.
 
-### The null: entity overlap is not a slot anchor
+### What was kept
 
-The first hypothesis was that a **shared entity** would be a better anchor than
-shared slot terms for conversational paraphrase. Measured, it looked like a
-clear win: 20/72 → 29/72.
+**Disjoint multi-value.** The one-value guard refused any statement carrying more
+than one value of a kind, and people quote comparisons in the same breath — "120
+stars, not 300", "a $325,000 house, pre-approved for $350,000". Disjoint sets are
+the safe half: an unambiguous change. Overlapping sets are still refused, and so
+are ranges — `TestItRefusesWhenAStatementHasARangeRatherThanAValue` is an older
+invariant that outranks this rule, and honouring it cost one of the pairs.
 
-It was an artifact. With the entity bug fixed, the same rule scores **20/72 →
-20/72** — every one of those nine catches had been made through `i've` matching
-`i've`. The rule is not in the build. It is written down here because the
-version of this report that did not run the second measurement would have
-claimed a 45% improvement from a rule that does nothing.
+### Two things measured and NOT kept
 
-### What actually worked
+**Entity overlap as a slot anchor — a null.** The first hypothesis was that a
+shared entity is a better anchor than shared terms for conversational paraphrase.
+Measured, it looked decisive: 20/72 → 29/72. It was an artifact. With the entity
+bug fixed the same rule scores **20/72 → 20/72** — every one of those nine
+catches had been `i've` matching `i've`. A result measured on top of a
+known-dirty signal proves nothing.
 
-- **Disjoint multi-value.** The one-value guard refused any statement carrying
-  more than one value of a kind, and people quote comparisons in the same
-  breath — "120 stars, not 300", "a $325,000 house, pre-approved for $350,000".
-  Disjoint sets are the safe half: unambiguous change. Overlapping sets are
-  still refused, and so are ranges — `TestItRefusesWhenAStatementHasARangeRatherThanAValue`
-  is an older invariant that outranks this rule, and honouring it cost one of
-  the nine pairs.
-- **Categorical updates.** A third of the misses changed a *name*, not a
-  number: "moved to Chicago" → "moved to Denver". `parseValues` sees nothing in
-  either sentence. The rule is a shared entity (the subject) plus an entity on
-  each side the other lacks (the value that moved), gated by `SameSlot`.
+**Categorical updates — reverted after ablation.** A rule for updates that change
+a *name* rather than a number ("moved to Chicago" → "moved to Denver"), which the
+value path cannot see at all. It was shipped, then ablated properly:
 
-### Precision
+| arm | held-out | all | false positives |
+|---|---|---|---|
+| multi-value only | 17/37 | 26/72 | 3/400 (0.75%) |
+| categorical only | 15/37 | 22/72 | 5/400 (1.25%) |
+| both | 18/37 | 28/72 | 5/400 (1.25%) |
 
-5 false positives in **49,240** cross-pair trials — **0.010%** — against the
-~0.25% the existing value-slot rule was accepted at. The `SameSlot` gate is
-what buys that: without it the categorical rule fires on any two sentences
-sharing a name.
+Multi-value is free. **Categorical buys 2 updates and costs 2 wrong
+supersessions** — every added false positive in the round is its. It passes the
+letter of the gate (a 0.5pp rise, under the 1pp bar) and fails its stated intent:
+*"a mechanism that catches more updates by superseding more things has not
+improved anything."* Under this benchmark's own asymmetry — a miss leaves two
+facts a reader can resolve, a false update strikes a true fact through — a 1:1
+trade is not an improvement. It is out.
 
-### What this does not show
+The failures were on statements of wildly different size: 95 characters against
+1,112, and 722 against 5,343. `SameSlot` divides shared terms by the **smaller**
+side, so a short conversational line whose few terms all appear in a long pasted
+document scores a near-perfect overlap. A symmetric-overlap gate looked like it
+would separate the cases cleanly — but with two true positives and two false
+positives to fit against, any threshold chosen that way is fitted to four
+examples. Reverting is the defensible call; a symmetric gate is worth revisiting
+only against a set large enough to test it.
 
-The ceiling is still 39%. 15 misses are extraction failures and 20 carry no
-parsed value and no entity pair, so a value-and-entity approach cannot reach
-them at all — they need either a different representation or a model call, and
-a model call on the write path is the thing this engine exists to avoid.
+### Remaining ceiling: 36%
+
+Of the 46 pairs still missed, 15 are extraction failures — the changed value
+never becomes its own fact — and 20 carry no parsed value and no usable entity
+pair. Those need either a different representation or a model call, and a model
+call on the write path is the thing this engine exists to avoid.

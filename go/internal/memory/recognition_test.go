@@ -68,39 +68,3 @@ func TestARangeIsStillNotAValue(t *testing.T) {
 		t.Error("a range was treated as a value")
 	}
 }
-
-// A third of the updates in this dataset change a NAME, not a number, and the
-// whole value path is blind to them.
-func TestCategoricalUpdatesAreRecognised(t *testing.T) {
-	if !CategoricalUpdate(
-		"my friend Rachel recently moved to a new apartment in Chicago",
-		"my friend Rachel recently moved to a new apartment in Denver") {
-		t.Error("a changed place name was not recognised as an update")
-	}
-}
-
-// The SameSlot gate is what keeps the categorical rule from firing on any two
-// sentences that happen to share a name. Without it the rule is a
-// false-positive generator; the measured rate with it is 1 in 49,240.
-func TestCategoricalNeedsMoreThanASharedName(t *testing.T) {
-	if CategoricalUpdate(
-		"Rachel recommended a book about the Amazon rainforest",
-		"Rachel is allergic to shellfish and avoids Thai restaurants") {
-		t.Error("two unrelated facts about the same person were merged")
-	}
-	if CategoricalUpdate(
-		"the staging deploy runs from Jenkins",
-		"my flight to Lisbon leaves on Tuesday") {
-		t.Error("unrelated statements were treated as one fact changing")
-	}
-}
-
-// A categorical rule that fires when nothing changed would supersede a fact
-// with itself.
-func TestCategoricalNeedsSomethingToHaveChanged(t *testing.T) {
-	if CategoricalUpdate(
-		"my friend Rachel moved to Chicago",
-		"my friend Rachel moved to Chicago") {
-		t.Error("an identical restatement was treated as an update")
-	}
-}
