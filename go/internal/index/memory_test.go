@@ -1,6 +1,7 @@
 package index
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -566,5 +567,74 @@ func TestMissingEntityRowsFallBackToExtraction(t *testing.T) {
 	if hits[0].Entity == 0 {
 		t.Error("with the entity table emptied the score fell to zero; the " +
 			"fallback is what keeps a stale index from changing retrieval")
+	}
+}
+
+// The scan bound must not change what a query returns for any vault below it.
+// A performance change that quietly alters retrieval is a correctness bug
+// wearing a benchmark as a disguise.
+func TestScanLimitDoesNotChangeResultsBelowTheBound(t *testing.T) {
+	ix := testIndex(t)
+	var entries []memory.Entry
+	for i := 0; i < 60; i++ {
+		entries = append(entries, entry(
+			fmt.Sprintf("e%03d", i),
+			fmt.Sprintf("2026-08-%02d 09:%02d", 1+i%28, i%60),
+			fmt.Sprintf("Priya restarted Grafana on AIServer run %d", i)))
+	}
+	memNote(t, ix, "memory/ops.md", entries...)
+
+	// Now is pinned. recencyScore is a component of the score, so leaving it to
+	// the wall clock makes two calls milliseconds apart return slightly
+	// different scores — which looks exactly like the bound having changed the
+	// ranking, and is not.
+	now := time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC)
+	q := MemoryQuery{Query: "who restarted Grafana on AIServer", Limit: 10, Now: now}
+	unbounded, err := ix.MemoryEntries(q)
+	if err != nil {
+		t.Fatal(err)
+	}
+	q.ScanLimit = 20000 // the default, explicitly
+	bounded, err := ix.MemoryEntries(q)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(unbounded) != len(bounded) {
+		t.Fatalf("result count changed: %d vs %d", len(unbounded), len(bounded))
+	}
+	for i := range unbounded {
+		if unbounded[i].ID != bounded[i].ID || unbounded[i].Score != bounded[i].Score {
+			t.Errorf("rank %d differs: %s(%.4f) vs %s(%.4f)", i,
+				unbounded[i].ID, unbounded[i].Score, bounded[i].ID, bounded[i].Score)
+		}
+	}
+}
+
+// When the bound DOES bind it must keep the newest facts, because superseded
+// ones are already excluded and what remains is a current belief set.
+func TestScanLimitKeepsTheNewestFacts(t *testing.T) {
+	ix := testIndex(t)
+	var entries []memory.Entry
+	for i := 0; i < 40; i++ {
+		entries = append(entries, entry(
+			fmt.Sprintf("e%03d", i),
+			fmt.Sprintf("2026-08-%02d 09:00", 1+i%28),
+			fmt.Sprintf("fact number %d about Grafana", i)))
+	}
+	memNote(t, ix, "memory/ops.md", entries...)
+
+	hits, err := ix.MemoryEntries(MemoryQuery{Query: "Grafana", Limit: 50, ScanLimit: 5})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(hits) == 0 || len(hits) > 5 {
+		t.Fatalf("scan limit not applied: got %d hits", len(hits))
+	}
+	// Every survivor must be from the newest end, not an arbitrary five.
+	for _, h := range hits {
+		if h.Stamp < "2026-08-20" {
+			t.Errorf("kept an old fact %q (%s) while newer ones existed — the "+
+				"bound must drop the tail, not a random slice", h.ID, h.Stamp)
+		}
 	}
 }

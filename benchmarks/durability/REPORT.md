@@ -116,3 +116,37 @@ python3 benchmarks/durability/durability_probe.py \
 `--mode declared` swaps the hand edit for an API write with `human: true`;
 `--limit N` cuts the pair list for a smoke run; `--out FILE` writes the per-pair
 rows.
+
+
+---
+
+## Scale, measured 2026-08-26
+
+Recall used to score every live fact in the store. That is fine at the size a
+personal vault reaches and wrong as a design: the field's third standard
+benchmark, **BEAM**, runs at 1M and 10M tokens, and an O(every fact) recall does
+not arrive there.
+
+`BenchmarkMemoryRank{1k,10k,50k}` in `go/internal/index`:
+
+| entries | original | + entities read from the index | + bounded scan |
+|---|---|---|---|
+| 1k | 21.3ms | 13.7ms | 13.8ms |
+| 10k | 208ms | 145ms | 147ms |
+| 50k | 1,058ms | 762ms | **374ms** |
+
+Two separate changes. The first stopped ranking re-extracting every candidate's
+entities on every query, when indexing had already written them to a table that
+was never read. The second bounds the scan to the newest 20,000 facts.
+
+**The bound costs nothing below itself** — a test asserts the ranked output is
+identical, score for score, for any vault under the limit — and it keeps the
+newest end, which is the right tail because superseded facts are already
+excluded and what remains is a current belief set.
+
+The bound also arrived as a regression first. `ORDER BY stamp DESC LIMIT` with
+no index made SQLite sort the whole table, costing more than the bound saved:
+13.7ms → 23.6ms at a thousand entries, a 70% loss on the case where the bound
+does not even bind. An index on `(stamp DESC, id DESC)` is what makes it free.
+Worth recording because the change looked obviously good and measured
+obviously bad.

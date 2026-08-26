@@ -43,8 +43,20 @@ type MemoryHit struct {
 	Useful   float64
 }
 
+// DefaultScanLimit bounds how many stored facts one recall may score.
+//
+// Chosen to sit far above any personal vault — this project's own has two — so
+// that in practice the bound never binds and ranking is unchanged. It exists
+// for the tail: without it a recall is O(every fact ever recorded), which is
+// fine at a hundred and 762ms at fifty thousand.
+const DefaultScanLimit = 20000
+
 // MemoryQuery selects and ranks entries.
 type MemoryQuery struct {
+	// ScanLimit caps how many rows ranking will score. Zero means
+	// DefaultScanLimit.
+	ScanLimit int
+
 	Filter Filter
 
 	// Structured narrowing. Empty means "any".
@@ -243,11 +255,26 @@ func (ix *Index) MemoryEntries(q MemoryQuery) ([]MemoryHit, error) {
 	if !q.Filter.IncludePrivate {
 		where = append(where, "private=0")
 	}
-	rows, err := ix.DB.Query(
-		"SELECT id,note,text,agent,task,session,stamp,category,expires,immutable,"+
-			"superseded_by,superseded_at,helpful,unhelpful,line,embedding,space,acl,"+
-			"private,origin,human,challenges FROM memory_entries WHERE "+
-			strings.Join(where, " AND "), args...)
+	// Bound the scan. Ranking scores every row this returns, so an unbounded
+	// query makes a recall cost O(every fact ever recorded): measured at 762ms
+	// over 50k entries, and a benchmark like BEAM runs at 1M tokens and up.
+	//
+	// The bound is deliberately generous and ordered by recency, so for any
+	// vault below it the result is byte-identical to the unbounded query and no
+	// ranking behaviour changes at all. Above it, the newest scanLimit facts are
+	// scored — which is the right tail to keep, because superseded facts are
+	// already excluded and what remains is a current belief set.
+	sql := "SELECT id,note,text,agent,task,session,stamp,category,expires,immutable," +
+		"superseded_by,superseded_at,helpful,unhelpful,line,embedding,space,acl," +
+		"private,origin,human,challenges FROM memory_entries WHERE " +
+		strings.Join(where, " AND ")
+	limit := q.ScanLimit
+	if limit <= 0 {
+		limit = DefaultScanLimit
+	}
+	sql += " ORDER BY stamp DESC, id DESC LIMIT ?"
+	args = append(args, limit)
+	rows, err := ix.DB.Query(sql, args...)
 	if err != nil {
 		return nil, err
 	}

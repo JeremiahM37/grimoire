@@ -114,6 +114,11 @@ CREATE INDEX IF NOT EXISTS idx_memory_entries_id ON memory_entries(id);
 CREATE INDEX IF NOT EXISTS idx_memory_entries_session ON memory_entries(session);
 CREATE INDEX IF NOT EXISTS idx_memory_entries_agent ON memory_entries(agent);
 CREATE INDEX IF NOT EXISTS idx_memory_entries_category ON memory_entries(category);
+-- Recall bounds its scan with ORDER BY stamp DESC LIMIT. Without this index
+-- SQLite sorts the whole table to answer it, which cost more than the bound
+-- saved: measured at 13.7ms -> 23.6ms over a thousand entries, a 70% regression
+-- on the case where the bound does not even bind.
+CREATE INDEX IF NOT EXISTS idx_memory_entries_stamp ON memory_entries(stamp DESC, id DESC);
 CREATE TABLE IF NOT EXISTS memory_entities(
   note TEXT NOT NULL, id TEXT NOT NULL, entity TEXT NOT NULL
 );
