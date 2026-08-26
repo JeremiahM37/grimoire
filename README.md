@@ -28,21 +28,23 @@ claude mcp add grimoire -- grimoire-mcp            # your agent now has all of i
 Or `docker run -p 9111:9111 -v grimoire-vault:/vault ghcr.io/jeremiahm37/grimoire:latest`.
 Releases ship static binaries for Linux, macOS and Windows on amd64/arm64.
 
-## Why
+## Point Claude at your Obsidian vault
 
 Every agent-memory layer starts empty. mem0, Zep and Letta accumulate what an
 agent learns from talking to you — useful, and not the problem. The runbooks and
 decisions you have been writing for years already answer most of what your agent
 asks, and it cannot see any of them. So you paste. Again.
 
-Grimoire's substrate is a folder of markdown you already own. Nothing is copied
+Grimoire's substrate is a folder of markdown you already own — an **Obsidian**
+vault, a Logseq graph, a plain `~/notes`. It needs no plugin and does not need
+Obsidian running, because it reads the files, not the app. Nothing is copied
 or converted; the watcher picks up edits you make in your own editor, and writes
 through Grimoire preserve foreign frontmatter byte-for-byte, so whatever notes
 app you use keeps working on the same files.
 
 Everything else follows from that one decision.
 
-## Corrections that stick
+## Agent memory that lives in your own markdown
 
 What an agent learns lands in those files too, as ordinary bullets with
 provenance. When it gets something wrong you fix the line — and the fix
@@ -73,7 +75,7 @@ key never enters the agent's context, so it cannot be logged, memorised or
 extracted by prompt injection — and revoking is one row, not a key rotation.
 Agents without a grant can *ask*; asking grants nothing.
 
-## What an agent gets in one mount
+## MCP tools: what Claude gets in one mount
 
 <!-- tools:begin (checked against the server by a test) -->
 
@@ -104,7 +106,7 @@ Retrieval is inspectable — *"what would the agent see for X?"* returns the exa
 chunks. Untrusted content (connectors, web pages) carries an origin, is fenced
 before a reader sees it, and may not supersede something you wrote.
 
-## Also a notes app
+## Also a self-hosted notes app
 
 Not wiring up agents yet? It is a full offline PWA in its own right — CodeMirror
 live preview, wiki-links, backlinks, graph, daily notes, transclusion, canvas,
@@ -124,7 +126,7 @@ one that cost a feature its default. Full methods and per-question data in
 | **Update recognition** | 17/37 held-out knowledge updates, up from 14/37, at no cost in false supersessions |
 | **Prompt injection** | 0/40 injected instructions obeyed when fenced — *but the pre-declared bar was not met; see the report* |
 
-## Running it
+## Config, security and docs
 
 - **Config** — every knob is an env var: [docs/CONFIG.md](docs/CONFIG.md).
   Nothing is required; an empty environment gives a working server.
