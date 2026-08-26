@@ -77,6 +77,11 @@ func (s *Server) renameNote(w http.ResponseWriter, r *http.Request) {
 	if !s.requireWrite(w, r, normPath(target)) {
 		return
 	}
+	// Collected BEFORE the move: once the file is gone the index no longer
+	// knows which notes pointed at it.
+	inbound := s.inboundLinkSources(rel)
+	oldNames := s.linkNamesFor(rel)
+
 	newRel, err := s.Vault.Rename(rel, normPath(target))
 	if err != nil {
 		writeErr(w, statusForVaultErr(err), err.Error())
@@ -90,7 +95,15 @@ func (s *Server) renameNote(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"path": newRel})
+	// Repoint the links that used to reach it. A rename that leaves them
+	// pointing at a name nothing answers to breaks the graph silently: no
+	// error, no warning, just backlinks that were there yesterday and are not
+	// there now.
+	relinked := s.relinkInbound(inbound, oldNames, strings.TrimSuffix(newRel, ".md"))
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"path": newRel, "relinked": relinked,
+	})
 }
 
 // duplicateNote copies a note to a free path.

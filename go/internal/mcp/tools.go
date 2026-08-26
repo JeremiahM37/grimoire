@@ -8,6 +8,82 @@ type tool struct {
 	Name        string         `json:"name"`
 	Description string         `json:"description"`
 	InputSchema map[string]any `json:"inputSchema"`
+	// Annotations are the MCP spec's behaviour hints. A client uses them to
+	// decide what to do WITHOUT asking: auto-approve a read, confirm a delete,
+	// retry a timeout only when retrying is safe.
+	//
+	// Without them every tool looks equally consequential, so a cautious client
+	// prompts for all of them and a careless one prompts for none. `forget`
+	// retracts a fact and `search_notes` reads one; a mount that cannot tell
+	// them apart is the reason mcp-obsidian carries an open issue asking for
+	// exactly this.
+	Annotations *annotations `json:"annotations,omitempty"`
+}
+
+// annotations mirrors the MCP tool-annotation fields.
+type annotations struct {
+	// Title is a human-readable label for confirmation dialogs.
+	Title string `json:"title,omitempty"`
+	// ReadOnlyHint: the tool does not modify anything.
+	ReadOnlyHint bool `json:"readOnlyHint,omitempty"`
+	// DestructiveHint: the tool may remove or overwrite existing data. Only
+	// meaningful when ReadOnlyHint is false.
+	DestructiveHint bool `json:"destructiveHint,omitempty"`
+	// IdempotentHint: calling it twice with the same arguments is the same as
+	// calling it once — which is what makes a retry safe.
+	IdempotentHint bool `json:"idempotentHint,omitempty"`
+	// OpenWorldHint: the tool reaches systems outside this server.
+	OpenWorldHint bool `json:"openWorldHint,omitempty"`
+}
+
+// behaviour classifies every tool. It is a table rather than a field on each
+// definition so that the classification can be CHECKED — a test asserts every
+// advertised tool appears here, which is what stops a new one shipping
+// unclassified and silently defaulting to "looks harmless".
+var behaviour = map[string]annotations{
+	// Reads. Safe to call without asking, safe to retry.
+	"get_briefing":   {Title: "Read standing context", ReadOnlyHint: true, IdempotentHint: true},
+	"kb_info":        {Title: "Check the mount", ReadOnlyHint: true, IdempotentHint: true},
+	"search_notes":   {Title: "Search notes", ReadOnlyHint: true, IdempotentHint: true},
+	"ask_notes":      {Title: "Ask the notes", ReadOnlyHint: true, IdempotentHint: true},
+	"read_note":      {Title: "Read a note", ReadOnlyHint: true, IdempotentHint: true},
+	"list_notes":     {Title: "List notes", ReadOnlyHint: true, IdempotentHint: true},
+	"backlinks":      {Title: "Read backlinks", ReadOnlyHint: true, IdempotentHint: true},
+	"list_tags":      {Title: "List tags", ReadOnlyHint: true, IdempotentHint: true},
+	"stale_notes":    {Title: "List stale notes", ReadOnlyHint: true, IdempotentHint: true},
+	"get_fact":       {Title: "Look up an exact value", ReadOnlyHint: true, IdempotentHint: true},
+	"recall":         {Title: "Recall what is believed", ReadOnlyHint: true, IdempotentHint: true},
+	"memory_changes": {Title: "Read belief changes", ReadOnlyHint: true, IdempotentHint: true},
+	"memory_graph":   {Title: "Read the memory graph", ReadOnlyHint: true, IdempotentHint: true},
+	"memory_scopes":  {Title: "List memory scopes", ReadOnlyHint: true, IdempotentHint: true},
+	"list_grants":    {Title: "List credential grants", ReadOnlyHint: true, IdempotentHint: true},
+
+	// Reads that leave the machine. Read-only here, open-world because they
+	// reach systems this server does not control.
+	"search_web": {Title: "Search the web", ReadOnlyHint: true, IdempotentHint: true, OpenWorldHint: true},
+	"open_urls":  {Title: "Fetch web pages", ReadOnlyHint: true, IdempotentHint: true, OpenWorldHint: true},
+
+	// Writes that add. Not destructive: they create or extend rather than
+	// replace, so the worst case is an extra note rather than a lost one.
+	"create_note":  {Title: "Create a note"},
+	"append_daily": {Title: "Append to today's daily note"},
+
+	// Writes that can replace something already on file.
+	"update_note":        {Title: "Update a note", DestructiveHint: true},
+	"set_fact":           {Title: "Set an exact value", DestructiveHint: true, IdempotentHint: true},
+	"remember":           {Title: "Record a fact", DestructiveHint: true},
+	"consolidate_memory": {Title: "Consolidate memory", DestructiveHint: true},
+	"memory_feedback":    {Title: "Rate a recalled fact", IdempotentHint: true},
+
+	// Retraction. The one tool whose whole purpose is removal.
+	"forget": {Title: "Retract a fact", DestructiveHint: true, IdempotentHint: true},
+
+	// The credential broker. Not read-only — it SPENDS a secret by making a
+	// call the operator is billed and audited for — and open-world by
+	// definition, since the whole point is reaching another service.
+	"use_credential":           {Title: "Use a credential", OpenWorldHint: true},
+	"request_credential":       {Title: "Ask for a credential"},
+	"check_credential_request": {Title: "Check a credential request", ReadOnlyHint: true, IdempotentHint: true},
 }
 
 func obj(props map[string]any, required ...string) map[string]any {
@@ -37,9 +113,24 @@ func intProp(desc string) map[string]any {
 	return map[string]any{"type": "integer", "description": desc}
 }
 
+// annotate attaches the behaviour hints to a tool list.
+//
+// Applied in one pass rather than written into each definition so the
+// classification lives in one readable table, and so a tool with no entry is
+// visibly missing rather than quietly unannotated.
+func annotate(ts []tool) []tool {
+	for i := range ts {
+		if a, ok := behaviour[ts[i].Name]; ok {
+			hint := a
+			ts[i].Annotations = &hint
+		}
+	}
+	return ts
+}
+
 // Tools returns the advertised tool list.
 func Tools() []tool {
-	return []tool{
+	return annotate([]tool{
 		{
 			Name: "get_briefing",
 			Description: "START HERE when beginning work: the team's standing context in one " +
@@ -366,5 +457,5 @@ func Tools() []tool {
 				"id": strProp("the request id returned by request_credential"),
 			}, "id"),
 		},
-	}
+	})
 }
