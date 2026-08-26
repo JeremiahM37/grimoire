@@ -59,7 +59,33 @@ export function headingId(text) {
   return `h-${slug || "heading"}`;
 }
 
+/**
+ * Remove Obsidian %%comments%% before anything renders.
+ *
+ * Kept identical to stripComments in go/internal/render — the two engines are
+ * deliberately written twice and must agree, or a note previews one way here
+ * and another in /read, the export and the published site. There the same gap
+ * was a leak: a note marked `publish: true` published its private comments.
+ *
+ * Code fences are stood aside first, because %% inside a fence is content.
+ */
+export function stripComments(src) {
+  if (!src.includes("%%")) return src;                 // the common case, free
+  const fenced = [];
+  let inFence = false;
+  const kept = src.split("\n").map((line) => {
+    const isFence = line.trim().startsWith("```");
+    if (isFence) inFence = !inFence;
+    if (inFence || isFence) { fenced.push(line); return "\u0000FENCE\u0000"; }
+    return line;
+  });
+  let out = kept.join("\n").replace(/%%[\s\S]*?%%/g, "");
+  for (const line of fenced) out = out.replace("\u0000FENCE\u0000", () => line);
+  return out;
+}
+
 export function mdToHtml(src) {
+  src = stripComments(src);
   // small, safe-ish markdown: escape first, then apply inline + block rules
   let resolved = new Set(noteIndex.notes.flatMap((n) => [
     (n.title || "").toLowerCase(), n.path.toLowerCase(),

@@ -208,3 +208,29 @@ func TestPublishedPathCannotEscapeTheVault(t *testing.T) {
 		}
 	}
 }
+
+// A note marked publish: true must not publish the parts marked as not for
+// publication. Obsidian's %%comment%% is exactly that marker, and this renderer
+// printed it verbatim — so the private aside went out with the note.
+func TestPublishedNotesDoNotLeakComments(t *testing.T) {
+	s, h := publishing(t, true)
+	if _, err := s.WriteNote("public.md",
+		"# Runbook\n\nRestart nginx. %%the real password is hunter2%%\n",
+		map[string]any{"title": "Runbook", "publish": true}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Index.Reindex(); err != nil {
+		t.Fatal(err)
+	}
+	w := do(t, h, "GET", "/published/public.md", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("published page not served: %d", w.Code)
+	}
+	body := w.Body.String()
+	if strings.Contains(body, "hunter2") || strings.Contains(body, "%%") {
+		t.Errorf("a %%%%comment%%%% was served on the public page:\n%s", body)
+	}
+	if !strings.Contains(body, "Restart nginx") {
+		t.Errorf("the note itself did not publish:\n%s", body)
+	}
+}

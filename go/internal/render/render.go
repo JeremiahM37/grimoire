@@ -122,6 +122,7 @@ func RenderWith(body string, ctx *Context) string {
 	if ctx == nil {
 		ctx = &Context{}
 	}
+	body = stripComments(body)
 	footnoteKeys, footnotes := collectFootnotes(body)
 	lines := strings.Split(body, "\n")
 	var out []string
@@ -609,4 +610,46 @@ func capitalize(s string) string {
 	}
 	r := []rune(s)
 	return strings.ToUpper(string(r[0])) + strings.ToLower(string(r[1:]))
+}
+
+// commentBlockRE matches an Obsidian %% … %% comment, including multi-line ones.
+// Non-greedy so two comments in a paragraph do not merge into one that swallows
+// the text between them.
+var commentBlockRE = regexp.MustCompile(`(?s)%%.*?%%`)
+
+// stripComments removes %%comments%% before anything else renders.
+//
+// Obsidian hides these; this renderer printed them verbatim, which is a parity
+// gap in the editor and something worse everywhere else — RenderWith is what
+// publish.go and the static export call, so a note marked `publish: true`
+// carrying "%%don't share this%%" published the comment along with it. The
+// whole point of the syntax is that it is the part you did not want to show.
+//
+// Code fences are protected: %% inside a fence is content, not a comment, and a
+// shell script full of them should survive being written about.
+func stripComments(body string) string {
+	if !strings.Contains(body, "%%") {
+		return body // the overwhelmingly common case, at no cost
+	}
+	lines := strings.Split(body, "\n")
+	var kept []string
+	var fenced []string
+	inFence := false
+	for _, line := range lines {
+		if strings.HasPrefix(strings.TrimSpace(line), "```") {
+			inFence = !inFence
+		}
+		if inFence || strings.HasPrefix(strings.TrimSpace(line), "```") {
+			// Stand the fence aside so the regex cannot reach into it.
+			kept = append(kept, "\x00FENCE\x00")
+			fenced = append(fenced, line)
+			continue
+		}
+		kept = append(kept, line)
+	}
+	out := commentBlockRE.ReplaceAllString(strings.Join(kept, "\n"), "")
+	for _, line := range fenced {
+		out = strings.Replace(out, "\x00FENCE\x00", line, 1)
+	}
+	return out
 }
