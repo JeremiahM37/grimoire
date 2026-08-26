@@ -237,11 +237,26 @@ func Open(path string) (*DB, error) {
 		return nil, err
 	}
 	// One writer: the driver is fine with more, but WAL plus a single
-	// connection keeps write ordering obvious and avoids SQLITE_BUSY retries.
+	// connection keeps write ordering obvious and avoids SQLITE_BUSY WITHIN
+	// this process.
 	conn.SetMaxOpenConns(1)
 	if _, err := conn.Exec("PRAGMA journal_mode=WAL"); err != nil {
 		conn.Close()
 		return nil, fmt.Errorf("enabling WAL: %w", err)
+	}
+	// Between processes it is not enough, and a vault regularly has two: the
+	// server, and a `grimoire` CLI invocation against the same index. Without a
+	// busy timeout the second writer fails instantly with SQLITE_BUSY rather
+	// than waiting, and the watcher's handler logs the error and drops the
+	// upsert — so a note edited at the wrong moment is silently never indexed.
+	// Observed in production: seven "watcher: upsert …: database is locked"
+	// lines in one second while a CLI command held the write lock.
+	//
+	// Five seconds is far longer than any write here takes and far shorter than
+	// a person waits before assuming a hang.
+	if _, err := conn.Exec("PRAGMA busy_timeout=5000"); err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("setting busy timeout: %w", err)
 	}
 	if _, err := conn.Exec(Schema); err != nil {
 		conn.Close()

@@ -1,6 +1,7 @@
 package watcher
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"sync"
@@ -178,5 +179,91 @@ func TestNewSubdirectoryIsWatched(t *testing.T) {
 	}
 	if !waitFor(func() bool { return rec.sawUpsert("later/new.md") }, 3*time.Second) {
 		t.Error("note in a newly created directory was not indexed")
+	}
+}
+
+// A contended database must not cost a note its place in the index.
+//
+// The watcher used to log the error and move on, so a note edited while another
+// process held the write lock was simply never indexed. That failure is
+// invisible — it reads as the agent not knowing something, not as a fault.
+// Observed in production as seven "database is locked" lines in one second
+// while a CLI command held the lock.
+
+type flakyIndex struct {
+	failures int // how many times to report a locked database first
+	calls    int
+	upserted []string
+}
+
+func (f *flakyIndex) Upsert(rel string) (*vault.Note, error) {
+	f.calls++
+	if f.calls <= f.failures {
+		return nil, errors.New("database is locked (5) (SQLITE_BUSY)")
+	}
+	f.upserted = append(f.upserted, rel)
+	return &vault.Note{Path: rel}, nil
+}
+
+func (f *flakyIndex) Remove(rel string) error { return nil }
+
+func TestUpsertRetriesALockedDatabase(t *testing.T) {
+	w := &Watcher{index: &flakyIndex{failures: 2}}
+	if _, err := w.upsertWithRetry("a.md"); err != nil {
+		t.Fatalf("gave up on a transient lock: %v", err)
+	}
+	idx := w.index.(*flakyIndex)
+	if len(idx.upserted) != 1 {
+		t.Errorf("note not indexed after the lock cleared: %v", idx.upserted)
+	}
+	if idx.calls != 3 {
+		t.Errorf("attempts = %d, want 3 (two locked, one through)", idx.calls)
+	}
+}
+
+func TestUpsertGivesUpEventually(t *testing.T) {
+	w := &Watcher{index: &flakyIndex{failures: 99}}
+	if _, err := w.upsertWithRetry("a.md"); err == nil {
+		t.Fatal("a permanently locked database reported success")
+	}
+	if calls := w.index.(*flakyIndex).calls; calls != busyRetries {
+		t.Errorf("attempts = %d, want exactly %d", calls, busyRetries)
+	}
+}
+
+// A real error must fail immediately — retrying a malformed note three times
+// just delays the same failure and muddies the log.
+func TestNonBusyErrorsAreNotRetried(t *testing.T) {
+	w := &Watcher{index: &permanentErrIndex{}}
+	if _, err := w.upsertWithRetry("a.md"); err == nil {
+		t.Fatal("a permanent error was swallowed")
+	}
+	if c := w.index.(*permanentErrIndex).calls; c != 1 {
+		t.Errorf("attempts = %d, want 1 — a parse error is not contention", c)
+	}
+}
+
+type permanentErrIndex struct{ calls int }
+
+func (p *permanentErrIndex) Upsert(rel string) (*vault.Note, error) {
+	p.calls++
+	return nil, errors.New("malformed frontmatter")
+}
+func (p *permanentErrIndex) Remove(rel string) error { return nil }
+
+func TestIsBusyRecognisesTheDriversWording(t *testing.T) {
+	for _, s := range []string{
+		"database is locked (5) (SQLITE_BUSY)",
+		"database table is locked",
+		"SQLITE_BUSY",
+	} {
+		if !isBusy(errors.New(s)) {
+			t.Errorf("%q not recognised as contention", s)
+		}
+	}
+	for _, s := range []string{"malformed frontmatter", "no such table: notes", ""} {
+		if isBusy(errors.New(s)) {
+			t.Errorf("%q wrongly treated as contention", s)
+		}
 	}
 }

@@ -165,7 +165,7 @@ func (w *Watcher) flush() {
 			continue
 		}
 		if _, statErr := os.Stat(abs); statErr == nil {
-			if _, err := w.index.Upsert(rel); err != nil {
+			if _, err := w.upsertWithRetry(rel); err != nil {
 				log.Printf("watcher: upsert %s: %v", rel, err)
 			}
 			continue
@@ -193,4 +193,42 @@ func (w *Watcher) Stop() {
 		w.timer = nil
 	}
 	w.mu.Unlock()
+}
+
+// busyRetries bounds how hard the watcher tries a contended write.
+//
+// PRAGMA busy_timeout already makes SQLite wait rather than fail, so reaching
+// this is unusual — a second writer holding the lock for longer than the
+// timeout. Retrying is still worth it because the alternative is what shipped:
+// log the error, drop the upsert, and leave a note the index never sees. A
+// missed index entry is invisible; it looks like the agent not knowing
+// something rather than like a failure.
+const busyRetries = 3
+
+// upsertWithRetry indexes one note, retrying a contended database.
+func (w *Watcher) upsertWithRetry(rel string) (*vault.Note, error) {
+	var err error
+	for attempt := 0; attempt < busyRetries; attempt++ {
+		var note *vault.Note
+		note, err = w.index.Upsert(rel)
+		if err == nil || !isBusy(err) {
+			return note, err
+		}
+		// Linear, not exponential: the contention this sees is another process
+		// finishing one write, not a thundering herd.
+		time.Sleep(time.Duration(attempt+1) * 100 * time.Millisecond)
+	}
+	return nil, err
+}
+
+// isBusy reports whether an error is SQLite telling us to come back later.
+// Matched on text because the pure-Go driver does not export a sentinel.
+func isBusy(err error) bool {
+	if err == nil {
+		return false
+	}
+	s := strings.ToLower(err.Error())
+	return strings.Contains(s, "database is locked") ||
+		strings.Contains(s, "database table is locked") ||
+		strings.Contains(s, "sqlite_busy")
 }
