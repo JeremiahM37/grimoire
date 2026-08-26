@@ -44,3 +44,15 @@ Everything is environment-driven (same variables bare-metal, systemd, Docker):
 
 AI/model settings can also be changed live in ⚙ Settings (persisted in the
 vault, no restart). Editor mode (live/classic) and theme are per-device.
+
+
+## Diagnosing
+
+`grimoire doctor` compares the vault, the index and what an agent can
+reach, and reports the pairs that disagree. It exits non-zero on a failure, so
+it works from a healthcheck or a unit file as well as from a terminal.
+
+The checks exist because these failures are silent: `/api/health` returns
+`ok: true` while memory is unqueryable, while the index has drifted from the
+vault, or while the credential vault is locked and every `use_credential` call
+is failing.

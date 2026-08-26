@@ -7,7 +7,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 )
 
 // Discord: channel messages as documents.
@@ -148,11 +147,4 @@ func (d discord) Fetch(ctx context.Context, in Input) (Page, error) {
 	}
 	cursor := msgs[len(msgs)-1].ID
 	return Page{Docs: docs, Cursor: cursor, More: len(msgs) == limit}, nil
-}
-
-// discordTime parses the API's ISO-8601 timestamps. Kept separate so a change
-// in their format is one edit.
-func discordTime(s string) (time.Time, bool) {
-	t, err := time.Parse(time.RFC3339, s)
-	return t, err == nil
 }

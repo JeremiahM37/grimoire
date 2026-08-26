@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 )
 
 // Notion: pages and database rows as markdown.
@@ -165,17 +164,6 @@ func notionTitle(props json.RawMessage) string {
 // somebody has; this stops one of them turning a sync into a crawl.
 const notionMaxDepth = 3
 
-type notionBlockList struct {
-	Results []struct {
-		ID          string          `json:"id"`
-		Type        string          `json:"type"`
-		HasChildren bool            `json:"has_children"`
-		Raw         json.RawMessage `json:"-"`
-	} `json:"results"`
-	NextCursor string `json:"next_cursor"`
-	HasMore    bool   `json:"has_more"`
-}
-
 // notionBlocks renders a page's blocks as markdown.
 func notionBlocks(ctx context.Context, in Input, pageID string, depth int) (string, error) {
 	if depth > notionMaxDepth {
@@ -300,5 +288,3 @@ func notionRichText(inner map[string]any) string {
 	}
 	return strings.TrimSpace(b.String())
 }
-
-var _ = time.RFC3339

@@ -275,3 +275,45 @@ func cmdChallenges(args []string) int {
 		len(open))
 	return 0
 }
+
+// cmdDoctor diagnoses the disagreements that make an agent look ignorant.
+//
+// Every failure worth a command like this is silent: the vault, the index and
+// what an agent can reach stop agreeing, nothing errors, and the symptom is
+// "the agent doesn't know that" rather than a stack trace.
+func cmdDoctor(args []string) int {
+	e, err := openEnv()
+	if err != nil {
+		return fail("%v", err)
+	}
+	defer e.close()
+
+	status, raw := e.call("GET", "/api/doctor")
+	if status != http.StatusOK {
+		return fail("doctor failed: %s", raw)
+	}
+	var out struct {
+		Status string `json:"status"`
+		Checks []struct {
+			Name, Status, Detail, Fix string
+		} `json:"checks"`
+	}
+	if err := json.Unmarshal([]byte(raw), &out); err != nil {
+		return fail("%v", err)
+	}
+	mark := map[string]string{"ok": "✓", "warn": "!", "fail": "✗"}
+	worst := 0
+	for _, c := range out.Checks {
+		fmt.Printf("%s %-22s %s\n", mark[c.Status], c.Name, c.Detail)
+		if c.Fix != "" {
+			fmt.Printf("  %-22s → %s\n", "", c.Fix)
+		}
+		if c.Status == "fail" {
+			worst = 1
+		}
+	}
+	fmt.Printf("\n%s\n", out.Status)
+	// A non-zero exit on failure, so this is usable from a healthcheck or a
+	// unit file rather than only by a person reading it.
+	return worst
+}

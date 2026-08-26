@@ -87,6 +87,9 @@ var routeAccess = map[string]access{
 	"GET /api/memory/facets":      scoped, // scope names are drawn from facts
 	"GET /api/memory/graph":       scoped, // entities and the facts behind them
 	"POST /api/memory/search":     scoped, // recall, ranked by a supplied vector
+	// Counts and configuration names, no note text — but it does describe the
+	// deployment, so it is gated with the rest rather than public.
+	"GET /api/doctor": scoped,
 	// Fact text on both sides of the disagreement, so the same filter as recall.
 	"GET /api/memory/challenges": scoped,
 	"GET /api/briefing":          scoped,

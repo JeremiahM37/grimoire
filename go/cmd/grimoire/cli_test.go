@@ -3,11 +3,15 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/JeremiahM37/grimoire/go/internal/mcp"
 )
+
+// commandNameRE matches a real subcommand in the usage text.
+var commandNameRE = regexp.MustCompile(`^[a-z][a-z-]*$`)
 
 // The CLI writes to the vault with no server running, which is the whole point
 // of it — so these tests drive the commands and then assert on the FILES, the
@@ -21,8 +25,15 @@ func vaultDir(t *testing.T) string {
 }
 
 // runCmd executes a command and returns its stdout.
+//
+// It refuses to run against anything but a temp vault. Discipline was not
+// enough: a test that probed every command for dispatch ran them for real
+// against the default vault and wrote seven files into a live one. The
+// commands have side effects by design, so the helper enforces the isolation
+// rather than each test remembering to.
 func runCmd(t *testing.T, args ...string) (string, int) {
 	t.Helper()
+	requireTempVault(t)
 	old := os.Stdout
 	r, w, err := os.Pipe()
 	if err != nil {
@@ -45,6 +56,22 @@ func runCmd(t *testing.T, args ...string) (string, int) {
 		}
 	}
 	return sb.String(), code
+}
+
+// requireTempVault fails unless GRIMOIRE_VAULT points inside the test's own
+// temporary directory.
+func requireTempVault(t *testing.T) {
+	t.Helper()
+	v := os.Getenv("GRIMOIRE_VAULT")
+	if v == "" {
+		t.Fatal("GRIMOIRE_VAULT is unset, so this command would run against the " +
+			"default vault (~/notes). Call vaultDir(t) first.")
+	}
+	if !strings.HasPrefix(v, os.TempDir()) {
+		t.Fatalf("GRIMOIRE_VAULT=%q is not inside %s — a command with side "+
+			"effects would write to a real vault. Call vaultDir(t) first.",
+			v, os.TempDir())
+	}
 }
 
 func read(t *testing.T, dir, rel string) string {
@@ -214,6 +241,7 @@ func TestUnknownCommandIsRejectedNotServed(t *testing.T) {
 }
 
 func TestAgentSetupPointsAtTheGoMCPBinary(t *testing.T) {
+	vaultDir(t)
 	out, code := runCmd(t, "agent-setup", "http://example:9111")
 	if code != 0 {
 		t.Fatalf("exit %d", code)
@@ -237,5 +265,91 @@ func TestAgentSetupPointsAtTheGoMCPBinary(t *testing.T) {
 	}
 	if strings.Contains(out, "GRIMOIRE_API") {
 		t.Error("GRIMOIRE_API is read by nothing; emitting it produces a dead mount")
+	}
+}
+
+// The table and the help text must list the same commands.
+//
+// commands() is a function rather than a literal inside runCLI specifically so
+// this test can exist — the comment above it says so, and says why: `grimoire
+// backup` once shipped in a release written, tested by calling it directly,
+// documented in the help, and never added to the table, so the only way to run
+// it was to import the package.
+//
+// The test itself was never written. `grimoire doctor` then shipped the same
+// way inside a single afternoon: a usage line, a working function, and no
+// registration, because gofmt had realigned the table between the edit being
+// composed and applied. Two for two on a failure the codebase already knew
+// about is what a missing test looks like.
+func TestEveryDocumentedCommandIsReachable(t *testing.T) {
+	table := commands()
+
+	// The help text lists one command per line as "  grimoire <name> …".
+	documented := map[string]bool{}
+	for _, line := range strings.Split(usage, "\n") {
+		f := strings.Fields(line)
+		if len(f) < 2 || f[0] != "grimoire" {
+			continue
+		}
+		name := f[1]
+		// A command name is lowercase letters and dashes. Anything else on a
+		// "grimoire …" line is the banner ("grimoire — local-first notes"), an
+		// argument placeholder, or a flag continuation.
+		if !commandNameRE.MatchString(name) {
+			continue
+		}
+		documented[name] = true
+	}
+	if len(documented) < 10 {
+		t.Fatalf("only %d commands parsed out of the usage text; the help format "+
+			"changed and this check is no longer reading it", len(documented))
+	}
+
+	for name := range documented {
+		// serve is the fallthrough default and deliberately not in the table.
+		if name == "serve" || name == "help" || name == "version" {
+			continue
+		}
+		if _, ok := table[name]; !ok {
+			t.Errorf("`grimoire %s` is documented in the help and is not in the "+
+				"command table — the only way to run it is to import the package", name)
+		}
+	}
+	for name := range table {
+		if !documented[name] {
+			t.Errorf("`grimoire %s` is registered but appears nowhere in the help, "+
+				"so nobody can discover it", name)
+		}
+	}
+}
+
+// No test in this package may touch a real vault.
+//
+// This exists because one did. A test that probed every registered command for
+// dispatch ran them for real against GRIMOIRE_VAULT — which, unset, defaults to
+// ~/notes — and wrote seven files into a live vault: seed-demo's samples, a
+// note named after the probe flag, a daily entry and an inbox capture. The
+// commands here have side effects by design; the safety has to come from the
+// environment, not from hoping a flag is rejected.
+//
+// vaultDir(t) sets GRIMOIRE_VAULT to a t.TempDir() for the duration of one
+// test. Every test that invokes a command must call it first.
+func TestNoTestCanWriteToARealVault(t *testing.T) {
+	// t.Setenv both isolates this test and fails the suite if it is ever run in
+	// parallel, which is the other way a shared env var goes wrong.
+	dir := vaultDir(t)
+	if got := os.Getenv("GRIMOIRE_VAULT"); got != dir {
+		t.Fatalf("GRIMOIRE_VAULT = %q, want the temp dir %q", got, dir)
+	}
+	home, _ := os.UserHomeDir()
+	if home != "" && strings.HasPrefix(dir, filepath.Join(home, "notes")) {
+		t.Fatalf("the test vault resolves inside the default vault: %s", dir)
+	}
+	// A command with side effects must land in the temp dir and nowhere else.
+	if _, code := runCmd(t, "new", "Scratch", "body"); code != 0 {
+		t.Fatal("new failed in the temp vault")
+	}
+	if _, err := os.Stat(filepath.Join(dir, "scratch.md")); err != nil {
+		t.Fatalf("the note was not written to the temp vault: %v", err)
 	}
 }

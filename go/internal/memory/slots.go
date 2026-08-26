@@ -183,9 +183,7 @@ func normalizeValue(raw string) string {
 	s = strings.TrimSuffix(s, ".")
 	// "400,000" and "400000" are the same amount; the comma was already
 	// stripped above. A trailing ".0" is not a different number either.
-	if strings.HasSuffix(s, ".0") {
-		s = strings.TrimSuffix(s, ".0")
-	}
+	s = strings.TrimSuffix(s, ".0")
 	return s
 }
 

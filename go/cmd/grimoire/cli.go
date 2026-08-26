@@ -49,6 +49,7 @@ const usage = `grimoire — local-first AI-native notes
                                       facts your agents dispute, and how to settle them
   grimoire ls [--tag TAG]             list notes
   grimoire open PATH                  print a note
+  grimoire doctor                     diagnose why an agent cannot see your notes
   grimoire reindex                    rebuild the search index
   grimoire ingest PATH [--into DIR]   bulk-import a folder of markdown/text
   grimoire seed-demo                  write a small sample vault (first-run demo)
@@ -86,7 +87,7 @@ func commands() map[string]func([]string) int {
 		"search": cmdSearch, "ls": cmdLs, "open": cmdOpen,
 		"remember": cmdRemember, "recall": cmdRecall, "forget": cmdForget,
 		"challenges": cmdChallenges,
-		"reindex":    cmdReindex, "ingest": cmdIngest, "seed-demo": cmdSeedDemo,
+		"doctor":     cmdDoctor, "reindex": cmdReindex, "ingest": cmdIngest, "seed-demo": cmdSeedDemo,
 		"export": cmdExport, "sync": cmdSync, "agent-setup": cmdAgentSetup,
 		"fetch-model": cmdFetchModel,
 		"user":        cmdUser, "space": cmdSpace,

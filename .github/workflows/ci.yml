@@ -31,9 +31,35 @@ jobs:
       - name: Vet
         working-directory: go
         run: go vet ./...
+      # go vet is a floor, not a lint. staticcheck is what catches the things
+      # that compile and run and are still wrong — dead code, a conditional
+      # that is really a TrimSuffix, a loop variable captured by a closure.
+      # Pinned rather than @latest: a linter that changes under CI turns an
+      # unrelated push red and teaches everyone to ignore it.
+      - name: Staticcheck
+        working-directory: go
+        run: |
+          go install honnef.co/go/tools/cmd/staticcheck@2025.1.1
+          "$(go env GOPATH)/bin/staticcheck" ./...
+      # Known CVEs in code this project actually CALLS. The module-level
+      # findings are deliberately not fatal — x/crypto/openpgp is flagged as
+      # unmaintained with no fix available, is reached by nothing here, and
+      # failing the build over a dependency nobody can act on is how a security
+      # check becomes something people skip.
+      - name: Vulnerabilities
+        working-directory: go
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          "$(go env GOPATH)/bin/govulncheck" -scan symbol ./...
       - name: Tests
         working-directory: go
         run: go test ./...
+      # -race and -count=1 on a second pass: the suite above is the fast signal,
+      # this is the one that catches a data race in the watcher, the connector
+      # runner or the index's write lock. Both are cheap enough to keep.
+      - name: Tests (race)
+        working-directory: go
+        run: go test -race -count=1 ./...
 
   clients:
     # The Python and JS clients are the surface most people reach the server
