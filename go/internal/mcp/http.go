@@ -1,10 +1,14 @@
 package mcp
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -27,6 +31,14 @@ const MaxRequestBytes = 16 << 20
 func (s *Server) HTTPHandler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/mcp", func(w http.ResponseWriter, r *http.Request) {
+		if !s.authorized(r) {
+			// A bearer challenge rather than a bare 403: MCP clients read it,
+			// and a hosted one can prompt for the token instead of failing with
+			// nothing to act on.
+			w.Header().Set("WWW-Authenticate", `Bearer realm="grimoire"`)
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
 		if r.Method != http.MethodPost {
 			w.Header().Set("Allow", "POST")
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -62,6 +74,42 @@ func (s *Server) HTTPHandler() http.Handler {
 	return mux
 }
 
+// authorized checks the inbound bearer token in constant time.
+//
+// No token configured means no check, which is correct for the loopback default
+// — a local agent launching this on 127.0.0.1 is already inside the trust
+// boundary, and demanding a secret there would just get one written into a
+// dotfile. ListenAndServe is what stops that default reaching the network.
+func (s *Server) authorized(r *http.Request) bool {
+	want := strings.TrimSpace(s.InboundToken)
+	if want == "" {
+		return true
+	}
+	got := strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+	if got == "" {
+		// Some clients cannot set headers on an SSE/stream URL, so a query
+		// parameter is accepted as a fallback. It is second, never preferred:
+		// URLs end up in logs and browser history in a way headers do not.
+		got = strings.TrimSpace(r.URL.Query().Get("token"))
+	}
+	return subtle.ConstantTimeCompare([]byte(got), []byte(want)) == 1
+}
+
+// loopback reports whether an address is reachable only from this machine.
+func loopback(addr string) bool {
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		host = addr
+	}
+	host = strings.Trim(strings.TrimSpace(host), "[]")
+	switch host {
+	case "localhost", "":
+		return host == "localhost" // an empty host means every interface
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
+}
+
 func writeRPC(w http.ResponseWriter, status int, resp *response) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -72,6 +120,15 @@ func writeRPC(w http.ResponseWriter, status int, resp *response) {
 // Deliberately not named ServeHTTP: this type is not an http.Handler, and a
 // method with that name and a different signature reads like a broken one.
 func (s *Server) ListenAndServe(addr string) error {
+	// Fail closed. The whole point of binding off-loopback is that something
+	// remote can reach it, and what it reaches is the vault plus the credential
+	// broker. Refusing here makes the dangerous configuration impossible rather
+	// than documented-against.
+	if !loopback(addr) && strings.TrimSpace(s.InboundToken) == "" {
+		return fmt.Errorf("refusing to serve MCP on %s without GRIMOIRE_MCP_TOKEN: "+
+			"this transport exposes the vault and the credential broker, so an "+
+			"unauthenticated non-loopback bind would publish both", addr)
+	}
 	srv := &http.Server{
 		Addr:              addr,
 		Handler:           s.HTTPHandler(),

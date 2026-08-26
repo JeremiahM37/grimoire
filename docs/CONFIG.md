@@ -32,6 +32,7 @@ Everything is environment-driven (same variables bare-metal, systemd, Docker):
 | `GRIMOIRE_METRICS` | *(on)* | `off` removes `/metrics` |
 | `GRIMOIRE_MCP_TRANSPORT` | `stdio` | `http` serves MCP over streamable-HTTP instead |
 | `GRIMOIRE_MCP_ADDR` / `_PORT` | `127.0.0.1` / `9112` | Bind for the MCP http transport |
+| `GRIMOIRE_MCP_TOKEN` | *(empty)* | Bearer token the MCP http transport demands. **Required to bind anything but loopback** — the server refuses to start otherwise, because that transport carries the vault and the credential broker. Clients send `Authorization: Bearer …`, or `?token=` when they cannot set headers |
 | `GRIMOIRE_URL` | `http://127.0.0.1:$PORT` | API the MCP server talks to |
 | `GRIMOIRE_PLUGIN_DIR` | `plugins` | Where plugin bundles are loaded from |
 | `GRIMOIRE_MODEL_DIR` | *(cache dir)* | Where the local embedding model is stored |

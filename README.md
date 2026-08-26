@@ -106,6 +106,26 @@ Retrieval is inspectable — *"what would the agent see for X?"* returns the exa
 chunks. Untrusted content (connectors, web pages) carries an origin, is fenced
 before a reader sees it, and may not supersede something you wrote.
 
+## Cloud agents too, not just local ones
+
+A local agent launches `grimoire-mcp` over stdio. A hosted one — Claude.ai,
+ChatGPT, Codex, DeepSeek — cannot, so the same server speaks **streamable HTTP**:
+
+```bash
+GRIMOIRE_MCP_TRANSPORT=http \
+GRIMOIRE_MCP_ADDR=0.0.0.0:9112 \
+GRIMOIRE_MCP_TOKEN=$(openssl rand -hex 32) grimoire-mcp
+```
+
+One implementation, two doors — a test asserts the transports answer
+identically, so they cannot drift.
+
+**It refuses to bind anything but loopback without a token.** That transport
+carries `remember`, `create_note` and the credential broker, so an
+unauthenticated public bind would publish the vault *and* the ability to spend
+its secrets. Put it behind your own TLS (a reverse proxy, `tailscale serve`, or
+a tunnel) and give the client the URL plus the token.
+
 ## Pull in what you already wrote elsewhere
 
 Ten connectors write into the vault as ordinary markdown with provenance in the

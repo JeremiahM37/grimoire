@@ -45,6 +45,7 @@ const ProtocolVersion = "2024-11-05"
 const (
 	EnvURL       = "GRIMOIRE_URL"        // API base the MCP server talks to
 	EnvAgentName = "GRIMOIRE_AGENT_NAME" // provenance stamped on what it writes
+	EnvMCPToken  = "GRIMOIRE_MCP_TOKEN"  // bearer token the http transport demands
 )
 
 // Instructions are returned on initialize. Agents reliably read these; they are
@@ -68,6 +69,20 @@ type Server struct {
 	// without it every tool call against a gated instance returns 401.
 	AuthToken string
 
+	// InboundToken gates the HTTP transport — the opposite direction from
+	// AuthToken, which this server PRESENTS. This one it DEMANDS.
+	//
+	// It exists because a hosted agent cannot speak stdio. Reaching Claude.ai,
+	// ChatGPT or any other cloud client means this transport is exposed, and
+	// the thing being exposed is not a read-only search box: the same mount
+	// carries `remember`, `create_note` and the credential broker. Unguarded,
+	// publishing it hands anyone who finds the URL the vault and the ability to
+	// spend its secrets.
+	//
+	// ListenAndServe refuses to bind a non-loopback address without it, so the
+	// unsafe configuration is unreachable rather than merely discouraged.
+	InboundToken string
+
 	// AdminToken is presented to the administrative surface when that is
 	// gated separately — list_grants and the credential console's own state
 	// live there.
@@ -86,8 +101,9 @@ func New(baseURL, agent string) *Server {
 		// here are on it — list_grants reads the credential console's own
 		// state. Without this an agent on a gated instance would find those
 		// tools failing with 401 and nothing to point at.
-		AdminToken: os.Getenv("GRIMOIRE_ADMIN_TOKEN"),
-		Client:     &http.Client{Timeout: 120 * time.Second},
+		AdminToken:   os.Getenv("GRIMOIRE_ADMIN_TOKEN"),
+		InboundToken: os.Getenv(EnvMCPToken),
+		Client:       &http.Client{Timeout: 120 * time.Second},
 	}
 }
 
