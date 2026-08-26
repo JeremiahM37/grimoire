@@ -149,3 +149,70 @@ func BenchmarkCacheBuild1k(b *testing.B)   { benchmarkCacheBuild(b, 1_000) }
 func BenchmarkCacheBuild10k(b *testing.B)  { benchmarkCacheBuild(b, 10_000) }
 func BenchmarkCacheBuild50k(b *testing.B)  { benchmarkCacheBuild(b, 50_000) }
 func BenchmarkCacheBuild200k(b *testing.B) { benchmarkCacheBuild(b, 200_000) }
+
+// The MEMORY ranking path at size.
+//
+// The note-retrieval benchmarks above never touched it, which is how ranking
+// came to re-extract every candidate's entities from its text on every query —
+// the same deterministic work indexing had already done and stored in
+// memory_entities, a table that was written on every write and never read.
+// Nothing measured that path, so nothing objected.
+func benchmarkMemoryRank(b *testing.B, nEntries int) {
+	root := b.TempDir()
+	v, err := vault.New(root)
+	if err != nil {
+		b.Fatal(err)
+	}
+	database, err := db.Open(filepath.Join(root, ".grimoire", "index.db"))
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.Cleanup(func() { database.Close() })
+	ix := New(database, v, embed.Hash{})
+
+	// Entries spread over notes the way a real vault holds them, with the
+	// proper nouns and identifiers the entity signal exists to match.
+	const perNote = 50
+	hosts := []string{"AIServer", "MediaServer", "db-01.prod", "Grafana", "PgBouncer"}
+	people := []string{"Priya Sharma", "Dana Ruiz", "Sam Okafor"}
+	for i := 0; i < nEntries; i += perNote {
+		var body strings.Builder
+		body.WriteString("# Memory\n\n")
+		for j := 0; j < perNote && i+j < nEntries; j++ {
+			n := i + j
+			fmt.Fprintf(&body, "- **2026-08-14 09:%02d · agent** — %s restarted %s on %s "+
+				"after the deploy, port %d <!--m id=e%d-->\n",
+				n%60, people[n%len(people)], hosts[n%len(hosts)], hosts[(n+1)%len(hosts)],
+				5000+n%900, n)
+		}
+		rel := fmt.Sprintf("memory/note-%05d.md", i/perNote)
+		if _, err := v.Write(rel, body.String(), nil); err != nil {
+			b.Fatal(err)
+		}
+		if _, err := ix.Upsert(rel); err != nil {
+			b.Fatal(err)
+		}
+	}
+
+	queries := []string{
+		"who restarted Grafana on AIServer",
+		"what port does PgBouncer use on db-01.prod",
+		"Priya Sharma deploy MediaServer",
+	}
+	if _, err := ix.MemoryEntries(MemoryQuery{Query: queries[0], Limit: 10}); err != nil {
+		b.Fatal(err)
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if _, err := ix.MemoryEntries(MemoryQuery{
+			Query: queries[i%len(queries)], Limit: 10,
+		}); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkMemoryRank1k(b *testing.B)  { benchmarkMemoryRank(b, 1_000) }
+func BenchmarkMemoryRank10k(b *testing.B) { benchmarkMemoryRank(b, 10_000) }
+func BenchmarkMemoryRank50k(b *testing.B) { benchmarkMemoryRank(b, 50_000) }

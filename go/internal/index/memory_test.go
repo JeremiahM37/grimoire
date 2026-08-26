@@ -506,3 +506,65 @@ func TestSuppliedVectorLosesToTextWhenBothArePresent(t *testing.T) {
 		t.Errorf("the supplied vector was ignored: %v", ids(hits))
 	}
 }
+
+// Ranking reads entity lists from memory_entities instead of re-extracting them
+// from each candidate's text on every query. That is only safe while the two
+// agree, so this pins it: the entity score computed from the stored rows must
+// equal the one computed the old way.
+func TestStoredEntitiesRankTheSameAsRecomputedOnes(t *testing.T) {
+	ix := testIndex(t)
+	memNote(t, ix, "memory/team.md",
+		entry("e1", "2026-08-14 09:00", "Priya Sharma runs the deploy on AIServer"),
+		entry("e2", "2026-08-14 09:01", "The Grafana dashboard lives on MediaServer"))
+
+	hits, err := ix.MemoryEntries(MemoryQuery{Query: "who runs the deploy on AIServer", Limit: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(hits) == 0 {
+		t.Fatal("no hits")
+	}
+	q := memory.Entities("who runs the deploy on AIServer")
+	for _, h := range hits {
+		want := memory.EntityOverlap(q, memory.Entities(h.Text))
+		if h.Entity != want {
+			t.Errorf("%s: entity score %.3f from the stored rows, %.3f recomputed — "+
+				"the table and the extractor have diverged, so retrieval has "+
+				"silently changed", h.ID, h.Entity, want)
+		}
+	}
+	// And the signal must actually be doing something, or this test would pass
+	// just as happily against a table full of zeroes.
+	var any bool
+	for _, h := range hits {
+		if h.Entity > 0 {
+			any = true
+		}
+	}
+	if !any {
+		t.Error("every entity score is zero; the stored lists are not being read")
+	}
+}
+
+// A row the table has no entities for must fall back to extraction rather than
+// scoring zero — an index built before entities were stored, or one caught
+// mid-reindex, would otherwise quietly return different results.
+func TestMissingEntityRowsFallBackToExtraction(t *testing.T) {
+	ix := testIndex(t)
+	memNote(t, ix, "memory/team.md",
+		entry("e1", "2026-08-14 09:00", "Priya Sharma runs the deploy on AIServer"))
+	if err := ix.DB.Exec("DELETE FROM memory_entities"); err != nil {
+		t.Fatal(err)
+	}
+	hits, err := ix.MemoryEntries(MemoryQuery{Query: "Priya Sharma", Limit: 5})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(hits) == 0 {
+		t.Fatal("no hits")
+	}
+	if hits[0].Entity == 0 {
+		t.Error("with the entity table emptied the score fell to zero; the " +
+			"fallback is what keeps a stale index from changing retrieval")
+	}
+}
