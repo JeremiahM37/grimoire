@@ -106,3 +106,42 @@ func TestSerializeParseRoundTrip(t *testing.T) {
 		t.Errorf("tags = %v, want [alpha beta]", n.Tags)
 	}
 }
+
+// A list that arrives as JSON must render as a list the parser can read back.
+//
+// []any fell through to Go's %v — "tags: [a b]", space separated — while
+// ParseFrontmatter splits a bracketed list on COMMAS. So a note written through
+// the API with two tags read back as the single tag "a b", every lookup for
+// either found nothing, and the file was not valid YAML so Obsidian could not
+// read it either. Nothing errored at any point.
+func TestJSONListsRoundTripThroughFrontmatter(t *testing.T) {
+	line := FMEntry("tags", []any{"conversation", "chatgpt"})
+	if line != "tags: [conversation, chatgpt]" {
+		t.Fatalf("FMEntry rendered %q, want a comma-separated list", line)
+	}
+	fm, _ := markdown.ParseFrontmatter("---\n" + line + "\n---\n\nbody\n")
+	v, ok := fm.Get("tags")
+	if !ok {
+		t.Fatal("tags key lost on the way back")
+	}
+	items, ok := v.([]markdown.Value)
+	if !ok {
+		t.Fatalf("tags parsed back as %T, not a list", v)
+	}
+	if len(items) != 2 {
+		t.Fatalf("got %d tags, want 2 — a space-separated list reads back as one", len(items))
+	}
+	if items[0] != markdown.Value("conversation") || items[1] != markdown.Value("chatgpt") {
+		t.Errorf("tags round-tripped as %v", items)
+	}
+}
+
+// Mixed and non-string JSON lists must not regress to %v either.
+func TestJSONListsOfNonStringsAlsoRender(t *testing.T) {
+	if got := FMEntry("nums", []any{1, 2}); got != "nums: [1, 2]" {
+		t.Errorf("FMEntry(nums) = %q", got)
+	}
+	if got := FMEntry("empty", []any{}); got != "empty: []" {
+		t.Errorf("FMEntry(empty) = %q", got)
+	}
+}

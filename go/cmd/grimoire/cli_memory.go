@@ -5,7 +5,12 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
+
+	"github.com/JeremiahM37/grimoire/go/internal/convo"
+	"github.com/JeremiahM37/grimoire/go/internal/vault"
 )
 
 // The terminal half of agent memory.
@@ -316,4 +321,107 @@ func cmdDoctor(args []string) int {
 	// A non-zero exit on failure, so this is usable from a healthcheck or a
 	// unit file rather than only by a person reading it.
 	return worst
+}
+
+// cmdImport turns a ChatGPT or Claude export into notes.
+//
+// The cold start is the adoption problem: an empty vault answers nothing, and
+// "point it at the markdown you already have" does not help someone whose
+// knowledge is two years of chat history in a zip. This is the other thing they
+// already have.
+func cmdImport(args []string) int {
+	pos := positional(args)
+	if len(pos) == 0 {
+		return fail("usage: grimoire import PATH [--into SUBDIR] [--dry-run]\n" +
+			"  PATH is conversations.json from a ChatGPT or Claude data export.")
+	}
+	src := pos[0]
+	if strings.HasPrefix(src, "~/") {
+		if home, err := os.UserHomeDir(); err == nil {
+			src = filepath.Join(home, src[2:])
+		}
+	}
+	raw, err := os.ReadFile(src)
+	if err != nil {
+		return fail("cannot read %s: %v", src, err)
+	}
+
+	// Detected from the shape, not the filename: both products call the file
+	// conversations.json, and somebody who renamed it should not have to
+	// remember which flag to pass.
+	kind := convo.Detect(raw)
+	var convos []convo.Conversation
+	switch kind {
+	case "chatgpt":
+		convos, err = convo.ParseChatGPT(raw)
+	case "claude":
+		convos, err = convo.ParseClaude(raw)
+	default:
+		return fail("%s does not look like a ChatGPT or Claude conversations.json", src)
+	}
+	if err != nil {
+		return fail("%v", err)
+	}
+	if len(convos) == 0 {
+		return fail("no conversations with any content in %s", src)
+	}
+
+	into := "conversations/" + kind
+	if v, ok := flagValue(args, "--into"); ok {
+		into = strings.Trim(v, "/")
+	}
+	dry := hasFlag(args, "--dry-run")
+	fmt.Printf("%s export: %d conversations → %s/\n", kind, len(convos), into)
+	if dry {
+		for i, c := range convos {
+			if i >= 10 {
+				fmt.Printf("  … and %d more\n", len(convos)-10)
+				break
+			}
+			fmt.Printf("  %-52s %d messages\n", truncTitle(c.Title), len(c.Messages))
+		}
+		return 0
+	}
+
+	e, err := openEnv()
+	if err != nil {
+		return fail("%v", err)
+	}
+	defer e.close()
+
+	written := 0
+	for _, c := range convos {
+		title := c.Title
+		if title == "" {
+			title = "Untitled conversation"
+		}
+		fm := map[string]any{
+			"title":  title,
+			"tags":   []string{"conversation", kind},
+			"origin": "import:" + kind,
+		}
+		if !c.Created.IsZero() {
+			fm["created"] = c.Created.Format("2006-01-02T15:04:05")
+		}
+		body := c.Markdown()
+		status, raw := e.callBody("POST", "/api/notes", map[string]any{
+			"path": filepath.Join(into, vault.Slugify(title)+".md"),
+			"body": body, "frontmatter": fm,
+		})
+		if status >= 400 {
+			fmt.Fprintf(os.Stderr, "  skipped %q: %s\n", truncTitle(title), raw)
+			continue
+		}
+		written++
+	}
+	fmt.Printf("imported %d conversation(s)\n", written)
+	return 0
+}
+
+func truncTitle(s string) string {
+	s = strings.ReplaceAll(strings.TrimSpace(s), "\n", " ")
+	if len(s) > 50 {
+		return s[:49] + "…"
+	}
+	return s
 }

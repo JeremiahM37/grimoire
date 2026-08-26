@@ -32,6 +32,18 @@ func FMEntry(key string, value markdown.Value) string {
 		return fmt.Sprintf("%s: [%s]", key, strings.Join(parts, ", "))
 	case []string:
 		return fmt.Sprintf("%s: [%s]", key, strings.Join(v, ", "))
+	case []any:
+		// A list that arrived as JSON. Without this case it fell to the default
+		// below and was rendered with Go's %v — "[a b]", space separated — which
+		// ParseFrontmatter splits on COMMAS, so it read back as the single tag
+		// "a b" and every lookup for "a" or "b" found nothing. A note written
+		// through the API with two tags silently lost both, and the file was
+		// not valid YAML either, so Obsidian could not read it.
+		parts := make([]string, len(v))
+		for i, item := range v {
+			parts[i] = valueToString(item)
+		}
+		return fmt.Sprintf("%s: [%s]", key, strings.Join(parts, ", "))
 	case bool:
 		if v {
 			return key + ": true"

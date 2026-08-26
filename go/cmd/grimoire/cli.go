@@ -52,6 +52,8 @@ const usage = `grimoire — local-first AI-native notes
   grimoire doctor                     diagnose why an agent cannot see your notes
   grimoire reindex                    rebuild the search index
   grimoire ingest PATH [--into DIR]   bulk-import a folder of markdown/text
+  grimoire import PATH [--into DIR] [--dry-run]
+                                      import a ChatGPT or Claude conversations.json
   grimoire seed-demo                  write a small sample vault (first-run demo)
   grimoire fetch-model                pre-download the local embedding model
   grimoire export [--out DIR] [--published]
@@ -87,7 +89,7 @@ func commands() map[string]func([]string) int {
 		"search": cmdSearch, "ls": cmdLs, "open": cmdOpen,
 		"remember": cmdRemember, "recall": cmdRecall, "forget": cmdForget,
 		"challenges": cmdChallenges,
-		"doctor":     cmdDoctor, "reindex": cmdReindex, "ingest": cmdIngest, "seed-demo": cmdSeedDemo,
+		"doctor":     cmdDoctor, "reindex": cmdReindex, "import": cmdImport, "ingest": cmdIngest, "seed-demo": cmdSeedDemo,
 		"export": cmdExport, "sync": cmdSync, "agent-setup": cmdAgentSetup,
 		"fetch-model": cmdFetchModel,
 		"user":        cmdUser, "space": cmdSpace,
