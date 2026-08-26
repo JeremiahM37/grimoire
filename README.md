@@ -106,6 +106,22 @@ Retrieval is inspectable — *"what would the agent see for X?"* returns the exa
 chunks. Untrusted content (connectors, web pages) carries an origin, is fenced
 before a reader sees it, and may not supersede something you wrote.
 
+## Pull in what you already wrote elsewhere
+
+Ten connectors write into the vault as ordinary markdown with provenance in the
+frontmatter — not a parallel document store, so search, retrieval and the editor
+work on them for free and they survive Grimoire being uninstalled.
+
+| | |
+|---|---|
+| **Chat** | Slack · Discord |
+| **Docs** | Notion · Confluence · Google Drive |
+| **Tickets** | Linear · Jira · GitHub issues |
+| **Reading** | Readwise · RSS/Atom |
+
+Pulled content carries `trust: untrusted`, is fenced before a reader sees it,
+and may not supersede something you wrote.
+
 ## Also a self-hosted notes app
 
 Not wiring up agents yet? It is a full offline PWA in its own right — CodeMirror
