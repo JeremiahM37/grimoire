@@ -18,6 +18,9 @@ BASE = f"http://127.0.0.1:{PORT}"
 PHONE = {"width": 390, "height": 844}
 DESKTOP = {"width": 1280, "height": 860}
 
+# Set by the server fixture; the vault the live server is running on.
+VAULT = None
+
 
 def _free(port):
     try:
@@ -62,6 +65,11 @@ def server(tmp_path_factory):
         time.sleep(0.1)
     else:
         proc.kill(); raise RuntimeError("server did not start")
+    # The vault path is published so a test can seed tables the UI reads
+    # without the server growing a test-only endpoint. WAL plus the busy
+    # timeout make a second writer safe.
+    global VAULT
+    VAULT = vault
     yield BASE
     proc.terminate()
     try:
