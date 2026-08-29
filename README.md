@@ -142,6 +142,29 @@ work on them for free and they survive Grimoire being uninstalled.
 Pulled content carries `trust: untrusted`, is fenced before a reader sees it,
 and may not supersede something you wrote.
 
+## What the AI here has cost
+
+`grimoire doctor` tells you the vault is healthy; **AI usage** (command palette,
+or `GET /api/usage`) tells you what it spent getting there — by provider, by
+model, by which part asked, and by which agent triggered it.
+
+**Read the scope before the number.** This is *not* your total AI spend.
+Grimoire is mounted **by** agents and never sees the conversation an agent has
+with its own provider, so it cannot know what your coding agent costs. What it
+reports exactly is the calls **it** made: answering, reranking, classifying, on
+a key you configured. Anything else would be invented.
+
+Seventeen providers are priced — OpenAI, Anthropic, Google, Groq, Together,
+Fireworks, DeepSeek, Mistral, Perplexity, xAI, Cerebras, DeepInfra, Azure,
+OpenRouter — plus Ollama, LM Studio and vLLM, which are free because they run on
+your hardware. The provider is identified from the API base URL, not the
+configured backend name, because pointing the OpenAI-compatible backend at Groq
+means Groq is billing you.
+
+A model with no price on file reports **unknown**, never `$0.00`, and the total
+reads "at least" — a zero presented as a total makes an unmetered provider look
+free, which is the expensive direction to be wrong in.
+
 ## Also a self-hosted notes app
 
 Not wiring up agents yet? It is a full offline PWA in its own right — CodeMirror

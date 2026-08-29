@@ -90,6 +90,10 @@ var routeAccess = map[string]access{
 	// Counts and configuration names, no note text — but it does describe the
 	// deployment, so it is gated with the rest rather than public.
 	"GET /api/doctor": scoped,
+	// Token counts, costs and agent names — describes the deployment and who
+	// used it, so it is gated with the rest rather than public.
+	"GET /api/usage":        scoped,
+	"GET /api/usage/agents": scoped,
 	// Fact text on both sides of the disagreement, so the same filter as recall.
 	"GET /api/memory/challenges": scoped,
 	"GET /api/briefing":          scoped,

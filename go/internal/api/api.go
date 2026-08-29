@@ -134,6 +134,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/memory/batch", s.userOnly(s.rememberBatch))
 	mux.HandleFunc("POST /api/memory/feedback", s.feedback)
 	mux.HandleFunc("GET /api/doctor", s.doctor)
+	mux.HandleFunc("GET /api/usage", s.modelUsage)
+	mux.HandleFunc("GET /api/usage/agents", s.agentActivity)
 	mux.HandleFunc("GET /api/memory/challenges", s.challenges)
 	mux.HandleFunc("POST /api/memory/challenge", s.resolveChallenge)
 	mux.HandleFunc("PATCH /api/memory/entry", s.patchEntry)

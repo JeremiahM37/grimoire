@@ -597,3 +597,33 @@ details.folder .folder-head[data-dir="memory"] { color: var(--accent); }
   border-radius: 6px; background: var(--bg); color: var(--fg);
 }
 .ad-newkey { font-family: ui-monospace, monospace; font-size: .85rem; word-break: break-all; }
+
+/* AI usage dashboard.
+   Numbers right-aligned and tabular so columns compare by eye; an unknown price
+   is styled as unknown rather than rendered as zero, because a zero total makes
+   an unmetered provider look free. */
+.usage-wins { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.usage-win { padding: 3px 10px; font-size: 12px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--bg); color: var(--fg);
+  border-radius: 3px; }
+.usage-win.on { background: var(--accent, #4a6); color: #fff; border-color: transparent; }
+.usage-cards { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0; }
+.usage-card { flex: 1 1 90px; padding: 10px 12px; border: 1px solid var(--border);
+  border-radius: 4px; }
+.usage-card b { display: block; font-size: 20px; line-height: 1.1;
+  font-variant-numeric: tabular-nums; }
+.usage-card span { font-size: 11px; opacity: .7; text-transform: uppercase;
+  letter-spacing: .06em; }
+.usage-card.err b { color: #c0392b; }
+.usage-table { width: 100%; border-collapse: collapse; font-size: 13px;
+  margin-bottom: 14px; }
+.usage-table th { text-align: left; font-weight: 600; font-size: 11px;
+  text-transform: uppercase; letter-spacing: .05em; opacity: .65;
+  border-bottom: 1px solid var(--border); padding: 4px 8px 4px 0; }
+.usage-table td { padding: 5px 8px 5px 0; border-bottom: 1px solid var(--border); }
+.usage-table td.num, .usage-table th.num { text-align: right;
+  font-variant-numeric: tabular-nums; white-space: nowrap; }
+.usage-table tr.err td { color: #c0392b; }
+.usage-unknown { opacity: .6; font-style: italic; }
+.usage-bar { display: inline-block; height: 4px; background: var(--accent, #4a6);
+  opacity: .35; margin-left: 6px; vertical-align: middle; border-radius: 2px; }

@@ -478,7 +478,7 @@ func (s *Server) ask(w http.ResponseWriter, r *http.Request) {
 	for _, h := range cited {
 		s.auditRead(r, h.Path, true)
 	}
-	answer, support := s.AI.AnswerGrounded(q, contexts)
+	answer, support := s.AI.WithSurface("ask", agentFor(r)).AnswerGrounded(q, contexts)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"answer": answer, "citations": citations, "mode": mode,
 		// Whether the notes actually supported the answer, so a caller can
@@ -529,7 +529,7 @@ func (s *Server) smartRetrieve(r *http.Request, q string, k int, includePrivate,
 	f := filterFor(r, includePrivate)
 	subs := []string{q}
 	if smart {
-		subs = s.AI.Decompose(q)
+		subs = s.AI.WithSurface("decompose", agentFor(r)).Decompose(q)
 	}
 	if len(subs) == 1 {
 		return s.Index.RetrieveFor(subs[0], k, f)
@@ -560,7 +560,7 @@ func (s *Server) smartRetrieve(r *http.Request, q string, k int, includePrivate,
 		ctxs = append(ctxs, c)
 	}
 	out := make([]index.Hit, 0, keep)
-	for _, c := range s.AI.Rerank(q, ctxs, keep) {
+	for _, c := range s.AI.WithSurface("rerank", agentFor(r)).Rerank(q, ctxs, keep) {
 		out = append(out, byKey[c.Path+"\x00"+firstN(c.Chunk, 80)])
 	}
 	return out, nil
@@ -621,6 +621,6 @@ func (s *Server) actions(w http.ResponseWriter, r *http.Request) {
 	// routed through Answer so the offline fallback is the same extractive
 	// path the rest of the product uses — a dead button is worse than a
 	// simple answer
-	out := s.AI.Answer(prompt, []ai.Context{{Path: "_", Title: "selection", Chunk: text}})
+	out := s.AI.WithSurface("ask", agentFor(r)).Answer(prompt, []ai.Context{{Path: "_", Title: "selection", Chunk: text}})
 	writeJSON(w, http.StatusOK, map[string]any{"result": out})
 }

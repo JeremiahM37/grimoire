@@ -36,6 +36,8 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
 	"github.com/JeremiahM37/grimoire/go/internal/watcher"
 	"github.com/JeremiahM37/grimoire/go/internal/websearch"
+
+	usagelog "github.com/JeremiahM37/grimoire/go/internal/usage"
 )
 
 // watcherWanted reads GRIMOIRE_NO_WATCHER.
@@ -118,14 +120,17 @@ func newEnv(fetchModel bool) (*env, error) {
 	syncer := gsync.New(ix, v, crdt)
 
 	srv := &api.Server{
-		Index:      ix,
-		Vault:      v,
-		Settings:   store,
-		History:    history.New(grimoireDir),
-		Secrets:    vaultSecrets,
-		Broker:     secrets.NewBroker(vaultSecrets, database),
-		CRDT:       crdt,
-		AI:         ai.New(store, vaultSecrets.Get),
+		Index:    ix,
+		Vault:    v,
+		Settings: store,
+		History:  history.New(grimoireDir),
+		Secrets:  vaultSecrets,
+		Broker:   secrets.NewBroker(vaultSecrets, database),
+		CRDT:     crdt,
+		// The index is the usage store: a model-call row is derived data about
+		// this vault and should vanish with a rebuild rather than become a
+		// second database to back up and migrate.
+		AI:         aiWithUsage(store, vaultSecrets.Get, ix),
 		Auth:       accounts,
 		Reads:      reads,
 		Connectors: connectorStore,
@@ -403,4 +408,15 @@ func envOr(key, def string) string {
 // timeout is generous because these are paged APIs on other people's servers.
 func connectorClient() *http.Client {
 	return &http.Client{Timeout: 90 * time.Second}
+}
+
+// aiWithUsage builds the AI client with cost accounting attached.
+//
+// Separate from the literal above only so the wiring has somewhere to be
+// explained: the recorder never returns an error to the caller, so a failure to
+// book a call can slow nothing and break nothing.
+func aiWithUsage(store *settings.Store, secret func(string) (string, error), ix *index.Index) *ai.Client {
+	c := ai.New(store, secret)
+	c.Usage = usagelog.NewRecorder(ix)
+	return c
 }

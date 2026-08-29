@@ -26,6 +26,8 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/memory"
 	"github.com/JeremiahM37/grimoire/go/internal/trust"
 	"unicode/utf8"
+
+	"github.com/JeremiahM37/grimoire/go/internal/usage"
 )
 
 // Settings is the subset of the settings store this package reads. An
@@ -45,6 +47,12 @@ type Client struct {
 	Settings Settings
 	Secret   SecretGetter
 	HTTP     *http.Client
+	// Usage books what each call cost. Nil disables accounting entirely.
+	Usage *usage.Recorder
+	// surface and agent describe who asked. Set via WithSurface on a copy, never
+	// written on a shared client.
+	surface string
+	agent   string
 }
 
 func New(st Settings, secret SecretGetter) *Client {
@@ -87,6 +95,44 @@ func (c *Client) apiKey() string {
 // setting wins; otherwise a reachable Ollama AUTO-enables generative answers,
 // because the common self-hosted deployment sets only GRIMOIRE_OLLAMA_URL.
 // Empty means extractive — which is also what keeps tests hermetic.
+// Usage records what each model call cost. Nil is fine — accounting is not
+// allowed to be a prerequisite for answering.
+//
+// Surface names the caller ("ask", "rerank", "intent", "summarize") and Agent
+// the MCP client that triggered it, so a bill decomposes into something
+// actionable instead of one number. WithSurface returns a shallow copy rather
+// than mutating, because one Client is shared by every concurrent request and a
+// field written per call would report the wrong caller under load.
+func (c *Client) WithSurface(surface, agent string) *Client {
+	if c == nil {
+		return nil
+	}
+	cp := *c
+	cp.surface, cp.agent = surface, agent
+	return &cp
+}
+
+// observe books one completed call.
+func (c *Client) observe(backend, model string, tok usage.Tokens, started time.Time, err error) {
+	if c == nil || c.Usage == nil {
+		return
+	}
+	base := ""
+	if backend == "openai" {
+		base = strings.TrimRight(c.get("llm_base_url"), "/")
+	}
+	call := usage.Call{
+		Provider: usage.ProviderFor(backend, base), Model: model,
+		Surface: c.surface, Agent: c.agent,
+		InputTokens: tok.Input, OutputTokens: tok.Output,
+		LatencyMS: time.Since(started).Milliseconds(),
+	}
+	if err != nil {
+		call.Error = err.Error()
+	}
+	c.Usage.Observe(call)
+}
+
 func (c *Client) Backend() string {
 	switch b := strings.ToLower(c.get("llm")); b {
 	case "ollama", "claude", "openai":
@@ -143,17 +189,23 @@ func (c *Client) Complete(prompt, backend string) (string, error) {
 	case "ollama":
 		// think:false matters: a reasoning model otherwise spends seconds
 		// emitting a chain of thought nobody reads here
+		started := time.Now()
 		out, err := c.post(c.ollamaURL()+"/api/generate", nil, map[string]any{
 			"model": c.model(), "prompt": prompt, "stream": false, "think": false})
 		if err != nil {
+			c.observe(backend, c.model(), usage.Tokens{}, started, err)
 			return "", err
 		}
 		var r struct {
-			Response string `json:"response"`
+			Response   string `json:"response"`
+			PromptEval int    `json:"prompt_eval_count"`
+			Eval       int    `json:"eval_count"`
 		}
 		if err := json.Unmarshal(out, &r); err != nil {
+			c.observe(backend, c.model(), usage.Tokens{}, started, err)
 			return "", err
 		}
+		c.observe(backend, c.model(), usage.FromOllama(r.PromptEval, r.Eval), started, nil)
 		return strings.TrimSpace(r.Response), nil
 
 	case "openai":
@@ -165,10 +217,12 @@ func (c *Client) Complete(prompt, backend string) (string, error) {
 		if k := c.apiKey(); k != "" {
 			headers["Authorization"] = "Bearer " + k
 		}
+		started := time.Now()
 		out, err := c.post(base+"/chat/completions", headers, map[string]any{
 			"model": c.model(), "stream": false, "temperature": 0.2,
 			"messages": []map[string]string{{"role": "user", "content": prompt}}})
 		if err != nil {
+			c.observe(backend, c.model(), usage.Tokens{}, started, err)
 			return "", err
 		}
 		var r struct {
@@ -177,13 +231,22 @@ func (c *Client) Complete(prompt, backend string) (string, error) {
 					Content string `json:"content"`
 				} `json:"message"`
 			} `json:"choices"`
+			Usage struct {
+				PromptTokens     int `json:"prompt_tokens"`
+				CompletionTokens int `json:"completion_tokens"`
+			} `json:"usage"`
 		}
 		if err := json.Unmarshal(out, &r); err != nil {
+			c.observe(backend, c.model(), usage.Tokens{}, started, err)
 			return "", err
 		}
+		tok := usage.FromOpenAI(r.Usage.PromptTokens, r.Usage.CompletionTokens)
 		if len(r.Choices) == 0 {
-			return "", fmt.Errorf("no choices returned")
+			err := fmt.Errorf("no choices returned")
+			c.observe(backend, c.model(), tok, started, err)
+			return "", err
 		}
+		c.observe(backend, c.model(), tok, started, nil)
 		return strings.TrimSpace(r.Choices[0].Message.Content), nil
 
 	case "claude":
@@ -198,21 +261,29 @@ func (c *Client) Complete(prompt, backend string) (string, error) {
 		if model == "qwen3.5:4b" { // the Ollama default is meaningless here
 			model = "claude-sonnet-5"
 		}
+		started := time.Now()
 		out, err := c.post("https://api.anthropic.com/v1/messages", map[string]string{
 			"x-api-key": key, "anthropic-version": "2023-06-01"}, map[string]any{
 			"model": model, "max_tokens": 1024,
 			"messages": []map[string]string{{"role": "user", "content": prompt}}})
 		if err != nil {
+			c.observe(backend, model, usage.Tokens{}, started, err)
 			return "", err
 		}
 		var r struct {
 			Content []struct {
 				Text string `json:"text"`
 			} `json:"content"`
+			Usage struct {
+				InputTokens  int `json:"input_tokens"`
+				OutputTokens int `json:"output_tokens"`
+			} `json:"usage"`
 		}
 		if err := json.Unmarshal(out, &r); err != nil {
+			c.observe(backend, model, usage.Tokens{}, started, err)
 			return "", err
 		}
+		c.observe(backend, model, usage.FromAnthropic(r.Usage.InputTokens, r.Usage.OutputTokens), started, nil)
 		var b strings.Builder
 		for _, part := range r.Content {
 			b.WriteString(part.Text)

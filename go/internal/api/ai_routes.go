@@ -139,7 +139,7 @@ func (s *Server) consolidateMemory(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		before := note.Body
-		after := s.AI.ConsolidateMemory(before)
+		after := s.AI.WithSurface("consolidate", agentFor(r)).ConsolidateMemory(before)
 		if after == "" || strings.TrimSpace(after) == strings.TrimSpace(before) {
 			continue
 		}
@@ -218,7 +218,7 @@ func (s *Server) audioMemo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	transcript := s.AI.Transcribe(data, filename)
+	transcript := s.AI.WithSurface("transcribe", agentFor(r)).Transcribe(data, filename)
 	title := strings.TrimSpace(r.FormValue("title"))
 	if title == "" {
 		title = "Audio memo " + stamp

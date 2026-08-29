@@ -205,7 +205,7 @@ func (s *Server) rememberOne(w http.ResponseWriter, r *http.Request, m memoryIn)
 
 	facts := []string{text}
 	if m.Infer == nil || *m.Infer {
-		facts = s.AI.ExtractFacts(text)
+		facts = s.AI.WithSurface("extract", agentFor(r)).ExtractFacts(text)
 	}
 
 	_, readErr := s.Vault.Read(rel)
@@ -272,7 +272,7 @@ func (s *Server) reconcileFact(w http.ResponseWriter, r *http.Request, rel, fact
 			candidates = append(candidates, h.Entry)
 			byID[h.ID] = h
 		}
-		decision = s.AI.DecideMemoryAs(fact, strings.TrimSpace(m.Origin), m.Human, candidates)
+		decision = s.AI.WithSurface("reconcile", agentFor(r)).DecideMemoryAs(fact, strings.TrimSpace(m.Origin), m.Human, candidates)
 		if decision.Target != "" {
 			target, ok := byID[decision.Target]
 			if !ok {

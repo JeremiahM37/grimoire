@@ -4,6 +4,7 @@ import { $, api, toast, toastAction, esc, slugify } from "/util.js";
 import { whoami, requireSignIn, renderIdentity } from "/signin.js";
 import { openConnectors } from "/connectors.js";
 import { openAdmin } from "/admin.js";
+import { openUsage } from "/usage.js";
 import { mdToHtml, hydrateDynamicBlocks, headingId, setNoteIndex, setNoteOpener } from "/markdown.js";
 import { Editor } from "/editor.js";
 import { Plugins } from "/plugins.js";
@@ -1258,6 +1259,7 @@ const COMMANDS = [
   { icon: "⚙", name: "Open settings", run: openSettings },
   { icon: "🔌", name: "Connectors (pull from Slack, Jira, Drive…)", run: openConnectors },
   { icon: "👥", name: "People, spaces & API keys", run: openAdmin },
+  { icon: "📊", name: "AI usage & agent activity", run: openUsage },
   { icon: "🔒", name: "Encrypt this note (at rest)", run: () => cryptNote("encrypt") },
   { icon: "🔓", name: "Decrypt this note", run: () => cryptNote("decrypt") },
   { icon: "🗑", name: "Open trash", run: openTrash },

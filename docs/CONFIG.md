@@ -56,3 +56,18 @@ The checks exist because these failures are silent: `/api/health` returns
 `ok: true` while memory is unqueryable, while the index has drifted from the
 vault, or while the credential vault is locked and every `use_credential` call
 is failing.
+
+
+## AI usage accounting
+
+Every model call Grimoire makes is recorded in the index — provider, model,
+surface, agent, tokens, latency and cost — and reported at `GET /api/usage`
+and `GET /api/usage/agents`.
+
+This covers Grimoire's OWN calls only. It is mounted by agents and never sees
+an agent's conversation with its provider, so it cannot and does not report
+that spend.
+
+Prices are a reference table checked on the date the API returns as
+`prices_updated`. Reconcile against your provider's invoice; providers change
+rates and negotiate them.

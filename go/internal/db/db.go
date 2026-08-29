@@ -119,6 +119,20 @@ CREATE INDEX IF NOT EXISTS idx_memory_entries_category ON memory_entries(categor
 -- saved: measured at 13.7ms -> 23.6ms over a thousand entries, a 70% regression
 -- on the case where the bound does not even bind.
 CREATE INDEX IF NOT EXISTS idx_memory_entries_stamp ON memory_entries(stamp DESC, id DESC);
+-- Every model call grimoire made itself: ask, rerank, intent, summarize, embed.
+-- NOT an agent's own token spend, which never passes through this process.
+CREATE TABLE IF NOT EXISTS model_calls(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  at TEXT NOT NULL, provider TEXT NOT NULL DEFAULT '', model TEXT NOT NULL DEFAULT '',
+  surface TEXT NOT NULL DEFAULT '', agent TEXT NOT NULL DEFAULT '',
+  input_tokens INTEGER NOT NULL DEFAULT 0, output_tokens INTEGER NOT NULL DEFAULT 0,
+  latency_ms INTEGER NOT NULL DEFAULT 0,
+  cost REAL NOT NULL DEFAULT 0, cost_known INTEGER NOT NULL DEFAULT 0,
+  error TEXT NOT NULL DEFAULT ''
+);
+-- The dashboard always asks "since when", so time leads the index.
+CREATE INDEX IF NOT EXISTS idx_model_calls_at ON model_calls(at DESC);
+CREATE INDEX IF NOT EXISTS idx_model_calls_provider ON model_calls(provider);
 CREATE TABLE IF NOT EXISTS memory_entities(
   note TEXT NOT NULL, id TEXT NOT NULL, entity TEXT NOT NULL
 );
