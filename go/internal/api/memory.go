@@ -173,6 +173,22 @@ func (s *Server) rememberOne(w http.ResponseWriter, r *http.Request, m memoryIn)
 		return
 	}
 	agent := strings.TrimSpace(m.Agent)
+	// A verified network identity outranks the agent field in the body, for
+	// the same reason it outranks the header: both are the caller describing
+	// itself. This is the surface where it matters most — reconciliation
+	// compares authorship to decide whether a correction may supersede, so an
+	// agent that could name itself could also name itself something the
+	// lattice treats differently.
+	//
+	// It is not allowed to break a write. A device name that fails the pattern
+	// below falls back rather than 400ing a memory the caller was entitled to
+	// store; unverified-but-valid beats verified-but-unstorable.
+	if v, ok := verifiedAgent(r); ok && agentRE.MatchString(v) {
+		agent = v
+	}
+	if agent == "" {
+		agent = claimedAgent(r)
+	}
 	if agent == "" {
 		agent = "agent"
 	}

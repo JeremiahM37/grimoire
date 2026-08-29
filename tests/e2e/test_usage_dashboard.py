@@ -200,3 +200,23 @@ def test_it_reads_on_a_phone(page, server):
     overflow = page.evaluate(
         "() => document.documentElement.scrollWidth - document.documentElement.clientWidth")
     assert overflow <= 2, f"the page scrolls sideways by {overflow}px on a phone"
+
+
+def test_the_panel_can_be_dismissed_the_way_every_other_modal_can(page, server):
+    """It hosts usage, identity and connectors and once had only a ✕, which made
+    it the one dialog in the app that trapped you — worst on a phone, where
+    tapping outside is the habit."""
+    _ready(page, server)
+    _open_usage(page)
+    page.keyboard.press("Escape")
+    expect(page.locator("#inspect-modal")).to_be_hidden(timeout=4000)
+
+    _open_usage(page)
+    # A click on the backdrop, not on the panel.
+    page.locator("#inspect-modal").click(position={"x": 5, "y": 5})
+    expect(page.locator("#inspect-modal")).to_be_hidden(timeout=4000)
+
+    # And a click INSIDE must not close it, or the panel is unusable.
+    _open_usage(page)
+    page.locator("#inspect-body").click(position={"x": 5, "y": 5})
+    expect(page.locator("#inspect-modal")).to_be_visible()

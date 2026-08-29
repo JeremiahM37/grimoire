@@ -17,12 +17,22 @@ export async function api(path, opts = {}) {
     // a manual reload. Anything that answers 401 after the app has loaded means
     // "you are no longer signed in", and there is exactly one thing to do
     // about it.
-    if (r.status === 401 && document.body.dataset.ready && !document.body.dataset.signin) {
+    // ...unless the refusal came from the ADMIN gate, which is a different
+    // axis: the caller may be perfectly signed in and simply not carrying the
+    // instance's admin token. Reloading there logs nobody back in, discards
+    // whatever they were doing, and explains nothing — it just looked like the
+    // app blinking. The server names the gate so this does not have to guess.
+    const gate = r.headers.get("X-Grimoire-Gate");
+    if (r.status === 401 && gate !== "admin" &&
+        document.body.dataset.ready && !document.body.dataset.signin) {
       document.body.dataset.signin = "expired";
       location.reload();
     }
     let m = r.statusText; try { m = (await r.json()).detail || m; } catch {}
-    throw new Error(m);
+    const err = new Error(m);
+    err.status = r.status;
+    err.gate = gate || "";
+    throw err;
   }
   return r.status === 204 ? null : r.json();
 }

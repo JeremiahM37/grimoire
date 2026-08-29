@@ -48,7 +48,24 @@ export async function openVault() {
       catch (e) { toast(e.message, true); }
     };
   } else {
-    const secrets = await api("/secrets");
+    // The admin surface can be gated separately from reading (GRIMOIRE_ADMIN_TOKEN),
+    // which is the recommended shape for an instance reachable over a tailnet.
+    // /vault/status answers for anyone, so we get this far and then /secrets
+    // 401s — and an unhandled rejection here left the modal OPEN and EMPTY,
+    // which reads as a broken app rather than as a closed door. Say which it is.
+    let secrets;
+    try {
+      secrets = await api("/secrets");
+    } catch (e) {
+      b.innerHTML = (e.gate === "admin" || e.status === 401 || e.status === 403)
+        ? `<p class="vault-note">The credential vault is part of this instance's
+             <b>administrative surface</b>, which needs its own token
+             (<code>GRIMOIRE_ADMIN_TOKEN</code>). Notes and retrieval stay open;
+             the levers do not. Open the console from a client that carries the
+             token to manage secrets and grants.</p>`
+        : `<p class="vault-note">${esc(e.message)}</p>`;
+      return;
+    }
     const grants = await api("/grants").catch(() => []);
     const audit = await api("/audit").catch(() => []);
     const aicon = { broker: "📤", grant: "🎟", revoke: "✕", revoke_all: "✕",

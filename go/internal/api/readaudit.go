@@ -50,6 +50,10 @@ func (s *Server) auditRead(r *http.Request, path string, allowed bool) {
 	if !p.Anonymous && !p.Unrestricted {
 		ev.User, ev.Name = p.User.ID, p.User.Name
 	}
+	// Who read it, as opposed to on whose account. agentFor prefers a verified
+	// network identity over the name the caller sent, so on a tailnet this is
+	// the machine rather than a string an agent chose for itself.
+	ev.Agent = agentFor(r)
 	s.Reads.Record(ev)
 }
 

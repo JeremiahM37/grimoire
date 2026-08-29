@@ -33,9 +33,15 @@ import (
 
 // Event is one attempt to open one restricted document.
 type Event struct {
-	At      time.Time
-	User    string // account id, or "" for an unauthenticated caller
-	Name    string // account name at the time of the read, for readable output
+	At   time.Time
+	User string // account id, or "" for an unauthenticated caller
+	Name string // account name at the time of the read, for readable output
+	// Agent is the software that read, when something could establish it.
+	// Deliberately separate from Name: an account is a person and an agent is
+	// a program acting for one, and a trail that merged them could not answer
+	// "which of my machines read this" — which on a single-user deployment,
+	// where there is no account at all, is the only question it can answer.
+	Agent   string
 	Path    string
 	Space   string
 	Allowed bool
@@ -49,6 +55,7 @@ type Row struct {
 	At      string `json:"at"`
 	User    string `json:"user"`
 	Name    string `json:"name"`
+	Agent   string `json:"agent,omitempty"`
 	Path    string `json:"path"`
 	Space   string `json:"space"`
 	Allowed bool   `json:"allowed"`
@@ -176,8 +183,8 @@ func (l *Log) write(e Event) {
 		allowed = 1
 	}
 	_ = l.db.Exec(
-		`INSERT INTO read_audit(at, user, name, path, space, allowed, route, addr) VALUES(?,?,?,?,?,?,?,?)`,
-		at.UTC().Format(time.RFC3339), e.User, e.Name, e.Path, e.Space, allowed, e.Route, e.Addr)
+		`INSERT INTO read_audit(at, user, name, agent, path, space, allowed, route, addr) VALUES(?,?,?,?,?,?,?,?,?)`,
+		at.UTC().Format(time.RFC3339), e.User, e.Name, e.Agent, e.Path, e.Space, allowed, e.Route, e.Addr)
 }
 
 // Record queues an event. It never blocks: a full buffer drops the event and
@@ -285,7 +292,7 @@ func (l *Log) Recent(q Query) ([]Row, error) {
 	if l == nil || l.db == nil {
 		return nil, nil
 	}
-	sqlText := `SELECT id, at, user, name, path, space, allowed, route, addr FROM read_audit`
+	sqlText := `SELECT id, at, user, name, agent, path, space, allowed, route, addr FROM read_audit`
 	var where []string
 	var args []any
 	if p := strings.TrimSpace(q.Path); p != "" {
@@ -318,7 +325,7 @@ func (l *Log) Recent(q Query) ([]Row, error) {
 	for rows.Next() {
 		var r Row
 		var allowed int
-		if err := rows.Scan(&r.ID, &r.At, &r.User, &r.Name, &r.Path, &r.Space, &allowed, &r.Route, &r.Addr); err != nil {
+		if err := rows.Scan(&r.ID, &r.At, &r.User, &r.Name, &r.Agent, &r.Path, &r.Space, &allowed, &r.Route, &r.Addr); err != nil {
 			return nil, err
 		}
 		r.Allowed = allowed == 1

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
+	"strings"
 	"testing"
 
 	"github.com/JeremiahM37/grimoire/go/internal/identity"
@@ -315,4 +316,80 @@ func TestUnmappingRevokesTheSignIn(t *testing.T) {
 		t.Error("unmapping did not revoke access — per-device revocation is the " +
 			"reason to prefer this over one shared token")
 	}
+}
+
+// ------------------------- the surfaces attribution actually lands on
+//
+// These exist because the first version shipped with identity reaching the
+// usage ledger and NOTHING ELSE, and it took running it in production to
+// notice. The ledger was the surface with a test; memory and the read trail
+// were the surfaces that mattered.
+
+func TestAVerifiedIdentityOutranksTheAgentFieldInTheBody(t *testing.T) {
+	_, h := tailnetServer(t, true)
+	// The body names an agent, which is how MCP clients have always written
+	// memory. It is still the caller describing itself.
+	req := requestFor(t, "POST", "/api/memory", map[string]any{
+		"text": "the identity probe fact is recorded", "topic": "identity-probe",
+		"agent": "not-really-me",
+	})
+	req.RemoteAddr = "100.64.0.9:41000"
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+	if w.Code != http.StatusOK && w.Code != http.StatusCreated {
+		t.Fatalf("remember = %d: %s", w.Code, w.Body)
+	}
+
+	lw := asPeer(t, h, "GET", "/api/memory", "100.64.0.9:41000", nil)
+	var got string
+	for _, e := range decodeEntries(t, lw) {
+		if strings.Contains(e.Text, "identity probe fact") {
+			got = e.Agent
+		}
+	}
+	if got != "laptop" {
+		t.Errorf("memory recorded agent %q, want laptop — reconciliation compares "+
+			"authorship to decide what may supersede, so an agent that can name "+
+			"itself can choose how the authority lattice treats it", got)
+	}
+}
+
+// A device name the pattern rejects must not turn a legitimate write into a
+// 400. Unverified-but-storable beats verified-but-unstorable.
+func TestAnUnstorableVerifiedNameFallsBackInsteadOfFailingTheWrite(t *testing.T) {
+	s, h := testServer(t)
+	s.Identity = identity.New(fakeBackend{
+		name: "tailscale", peer: "100.64.0.9", verified: true,
+		id: identity.Identity{Subject: "tailscale:x", Device: "!!! not a valid name !!!"},
+	})
+	req := requestFor(t, "POST", "/api/memory", map[string]any{
+		"text": "a fact from a badly named device", "agent": "fallback-agent",
+	})
+	req.RemoteAddr = "100.64.0.9:41000"
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+	if w.Code != http.StatusOK && w.Code != http.StatusCreated {
+		t.Fatalf("a write was refused because the DEVICE name was odd: %d %s", w.Code, w.Body)
+	}
+}
+
+// entryOutLite mirrors the memory list shape this test needs.
+type entryOutLite struct {
+	Text  string `json:"text"`
+	Agent string `json:"agent"`
+}
+
+func decodeEntries(t *testing.T, w *httptest.ResponseRecorder) []entryOutLite {
+	t.Helper()
+	var out []entryOutLite
+	if err := json.Unmarshal(w.Body.Bytes(), &out); err == nil {
+		return out
+	}
+	var wrapped struct {
+		Entries []entryOutLite `json:"entries"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &wrapped); err != nil {
+		t.Fatalf("decoding memory list: %s", w.Body.String()[:200])
+	}
+	return wrapped.Entries
 }

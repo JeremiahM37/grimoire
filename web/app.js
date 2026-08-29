@@ -995,6 +995,20 @@ async function inspectQuery(q, trustedOnly) {
   } catch (e) { b.innerHTML = `<p class="vault-note">${esc(e.message)}</p>`; }
 }
 $("#inspect-close").onclick = () => $("#inspect-modal").classList.add("hidden");
+/* Escape and a backdrop click close it, the way every other modal here does.
+   This one hosts the usage, identity and connector panels and had only the ✕,
+   so it was the one dialog in the app that trapped you — worst on a phone,
+   where the ✕ is a small target and dismissing by tapping outside is the
+   habit. */
+$("#inspect-modal").addEventListener("click", (e) => {
+  if (e.target.id === "inspect-modal") $("#inspect-modal").classList.add("hidden");
+});
+addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !$("#inspect-modal").classList.contains("hidden")) {
+    e.preventDefault();
+    $("#inspect-modal").classList.add("hidden");
+  }
+});
 
 /* Agent briefing viewer — the standing context agents receive from the
    get_briefing MCP tool (pinned + onboarding + recent memories). The human

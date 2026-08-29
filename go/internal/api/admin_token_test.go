@@ -113,3 +113,46 @@ func TestASignedInAdministratorDoesNotNeedTheToken(t *testing.T) {
 		t.Error("a member reached the connector configuration")
 	}
 }
+
+// The console reloads to a sign-in screen when a 401 says the session expired.
+// The admin gate is a DIFFERENT axis — a caller can be perfectly signed in and
+// simply not hold the instance's token — so it names itself, and clicking an
+// admin panel stops reloading the page and explaining nothing.
+func TestTheAdminGateNamesItselfSoTheConsoleDoesNotReload(t *testing.T) {
+	s, h := testServer(t)
+	s.AdminToken = "the-admin-token"
+	handler := s.requireAdminToken(h)
+
+	req := httptest.NewRequest("GET", "/api/secrets", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("secrets without the token = %d, want 401", w.Code)
+	}
+	if got := w.Header().Get("X-Grimoire-Gate"); got != "admin" {
+		t.Errorf("gate header = %q, want admin — without it the console cannot "+
+			"tell an expired session from a missing admin token, and reloads", got)
+	}
+
+	// A non-admin route's 401 must NOT carry it, or the console would stop
+	// recovering from the expiry it exists to handle.
+	req = httptest.NewRequest("GET", "/api/notes", nil)
+	w = httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	if got := w.Header().Get("X-Grimoire-Gate"); got == "admin" {
+		t.Error("a non-admin route claimed the admin gate")
+	}
+}
+
+func TestTheGateHeaderIsAbsentWhenTheTokenIsCorrect(t *testing.T) {
+	s, h := testServer(t)
+	s.AdminToken = "the-admin-token"
+	handler := s.requireAdminToken(h)
+	req := httptest.NewRequest("GET", "/api/secrets", nil)
+	req.Header.Set("X-Grimoire-Admin", "the-admin-token")
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	if w.Header().Get("X-Grimoire-Gate") != "" {
+		t.Error("an accepted request was marked as gated")
+	}
+}

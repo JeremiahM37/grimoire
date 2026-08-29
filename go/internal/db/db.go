@@ -202,6 +202,7 @@ CREATE TABLE IF NOT EXISTS audit(
 -- reads — never search. See internal/readlog for why both limits are there.
 CREATE TABLE IF NOT EXISTS read_audit(
   id INTEGER PRIMARY KEY, at TEXT NOT NULL, user TEXT, name TEXT,
+  agent TEXT NOT NULL DEFAULT '',
   path TEXT NOT NULL, space TEXT, allowed INTEGER NOT NULL,
   route TEXT, addr TEXT
 );
@@ -356,6 +357,10 @@ var addedColumns = []struct{ table, column, decl string }{
 	// The fact this one contradicts but was not allowed to supersede. Stored so
 	// open disagreements are a query rather than a walk of every memory note.
 	{"memory_entries", "challenges", "TEXT NOT NULL DEFAULT ''"},
+	// Which agent read, as distinct from which account. On a single-user
+	// deployment there is no account, so without this the trail can say a
+	// restricted note was read and not by what — which is most of the question.
+	{"read_audit", "agent", "TEXT NOT NULL DEFAULT ''"},
 }
 
 func hasColumn(conn *sql.DB, table, column string) (bool, error) {

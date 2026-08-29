@@ -563,6 +563,12 @@ func (s *Server) requireAdminToken(next http.Handler) http.Handler {
 		}
 		got := sha256.Sum256([]byte(presented))
 		if subtle.ConstantTimeCompare(got[:], want[:]) != 1 {
+			// Say WHICH gate refused. The console treats a 401 as "your session
+			// expired" and reloads to the sign-in screen, which is right for an
+			// expired cookie and wrong here: the admin token is a separate axis
+			// from being signed in, and reloading turned every click on an
+			// admin panel into a page reload that explained nothing.
+			w.Header().Set("X-Grimoire-Gate", "admin")
 			writeErr(w, http.StatusUnauthorized,
 				"this endpoint administers the instance and needs the admin token")
 			return

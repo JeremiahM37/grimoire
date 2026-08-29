@@ -223,3 +223,40 @@ func TestOversizedFieldsAreClipped(t *testing.T) {
 		t.Fatalf("path not clipped: %d bytes", len(rows[0].Path))
 	}
 }
+
+// The trail has to say WHAT read a note, not only on whose account.
+//
+// On a single-user deployment there is no account at all, so an entry with
+// only a user column answers none of the question. And an agent is not a
+// person: merging the two into one name could not distinguish "I opened this"
+// from "something running as me opened this", which is the distinction the
+// trail exists for once agents are doing the reading.
+func TestTheAgentIsRecordedSeparatelyFromTheAccount(t *testing.T) {
+	l := New(open(t))
+	l.Start()
+	l.Record(Event{User: "u1", Name: "ada", Agent: "laptop",
+		Path: "hr/reviews.md", Space: "hr", Allowed: true, Route: "GET /api/notes"})
+	// No account, which is every single-user install.
+	l.Record(Event{Agent: "MediaServer",
+		Path: "hr/reviews.md", Space: "hr", Allowed: true, Route: "GET /api/notes"})
+	l.Flush()
+	l.Close()
+
+	rows, err := l.Recent(Query{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("want 2 rows, got %d", len(rows))
+	}
+	if rows[0].Agent != "MediaServer" {
+		t.Errorf("agent = %q, want MediaServer — with no account this is the "+
+			"only thing that says who read", rows[0].Agent)
+	}
+	if rows[0].Name != "" {
+		t.Errorf("name = %q; an agent must not be written into the account column", rows[0].Name)
+	}
+	if rows[1].Agent != "laptop" || rows[1].Name != "ada" {
+		t.Errorf("row = %+v, want both the account (ada) and the agent (laptop)", rows[1])
+	}
+}
