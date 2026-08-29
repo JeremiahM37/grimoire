@@ -49,10 +49,17 @@ var routeAccess = map[string]access{
 	"GET /api/admin/reads/anomalies": admin,  // bursts in that trail
 	"GET /api/health":                public, // liveness; reveals counts, not content
 	"GET /api/me":                    public, // the console asks this BEFORE signing in
-	"POST /api/auth/login":           public, // the sign-in route itself
-	"POST /api/auth/logout":          public,
-	"POST /api/users":                public, // ONLY when no account exists; admin-gated after
-	"GET /metrics":                   public, // route classes and counts, never content
+	// Reports only what the caller already is — its own peer address, the
+	// name it already sent, and which identity mechanisms are configured. It
+	// deliberately returns no note content and no secret. Open because the
+	// failure mode of identity configuration is silence, and the operator
+	// debugging it has to be able to read this from the client that is
+	// failing, which by definition is not being identified.
+	"GET /api/identity":     public,
+	"POST /api/auth/login":  public, // the sign-in route itself
+	"POST /api/auth/logout": public,
+	"POST /api/users":       public, // ONLY when no account exists; admin-gated after
+	"GET /metrics":          public, // route classes and counts, never content
 	// The published site. Public BY DESIGN and the only routes here that serve
 	// note content to nobody in particular — which is why they exist only when
 	// the operator turns publishing on, and serve only notes whose author

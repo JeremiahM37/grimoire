@@ -126,6 +126,35 @@ unauthenticated public bind would publish the vault *and* the ability to spend
 its secrets. Put it behind your own TLS (a reverse proxy, `tailscale serve`, or
 a tunnel) and give the client the URL plus the token.
 
+## Know which agent is actually asking
+
+Once agents run on more than one machine, the name on a memory stops being a
+detail. The authority lattice, the read-audit trail and the cost report are all
+keyed on who said something — and that name was a header the caller set about
+itself.
+
+An overlay network already authenticated the caller before Grimoire saw the
+connection, so ask it:
+
+```bash
+GRIMOIRE_IDENTITY=tailscale grimoire      # or zerotier, mtls, proxy
+```
+
+`GET /api/identity` then reports the verified caller, what it *claimed* to be,
+and the name that will actually be recorded — the three things you need to tell
+a working configuration from one that silently never matches.
+
+Off unless you set it, and it is deliberately two separate decisions. A
+verified identity always replaces the self-asserted name for **attribution**.
+It grants **access** only where you mapped it to an account:
+
+```bash
+grimoire user map tailscale jam@github jam
+```
+
+Identity never comes from a forwarded header, even behind a trusted proxy — a
+caller that could name its own address could claim any node on the overlay.
+
 ## Pull in what you already wrote elsewhere
 
 Ten connectors write into the vault as ordinary markdown with provenance in the

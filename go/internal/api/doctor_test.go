@@ -2,7 +2,10 @@ package api
 
 import (
 	"net/http"
+	"strings"
 	"testing"
+
+	"github.com/JeremiahM37/grimoire/go/internal/identity"
 )
 
 // Each check must FIRE on the condition it exists for. A diagnostic that only
@@ -121,5 +124,35 @@ func TestEveryNonOKCheckOffersARemedy(t *testing.T) {
 		if c.Status != StatusOK && c.Fix == "" {
 			t.Errorf("%s is %s with no fix offered: %s", name, c.Status, c.Detail)
 		}
+	}
+}
+
+// Identity's failure mode is silence, so doctor has to say something about it
+// in both states — including the ordinary one where it is off, since "off"
+// and "configured but never matching" are the two things an operator confuses.
+func TestDoctorReportsIdentityInBothStates(t *testing.T) {
+	s, h := testServer(t)
+
+	_, checks := runDoctor(t, h)
+	c, ok := checks["caller identity"]
+	if !ok {
+		t.Fatal("doctor does not mention caller identity at all")
+	}
+	if c.Status != StatusOK {
+		t.Errorf("status = %v; identity being off is not a fault", c.Status)
+	}
+	if !strings.Contains(c.Detail, "not configured") {
+		t.Errorf("detail = %q, want it to say identity is off", c.Detail)
+	}
+	if c.Fix == "" {
+		t.Error("a check that reports a state without saying how to change it " +
+			"has moved the work rather than done it")
+	}
+
+	s.Identity = identity.New(fakeBackend{name: "tailscale", peer: "100.64.0.9"})
+	_, checks = runDoctor(t, h)
+	c = checks["caller identity"]
+	if !strings.Contains(c.Detail, "tailscale") {
+		t.Errorf("detail = %q, want the configured backends named", c.Detail)
 	}
 }

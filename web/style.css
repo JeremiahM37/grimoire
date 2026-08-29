@@ -625,5 +625,8 @@ details.folder .folder-head[data-dir="memory"] { color: var(--accent); }
   font-variant-numeric: tabular-nums; white-space: nowrap; }
 .usage-table tr.err td { color: #c0392b; }
 .usage-unknown { opacity: .6; font-style: italic; }
+/* A verified identity is the one thing on this screen that is stronger than
+   what the caller said about itself, so it is the one thing marked. */
+.id-ok { color: var(--link); font-weight: 600; }
 .usage-bar { display: inline-block; height: 4px; background: var(--accent, #4a6);
   opacity: .35; margin-left: 6px; vertical-align: middle; border-radius: 2px; }

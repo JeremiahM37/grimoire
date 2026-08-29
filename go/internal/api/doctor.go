@@ -73,6 +73,7 @@ func (s *Server) runChecks() []Check {
 		s.checkMemoryIsQueryable(),
 		s.checkEmbedder(),
 		s.checkCredentialVault(),
+		s.checkIdentity(),
 	}
 }
 
@@ -221,5 +222,27 @@ func (s *Server) checkCredentialVault() Check {
 		return c
 	}
 	c.Status, c.Detail = StatusOK, "unlocked"
+	return c
+}
+
+// checkIdentity reports whether caller identification is doing anything.
+//
+// Its failure mode is silence. A backend that never matches — a socket this
+// process cannot read, a ZeroTier network with no members, a proxy list that
+// does not include the proxy — looks exactly like one that works: requests
+// succeed, the console renders, and every name in the audit trail is quietly
+// the one the caller chose for itself. So this reports what is configured and
+// whether the caller reaching it right now was actually identified, which is
+// the question an operator is really asking.
+func (s *Server) checkIdentity() Check {
+	c := Check{Name: "caller identity"}
+	if !s.Identity.Enabled() {
+		c.Status = StatusOK
+		c.Detail = "not configured; callers are attributed by the name they send"
+		c.Fix = "set GRIMOIRE_IDENTITY to have an overlay network vouch for them"
+		return c
+	}
+	names := strings.Join(s.Identity.Names(), ", ")
+	c.Status, c.Detail = StatusOK, "backends: "+names
 	return c
 }

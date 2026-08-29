@@ -60,6 +60,12 @@ const sessionCookie = "grimoire_session"
 // withPrincipal resolves the caller and puts them in the request context.
 func (s *Server) withPrincipal(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Resolved before the principal because resolve() consults it, and
+		// stashed on the request so handlers and attribution read one answer
+		// rather than each asking the network again.
+		if id, ok := s.Identity.Identify(r); ok {
+			r = r.WithContext(context.WithValue(r.Context(), identityKey{}, id))
+		}
 		c := &caller{principal: s.resolve(r)}
 		if s.Auth != nil && s.Auth.Enabled() {
 			c.enabled = true
@@ -84,6 +90,18 @@ func (s *Server) resolve(r *http.Request) *auth.Principal {
 	}
 	if key := bearer(r); key != "" {
 		if u, err := s.Auth.UserForAPIKeyFrom(key, clientAddr(r)); err == nil {
+			if p, err := s.Auth.PrincipalFor(u); err == nil {
+				return p
+			}
+		}
+	}
+	// A verified network identity signs in only where the operator mapped it
+	// to an account. Knowing truthfully who is calling is not the same as
+	// deciding what they may read, and an identity that mapped itself would
+	// make every device on the overlay an account — which is precisely the
+	// "unmapped means everyone" leak the identities table exists to refuse.
+	if id, ok := identityOf(r); ok && id.Verified {
+		if u, err := s.Auth.UserForIdentity(id.Backend, identitySubject(id)); err == nil {
 			if p, err := s.Auth.PrincipalFor(u); err == nil {
 				return p
 			}

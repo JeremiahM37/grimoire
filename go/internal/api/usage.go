@@ -148,11 +148,33 @@ func (s *Server) agentActivity(w http.ResponseWriter, r *http.Request) {
 
 // agentFor names the caller for attribution.
 //
-// MCP clients set GRIMOIRE_AGENT_NAME and the server forwards it as a header,
-// so a bill decomposes by which agent caused the work. A request without one is
-// the console or a background job and is attributed to nobody rather than being
-// guessed at — a wrong name in a ledger is worse than an absent one.
+// A verified network identity wins over anything the caller said about itself.
+// That is the point of resolving one: this name reaches the usage ledger, the
+// read-audit trail and the authority lattice that decides whether a human's
+// correction outranks an agent's rewrite, and until an overlay could vouch for
+// it the name was simply whatever the caller typed in a header.
+//
+// Absent a verified identity the header is used exactly as before. MCP clients
+// set GRIMOIRE_AGENT_NAME and the server forwards it, so a bill decomposes by
+// which agent caused the work. A request with neither is the console or a
+// background job and is attributed to nobody rather than being guessed at — a
+// wrong name in a ledger is worse than an absent one.
 func agentFor(r *http.Request) string {
+	if r == nil {
+		return ""
+	}
+	if name, ok := verifiedAgent(r); ok {
+		return name
+	}
+	return claimedAgent(r)
+}
+
+// claimedAgent is what the caller says it is, with nothing checking.
+//
+// Kept separate from agentFor so the two can be compared: /whoami reports both,
+// because a claim that disagrees with a verified identity is the signal an
+// operator needs and a single merged value would hide it.
+func claimedAgent(r *http.Request) string {
 	if r == nil {
 		return ""
 	}

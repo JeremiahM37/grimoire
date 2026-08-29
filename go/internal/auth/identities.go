@@ -97,3 +97,21 @@ func (s *Store) ResolveIdentities(source string, external []string) (users []str
 	}
 	return users, unmapped, nil
 }
+
+// UserForIdentity resolves one external identity to an account.
+//
+// Used by the network-identity backends, where the external id is a tailnet
+// login or a ZeroTier node. The mapping is explicit for the reason at the top
+// of this file: a verified identity says truthfully who is calling, and says
+// nothing at all about what they may read. Somebody has to decide that, once,
+// on purpose.
+func (s *Store) UserForIdentity(source, external string) (User, error) {
+	users, _, err := s.ResolveIdentities(source, []string{external})
+	if err != nil {
+		return User{}, err
+	}
+	if len(users) == 0 {
+		return User{}, ErrNoSuchUser
+	}
+	return s.Get(users[0])
+}

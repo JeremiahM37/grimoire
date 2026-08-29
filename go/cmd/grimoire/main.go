@@ -28,6 +28,7 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/db"
 	"github.com/JeremiahM37/grimoire/go/internal/embed"
 	"github.com/JeremiahM37/grimoire/go/internal/history"
+	"github.com/JeremiahM37/grimoire/go/internal/identity"
 	"github.com/JeremiahM37/grimoire/go/internal/index"
 	"github.com/JeremiahM37/grimoire/go/internal/readlog"
 	"github.com/JeremiahM37/grimoire/go/internal/secrets"
@@ -130,8 +131,10 @@ func newEnv(fetchModel bool) (*env, error) {
 		// The index is the usage store: a model-call row is derived data about
 		// this vault and should vanish with a rebuild rather than become a
 		// second database to back up and migrate.
-		AI:         aiWithUsage(store, vaultSecrets.Get, ix),
-		Auth:       accounts,
+		AI:   aiWithUsage(store, vaultSecrets.Get, ix),
+		Auth: accounts,
+		// Off unless GRIMOIRE_IDENTITY names a backend; see internal/identity.
+		Identity:   identity.FromEnv(),
 		Reads:      reads,
 		Connectors: connectorStore,
 		Web: &websearch.Client{

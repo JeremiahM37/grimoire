@@ -25,6 +25,7 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/connectors"
 	"github.com/JeremiahM37/grimoire/go/internal/crdtstore"
 	"github.com/JeremiahM37/grimoire/go/internal/history"
+	"github.com/JeremiahM37/grimoire/go/internal/identity"
 	"github.com/JeremiahM37/grimoire/go/internal/index"
 	"github.com/JeremiahM37/grimoire/go/internal/markdown"
 	"github.com/JeremiahM37/grimoire/go/internal/readlog"
@@ -37,15 +38,19 @@ import (
 
 // Server holds everything the handlers need.
 type Server struct {
-	Index        *index.Index
-	Vault        *vault.Vault
-	Settings     *settings.Store
-	History      *history.Store
-	Secrets      *secrets.Vault
-	Broker       *secrets.Broker
-	CRDT         *crdtstore.Store
-	AI           *ai.Client
-	Auth         *auth.Store
+	Index    *index.Index
+	Vault    *vault.Vault
+	Settings *settings.Store
+	History  *history.Store
+	Secrets  *secrets.Vault
+	Broker   *secrets.Broker
+	CRDT     *crdtstore.Store
+	AI       *ai.Client
+	Auth     *auth.Store
+	// Identity resolves callers that are not on this machine. Nil or empty
+	// means no resolution, which is the default and preserves the historical
+	// behaviour exactly.
+	Identity     *identity.Resolver
 	Reads        *readlog.Log
 	Connectors   *connectors.Store
 	Runner       *connectors.Runner
@@ -157,6 +162,10 @@ func (s *Server) Routes() http.Handler {
 	// still needs a principal, so an anonymous caller on a multi-user instance
 	// learns nothing — and a single-user deployment, where everyone is
 	// unrestricted, is unaffected.
+	// Open, like /api/whoami: it reports only what the caller already is, and
+	// an operator debugging why identity is not taking effect must be able to
+	// read it from the client that is failing.
+	mux.HandleFunc("GET /api/identity", s.identityWhoami)
 	mux.HandleFunc("GET /api/vault/status", s.userOnly(s.vaultStatus))
 	mux.HandleFunc("POST /api/vault/init", s.adminOnly(s.vaultInit))
 	mux.HandleFunc("POST /api/vault/unlock", s.adminOnly(s.vaultUnlock))

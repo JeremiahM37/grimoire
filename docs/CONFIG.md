@@ -46,6 +46,44 @@ AI/model settings can also be changed live in ⚙ Settings (persisted in the
 vault, no restart). Editor mode (live/classic) and theme are per-device.
 
 
+## Identifying callers on other devices
+
+Off unless `GRIMOIRE_IDENTITY` names a backend. With it unset, callers are
+attributed by the name they send about themselves and nothing changes.
+
+An overlay network already authenticated the caller before Grimoire saw the
+connection, so asking it turns attribution from a claim into a fact. That name
+reaches the usage ledger, the read-audit trail, and the authority lattice that
+decides whether a human's correction outranks an agent's rewrite.
+
+| Var | Default | Meaning |
+|---|---|---|
+| `GRIMOIRE_IDENTITY` | *(empty)* | Comma-separated backends, in order: `tailscale` (or `headscale`), `zerotier`, `mtls`, `proxy`. First one able to answer wins |
+| `GRIMOIRE_IDENTITY_TTL` | `5m` / `2m` | How long a lookup is cached, so identity is not a round-trip per request |
+| `GRIMOIRE_TAILSCALE_ENDPOINT` | `unix:///var/run/tailscale/tailscaled.sock` | tailscaled's LocalAPI. An `http://` base for a containerised daemon |
+| `GRIMOIRE_TAILSCALE_RANGES` | `100.64.0.0/10`, `fd7a:115c:a1e0::/48` | Which peers are looked up at all |
+| `GRIMOIRE_ZEROTIER_API` | `https://api.zerotier.com/api/v1` | Central, or `http://localhost:9993` for a self-hosted controller |
+| `GRIMOIRE_ZEROTIER_NETWORK` | *(empty)* | Network id. Required — without it the backend is inert |
+| `GRIMOIRE_ZEROTIER_TOKEN` / `_FILE` | *(empty)* | Central API token, or a self-hosted controller's `authtoken.secret` |
+| `GRIMOIRE_ZEROTIER_RANGES` | *(empty)* | The network's assigned pool. Strongly recommended: it is what establishes that a packet arrived over ZeroTier |
+| `GRIMOIRE_MTLS_FIELD` | `cn` | Which certificate field names the caller: `cn`, `dns`, `email`, `uri` |
+| `GRIMOIRE_IDENTITY_PROXY_FROM` | *(empty)* | Addresses entitled to assert identity. **Required** — with nobody trusted the proxy backend refuses to run, because a header anyone can set is worse than no identity |
+| `GRIMOIRE_IDENTITY_PROXY_HEADER` | `Remote-User` | The header carrying the user |
+| `GRIMOIRE_IDENTITY_PROXY_DEVICE_HEADER` | *(empty)* | Optional header carrying the machine |
+
+`GET /api/identity` reports which backends are running, how this caller was
+identified, what it *claimed* to be, and the name that will actually be
+recorded. Check it after configuring: the failure mode here is silence — a
+backend that never matches looks exactly like one that works.
+
+**Two things this deliberately does not do.** It never reads a forwarded
+header to decide who is calling, even with `GRIMOIRE_TRUST_PROXY=1`: every
+backend is address-based, so a caller-supplied address would let anyone claim
+any node. And a verified identity does not sign itself in — it authorizes
+nothing until you map it to an account with
+`grimoire user map <backend> <subject> <user>`. Knowing truthfully who is
+calling is not a decision about what they may read.
+
 ## Diagnosing
 
 `grimoire doctor` compares the vault, the index and what an agent can

@@ -21,7 +21,7 @@ import (
 
 func cmdUser(args []string) int {
 	if len(args) == 0 {
-		return fail("usage: grimoire user add|list|passwd …")
+		return fail("usage: grimoire user add|list|passwd|map|unmap|identities …")
 	}
 	e, err := openEnv()
 	if err != nil {
@@ -81,6 +81,52 @@ func cmdUser(args []string) int {
 		}
 		for _, u := range users {
 			fmt.Printf("%-20s %-8s %s\n", u.Name, u.Role, u.Display)
+		}
+		return 0
+
+	// A verified network identity names the caller truthfully and grants it
+	// nothing. This is where an operator decides that a given tailnet login,
+	// ZeroTier node or client certificate IS a particular account — once, on
+	// purpose. Without a mapping the caller is attributed and stays anonymous,
+	// which is the safe direction for an incomplete list.
+	case "map":
+		if len(args) < 4 {
+			return fail("usage: grimoire user map BACKEND SUBJECT USER\n" +
+				"  e.g. grimoire user map tailscale jam@github jam\n" +
+				"  BACKEND is one of: tailscale, zerotier, mtls, proxy\n" +
+				"  SUBJECT is what GET /api/identity reports, without the backend prefix")
+		}
+		u, err := accounts.ByName(args[3])
+		if err != nil {
+			return fail("%v", err)
+		}
+		if err := accounts.MapIdentity(args[1], args[2], u.ID); err != nil {
+			return fail("%v", err)
+		}
+		fmt.Printf("%s identity %q signs in as %s\n", args[1], args[2], u.Name)
+		return 0
+
+	case "unmap":
+		if len(args) < 3 {
+			return fail("usage: grimoire user unmap BACKEND SUBJECT")
+		}
+		if err := accounts.UnmapIdentity(args[1], args[2]); err != nil {
+			return fail("%v", err)
+		}
+		fmt.Printf("%s identity %q no longer signs in\n", args[1], args[2])
+		return 0
+
+	case "identities":
+		ids, err := accounts.Identities()
+		if err != nil {
+			return fail("%v", err)
+		}
+		if len(ids) == 0 {
+			fmt.Println("no identity mappings — verified callers are attributed but sign in as nobody")
+			return 0
+		}
+		for _, id := range ids {
+			fmt.Printf("%-12s %-30s %s\n", id.Source, id.External, id.Name)
 		}
 		return 0
 

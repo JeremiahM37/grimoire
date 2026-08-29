@@ -64,6 +64,9 @@ const usage = `grimoire — local-first AI-native notes
   grimoire serve [--port N]           run the web app + API (the default)
   grimoire user add NAME [--admin]    create an account (prompts for a password)
   grimoire user list                  list accounts
+  grimoire user map BACKEND SUBJECT USER   a verified network identity signs in as USER
+  grimoire user unmap BACKEND SUBJECT      remove that mapping
+  grimoire user identities            list identity mappings
   grimoire user passwd NAME           change an account's password
   grimoire space add NAME PREFIX      create a shared space
   grimoire space list                 list spaces and their prefixes

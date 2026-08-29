@@ -65,14 +65,55 @@ function rollupTable(title, rows, unit = "") {
     </table>`;
 }
 
+/* How callers are identified.
+ *
+ * On this screen because it is the one that answers "who did what", and an
+ * agent name is only worth reading if you know whether anything checked it.
+ * The failure mode of identity configuration is silence — a backend that never
+ * matches looks exactly like one that works — so the enabled mechanisms and
+ * this caller's own result are both shown, including the case where a claimed
+ * name and a verified one disagree. */
+function identityBlock(who) {
+  if (!who) return "";
+  const rows = [];
+  if (!who.enabled) {
+    rows.push(`<p class="vault-note">Callers are attributed by the name they send
+      about themselves, which nothing verifies. Set <code>GRIMOIRE_IDENTITY</code>
+      to have an overlay network, a client certificate or an authenticating proxy
+      vouch for them instead.</p>`);
+  } else {
+    rows.push(`<p class="vault-note">Verifying callers via
+      ${who.backends.map((b) => `<code>${esc(b)}</code>`).join(", ")}.</p>`);
+  }
+  const id = who.identity;
+  const claimed = who.claimed || "";
+  rows.push(`<table class="usage-table"><tbody>
+    <tr><td>this caller</td><td>${who.verified
+      ? `<span class="id-ok">✓ verified</span> ${esc(id.subject || "")}`
+      : '<span class="usage-unknown">unverified</span>'}</td></tr>
+    ${id && id.device ? `<tr><td>device</td><td>${esc(id.device)}</td></tr>` : ""}
+    ${id && id.backend ? `<tr><td>established by</td><td>${esc(id.backend)}</td></tr>` : ""}
+    <tr><td>peer address</td><td>${esc(who.peer || "—")}</td></tr>
+    <tr><td>claims to be</td><td>${claimed
+      ? esc(claimed) + (who.verified && claimed !== who.attributed_to
+          ? ' <span class="usage-unknown" title="The caller sent a name that does not match its verified identity">disputed</span>'
+          : "")
+      : "—"}</td></tr>
+    <tr><td>recorded as</td><td><b>${esc(who.attributed_to || "(nobody)")}</b></td></tr>
+  </tbody></table>`);
+  rows.push(`<p class="vault-note">${esc(who.scope || "")}</p>`);
+  return `<div class="pr-clabel">How callers are identified</div>${rows.join("")}`;
+}
+
 async function render() {
   const body = $("#inspect-body");
   body.innerHTML = '<p class="vault-note">Loading…</p>';
-  let usage, agents;
+  let usage, agents, who;
   try {
-    [usage, agents] = await Promise.all([
+    [usage, agents, who] = await Promise.all([
       api(`/usage?since=${currentWindow}`),
       api(`/usage/agents?since=${currentWindow}`).catch(() => ({ agents: [] })),
+      api(`/identity`).catch(() => null),
     ]);
   } catch (e) {
     body.innerHTML = `<p class="vault-note">${esc(e.message)}</p>`;
@@ -149,6 +190,8 @@ async function render() {
           ${c.error ? `<tr class="err"><td colspan="6">${esc(c.error)}</td></tr>` : ""}`).join("")}
         </tbody>
       </table>` : ""}
+
+    ${identityBlock(who)}
 
     <p class="vault-note">Prices last checked ${esc(usage.prices_updated || "—")}.
       They are a reference table, not a bill: providers change rates and negotiate
