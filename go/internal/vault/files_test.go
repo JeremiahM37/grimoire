@@ -161,3 +161,66 @@ func TestDeleteIsIdempotent(t *testing.T) {
 		t.Errorf("deleting a missing note should be a no-op, got %v", err)
 	}
 }
+
+// A vault can span two filesystems: GRIMOIRE_FOLLOW_SYMLINKS makes a linked
+// directory part of it, and that directory frequently lives on another device.
+// os.Rename cannot cross that boundary, so moving a note out of one failed with
+// "invalid cross-device link" and a 500 — which reads as a broken server rather
+// than a mount that straddles a filesystem.
+func TestCopyAcrossDevicesPreservesContentAndMode(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "src.md")
+	dst := filepath.Join(dir, "sub", "dst.md")
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	body := "# Note\n\nbody with unicode — ✓ and a tab\there\n"
+	if err := os.WriteFile(src, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := copyAcrossDevices(src, dst); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(dst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != body {
+		t.Errorf("content changed across the copy:\n%q", got)
+	}
+	info, err := os.Stat(dst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0o600 {
+		t.Errorf("mode = %v, want 0600 — a private note must not widen on a move",
+			info.Mode().Perm())
+	}
+	// The source is left for the caller to remove, so an interrupted move
+	// cannot lose the note.
+	if _, err := os.Stat(src); err != nil {
+		t.Error("copyAcrossDevices removed the source; the caller must do that " +
+			"only after the copy is known good")
+	}
+}
+
+// No temporary files may survive a successful copy.
+func TestCopyAcrossDevicesLeavesNoTemporaries(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "a.md")
+	if err := os.WriteFile(src, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := copyAcrossDevices(src, filepath.Join(dir, "b.md")); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if strings.HasPrefix(e.Name(), ".grimoire-move-") {
+			t.Errorf("temporary file left behind: %s", e.Name())
+		}
+	}
+}

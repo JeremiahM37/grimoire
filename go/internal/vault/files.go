@@ -1,11 +1,14 @@
 package vault
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/JeremiahM37/grimoire/go/internal/markdown"
@@ -166,7 +169,23 @@ func (v *Vault) Rename(oldRel, newRel string) (string, error) {
 		return "", err
 	}
 	if err := os.Rename(src, dst); err != nil {
-		return "", err
+		// os.Rename cannot move between filesystems, and a vault regularly
+		// spans two: GRIMOIRE_FOLLOW_SYMLINKS makes a linked directory part of
+		// the vault, and that directory frequently lives on another device.
+		// Renaming a note out of one failed with "invalid cross-device link"
+		// and a 500, which reads as a broken server rather than as a mount that
+		// happens to straddle a filesystem boundary.
+		if !errors.Is(err, syscall.EXDEV) {
+			return "", err
+		}
+		if err := copyAcrossDevices(src, dst); err != nil {
+			return "", err
+		}
+		// Only unlink once the copy is safely written. The reverse order loses
+		// the note if the copy fails.
+		if err := os.Remove(src); err != nil {
+			return "", err
+		}
 	}
 	return v.RelOf(dst)
 }
@@ -242,4 +261,42 @@ func (v *Vault) Stat(rel string) (mtime float64, size int64, err error) {
 		return 0, 0, err
 	}
 	return float64(info.ModTime().UnixNano()) / 1e9, info.Size(), nil
+}
+
+// copyAcrossDevices writes src to dst byte-for-byte, for the rename that
+// os.Rename cannot do.
+//
+// Via a temporary file in the destination directory, so an interrupted copy
+// leaves no half-written note where a whole one is expected.
+func copyAcrossDevices(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	info, err := in.Stat()
+	if err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp(filepath.Dir(dst), ".grimoire-move-*")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	defer os.Remove(tmpName) // no-op once the rename below succeeds
+	if _, err := io.Copy(tmp, in); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Sync(); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Chmod(tmpName, info.Mode()); err != nil {
+		return err
+	}
+	return os.Rename(tmpName, dst)
 }
