@@ -244,6 +244,10 @@ func (v *Vault) Lock() {
 type secretEntry struct {
 	Value string         `json:"value"`
 	Meta  map[string]any `json:"meta,omitempty"`
+	// Versions are the values this secret used to hold, newest first. Sealed
+	// with everything else: an old credential is exactly as sensitive as the
+	// one that replaced it.
+	Versions []Version `json:"versions,omitempty"`
 }
 
 func (v *Vault) payloadLocked() (map[string]secretEntry, error) {

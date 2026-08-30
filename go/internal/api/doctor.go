@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"github.com/JeremiahM37/grimoire/go/internal/secrets"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -74,6 +75,7 @@ func (s *Server) runChecks() []Check {
 		s.checkEmbedder(),
 		s.checkCredentialVault(),
 		s.checkIdentity(),
+		s.checkCredentialFreshness(),
 	}
 }
 
@@ -244,5 +246,63 @@ func (s *Server) checkIdentity() Check {
 	}
 	names := strings.Join(s.Identity.Names(), ", ")
 	c.Status, c.Detail = StatusOK, "backends: "+names
+	return c
+}
+
+// checkCredentialFreshness reports credentials that have expired or are about
+// to.
+//
+// A credential dying is the failure this whole store exists around, and it is
+// silent: the provider knows the date, the operator does not, and the first
+// symptom is a service that stopped working for no visible reason. The vault
+// is the one thing that could have said so in advance, so it does.
+//
+// Warn, never fail: an expiring key is a thing to go and fix, not a reason for
+// a healthcheck to report the instance as broken.
+func (s *Server) checkCredentialFreshness() Check {
+	c := Check{Name: "credential freshness"}
+	if s.Secrets == nil || !s.Secrets.IsInitialized() {
+		c.Status, c.Detail = StatusOK, "no credential vault on this instance"
+		return c
+	}
+	if !s.Secrets.IsUnlocked() {
+		// Not a fault: a locked vault is the resting state for a deployment
+		// that unlocks on demand. It does mean this check cannot run.
+		c.Status, c.Detail = StatusOK, "vault locked; expiry not checked"
+		c.Fix = "unlock the vault to have expiring credentials reported here"
+		return c
+	}
+	need, err := s.Secrets.NeedsAttention()
+	if err != nil {
+		c.Status, c.Detail = StatusWarn, err.Error()
+		return c
+	}
+	if len(need) == 0 {
+		c.Status, c.Detail = StatusOK, "no credential is expiring or overdue"
+		return c
+	}
+	var expired, expiring, stale []string
+	for _, i := range need {
+		switch i.Status {
+		case secrets.StatusExpired:
+			expired = append(expired, i.Name)
+		case secrets.StatusExpiring:
+			expiring = append(expiring, i.Name)
+		case secrets.StatusStale:
+			stale = append(stale, i.Name)
+		}
+	}
+	var parts []string
+	if len(expired) > 0 {
+		parts = append(parts, "EXPIRED: "+strings.Join(expired, ", "))
+	}
+	if len(expiring) > 0 {
+		parts = append(parts, "expiring soon: "+strings.Join(expiring, ", "))
+	}
+	if len(stale) > 0 {
+		parts = append(parts, "rotation due: "+strings.Join(stale, ", "))
+	}
+	c.Status, c.Detail = StatusWarn, strings.Join(parts, "; ")
+	c.Fix = "grimoire secret check"
 	return c
 }

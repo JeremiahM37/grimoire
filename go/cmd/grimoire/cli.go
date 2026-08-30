@@ -67,6 +67,15 @@ const usage = `grimoire — local-first AI-native notes
   grimoire user map BACKEND SUBJECT USER   a verified network identity signs in as USER
   grimoire user unmap BACKEND SUBJECT      remove that mapping
   grimoire user identities            list identity mappings
+  grimoire secret init                create the credential vault
+  grimoire secret list                credentials, with what needs rotating
+  grimoire secret add NAME            store one (prompts; --expires, --note, --rotate-days)
+  grimoire secret history NAME        previous values, newest first
+  grimoire secret restore NAME [N]    put a previous value back
+  grimoire secret check               non-zero if anything expired or is due
+  grimoire secret scan                find credentials pasted into notes
+  grimoire secret import FILE.env     load KEY=value lines
+  grimoire run NAME -- cmd            run cmd with the secret in its environment
   grimoire user passwd NAME           change an account's password
   grimoire space add NAME PREFIX      create a shared space
   grimoire space list                 list spaces and their prefixes
@@ -96,6 +105,7 @@ func commands() map[string]func([]string) int {
 		"export": cmdExport, "sync": cmdSync, "agent-setup": cmdAgentSetup,
 		"fetch-model": cmdFetchModel,
 		"user":        cmdUser, "space": cmdSpace,
+		"secret": cmdSecret, "run": cmdRun,
 		"backup": cmdBackup, "restore": cmdRestore,
 		"audit": cmdAudit, "eval": cmdEval,
 	}

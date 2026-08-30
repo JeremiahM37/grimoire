@@ -88,6 +88,9 @@ type secretIn struct {
 	Name  string         `json:"name"`
 	Value string         `json:"value"`
 	Meta  map[string]any `json:"meta"`
+	// Note explains a change and is recorded against the value being replaced,
+	// because that is the row somebody reads when asking why this rotated.
+	Note string `json:"note"`
 }
 
 func (s *Server) addSecret(w http.ResponseWriter, r *http.Request) {
@@ -96,7 +99,9 @@ func (s *Server) addSecret(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "invalid json")
 		return
 	}
-	err := s.Secrets.Put(in.Name, in.Value, in.Meta)
+	// Versioned: a rotation that turns out to be wrong has to be undoable, and
+	// the plain Put that overwrote made it a one-way door.
+	err := s.Secrets.PutVersioned(in.Name, in.Value, in.Meta, in.Note)
 	if s.vaultLocked(w, err) {
 		return
 	}

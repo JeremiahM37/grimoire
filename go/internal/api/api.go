@@ -173,6 +173,13 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/secrets", s.adminOnly(s.listSecrets))
 	mux.HandleFunc("POST /api/secrets", s.adminOnly(s.addSecret))
 	mux.HandleFunc("DELETE /api/secrets/{name}", s.adminOnly(s.deleteSecret))
+	mux.HandleFunc("GET /api/secrets/details", s.adminOnly(s.secretDetails))
+	mux.HandleFunc("GET /api/secrets/scan", s.adminOnly(s.scanSecrets))
+	// Named by literal rather than as /secrets/{name}/versions: that shape is
+	// ambiguous against /secrets/requests/{id} — "requests" is a legal secret
+	// name — and Go's mux is right to refuse to guess.
+	mux.HandleFunc("GET /api/secrets/versions", s.adminOnly(s.secretVersions))
+	mux.HandleFunc("POST /api/secrets/restore", s.adminOnly(s.restoreSecret))
 	mux.HandleFunc("POST /api/secrets/{name}/grant", s.adminOnly(s.makeGrant))
 	mux.HandleFunc("POST /api/secrets/broker", s.brokerUse)
 	mux.HandleFunc("POST /api/secrets/requests", s.userOnly(s.requestGrant))

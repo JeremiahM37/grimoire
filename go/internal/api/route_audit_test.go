@@ -186,14 +186,24 @@ var routeAccess = map[string]access{
 	"GET /api/vault/status":         authed, // lock state only, never a name or value
 
 	// --- instance administration ---
-	"POST /api/vault/init":                       admin,
-	"POST /api/vault/unlock":                     admin,
-	"POST /api/vault/lock":                       admin,
-	"POST /api/vault/change-passphrase":          admin,
-	"GET /api/secrets":                           admin,
-	"POST /api/secrets":                          admin,
-	"DELETE /api/secrets/{name}":                 admin,
-	"POST /api/secrets/{name}/grant":             admin,
+	"POST /api/vault/init":              admin,
+	"POST /api/vault/unlock":            admin,
+	"POST /api/vault/lock":              admin,
+	"POST /api/vault/change-passphrase": admin,
+	"GET /api/secrets":                  admin,
+	"POST /api/secrets":                 admin,
+	"DELETE /api/secrets/{name}":        admin,
+	"POST /api/secrets/{name}/grant":    admin,
+	// History and rollback read and write the vault, so they sit exactly where
+	// the values do. The listing carries no values, but it does carry what an
+	// attacker would most like to know about them — which are unused, which
+	// expire when — so it is gated the same.
+	"GET /api/secrets/details": admin,
+	// The findings carry no values, but "there is an AWS key on line 40 of
+	// ops.md" is still the sentence an attacker would most like to read.
+	"GET /api/secrets/scan":                      admin,
+	"GET /api/secrets/versions":                  admin,
+	"POST /api/secrets/restore":                  admin,
 	"POST /api/secrets/broker":                   authed, // the grant token IS the capability
 	"GET /api/secrets/requests":                  admin,  // the human's approval queue
 	"POST /api/secrets/requests/{id}/approve":    admin,  // mints a grant

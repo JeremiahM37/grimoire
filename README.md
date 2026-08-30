@@ -155,6 +155,35 @@ grimoire user map tailscale jam@github jam
 Identity never comes from a forwarded header, even behind a trusted proxy — a
 caller that could name its own address could claim any node on the overlay.
 
+## Run the credential vault, don't just fill it
+
+The broker is the point: an agent gets a scoped, expiring grant and the server
+makes the call, so the value never reaches the agent. But a store you cannot
+operate is a store nobody rotates, and an unrotated credential is the one that
+leaks. So the operations are there too:
+
+```bash
+grimoire secret add stripe --expires 2026-11-30 --note "billing"
+grimoire secret check          # non-zero if anything expired or is due
+grimoire secret history stripe # what it used to be, and why it changed
+grimoire secret restore stripe # put it back
+grimoire secret scan           # credentials pasted into notes instead of stored
+```
+
+Every write keeps the value it replaced, so **rotation is no longer a one-way
+door** — paste the new key, find out the service was not ready, put the old one
+back. History is sealed with everything else and is never returned: you can see
+*when* and *why* a value changed, never what it was.
+
+`grimoire secret scan` reads your notes, not the vault. A key pasted into a
+note while debugging is the likeliest way a credential escapes a system whose
+substrate is markdown you sync to your phone, and findings are masked — a
+report that quoted the key would copy the leak somewhere new.
+
+`grimoire run NAME -- cmd` puts a value in a child's environment. That hands
+over the value, which is exactly what the broker avoids, so it is for your own
+commands — agents get grants.
+
 ## Pull in what you already wrote elsewhere
 
 Ten connectors write into the vault as ordinary markdown with provenance in the

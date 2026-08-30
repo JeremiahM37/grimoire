@@ -628,5 +628,12 @@ details.folder .folder-head[data-dir="memory"] { color: var(--accent); }
 /* A verified identity is the one thing on this screen that is stronger than
    what the caller said about itself, so it is the one thing marked. */
 .id-ok { color: var(--link); font-weight: 600; }
+/* Credential status. A dead key and a key due for rotation are different
+   problems, so they do not look the same. */
+.v-bad { color: var(--danger); font-weight: 600; font-size: .8em; }
+.v-warn { color: var(--link-open); font-weight: 600; font-size: .8em; }
+.v-attn { color: var(--link-open); }
+.v-hist-box { padding: 0 0 6px 22px; }
+.v-hist-box .v-arow { display: flex; gap: 8px; align-items: center; }
 .usage-bar { display: inline-block; height: 4px; background: var(--accent, #4a6);
   opacity: .35; margin-left: 6px; vertical-align: middle; border-radius: 2px; }

@@ -26,6 +26,51 @@ function grantRemaining(g) {
 }
 
 
+/* One secret's row: the name, and the facts that decide whether to rotate it.
+   Deliberately no value and no control that could reveal one. */
+function secretRow(s, d) {
+  const info = d || {};
+  const badge = {
+    expired: '<span class="v-bad">expired</span>',
+    expiring: '<span class="v-warn">expires soon</span>',
+    stale: '<span class="v-warn">rotation due</span>',
+  }[info.status] || "";
+  const bits = [];
+  if (info.expires) bits.push("expires " + esc(info.expires));
+  bits.push(info.uses ? `${info.uses} use${info.uses === 1 ? "" : "s"}` : "never used");
+  if (info.versions) bits.push(`${info.versions} prior`);
+  return `<div class="v-row"><span>🔑 ${esc(s.name)} ${badge}
+      <br><span class="pm">${bits.join(" · ")}${info.note ? " · " + esc(info.note) : ""}</span></span>
+    <span>${info.versions ? `<button class="icon v-hist" data-n="${esc(s.name)}"
+        title="previous values">🕘</button>` : ""}
+      <button class="icon danger v-del" data-n="${esc(s.name)}">🗑</button></span>
+    </div><div class="v-hist-box" id="hist-${cssId(s.name)}"></div>`;
+}
+
+/* A secret name may contain characters that are not valid in an id. */
+function cssId(name) {
+  return name.replace(/[^A-Za-z0-9_-]/g, "_");
+}
+
+/* Findings are shown masked, because a panel that printed the key it found
+   would copy the leak onto another screen. */
+function showScan(out) {
+  const b = $("#vault-body");
+  const box = document.createElement("div");
+  box.innerHTML = `<div class="pr-clabel">Credentials found in notes</div>
+    ${out.findings.length ? out.findings.map((f) => `<div class="v-arow">
+        <span class="${f.confidence === "high" ? "v-bad" : "v-warn"}">${esc(f.confidence)}</span>
+        <span><b>${esc(f.kind)}</b> — ${esc(f.path)}:${f.line}</span>
+        <code>${esc(f.masked)}</code></div>`).join("")
+      : `<div class="vault-note">Scanned ${out.scanned} notes; nothing that looks
+         like a credential is sitting in them.</div>`}
+    ${out.findings.length ? `<p class="vault-note">Rotate anything real at the
+      issuer first — a key that has been in a synced note should be treated as
+      disclosed — then store it here and edit the note.</p>` : ""}`;
+  b.appendChild(box);
+  box.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
 export async function openVault() {
   $("#vault-modal").classList.remove("hidden");
   const st = await api("/vault/status");
@@ -68,12 +113,20 @@ export async function openVault() {
     }
     const grants = await api("/grants").catch(() => []);
     const audit = await api("/audit").catch(() => []);
+    // Everything about the secrets except their values: what expires, what
+    // nothing has used, what has a value worth rolling back to. These are the
+    // facts a rotation decision needs, and none of them require seeing a key.
+    const detail = await api("/secrets/details").catch(() => ({ secrets: [] }));
+    const byName = {};
+    for (const d of detail.secrets || []) byName[d.name] = d;
     const aicon = { broker: "📤", grant: "🎟", revoke: "✕", revoke_all: "✕",
                     set: "➕", delete: "🗑", change_passphrase: "🔑" };
-    b.innerHTML = `<div class="vault-actions"><span class="vault-note">${secrets.length} secret(s) — values are never shown. Your AI can use them via scoped grants.</span>
+    b.innerHTML = `<div class="vault-actions"><span class="vault-note">${secrets.length} secret(s) — values are never shown. Your AI can use them via scoped grants.${
+        detail.needs_attention ? ` <b class="v-attn">${detail.needs_attention} need attention.</b>` : ""}</span>
+      <button id="v-scan" class="icon" title="find credentials pasted into notes">🔎 Scan notes</button>
       <button id="v-lock" class="icon" title="lock">🔒 Lock</button></div>
-      <div id="v-list">${secrets.map((s) => `<div class="v-row"><span>🔑 ${esc(s.name)}</span>
-        <button class="icon danger v-del" data-n="${esc(s.name)}">🗑</button></div>`).join("") || '<div class="vault-note">No secrets yet.</div>'}</div>
+      <div id="v-list">${secrets.map((s) => secretRow(s, byName[s.name])).join("")
+        || '<div class="vault-note">No secrets yet.</div>'}</div>
       <div class="ask-input-row"><input id="v-name" placeholder="name (e.g. github)">
       <input id="v-val" type="password" placeholder="value / token"><button id="v-add" class="btn">Add</button></div>
       ${grants.length ? `<div class="pr-clabel">Active grants</div>
@@ -92,6 +145,39 @@ export async function openVault() {
       if (!name || !value) return toast("name and value required", true);
       try { await api("/secrets", { method: "POST", body: { name, value } }); openVault(); toast("Secret added"); }
       catch (e) { toast(e.message, true); }
+    };
+    b.querySelectorAll(".v-hist").forEach((x) => (x.onclick = async () => {
+      const name = x.dataset.n;
+      const out = await api(`/secrets/versions?name=${encodeURIComponent(name)}`)
+        .catch(() => ({ versions: [] }));
+      const box = b.querySelector(`#hist-${cssId(name)}`);
+      if (!out.versions.length) {
+        box.innerHTML = '<div class="vault-note">No previous values.</div>';
+        return;
+      }
+      box.innerHTML = out.versions.map((v, i) => `<div class="v-arow">
+        <span class="pm">${esc((v.at || "").replace("T", " ").replace("Z", ""))}</span>
+        <span>${esc(v.note || "")}</span>
+        <button class="btn v-restore" data-n="${esc(name)}" data-i="${i}">Restore</button>
+      </div>`).join("");
+      box.querySelectorAll(".v-restore").forEach((r) => (r.onclick = async () => {
+        // The value being replaced is retained too, so this is undoable — say
+        // so, because "restore" otherwise reads as destructive.
+        if (!confirm(`Make that value current again for "${r.dataset.n}"?\n\n`
+          + "The value it replaces is kept, so this can be undone.")) return;
+        try {
+          await api("/secrets/restore", { method: "POST",
+            body: { name: r.dataset.n, version: Number(r.dataset.i) } });
+          toast("Restored"); openVault();
+        } catch (e) { toast(e.message, true); }
+      }));
+    }));
+    $("#v-scan").onclick = async () => {
+      const btn = $("#v-scan");
+      btn.disabled = true; btn.textContent = "scanning…";
+      try { showScan(await api("/secrets/scan")); }
+      catch (e) { toast(e.message, true); }
+      btn.disabled = false; btn.textContent = "🔎 Scan notes";
     };
     b.querySelectorAll(".v-del").forEach((x) => (x.onclick = async () => {
       await api(`/secrets/${encodeURIComponent(x.dataset.n)}`, { method: "DELETE" }); openVault();

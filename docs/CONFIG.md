@@ -46,6 +46,36 @@ AI/model settings can also be changed live in ⚙ Settings (persisted in the
 vault, no restart). Editor mode (live/classic) and theme are per-device.
 
 
+## Credentials
+
+Stored in a sealed file, never in the index. The broker injects them into
+outbound calls so an agent can use one without receiving it.
+
+| Var | Default | Meaning |
+|---|---|---|
+| `GRIMOIRE_VAULT_PASSPHRASE_FILE` | *(empty)* | Unlock at start from a `0600` file, for a service that must recover from a restart unattended |
+| `GRIMOIRE_VAULT_IDLE_LOCK` | `900` (seconds) | Drop the key after this long idle; `0` disables |
+| `GRIMOIRE_BROKER_ALLOW_PRIVATE` | `0` | Let brokered calls reach private-range hosts. Cloud metadata and link-local stay refused either way |
+
+Metadata the vault understands on each secret — set it with
+`grimoire secret add --expires/--note/--rotate-days`, or in `meta` on the API:
+
+| Key | Meaning |
+|---|---|
+| `expires` | RFC3339 or a bare `YYYY-MM-DD`. Reported as expiring within 14 days, then expired |
+| `rotate_days` | Remind this many days after the last change, for credentials with no fixed expiry |
+| `note` | What it is for |
+
+`created`, `updated`, `last_used` and `uses` are maintained by the vault.
+`GET /api/secrets/details` returns all of it and **no values**; `doctor` reports
+anything expired or overdue; `grimoire secret check` exits non-zero so it works
+from cron.
+
+Up to 10 previous values are retained per secret and sealed with the current
+one. `GET /api/secrets/versions?name=X` lists when and why each changed, never
+what it was; `POST /api/secrets/restore` makes one current again, keeping the
+value it replaced so the rollback is itself undoable.
+
 ## Identifying callers on other devices
 
 Off unless `GRIMOIRE_IDENTITY` names a backend. With it unset, callers are

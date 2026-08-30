@@ -182,6 +182,11 @@ func (b *Broker) Use(token, method, targetURL, header, body string) (map[string]
 	if err := b.checkProvenance(g, method, targetURL); err != nil {
 		return nil, err
 	}
+	// Counted here rather than at the end: what is being recorded is that this
+	// credential was PUT ON THE WIRE, which has happened by the time the
+	// response comes back, whatever the response says. A 500 from the far side
+	// still used the key.
+	b.Vault.MarkUsed(g.Secret)
 	value, err := b.Vault.Get(g.Secret)
 	if err != nil {
 		return nil, err
