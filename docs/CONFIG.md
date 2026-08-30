@@ -80,6 +80,10 @@ Prefixes are matched on whole segments, so `prod` never selects
 `grimoire run --prefix prod -- cmd`, which is the bounded form of `--all`: a
 build that needs the production keys has no business being handed the rest.
 Environment variables drop the namespace, so `prod/stripe` arrives as `STRIPE`.
+On routes that carry the name in the path (`DELETE /api/secrets/{name}`,
+`POST /api/secrets/{name}/grant`) the slash must be percent-encoded as `%2F` —
+it is one path segment. Note that Python's `urllib.parse.quote` leaves `/`
+alone unless you pass `safe=""`.
 
 **Grant limits.** `max_uses` on a grant (and on an agent's request) bounds how
 many times it may be redeemed; `0` is unlimited within the TTL, which is what
