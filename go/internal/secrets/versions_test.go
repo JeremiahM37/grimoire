@@ -336,7 +336,7 @@ func TestABrokeredCallRecordsTheUse(t *testing.T) {
 	if err := v.PutVersioned("api", "the-value", nil, ""); err != nil {
 		t.Fatal(err)
 	}
-	token, err := b.Grant("api", "agent", srv.URL, 300)
+	token, err := b.Grant(GrantSpec{Secret: "api", Grantee: "agent", Scope: srv.URL, TTLSeconds: 300})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -367,11 +367,98 @@ func TestAFailedCallStillCountsAsUse(t *testing.T) {
 	}))
 	defer srv.Close()
 	v.PutVersioned("api", "the-value", nil, "")
-	token, _ := b.Grant("api", "agent", srv.URL, 300)
+	token, _ := b.Grant(GrantSpec{Secret: "api", Grantee: "agent", Scope: srv.URL, TTLSeconds: 300})
 	b.Use(token, "GET", srv.URL, "Authorization", "")
 
 	all, _ := v.Describe()
 	if all[0].Uses != 1 {
 		t.Errorf("uses = %d; a 500 from the far side still used the key", all[0].Uses)
+	}
+}
+
+// ------------------------------------------------------------- prefixes
+
+func TestPrefixIsTheNamePartBeforeTheLastSlash(t *testing.T) {
+	for name, want := range map[string]string{
+		"stripe":         "",
+		"prod/stripe":    "prod",
+		"prod/eu/stripe": "prod/eu",
+		"/leading":       "",
+		"trailing/":      "trailing",
+	} {
+		if got := Prefix(name); got != want {
+			t.Errorf("Prefix(%q) = %q, want %q", name, got, want)
+		}
+	}
+}
+
+// The bug this exists to prevent: a command scoped to one namespace reaching
+// into another whose name merely starts with the same letters.
+func TestAPrefixMatchesWholeSegmentsOnly(t *testing.T) {
+	if HasPrefix("production/key", "prod") {
+		t.Error(`"prod" matched "production/key" — a prefix compared as a string ` +
+			`hands one namespace's secrets to a command scoped to another`)
+	}
+	if !HasPrefix("prod/key", "prod") {
+		t.Error(`"prod" did not match "prod/key"`)
+	}
+	if !HasPrefix("prod/key", "prod/") {
+		t.Error("a trailing slash on the prefix should not change the answer")
+	}
+	if !HasPrefix("prod", "prod") {
+		t.Error("a secret named exactly the prefix is under it")
+	}
+	if !HasPrefix("anything", "") {
+		t.Error("an empty prefix means everything")
+	}
+	if !HasPrefix("prod/eu/key", "prod") {
+		t.Error("a nested name is under its ancestor")
+	}
+}
+
+func TestUnderSelectsANamespace(t *testing.T) {
+	v := openVault(t)
+	for _, n := range []string{"prod/stripe", "prod/github", "dev/stripe", "toplevel"} {
+		if err := v.PutVersioned(n, "x", nil, ""); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := v.Under("prod")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("%d secrets under prod, want 2: %+v", len(got), got)
+	}
+	all, _ := v.Under("")
+	if len(all) != 4 {
+		t.Errorf("%d secrets for an empty prefix, want all 4", len(all))
+	}
+}
+
+// Derived from names, so there is no empty folder to clean up and no way for
+// the list to disagree with reality.
+func TestPrefixesAreDerivedFromNames(t *testing.T) {
+	v := openVault(t)
+	for _, n := range []string{"prod/a", "prod/b", "dev/a", "flat"} {
+		v.PutVersioned(n, "x", nil, "")
+	}
+	got, err := v.Prefixes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got["prod"] != 2 || got["dev"] != 1 {
+		t.Errorf("prefixes = %v, want prod:2 dev:1", got)
+	}
+	if _, ok := got[""]; ok {
+		t.Error("a top-level secret invented an empty-named namespace")
+	}
+
+	// Deleting the last secret in a namespace removes the namespace, because
+	// there was never a folder object to leave behind.
+	v.Delete("dev/a")
+	got, _ = v.Prefixes()
+	if _, ok := got["dev"]; ok {
+		t.Error("an empty namespace survived its last secret")
 	}
 }

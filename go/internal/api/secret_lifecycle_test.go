@@ -245,3 +245,104 @@ func doOn(t *testing.T, h http.Handler, method, path string) *httptest.ResponseR
 	h.ServeHTTP(w, req)
 	return w
 }
+
+// ------------------------------------------------- namespaces and use limits
+
+func TestDetailsCanBeScopedToANamespace(t *testing.T) {
+	_, h := vaultedServer(t)
+	for _, n := range []string{"prod/stripe", "prod/github", "dev/stripe", "production/other"} {
+		put(t, h, n, "x", "", nil)
+	}
+	w := do(t, h, "GET", "/api/secrets/details?prefix=prod", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("details = %d: %s", w.Code, w.Body)
+	}
+	var out struct {
+		Secrets    []secrets.Info `json:"secrets"`
+		Namespaces map[string]int `json:"namespaces"`
+	}
+	decode(t, w, &out)
+	if len(out.Secrets) != 2 {
+		t.Fatalf("%d secrets under prod, want 2: %+v", len(out.Secrets), out.Secrets)
+	}
+	for _, i := range out.Secrets {
+		if strings.HasPrefix(i.Name, "production/") {
+			t.Error(`"prod" selected "production/…" — a prefix compared as a ` +
+				`string hands one namespace's secrets to a caller scoped to another`)
+		}
+	}
+	// The namespace list is always the whole vault's, so a scoped view can
+	// still offer the others.
+	if out.Namespaces["dev"] != 1 || out.Namespaces["production"] != 1 {
+		t.Errorf("namespaces = %v, want every namespace listed", out.Namespaces)
+	}
+}
+
+func TestAGrantCanBeLimitedToACountOfUses(t *testing.T) {
+	s, h := vaultedServer(t)
+	put(t, h, "api", "the-value", "", nil)
+	w := do(t, h, "POST", "/api/secrets/api/grant", map[string]any{
+		"grantee": "agent", "scope": "https://example.com", "ttl_seconds": 300,
+		"max_uses": 1})
+	if w.Code != http.StatusOK {
+		t.Fatalf("grant = %d: %s", w.Code, w.Body)
+	}
+	var out struct {
+		Grant   string `json:"grant"`
+		MaxUses int    `json:"max_uses"`
+	}
+	decode(t, w, &out)
+	if out.MaxUses != 1 {
+		t.Errorf("max_uses = %d, want 1 echoed back", out.MaxUses)
+	}
+	grants, err := s.Broker.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, g := range grants {
+		if g.Token == out.Grant {
+			found = true
+			if g.MaxUses != 1 {
+				t.Errorf("stored max_uses = %d, want 1", g.MaxUses)
+			}
+		}
+	}
+	if !found {
+		t.Error("the grant was not listed")
+	}
+}
+
+// An agent that knows it needs one call should be able to ask for one call;
+// the approver is otherwise guessing.
+func TestAnAgentCanBoundItsOwnRequest(t *testing.T) {
+	s, h := vaultedServer(t)
+	put(t, h, "api", "the-value", "", nil)
+	w := do(t, h, "POST", "/api/secrets/requests", map[string]any{
+		"secret": "api", "grantee": "agent", "scope": "https://example.com",
+		"reason": "post one webhook", "ttl_seconds": 300, "max_uses": 1})
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("request = %d: %s", w.Code, w.Body)
+	}
+	var req struct {
+		ID      string `json:"id"`
+		MaxUses int    `json:"max_uses"`
+	}
+	decode(t, w, &req)
+	if req.MaxUses != 1 {
+		t.Errorf("max_uses = %d on the ask, want 1", req.MaxUses)
+	}
+	// And approving must carry the bound through to the grant rather than
+	// quietly widening it.
+	if _, err := s.Broker.Approve(req.ID, "operator", 0); err != nil {
+		t.Fatal(err)
+	}
+	grants, _ := s.Broker.List()
+	if len(grants) == 0 {
+		t.Fatal("approval minted no grant")
+	}
+	if grants[0].MaxUses != 1 {
+		t.Errorf("granted max_uses = %d, want the 1 that was asked for — an "+
+			"approval that widens the ask is not the ask", grants[0].MaxUses)
+	}
+}

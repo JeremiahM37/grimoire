@@ -68,7 +68,7 @@ const usage = `grimoire — local-first AI-native notes
   grimoire user unmap BACKEND SUBJECT      remove that mapping
   grimoire user identities            list identity mappings
   grimoire secret init                create the credential vault
-  grimoire secret list                credentials, with what needs rotating
+  grimoire secret list [PREFIX]       credentials, with what needs rotating
   grimoire secret add NAME            store one (prompts; --expires, --note, --rotate-days)
   grimoire secret history NAME        previous values, newest first
   grimoire secret restore NAME [N]    put a previous value back
@@ -76,6 +76,7 @@ const usage = `grimoire — local-first AI-native notes
   grimoire secret scan                find credentials pasted into notes
   grimoire secret import FILE.env     load KEY=value lines
   grimoire run NAME -- cmd            run cmd with the secret in its environment
+  grimoire run --prefix NS -- cmd     …with everything under a namespace
   grimoire user passwd NAME           change an account's password
   grimoire space add NAME PREFIX      create a shared space
   grimoire space list                 list spaces and their prefixes

@@ -23,8 +23,11 @@ import (
 // The old shape is what the console and every existing script read, and
 // widening it in place would have started shipping timestamps and use counts
 // to callers that asked for names.
-func (s *Server) secretDetails(w http.ResponseWriter, _ *http.Request) {
-	info, err := s.Secrets.Describe()
+func (s *Server) secretDetails(w http.ResponseWriter, r *http.Request) {
+	// prefix scopes the listing to one namespace. Whole-segment matched, so
+	// "prod" does not select "production/…".
+	prefix := r.URL.Query().Get("prefix")
+	info, err := s.Secrets.Under(prefix)
 	if s.vaultLocked(w, err) {
 		return
 	}
@@ -38,8 +41,11 @@ func (s *Server) secretDetails(w http.ResponseWriter, _ *http.Request) {
 			attention++
 		}
 	}
+	groups, _ := s.Secrets.Prefixes()
 	writeJSON(w, http.StatusOK, map[string]any{
-		"secrets": info,
+		"secrets":    info,
+		"prefix":     prefix,
+		"namespaces": groups,
 		// Counted server-side so every surface agrees on the number, and so a
 		// client that only wants the badge does not have to understand the
 		// status vocabulary.

@@ -99,11 +99,29 @@ func cmdSecret(args []string) int {
 
 	switch args[0] {
 	case "list", "ls":
-		info, err := v.Describe()
+		prefix := ""
+		if len(args) > 1 {
+			prefix = args[1]
+		}
+		info, err := v.Under(prefix)
 		if err != nil {
 			return fail("%v", err)
 		}
+		if prefix == "" {
+			if groups, err := v.Prefixes(); err == nil && len(groups) > 0 {
+				names := make([]string, 0, len(groups))
+				for g := range groups {
+					names = append(names, fmt.Sprintf("%s/ (%d)", g, groups[g]))
+				}
+				sort.Strings(names)
+				fmt.Printf("namespaces: %s\n\n", strings.Join(names, "  "))
+			}
+		}
 		if len(info) == 0 {
+			if prefix != "" {
+				fmt.Printf("no secrets under %q\n", prefix)
+				return 0
+			}
 			fmt.Println("no secrets stored")
 			return 0
 		}
@@ -220,6 +238,15 @@ func cmdSecret(args []string) int {
 		need, err := v.NeedsAttention()
 		if err != nil {
 			return fail("%v", err)
+		}
+		if len(args) > 1 {
+			var scoped []secrets.Info
+			for _, i := range need {
+				if secrets.HasPrefix(i.Name, args[1]) {
+					scoped = append(scoped, i)
+				}
+			}
+			need = scoped
 		}
 		if len(need) == 0 {
 			fmt.Println("all credentials are current")
@@ -380,6 +407,7 @@ func cmdRun(args []string) int {
 	names, cmdArgs := splitAtDoubleDash(args)
 	if len(cmdArgs) == 0 {
 		return fail("usage: grimoire run NAME[,NAME…] -- command [args…]\n" +
+			"       grimoire run --prefix prod -- command [args…]\n" +
 			"       grimoire run --all -- command [args…]\n\n" +
 			"Puts credentials in the child's environment. This hands over the\n" +
 			"VALUES, which is what the broker exists to avoid — use it for your\n" +
@@ -397,7 +425,21 @@ func cmdRun(args []string) int {
 
 	rest, flags := parseSecretFlags(names)
 	var want []string
-	if _, all := flags["all"]; all {
+	if prefix, ok := flags["prefix"]; ok {
+		// The bounded form of --all, and the one to reach for: a build that
+		// needs the production keys has no business being handed the personal
+		// ones as well.
+		info, err := v.Under(prefix)
+		if err != nil {
+			return fail("%v", err)
+		}
+		for _, i := range info {
+			want = append(want, i.Name)
+		}
+		if len(want) == 0 {
+			return fail("no secrets under %q", prefix)
+		}
+	} else if _, all := flags["all"]; all {
 		info, err := v.Describe()
 		if err != nil {
 			return fail("%v", err)
@@ -415,7 +457,7 @@ func cmdRun(args []string) int {
 		}
 	}
 	if len(want) == 0 {
-		return fail("name at least one secret, or pass --all")
+		return fail("name at least one secret, or pass --prefix NS (or --all)")
 	}
 	sort.Strings(want)
 
@@ -425,7 +467,14 @@ func cmdRun(args []string) int {
 		// variable the program expects.
 		secretName, varName, renamed := strings.Cut(name, "=")
 		if !renamed {
-			varName = envName(secretName)
+			// "prod/stripe" becomes STRIPE, not PROD_STRIPE: the namespace is
+			// how the operator organises the vault, not what the program being
+			// run expects to find in its environment.
+			base := secretName
+			if i := strings.LastIndex(base, "/"); i >= 0 {
+				base = base[i+1:]
+			}
+			varName = envName(base)
 		}
 		val, err := v.Get(secretName)
 		if err != nil {

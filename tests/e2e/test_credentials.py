@@ -8,6 +8,7 @@ The session server is shared, so this uses the same passphrase as the other
 suites and tolerates init-or-unlock, and everything it creates is namespaced.
 """
 import json
+import urllib.parse
 import urllib.request
 
 import pytest
@@ -37,7 +38,7 @@ def _vault(server):
     try:
         for s in _api(server, "/secrets") or []:
             if s["name"].startswith(NS):
-                _api(server, f"/secrets/{s['name']}", method="DELETE")
+                _api(server, "/secrets/" + urllib.parse.quote(s["name"]), method="DELETE")
     except Exception:  # noqa: BLE001
         pass
 
@@ -141,3 +142,32 @@ def test_the_scan_is_quiet_on_ordinary_notes(page, server):
         "Credentials found in notes", timeout=25000)
     findings = page.locator(".v-arow", has_text=f"{NS} ordinary")
     expect(findings).to_have_count(0)
+
+
+def test_a_grant_shows_what_it_has_left_in_count_not_only_in_time(page, server):
+    """A TTL bounds a grant in time and not at all in volume: fifteen minutes is
+    fifteen minutes in which an agent may make any number of calls."""
+    name = f"{NS}-limited"
+    _api(server, "/secrets", "POST", {"name": name, "value": "x"})
+    _api(server, f"/secrets/{name}/grant", "POST", {
+        "grantee": f"{NS}-agent", "scope": "https://example.com",
+        "ttl_seconds": 900, "max_uses": 3})
+    _open_vault(page, server)
+    row = page.locator(".v-row", has_text=f"{NS}-agent")
+    expect(row).to_be_visible(timeout=8000)
+    expect(row).to_contain_text("3 of 3 uses left")
+    # And the time bound is still shown alongside it, not replaced by it.
+    expect(row).to_contain_text("left")
+
+
+def test_secrets_can_be_organised_into_namespaces(page, server):
+    for n in (f"{NS}-prod/one", f"{NS}-prod/two", f"{NS}-dev/one"):
+        _api(server, "/secrets", "POST", {"name": n, "value": "x"})
+    scoped = _api(server, f"/secrets/details?prefix={NS}-prod")
+    names = [s["name"] for s in scoped["secrets"]]
+    assert sorted(names) == [f"{NS}-prod/one", f"{NS}-prod/two"], names
+    assert scoped["namespaces"].get(f"{NS}-dev") == 1, \
+        "the namespace list must cover the whole vault, not only the scoped view"
+    # The console still lists them all, so nothing is hidden by the feature.
+    _open_vault(page, server)
+    expect(page.locator(".v-row", has_text=f"{NS}-dev/one")).to_be_visible(timeout=8000)

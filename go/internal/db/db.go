@@ -34,7 +34,8 @@ CREATE TABLE IF NOT EXISTS grant_requests(
   scope TEXT NOT NULL DEFAULT '', reason TEXT NOT NULL DEFAULT '',
   ttl INTEGER NOT NULL DEFAULT 900, state TEXT NOT NULL DEFAULT 'pending',
   created TEXT, decided TEXT, decided_by TEXT, token TEXT NOT NULL DEFAULT '',
-  note TEXT NOT NULL DEFAULT ''
+  note TEXT NOT NULL DEFAULT '',
+  max_uses INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_grant_requests_state ON grant_requests(state);
 CREATE TABLE IF NOT EXISTS links(
@@ -192,7 +193,10 @@ CREATE INDEX IF NOT EXISTS idx_connector_docs_path ON connector_docs(path);
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE IF NOT EXISTS grants(
   token TEXT PRIMARY KEY, secret TEXT, grantee TEXT, scope TEXT,
-  expires_at REAL, created TEXT
+  expires_at REAL, created TEXT,
+  -- 0 means unlimited within the TTL, which is what a grant issued before
+  -- these columns existed was.
+  max_uses INTEGER NOT NULL DEFAULT 0, uses INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS audit(
   id INTEGER PRIMARY KEY, ts TEXT, action TEXT, secret TEXT, detail TEXT DEFAULT ''
@@ -361,6 +365,15 @@ var addedColumns = []struct{ table, column, decl string }{
 	// deployment there is no account, so without this the trail can say a
 	// restricted note was read and not by what — which is most of the question.
 	{"read_audit", "agent", "TEXT NOT NULL DEFAULT ''"},
+	// How many times a grant may be redeemed, and how many times it has been.
+	// A time window alone bounds nothing about volume: a fifteen-minute grant
+	// is fifteen minutes in which an agent may make any number of calls.
+	{"grants", "max_uses", "INTEGER NOT NULL DEFAULT 0"},
+	{"grants", "uses", "INTEGER NOT NULL DEFAULT 0"},
+	// An agent asking for one call should be able to say so; the ask is where
+	// the tightest bound is known, because the agent knows what it is about to
+	// do and the approver is guessing.
+	{"grant_requests", "max_uses", "INTEGER NOT NULL DEFAULT 0"},
 }
 
 func hasColumn(conn *sql.DB, table, column string) (bool, error) {
@@ -403,6 +416,22 @@ func (d *DB) Exec(query string, args ...any) error {
 }
 
 // ExecLocked runs a statement assuming the caller already holds the lock.
+// ExecAffected runs a write and reports how many rows it changed.
+//
+// Exists for check-and-set: "claim this if it has not been claimed" is one
+// UPDATE whose WHERE clause carries the condition, and the row count is the
+// only way to learn whether the condition held. Doing it as a read then a
+// write would let two callers both read "available" before either wrote.
+func (d *DB) ExecAffected(query string, args ...any) (int64, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	res, err := d.conn.Exec(query, args...)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
 func (d *DB) ExecLocked(query string, args ...any) error {
 	_, err := d.conn.Exec(query, args...)
 	return err

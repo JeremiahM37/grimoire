@@ -28,6 +28,27 @@ type Grant struct {
 	Scope     string  `json:"scope"`
 	ExpiresAt float64 `json:"expires_at"`
 	Created   string  `json:"created"`
+	// MaxUses bounds how many times the grant may be redeemed; 0 is unlimited
+	// within the TTL. Uses is how many times it has been.
+	MaxUses int `json:"max_uses"`
+	Uses    int `json:"uses"`
+}
+
+// GrantSpec describes a grant to issue.
+//
+// A struct rather than more positional arguments: TTLSeconds and MaxUses are
+// both ints with wildly different meanings, and `Grant(name, who, scope, 5,
+// 900)` versus `(…, 900, 5)` are both valid calls that differ by a factor of
+// 180 in one direction and mean "five uses" or "five seconds" in the other.
+// That is the kind of mistake a compiler should catch and cannot.
+type GrantSpec struct {
+	Secret     string
+	Grantee    string
+	Scope      string
+	TTLSeconds int
+	// MaxUses of 0 leaves the grant bounded only by time, which is what every
+	// grant issued before this field existed was.
+	MaxUses int
 }
 
 // Broker performs outbound requests with a secret injected.
@@ -71,32 +92,65 @@ func newToken() (string, error) {
 
 // Grant issues a scoped token for a secret. It requires an unlocked vault: only
 // the human, present, may hand out access.
-func (b *Broker) Grant(secretName, grantee, scope string, ttlSeconds int) (string, error) {
+func (b *Broker) Grant(spec GrantSpec) (string, error) {
 	if !b.Vault.IsUnlocked() {
 		return "", ErrLocked
 	}
-	if _, err := b.Vault.Get(secretName); err != nil {
+	if _, err := b.Vault.Get(spec.Secret); err != nil {
 		return "", err
 	}
-	if strings.TrimSpace(grantee) == "" {
+	if strings.TrimSpace(spec.Grantee) == "" {
 		return "", errors.New("grantee required")
 	}
-	if ttlSeconds <= 0 {
-		ttlSeconds = 900
+	if spec.TTLSeconds <= 0 {
+		spec.TTLSeconds = 900
+	}
+	if spec.MaxUses < 0 {
+		return "", errors.New("max uses cannot be negative")
 	}
 	token, err := newToken()
 	if err != nil {
 		return "", err
 	}
-	expires := float64(Now().Add(time.Duration(ttlSeconds) * time.Second).Unix())
+	expires := float64(Now().Add(time.Duration(spec.TTLSeconds) * time.Second).Unix())
 	if err := b.DB.Exec(
-		"INSERT INTO grants(token,secret,grantee,scope,expires_at,created) VALUES(?,?,?,?,?,?)",
-		token, secretName, grantee, scope, expires, Now().Format(time.RFC3339)); err != nil {
+		"INSERT INTO grants(token,secret,grantee,scope,expires_at,created,max_uses,uses) "+
+			"VALUES(?,?,?,?,?,?,?,0)",
+		token, spec.Secret, spec.Grantee, spec.Scope, expires,
+		Now().Format(time.RFC3339), spec.MaxUses); err != nil {
 		return "", err
 	}
-	b.audit("grant", secretName, fmt.Sprintf("grantee=%s scope=%s ttl=%ds", grantee, scope, ttlSeconds))
+	limit := "unlimited"
+	if spec.MaxUses > 0 {
+		limit = fmt.Sprintf("%d", spec.MaxUses)
+	}
+	b.audit("grant", spec.Secret, fmt.Sprintf("grantee=%s scope=%s ttl=%ds uses=%s",
+		spec.Grantee, spec.Scope, spec.TTLSeconds, limit))
 	return token, nil
 }
+
+// claimUse reserves one redemption of a grant.
+//
+// The check and the increment are one statement on purpose. Reading the count
+// and then writing it back would let two concurrent calls both observe a
+// one-shot grant as unused and both proceed — which is exactly the case a
+// single-use grant exists to prevent, and exactly the case that only appears
+// under the load nobody tests with.
+func (b *Broker) claimUse(token string) error {
+	n, err := b.DB.ExecAffected(
+		"UPDATE grants SET uses = uses + 1 WHERE token = ? AND (max_uses = 0 OR uses < max_uses)",
+		token)
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return errors.New("grant has no uses left")
+	}
+	return nil
+}
+
+// spent reports whether a grant has reached its limit.
+func (g Grant) spent() bool { return g.MaxUses > 0 && g.Uses >= g.MaxUses }
 
 // List returns active grants, never values.
 func (b *Broker) List() ([]Grant, error) {
@@ -104,7 +158,8 @@ func (b *Broker) List() ([]Grant, error) {
 		return nil, ErrLocked
 	}
 	rows, err := b.DB.Query(
-		"SELECT token, secret, grantee, scope, expires_at, created FROM grants " +
+		"SELECT token, secret, grantee, scope, expires_at, created, max_uses, uses FROM grants " +
+			"WHERE max_uses = 0 OR uses < max_uses " +
 			"ORDER BY created DESC, token")
 	if err != nil {
 		return nil, err
@@ -114,7 +169,8 @@ func (b *Broker) List() ([]Grant, error) {
 	for rows.Next() {
 		var g Grant
 		var created sql.NullString
-		if err := rows.Scan(&g.Token, &g.Secret, &g.Grantee, &g.Scope, &g.ExpiresAt, &created); err != nil {
+		if err := rows.Scan(&g.Token, &g.Secret, &g.Grantee, &g.Scope, &g.ExpiresAt,
+			&created, &g.MaxUses, &g.Uses); err != nil {
 			return nil, err
 		}
 		g.Created = created.String
@@ -152,8 +208,9 @@ func (b *Broker) Use(token, method, targetURL, header, body string) (map[string]
 	}
 	var g Grant
 	err := b.DB.QueryRow(
-		"SELECT token, secret, grantee, scope, expires_at FROM grants WHERE token=?", token,
-	).Scan(&g.Token, &g.Secret, &g.Grantee, &g.Scope, &g.ExpiresAt)
+		"SELECT token, secret, grantee, scope, expires_at, max_uses, uses FROM grants WHERE token=?",
+		token,
+	).Scan(&g.Token, &g.Secret, &g.Grantee, &g.Scope, &g.ExpiresAt, &g.MaxUses, &g.Uses)
 	if err != nil {
 		return nil, errors.New("unknown or revoked grant")
 	}
@@ -161,6 +218,16 @@ func (b *Broker) Use(token, method, targetURL, header, body string) (map[string]
 		// clean up as we go: an expired grant should stop appearing in the console
 		_ = b.DB.Exec("DELETE FROM grants WHERE token=?", token)
 		return nil, errors.New("grant expired")
+	}
+	// Retired on the next attempt rather than the moment it is spent, so the
+	// agent that used it up is TOLD it used it up. Deleting on exhaustion made
+	// the next call answer "unknown or revoked grant", which an agent cannot
+	// tell from a wrong token — and the two want opposite responses: ask for
+	// another, versus fix your bug.
+	if g.spent() {
+		_ = b.DB.Exec("DELETE FROM grants WHERE token=?", token)
+		b.audit("denied", g.Secret, "grantee="+g.Grantee+" reason=exhausted")
+		return nil, errors.New("grant has no uses left")
 	}
 	// The scope is what stops a token for one API being pointed at another, so
 	// it is compared as an origin rather than as a string prefix. See guard.go.
@@ -182,6 +249,15 @@ func (b *Broker) Use(token, method, targetURL, header, body string) (map[string]
 	if err := b.checkProvenance(g, method, targetURL); err != nil {
 		return nil, err
 	}
+	// Claimed BEFORE the call, not after: the point of a single-use grant is
+	// that two concurrent redemptions cannot both succeed, and a claim taken
+	// after the response would let both through. The check and the increment
+	// are one statement for the same reason.
+	if err := b.claimUse(g.Token); err != nil {
+		b.audit("denied", g.Secret, "grantee="+g.Grantee+" reason=exhausted")
+		return nil, err
+	}
+
 	// Counted here rather than at the end: what is being recorded is that this
 	// credential was PUT ON THE WIRE, which has happened by the time the
 	// response comes back, whatever the response says. A 500 from the far side

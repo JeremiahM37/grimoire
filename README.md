@@ -180,6 +180,12 @@ note while debugging is the likeliest way a credential escapes a system whose
 substrate is markdown you sync to your phone, and findings are masked — a
 report that quoted the key would copy the leak somewhere new.
 
+Grants are bounded in count as well as time: `max_uses: 1` for "post this one
+webhook" is a tighter thing to hand out than fifteen minutes in which an agent
+may make any number of calls. Names can carry a namespace (`prod/stripe`), and
+`grimoire run --prefix prod -- cmd` is the bounded form of `--all` — a build
+that needs the production keys has no business being handed the rest.
+
 `grimoire run NAME -- cmd` puts a value in a child's environment. That hands
 over the value, which is exactly what the broker avoids, so it is for your own
 commands — agents get grants.

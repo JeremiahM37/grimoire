@@ -182,7 +182,7 @@ func TestBrokerInjectsSecretWithoutRevealingIt(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	token, err := b.Grant("api-key", "agent", ts.URL, 900)
+	token, err := b.Grant(GrantSpec{Secret: "api-key", Grantee: "agent", Scope: ts.URL, TTLSeconds: 900})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,7 +211,7 @@ func TestBrokerEnforcesScope(t *testing.T) {
 	v, b := testVault(t)
 	v.Initialize("correct horse battery")
 	v.Put("api-key", "value", nil)
-	token, _ := b.Grant("api-key", "agent", "https://allowed.example.com", 900)
+	token, _ := b.Grant(GrantSpec{Secret: "api-key", Grantee: "agent", Scope: "https://allowed.example.com", TTLSeconds: 900})
 
 	if _, err := b.Use(token, "GET", "https://evil.example.com/steal", "Authorization", ""); err == nil {
 		t.Error("a url outside the grant scope was allowed")
@@ -226,7 +226,7 @@ func TestBrokerRejectsExpiredAndUnknownGrants(t *testing.T) {
 	if _, err := b.Use("no-such-token", "GET", "https://x", "Authorization", ""); err == nil {
 		t.Error("unknown grant was accepted")
 	}
-	token, _ := b.Grant("api-key", "agent", "", 1)
+	token, _ := b.Grant(GrantSpec{Secret: "api-key", Grantee: "agent", Scope: "", TTLSeconds: 1})
 	old := Now
 	Now = func() time.Time { return old().Add(10 * time.Second) }
 	defer func() { Now = old }()
@@ -240,7 +240,7 @@ func TestGrantAndAuditRequireUnlock(t *testing.T) {
 	v.Initialize("correct horse battery")
 	v.Put("api-key", "value", nil)
 	v.Lock()
-	if _, err := b.Grant("api-key", "agent", "", 900); err != ErrLocked {
+	if _, err := b.Grant(GrantSpec{Secret: "api-key", Grantee: "agent", Scope: "", TTLSeconds: 900}); err != ErrLocked {
 		t.Errorf("Grant while locked = %v", err)
 	}
 	if _, err := b.List(); err != ErrLocked {
@@ -256,7 +256,7 @@ func TestAuditRecordsWithoutValues(t *testing.T) {
 	v, b := testVault(t)
 	v.Initialize("correct horse battery")
 	v.Put("api-key", "super-secret-value", nil)
-	b.Grant("api-key", "agent", "https://x", 900)
+	b.Grant(GrantSpec{Secret: "api-key", Grantee: "agent", Scope: "https://x", TTLSeconds: 900})
 
 	entries, err := b.Audit(10)
 	if err != nil {

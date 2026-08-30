@@ -71,6 +71,27 @@ Metadata the vault understands on each secret — set it with
 anything expired or overdue; `grimoire secret check` exits non-zero so it works
 from cron.
 
+**Namespaces.** A secret name may contain `/` — `prod/stripe`, `dev/stripe`.
+There are no folder objects to create or delete; a namespace is the part of a
+name before a slash, so it exists exactly as long as something is in it.
+Prefixes are matched on whole segments, so `prod` never selects
+`production/…`. `grimoire secret list prod`, `grimoire secret check prod`,
+`GET /api/secrets/details?prefix=prod`, and — the one that matters —
+`grimoire run --prefix prod -- cmd`, which is the bounded form of `--all`: a
+build that needs the production keys has no business being handed the rest.
+Environment variables drop the namespace, so `prod/stripe` arrives as `STRIPE`.
+
+**Grant limits.** `max_uses` on a grant (and on an agent's request) bounds how
+many times it may be redeemed; `0` is unlimited within the TTL, which is what
+every grant was before. A time window alone bounds nothing about volume — a
+fifteen-minute grant is fifteen minutes in which an agent may make any number
+of calls — so for "post this one webhook" the honest bound is `1`. The check
+and the increment are one statement, so two concurrent redemptions of a
+one-shot grant cannot both succeed. A spent grant is retired on its next use
+and reports `grant has no uses left` rather than `unknown or revoked grant`:
+an agent that used up its grant and an agent holding a bad token want opposite
+responses.
+
 Up to 10 previous values are retained per secret and sealed with the current
 one. `GET /api/secrets/versions?name=X` lists when and why each changed, never
 what it was; `POST /api/secrets/restore` makes one current again, keeping the

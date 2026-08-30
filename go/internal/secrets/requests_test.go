@@ -26,7 +26,7 @@ func TestARequestGrantsNothing(t *testing.T) {
 	v, b := readyVault(t)
 
 	req, err := b.RequestGrant("github-token", "claude-4",
-		"https://api.github.com/repos/acme/", "read the open issues on acme/thing", 600)
+		"https://api.github.com/repos/acme/", "read the open issues on acme/thing", 600, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +54,7 @@ func TestAskingWorksWhileTheVaultIsLocked(t *testing.T) {
 	v, b := readyVault(t)
 	v.Lock()
 
-	if _, err := b.RequestGrant("github-token", "claude-4", "", "reading issues", 600); err != nil {
+	if _, err := b.RequestGrant("github-token", "claude-4", "", "reading issues", 600, 0); err != nil {
 		t.Fatalf("asking with the vault locked failed: %v", err)
 	}
 	// …but approving does not, because approving mints a credential.
@@ -72,7 +72,7 @@ func TestDenyingDoesNotNeedAnUnlockedVault(t *testing.T) {
 	// is backwards, and would mean the fast path for a suspicious request is
 	// the one that requires the most ceremony.
 	v, b := readyVault(t)
-	req, _ := b.RequestGrant("github-token", "claude-4", "", "reading issues", 600)
+	req, _ := b.RequestGrant("github-token", "claude-4", "", "reading issues", 600, 0)
 	v.Lock()
 
 	out, err := b.Deny(req.ID, "jam", "use the read-only key")
@@ -87,7 +87,7 @@ func TestDenyingDoesNotNeedAnUnlockedVault(t *testing.T) {
 func TestApprovalMintsAGrantTheAskerCanCollect(t *testing.T) {
 	_, b := readyVault(t)
 	req, _ := b.RequestGrant("github-token", "claude-4",
-		"https://api.github.com/", "reading issues", 600)
+		"https://api.github.com/", "reading issues", 600, 0)
 
 	approved, err := b.Approve(req.ID, "jam", 0)
 	if err != nil {
@@ -119,7 +119,7 @@ func TestOnlyTheAskerCanCollectTheToken(t *testing.T) {
 	// token. If any caller could name a request id and receive it, the
 	// approval step would be decorative.
 	_, b := readyVault(t)
-	req, _ := b.RequestGrant("github-token", "claude-4", "", "reading issues", 600)
+	req, _ := b.RequestGrant("github-token", "claude-4", "", "reading issues", 600, 0)
 	if _, err := b.Approve(req.ID, "jam", 0); err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,7 @@ func TestListingRequestsNeverCarriesTokens(t *testing.T) {
 	// The console polls this. A listing that carried live tokens would make
 	// the approval UI the widest disclosure surface in the product.
 	_, b := readyVault(t)
-	req, _ := b.RequestGrant("github-token", "claude-4", "", "reading issues", 600)
+	req, _ := b.RequestGrant("github-token", "claude-4", "", "reading issues", 600, 0)
 	if _, err := b.Approve(req.ID, "jam", 0); err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +156,7 @@ func TestADecisionCannotBeReplayed(t *testing.T) {
 	// An approval that can be replayed is one that anybody who kept the id can
 	// replay, minting a fresh credential per attempt.
 	_, b := readyVault(t)
-	req, _ := b.RequestGrant("github-token", "claude-4", "", "reading issues", 600)
+	req, _ := b.RequestGrant("github-token", "claude-4", "", "reading issues", 600, 0)
 	if _, err := b.Approve(req.ID, "jam", 0); err != nil {
 		t.Fatal(err)
 	}
@@ -176,7 +176,7 @@ func TestApproverCanShortenTheTTL(t *testing.T) {
 	// Most of the point of a human in the loop: an agent that asks for a day
 	// can be given ten minutes without anyone having to argue about it.
 	_, b := readyVault(t)
-	req, _ := b.RequestGrant("github-token", "claude-4", "", "reading issues", 86400)
+	req, _ := b.RequestGrant("github-token", "claude-4", "", "reading issues", 86400, 0)
 	approved, err := b.Approve(req.ID, "jam", 600)
 	if err != nil {
 		t.Fatal(err)
@@ -198,8 +198,8 @@ func TestRepeatedIdenticalAsksCollapse(t *testing.T) {
 	// An agent in a retry loop would otherwise post a hundred identical asks
 	// and bury the one a person was about to approve.
 	_, b := readyVault(t)
-	first, _ := b.RequestGrant("github-token", "claude-4", "https://api.github.com/", "issues", 600)
-	second, err := b.RequestGrant("github-token", "claude-4", "https://api.github.com/", "issues", 600)
+	first, _ := b.RequestGrant("github-token", "claude-4", "https://api.github.com/", "issues", 600, 0)
+	second, err := b.RequestGrant("github-token", "claude-4", "https://api.github.com/", "issues", 600, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -217,8 +217,8 @@ func TestADifferentScopeIsADifferentAsk(t *testing.T) {
 	// everything", and a person approving the first would be granting the
 	// second.
 	_, b := readyVault(t)
-	a, _ := b.RequestGrant("github-token", "claude-4", "https://api.github.com/repos/acme/", "x", 600)
-	c, _ := b.RequestGrant("github-token", "claude-4", "https://api.github.com/", "x", 600)
+	a, _ := b.RequestGrant("github-token", "claude-4", "https://api.github.com/repos/acme/", "x", 600, 0)
+	c, _ := b.RequestGrant("github-token", "claude-4", "https://api.github.com/", "x", 600, 0)
 	if a.ID == c.ID {
 		t.Error("a broader scope was folded into a narrower pending request")
 	}
@@ -229,7 +229,7 @@ func TestAskingForAnUnknownSecretIsNotAnOracle(t *testing.T) {
 	// enumerate which secrets the vault holds. The name is checked at
 	// approval, where a person is already looking at it.
 	_, b := readyVault(t)
-	req, err := b.RequestGrant("does-not-exist", "claude-4", "", "trying it on", 600)
+	req, err := b.RequestGrant("does-not-exist", "claude-4", "", "trying it on", 600, 0)
 	if err != nil {
 		t.Fatalf("asking for an unknown secret errored differently: %v", err)
 	}
@@ -246,7 +246,7 @@ func TestAskingForAnUnknownSecretIsNotAnOracle(t *testing.T) {
 func TestAsksAreAudited(t *testing.T) {
 	// An ask that was never approved is still worth being able to see.
 	_, b := readyVault(t)
-	req, _ := b.RequestGrant("github-token", "claude-4", "", "reading issues", 600)
+	req, _ := b.RequestGrant("github-token", "claude-4", "", "reading issues", 600, 0)
 	if _, err := b.Deny(req.ID, "jam", "no"); err != nil {
 		t.Fatal(err)
 	}
@@ -273,7 +273,7 @@ func TestARunawayReasonIsTruncatedNotRejected(t *testing.T) {
 	// not be blocked from asking at all — the ask is the safe path.
 	_, b := readyVault(t)
 	req, err := b.RequestGrant("github-token", "claude-4", "",
-		strings.Repeat("please ", 5000), 600)
+		strings.Repeat("please ", 5000), 600, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -284,7 +284,7 @@ func TestARunawayReasonIsTruncatedNotRejected(t *testing.T) {
 
 func TestTTLIsCapped(t *testing.T) {
 	_, b := readyVault(t)
-	req, _ := b.RequestGrant("github-token", "claude-4", "", "x", 999999)
+	req, _ := b.RequestGrant("github-token", "claude-4", "", "x", 999999, 0)
 	if req.TTL > maxRequestTTL {
 		t.Errorf("ttl = %d, want it capped at %d", req.TTL, maxRequestTTL)
 	}
@@ -295,8 +295,8 @@ func TestPendingCountIsWhatABadgeShows(t *testing.T) {
 	if n, _ := b.PendingCount(); n != 0 {
 		t.Fatalf("fresh instance has %d pending", n)
 	}
-	r1, _ := b.RequestGrant("github-token", "a1", "", "x", 600)
-	b.RequestGrant("github-token", "a2", "", "y", 600)
+	r1, _ := b.RequestGrant("github-token", "a1", "", "x", 600, 0)
+	b.RequestGrant("github-token", "a2", "", "y", 600, 0)
 	if n, _ := b.PendingCount(); n != 2 {
 		t.Errorf("pending = %d, want 2", n)
 	}

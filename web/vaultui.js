@@ -71,6 +71,15 @@ function showScan(out) {
   box.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
+/* What a grant has left in COUNT, alongside what it has left in time.
+   A TTL bounds nothing about volume: fifteen minutes is fifteen minutes in
+   which an agent may make any number of calls. */
+function grantUses(g) {
+  if (!g.max_uses) return g.uses ? ` · ${g.uses} use${g.uses === 1 ? "" : "s"}` : "";
+  const left = g.max_uses - (g.uses || 0);
+  return ` · ${left} of ${g.max_uses} use${g.max_uses === 1 ? "" : "s"} left`;
+}
+
 export async function openVault() {
   $("#vault-modal").classList.remove("hidden");
   const st = await api("/vault/status");
@@ -131,7 +140,7 @@ export async function openVault() {
       <input id="v-val" type="password" placeholder="value / token"><button id="v-add" class="btn">Add</button></div>
       ${grants.length ? `<div class="pr-clabel">Active grants</div>
         <div id="v-grants">${grants.map((g) => `<div class="v-row"><span>🎟 ${esc(g.grantee)} → ${esc(g.secret)}
-          <span class="pm">${grantRemaining(g)}</span></span>
+          <span class="pm">${grantRemaining(g)}${grantUses(g)}</span></span>
           <button class="icon danger v-revoke" data-t="${esc(g.token)}" title="revoke">✕</button></div>`).join("")}</div>` : ""}
       <details id="v-audit"><summary>Audit log · every secret use, granted, revoked (${audit.length})</summary>
         ${audit.length ? audit.map((a) => `<div class="v-arow"><span class="pm">${esc((a.ts || "").replace("T", " "))}</span>

@@ -340,3 +340,72 @@ func asInt(v any) int {
 	}
 	return 0
 }
+
+// Prefixes: organising a flat namespace without inventing a hierarchy.
+//
+// Secret names may contain "/" — "prod/stripe", "dev/stripe" — and that is the
+// whole feature. There are no folder objects to create, rename or delete, and
+// nothing has a parent; a prefix is just the part of a name before a slash.
+// The alternative, real folders, would mean a second thing to keep consistent
+// with the names, and the value here is entirely in being able to say "these
+// ones" — for listing, for checking, and above all for bounding what a command
+// is handed.
+
+// Prefix returns the folder part of a name, or "" for a top-level secret.
+func Prefix(name string) string {
+	i := strings.LastIndex(name, "/")
+	if i <= 0 {
+		return ""
+	}
+	return name[:i]
+}
+
+// HasPrefix reports whether a name is under a prefix.
+//
+// Compared on whole segments: "prod" must not match "production/key", or a
+// command scoped to one namespace would silently reach into another whose name
+// merely starts with the same letters. The same rule the broker's URL scope
+// uses, for the same reason.
+func HasPrefix(name, prefix string) bool {
+	prefix = strings.TrimSuffix(strings.TrimSpace(prefix), "/")
+	if prefix == "" {
+		return true
+	}
+	return name == prefix || strings.HasPrefix(name, prefix+"/")
+}
+
+// Under returns the secrets beneath a prefix. An empty prefix returns all.
+func (v *Vault) Under(prefix string) ([]Info, error) {
+	all, err := v.Describe()
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(prefix) == "" {
+		return all, nil
+	}
+	out := []Info{}
+	for _, i := range all {
+		if HasPrefix(i.Name, prefix) {
+			out = append(out, i)
+		}
+	}
+	return out, nil
+}
+
+// Prefixes lists the namespaces in use, with a count each.
+//
+// Derived from the names rather than stored, so there is no such thing as an
+// empty folder to clean up and no way for the list to disagree with reality.
+func (v *Vault) Prefixes() (map[string]int, error) {
+	all, err := v.Describe()
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]int{}
+	for _, i := range all {
+		if p := Prefix(i.Name); p != "" {
+			out[p]++
+		}
+	}
+	return out, nil
+}

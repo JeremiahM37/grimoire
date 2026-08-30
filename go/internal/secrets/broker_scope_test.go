@@ -49,7 +49,7 @@ func TestBrokerScopeRejectsHostSuffixBypass(t *testing.T) {
 	rec := &recordingTransport{}
 	b.Client = &http.Client{Transport: rec}
 
-	token, err := b.Grant("api-key", "agent", "https://api.github.com", 900)
+	token, err := b.Grant(GrantSpec{Secret: "api-key", Grantee: "agent", Scope: "https://api.github.com", TTLSeconds: 900})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func TestBrokerScopeIsOriginExact(t *testing.T) {
 	}
 	rec := &recordingTransport{}
 	b.Client = &http.Client{Transport: rec}
-	token, err := b.Grant("api-key", "agent", "https://api.example.com/v1", 900)
+	token, err := b.Grant(GrantSpec{Secret: "api-key", Grantee: "agent", Scope: "https://api.example.com/v1", TTLSeconds: 900})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +110,7 @@ func TestBrokerScopeAllowsInScopeRequests(t *testing.T) {
 	}
 	rec := &recordingTransport{}
 	b.Client = &http.Client{Transport: rec}
-	token, err := b.Grant("api-key", "agent", "https://api.example.com/v1", 900)
+	token, err := b.Grant(GrantSpec{Secret: "api-key", Grantee: "agent", Scope: "https://api.example.com/v1", TTLSeconds: 900})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -174,7 +174,7 @@ func TestBrokerRefusesNonHTTPSchemes(t *testing.T) {
 	if err := v.Put("api-key", "value", nil); err != nil {
 		t.Fatal(err)
 	}
-	token, err := b.Grant("api-key", "agent", "", 900)
+	token, err := b.Grant(GrantSpec{Secret: "api-key", Grantee: "agent", Scope: "", TTLSeconds: 900})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,7 +212,7 @@ func TestBrokerRedirectStaysInScope(t *testing.T) {
 	}))
 	defer origin.Close()
 
-	token, err := b.Grant("api-key", "agent", origin.URL, 900)
+	token, err := b.Grant(GrantSpec{Secret: "api-key", Grantee: "agent", Scope: origin.URL, TTLSeconds: 900})
 	if err != nil {
 		t.Fatal(err)
 	}

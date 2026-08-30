@@ -31,6 +31,9 @@ type grantRequestIn struct {
 	Scope      string `json:"scope"`
 	Reason     string `json:"reason"`
 	TTLSeconds int    `json:"ttl_seconds"`
+	// MaxUses lets the asking agent bound its own request. The agent knows
+	// what it is about to do; the approver is guessing.
+	MaxUses int `json:"max_uses"`
 }
 
 func (s *Server) requestGrant(w http.ResponseWriter, r *http.Request) {
@@ -39,7 +42,8 @@ func (s *Server) requestGrant(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "invalid json")
 		return
 	}
-	req, err := s.Broker.RequestGrant(in.Secret, in.Grantee, in.Scope, in.Reason, in.TTLSeconds)
+	req, err := s.Broker.RequestGrant(in.Secret, in.Grantee, in.Scope, in.Reason,
+		in.TTLSeconds, in.MaxUses)
 	if err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return

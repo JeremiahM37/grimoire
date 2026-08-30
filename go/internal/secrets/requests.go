@@ -55,6 +55,10 @@ type Request struct {
 	Scope   string `json:"scope"`
 	Reason  string `json:"reason"`
 	TTL     int    `json:"ttl_seconds"`
+	// MaxUses is how many redemptions the agent asked for; 0 is unlimited
+	// within the TTL. An agent that knows it needs one call can say so, and
+	// that is a tighter bound than an approver guessing.
+	MaxUses int    `json:"max_uses"`
 	State   string `json:"state"`
 	Created string `json:"created"`
 	Decided string `json:"decided,omitempty"`
@@ -90,7 +94,7 @@ func requestID() (string, error) {
 }
 
 // RequestGrant records an agent's ask. It issues nothing.
-func (b *Broker) RequestGrant(secretName, grantee, scope, reason string, ttlSeconds int) (Request, error) {
+func (b *Broker) RequestGrant(secretName, grantee, scope, reason string, ttlSeconds, maxUses int) (Request, error) {
 	secretName = strings.TrimSpace(secretName)
 	grantee = strings.TrimSpace(grantee)
 	if secretName == "" {
@@ -127,9 +131,9 @@ func (b *Broker) RequestGrant(secretName, grantee, scope, reason string, ttlSeco
 	}
 	now := Now().Format(time.RFC3339)
 	if err := b.DB.Exec(
-		"INSERT INTO grant_requests(id,secret,grantee,scope,reason,ttl,state,created)"+
-			" VALUES(?,?,?,?,?,?,?,?)",
-		id, secretName, grantee, scope, reason, ttlSeconds, StatePending, now); err != nil {
+		"INSERT INTO grant_requests(id,secret,grantee,scope,reason,ttl,state,created,max_uses)"+
+			" VALUES(?,?,?,?,?,?,?,?,?)",
+		id, secretName, grantee, scope, reason, ttlSeconds, StatePending, now, maxUses); err != nil {
 		return Request{}, err
 	}
 	// Audited like every other thing that happens to a secret. An ask that
@@ -137,7 +141,7 @@ func (b *Broker) RequestGrant(secretName, grantee, scope, reason string, ttlSeco
 	b.audit("grant_requested", secretName,
 		fmt.Sprintf("grantee=%s scope=%s ttl=%ds reason=%s", grantee, scope, ttlSeconds, reason))
 	return Request{ID: id, Secret: secretName, Grantee: grantee, Scope: scope,
-		Reason: reason, TTL: ttlSeconds, State: StatePending, Created: now}, nil
+		Reason: reason, TTL: ttlSeconds, MaxUses: maxUses, State: StatePending, Created: now}, nil
 }
 
 // Requests lists asks, newest first. state="" lists every state.
@@ -150,7 +154,7 @@ func (b *Broker) Requests(state string, limit int) ([]Request, error) {
 		limit = 50
 	}
 	q := "SELECT id,secret,grantee,scope,reason,ttl,state,created," +
-		"COALESCE(decided,''),COALESCE(decided_by,''),COALESCE(note,'') FROM grant_requests"
+		"COALESCE(decided,''),COALESCE(decided_by,''),COALESCE(note,''),max_uses FROM grant_requests"
 	args := []any{}
 	if state != "" {
 		q += " WHERE state=?"
@@ -168,7 +172,8 @@ func (b *Broker) Requests(state string, limit int) ([]Request, error) {
 	for rows.Next() {
 		var r Request
 		if err := rows.Scan(&r.ID, &r.Secret, &r.Grantee, &r.Scope, &r.Reason,
-			&r.TTL, &r.State, &r.Created, &r.Decided, &r.DecidedBy, &r.Note); err != nil {
+			&r.TTL, &r.State, &r.Created, &r.Decided, &r.DecidedBy, &r.Note,
+			&r.MaxUses); err != nil {
 			return nil, err
 		}
 		out = append(out, r)
@@ -190,10 +195,10 @@ func (b *Broker) Request(id, grantee string) (Request, error) {
 	var token sql.NullString
 	err := b.DB.QueryRow(
 		"SELECT id,secret,grantee,scope,reason,ttl,state,created,"+
-			"COALESCE(decided,''),COALESCE(decided_by,''),COALESCE(note,''),token"+
+			"COALESCE(decided,''),COALESCE(decided_by,''),COALESCE(note,''),token,max_uses"+
 			" FROM grant_requests WHERE id=? AND grantee=?", id, grantee).
 		Scan(&r.ID, &r.Secret, &r.Grantee, &r.Scope, &r.Reason, &r.TTL, &r.State,
-			&r.Created, &r.Decided, &r.DecidedBy, &r.Note, &token)
+			&r.Created, &r.Decided, &r.DecidedBy, &r.Note, &token, &r.MaxUses)
 	if err != nil {
 		return Request{}, ErrNoRequest
 	}
@@ -222,7 +227,8 @@ func (b *Broker) Approve(id, decidedBy string, ttlOverride int) (Request, error)
 	// exists. Approving a request for a secret nobody ever stored fails HERE,
 	// in front of the person who can fix it, rather than at asking time in
 	// front of an agent that would learn the vault's contents from the error.
-	token, err := b.Grant(r.Secret, r.Grantee, r.Scope, ttl)
+	token, err := b.Grant(GrantSpec{Secret: r.Secret, Grantee: r.Grantee,
+		Scope: r.Scope, TTLSeconds: ttl, MaxUses: r.MaxUses})
 	if err != nil {
 		return Request{}, err
 	}
@@ -269,9 +275,10 @@ func (b *Broker) Deny(id, decidedBy, note string) (Request, error) {
 func (b *Broker) pending(id string) (Request, error) {
 	var r Request
 	err := b.DB.QueryRow(
-		"SELECT id,secret,grantee,scope,reason,ttl,state,created FROM grant_requests"+
+		"SELECT id,secret,grantee,scope,reason,ttl,state,created,max_uses FROM grant_requests"+
 			" WHERE id=? AND state=?", id, StatePending).
-		Scan(&r.ID, &r.Secret, &r.Grantee, &r.Scope, &r.Reason, &r.TTL, &r.State, &r.Created)
+		Scan(&r.ID, &r.Secret, &r.Grantee, &r.Scope, &r.Reason, &r.TTL, &r.State,
+			&r.Created, &r.MaxUses)
 	if err != nil {
 		return Request{}, ErrNoRequest
 	}

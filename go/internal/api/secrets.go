@@ -130,6 +130,8 @@ type grantIn struct {
 	Grantee    string `json:"grantee"`
 	Scope      string `json:"scope"`
 	TTLSeconds int    `json:"ttl_seconds"`
+	// MaxUses bounds redemptions; 0 leaves the grant limited only by time.
+	MaxUses int `json:"max_uses"`
 }
 
 func (s *Server) makeGrant(w http.ResponseWriter, r *http.Request) {
@@ -141,7 +143,9 @@ func (s *Server) makeGrant(w http.ResponseWriter, r *http.Request) {
 	if in.TTLSeconds == 0 {
 		in.TTLSeconds = 900
 	}
-	token, err := s.Broker.Grant(r.PathValue("name"), in.Grantee, in.Scope, in.TTLSeconds)
+	token, err := s.Broker.Grant(secrets.GrantSpec{
+		Secret: r.PathValue("name"), Grantee: in.Grantee, Scope: in.Scope,
+		TTLSeconds: in.TTLSeconds, MaxUses: in.MaxUses})
 	if s.vaultLocked(w, err) {
 		return
 	}
@@ -149,7 +153,8 @@ func (s *Server) makeGrant(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"grant": token, "expires_in": in.TTLSeconds})
+	writeJSON(w, http.StatusOK, map[string]any{
+		"grant": token, "expires_in": in.TTLSeconds, "max_uses": in.MaxUses})
 }
 
 func (s *Server) listGrants(w http.ResponseWriter, _ *http.Request) {
