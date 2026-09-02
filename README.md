@@ -28,7 +28,7 @@ claude mcp add grimoire -- grimoire-mcp            # your agent now has all of i
 Or `docker run -p 9111:9111 -v grimoire-vault:/vault ghcr.io/jeremiahm37/grimoire:latest`.
 Releases ship static binaries for Linux, macOS and Windows on amd64/arm64.
 
-## Point Claude at your Obsidian vault
+## Point your agent at the notes you already have
 
 Every agent-memory layer starts empty. mem0, Zep and Letta accumulate what an
 agent learns from talking to you — useful, and not the problem. The runbooks and
