@@ -1,6 +1,6 @@
 """Power features in the browser: version history modal, note composer
 (extract/merge), folder tree, outgoing links, slides, canvas."""
-from conftest import reload_ready
+from conftest import answer_panel, reload_ready
 from playwright.sync_api import expect
 
 
@@ -31,8 +31,8 @@ def test_version_history_view_and_restore(page, server):
     expect(page.locator("#history-modal .v-row").first).to_be_visible(timeout=8000)
     page.locator(".h-view").first.click()
     expect(page.locator("#history-preview")).to_contain_text("first version")
-    page.once("dialog", lambda d: d.accept())
     page.locator(".h-restore").first.click()
+    answer_panel(page, None)
     expect(page.locator("#content")).to_have_value("first version\n", timeout=8000)
 
 
@@ -47,9 +47,9 @@ def test_extract_selection_creates_linked_note(page, server):
       const ta = document.querySelector('#content');
       const s = ta.value.indexOf('EXTRACT'); ta.setSelectionRange(s, s + 'EXTRACT-THIS-PART'.length);
     }""")
-    page.once("dialog", lambda d: d.accept("Extracted Bit"))
     _palette(page, "extract selection")
     page.keyboard.press("Enter")
+    answer_panel(page, "Extracted Bit")
     expect(page.locator("#content")).to_have_value(
         "keep this [[Extracted Bit]] end", timeout=8000)
     body = page.evaluate(
@@ -69,10 +69,10 @@ def test_merge_note_into_another(page, server):
     _new_note(page, "Merge Source")
     page.fill("#content", "source content to move")
     expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
-    dialogs = iter(["Merge Target", None])   # prompt(title) then confirm()
-    page.on("dialog", lambda d: d.accept(next(dialogs) or ""))
     _palette(page, "merge this note")
     page.keyboard.press("Enter")
+    answer_panel(page, "Merge Target")
+    answer_panel(page)
     expect(page.locator("#title")).to_have_value("Merge Target", timeout=8000)
     body = page.evaluate(
         "async () => (await (await fetch('/api/notes/merge-target.md')).json()).body")
@@ -134,13 +134,19 @@ def test_slides_present_mode(page, server):
 def test_canvas_create_add_card_persist(page, server):
     page.goto(server)
     page.wait_for_selector("body[data-ready]", timeout=10000)
-    dialogs = iter(["Ideas", "my first card"])   # canvas name, then card text
-    page.on("dialog", lambda d: d.accept(next(dialogs, "")))
     _palette(page, "new canvas")
     page.keyboard.press("Enter")
+    answer_panel(page, "Ideas")
     expect(page.locator("#canvas-view")).to_be_visible(timeout=8000)
+    # Escape cancels just the card panel, preserving the underlying canvas.
+    page.dblclick(".cv-viewport", position={"x": 400, "y": 300})
+    page.locator(".form-panel textarea").fill("discard this card")
+    page.keyboard.press("Escape")
+    expect(page.locator(".form-panel")).to_have_count(0)
+    expect(page.locator("#canvas-view")).to_be_visible()
     # double-click the background to add a text card
     page.dblclick(".cv-viewport", position={"x": 400, "y": 300})
+    answer_panel(page, "my first card")
     expect(page.locator(".cv-node", has_text="my first card")).to_be_visible(timeout=5000)
     expect(page.locator("#cv-save")).to_have_text("saved", timeout=6000)
     # persisted server-side in JSON Canvas format

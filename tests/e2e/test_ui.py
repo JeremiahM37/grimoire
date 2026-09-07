@@ -1,9 +1,8 @@
 """Playwright e2e — real browser against a real server on a temp vault."""
-
 import re
 
 import pytest
-from conftest import DESKTOP, PHONE, reload_ready  # conftest dir is on sys.path
+from conftest import DESKTOP, PHONE, answer_panel, reload_ready  # conftest dir is on sys.path
 from playwright.sync_api import expect
 
 VAULT_PASS = "mypassphrase123"
@@ -349,15 +348,15 @@ def test_templates_save_and_apply_via_palette(page, server):
     # save the current note as a template (palette command → name prompt)
     page.keyboard.press("Control+k")
     page.fill("#palette-input", "save current note as template")
-    page.once("dialog", lambda d: d.accept("Meeting Tpl"))
     page.keyboard.press("Enter")
+    answer_panel(page, "Meeting Tpl")
     page.wait_for_timeout(400)   # let refreshTemplates run
     # now create a note from it (palette shows "New from: Meeting Tpl" → title prompt)
     page.keyboard.press("Control+k")
     page.fill("#palette-input", "new from meeting")
     expect(page.locator("#palette-list .pal-item.sel")).to_contain_text("New from: Meeting Tpl")
-    page.once("dialog", lambda d: d.accept("Monday Standup"))
     page.keyboard.press("Enter")
+    answer_panel(page, "Monday Standup")
     expect(page.locator("#title")).to_have_value("Monday Standup", timeout=8000)
     import datetime
     today = datetime.date.today().isoformat()
@@ -456,8 +455,8 @@ def test_delete_then_undo_restores_note(page, server):
     page.fill("#content", "please recover me")
     expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
     # delete (confirm dialog) → note leaves the list, Undo toast appears
-    page.once("dialog", lambda d: d.accept())
     page.click("#delete-note")
+    answer_panel(page, None)
     expect(page.locator(".note-row .t", has_text="Trash E2E")).to_have_count(0, timeout=8000)
     page.click(".toast-btn >> text=Undo")
     # restored: back in the list and open in the editor
@@ -562,7 +561,8 @@ def test_help_modal_via_palette_and_shortcut(page, server):
     expect(page.locator("#help-body")).to_contain_text("Command palette")
     page.click("#help-close")
     expect(page.locator("#help-modal")).to_be_hidden()
-    # "?" reopens it (focus is on the close button, not a text field)
+    # Focus returns to the editor on close; ? is a shortcut only outside text fields.
+    page.locator("#palette-open").focus()
     page.keyboard.press("?")
     expect(page.locator("#help-modal")).to_be_visible()
 
@@ -690,15 +690,14 @@ def test_rename_tag_via_palette(page, server):
     page.fill("#content", "has #renameme here")
     expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
 
-    def handle(d):
-        d.accept("freshtag" if "to:" in d.message else "renameme")
-    page.on("dialog", handle)
     page.keyboard.press("Control+k")
     page.fill("#palette-input", "rename a tag across all notes")
     page.keyboard.press("Enter")
+    page.locator(".form-panel [name=old]").fill("renameme")
+    page.locator(".form-panel [name=new]").fill("freshtag")
+    answer_panel(page)
     # the open note's body is rewritten to the new tag
     expect(page.locator("#content")).to_have_value(re.compile(r"#freshtag"), timeout=8000)
-    page.remove_listener("dialog", handle)
 
 
 def test_offline_edit_recovers_and_retries(page, server):
@@ -887,9 +886,9 @@ def test_note_context_menu_duplicate_and_rename(page, server):
     page.locator("#ctx-menu .mi", has_text="Duplicate").click()
     expect(page.locator(".note-row .t", has_text="Ctx Note (copy)")).to_be_visible(timeout=8000)
     # rename the copy via the context menu (updates the displayed title)
-    page.once("dialog", lambda d: d.accept("Ctx Renamed"))
     page.locator(".note-row .t >> text=Ctx Note (copy)").click(button="right")
     page.locator("#ctx-menu .mi", has_text="Rename").click()
+    answer_panel(page, "Ctx Renamed")
     expect(page.locator(".note-row .t", has_text="Ctx Renamed")).to_be_visible(timeout=8000)
 
 
@@ -1298,10 +1297,10 @@ def test_graph_search_zoom_resize_and_note_navigation(page, server):
     page.click("#graph-in")
     assert float(page.locator("#graph-canvas").get_attribute("data-zoom"))>before
     page.fill("#graph-search","Graph Hub")
-    page.locator("#graph-results button").click()
+    page.locator("#graph-results .graph-show").click()
     expect(page.locator("#graph-selection")).to_contain_text("Graph Spoke")
     page.fill("#graph-search","Isolated")
-    page.locator("#graph-results button").click()
+    page.locator("#graph-results .graph-show").click()
     expect(page.locator("#graph-scope")).to_have_value("all")
     expect(page.locator("#graph-stat")).to_have_text("3 notes · 1 links")
     expect(page.locator("#graph-selection")).to_contain_text("0 connected notes")
@@ -1309,6 +1308,8 @@ def test_graph_search_zoom_resize_and_note_navigation(page, server):
     page.wait_for_timeout(150)
     assert page.locator("#graph-canvas").bounding_box()["height"]>=180
     assert page.evaluate("document.documentElement.scrollWidth<=innerWidth")
+    page.keyboard.press("Escape")
+    expect(page.locator("#graph-search")).to_have_value("")
     page.keyboard.press("Escape")
     expect(page.locator("#graph-modal")).to_be_hidden()
     page.evaluate("document.querySelector('#graph-open').click()")
@@ -1384,3 +1385,58 @@ def test_new_note_panel_folder_and_error_recovery(page, server):
     page.click("#new-note")
     page.click("#new-note-cancel")
     expect(page.locator("#new-note-modal")).to_be_hidden()
+
+@pytest.mark.parametrize("page", [DESKTOP, PHONE], indirect=True, ids=["desktop", "phone"])
+def test_panel_keyboard_focus_and_short_viewport(page, server):
+    page.goto(server)
+    page.wait_for_selector("body[data-ready]")
+    if page.viewport_size["width"] < 700:
+        page.click("#menu-open")
+    page.click("#new-note")
+    page.fill("#new-note-title", "Keyboard draft")
+    page.locator("#new-note-create").focus()
+    page.keyboard.press("Tab")
+    expect(page.locator("#new-note-close")).to_be_focused()
+    page.keyboard.press("Shift+Tab")
+    expect(page.locator("#new-note-create")).to_be_focused()
+    page.set_viewport_size({"width": 390, "height": 420})
+    expect(page.locator("html")).to_have_css("--visible-height", "420px")
+    box = page.locator("#new-note-create").bounding_box()
+    assert box["y"] >= 0 and box["y"] + box["height"] <= 420
+    page.keyboard.press("Escape")
+    expect(page.locator("#new-note-modal")).to_be_hidden()
+    expect(page.locator("#new-note")).to_be_focused()
+    # Cancelling an optional title used to create a unique note anyway.
+    calls = []
+    page.on("request", lambda r: calls.append(r.url) if r.method == "POST" and r.url.endswith("/api/notes") else None)
+    page.keyboard.press("Control+k")
+    page.fill("#palette-input", "new unique")
+    page.keyboard.press("Enter")
+    expect(page.locator(".form-panel")).to_be_visible()
+    page.keyboard.press("Escape")
+    expect(page.locator(".form-panel")).to_have_count(0)
+    assert not calls
+
+
+def test_note_and_graph_search_share_keyboard_controls(page, server):
+    page.request.post(server + "/api/notes", data={"title": "Consistent Search", "body": "shared search controls"})
+    page.goto(server)
+    page.wait_for_selector("body[data-ready]")
+    page.fill("#search", "Consistent Search")
+    page.keyboard.press("ArrowDown")
+    page.keyboard.press("Enter")
+    expect(page.locator("#title")).to_have_value("Consistent Search")
+    page.focus("#search")
+    page.keyboard.press("Escape")
+    expect(page.locator("#search")).to_have_value("")
+    page.click("#graph-open")
+    page.fill("#graph-search", "Consistent Search")
+    expect(page.locator("#graph-search-status")).to_contain_text("Enter to open")
+    page.keyboard.press("Escape")
+    expect(page.locator("#graph-search")).to_have_value("")
+    expect(page.locator("#graph-modal")).to_be_visible()
+    page.fill("#graph-search", "Consistent Search")
+    page.keyboard.press("ArrowDown")
+    page.keyboard.press("Enter")
+    expect(page.locator("#graph-modal")).to_be_hidden()
+    expect(page.locator("#title")).to_have_value("Consistent Search")

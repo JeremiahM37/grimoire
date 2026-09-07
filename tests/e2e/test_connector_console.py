@@ -15,6 +15,7 @@ import json
 import urllib.request
 
 import pytest
+from conftest import answer_panel
 from playwright.sync_api import expect
 
 PREFIX = "e2e-conn"
@@ -132,8 +133,8 @@ def test_saving_a_connector_lists_it_and_removing_it_takes_it_away(page, server,
     # It has never run, and that must read as "never" rather than as a success.
     expect(row).to_contain_text("never")
 
-    page.once("dialog", lambda d: d.accept())
     row.locator(".conn-del").click()
+    answer_panel(page, None)
     expect(page.locator(".conn-row", has_text=f"{PREFIX}-saved")).to_have_count(0, timeout=6000)
 
 

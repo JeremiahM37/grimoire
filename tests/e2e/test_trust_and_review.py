@@ -11,6 +11,7 @@ here is namespaced and every assertion is scoped to it.
 import urllib.request
 
 import pytest
+from conftest import answer_panel
 from playwright.sync_api import expect
 
 
@@ -123,8 +124,8 @@ def test_vouching_promotes_the_note_and_clears_the_warning(page, server):
         ".note-row", has_text="Vouch probe").click()
     expect(page.locator("#provenance")).to_contain_text("untrusted", timeout=6000)
 
-    page.once("dialog", lambda d: d.accept())
     page.locator("#prov-vouch").click()
+    answer_panel(page, None)
     expect(page.locator("#provenance.untrusted")).to_be_hidden(timeout=8000)
 
     # And it is in the FILE, not only in the UI.
@@ -146,8 +147,8 @@ def test_retrieval_inspection_flags_untrusted_context_and_can_exclude_it(page, s
     page.reload()
     page.wait_for_selector("body[data-ready]", timeout=10000)
 
-    page.once("dialog", lambda d: d.accept("osprey ledger vacuum"))
     _palette(page, "what would the agent see")
+    answer_panel(page, "osprey ledger vacuum")
     expect(page.locator("#inspect-modal")).to_be_visible(timeout=6000)
     flagged = page.locator(".inspect-chunk", has_text="Osprey thread")
     expect(flagged).to_be_visible(timeout=8000)
@@ -206,8 +207,8 @@ def test_a_stale_passage_is_marked_in_the_agents_context(page, server):
     page.reload()
     page.wait_for_selector("body[data-ready]", timeout=10000)
 
-    page.once("dialog", lambda d: d.accept("falcon cache eviction"))
     _palette(page, "what would the agent see")
+    answer_panel(page, "falcon cache eviction")
     chunk = page.locator(".inspect-chunk", has_text="Falcon cache")
     expect(chunk).to_be_visible(timeout=8000)
     expect(chunk.locator(".ic-stale")).to_be_visible()
@@ -299,8 +300,8 @@ def test_denying_a_request_records_a_reason_the_agent_can_read(page, server):
     _palette(page, "credential requests")
     row = page.locator(".inspect-chunk", has_text="e2e-deny-token")
     expect(row).to_be_visible(timeout=8000)
-    page.once("dialog", lambda d: d.accept("use the read-only key instead"))
     row.locator(".gr-deny").first.click()
+    answer_panel(page, "use the read-only key instead")
 
     expect(page.locator(".inspect-chunk", has_text="e2e-deny-token").first).to_contain_text(
         "denied", timeout=8000)

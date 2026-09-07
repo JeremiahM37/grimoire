@@ -1,3 +1,4 @@
+import { askText, confirmAction, formPanel } from "/dialogs.js";
 /**
  * Secret-vault UI — init/unlock/lock, secrets CRUD, scoped grants, audit log,
  * passphrase rotation. Pure modal logic over the /api/vault + /api/secrets
@@ -172,7 +173,7 @@ export async function openVault() {
       box.querySelectorAll(".v-restore").forEach((r) => (r.onclick = async () => {
         // The value being replaced is retained too, so this is undoable — say
         // so, because "restore" otherwise reads as destructive.
-        if (!confirm(`Make that value current again for "${r.dataset.n}"?\n\n`
+        if (!await confirmAction(`Make that value current again for "${r.dataset.n}"?\n\n`
           + "The value it replaces is kept, so this can be undone.")) return;
         try {
           await api("/secrets/restore", { method: "POST",
@@ -195,8 +196,9 @@ export async function openVault() {
       await api(`/grants/${encodeURIComponent(x.dataset.t)}`, { method: "DELETE" }); openVault(); toast("Grant revoked");
     }));
     $("#v-changepass").onclick = async () => {
-      const oldp = prompt("Current passphrase:"); if (!oldp) return;
-      const newp = prompt("New passphrase (8+ chars):"); if (!newp) return;
+      const values=await formPanel({title:"Change vault passphrase",submit:"Change passphrase",fields:[{name:"old",label:"Current passphrase",type:"password"},{name:"new",label:"New passphrase",type:"password",minLength:8}]});
+      if(!values)return;
+      const oldp=values.old,newp=values.new;
       try {
         const r = await api("/vault/change-passphrase", { method: "POST", body: { old: oldp, new: newp } });
         toast(`Passphrase changed (re-sealed ${r.reencrypted_notes} encrypted note(s))`);

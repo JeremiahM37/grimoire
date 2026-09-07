@@ -121,3 +121,13 @@ def reload_ready(page, timeout=10000):
     """Reload and wait for boot to finish before returning."""
     page.reload()
     page.wait_for_selector("body[data-ready]", timeout=timeout)
+
+
+def answer_panel(page, value=None):
+    panel = page.locator(".form-panel").last
+    panel.wait_for(state="visible")
+    if value is not None:
+        panel.locator("input,textarea,select").first.fill(value)
+    element = panel.element_handle()
+    panel.locator('button[type="submit"]').click()
+    element.wait_for_element_state("hidden")

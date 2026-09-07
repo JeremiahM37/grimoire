@@ -12,6 +12,7 @@ import urllib.parse
 import urllib.request
 
 import pytest
+from conftest import answer_panel
 from playwright.sync_api import expect
 
 NS = "e2ecred"
@@ -65,8 +66,8 @@ def test_a_rotation_is_visible_and_undoable_from_the_console(page, server):
     row.locator(".v-hist").click()
     expect(page.locator(".v-hist-box", has_text="quarterly rotation")).to_be_visible(timeout=6000)
 
-    page.once("dialog", lambda d: d.accept())
     page.locator(".v-restore").first.click()
+    answer_panel(page, None)
     page.wait_for_timeout(1500)
 
     # Verified through the API, because the console must not be able to show it.

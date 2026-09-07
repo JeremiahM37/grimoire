@@ -1,5 +1,6 @@
 """Substrate trust surfaces in the browser: agent-memory provenance + badges,
 retrieval inspection, and the memory palette entry."""
+from conftest import answer_panel
 from playwright.sync_api import expect
 
 
@@ -49,10 +50,10 @@ def test_retrieval_inspection_shows_agent_context(page, server):
         "body: JSON.stringify({title:'Kubernetes Runbook',"
         "body:'restart the ingress with kubectl rollout restart'})})")
     page.wait_for_timeout(400)
-    page.once("dialog", lambda d: d.accept("how do I restart the ingress"))
     page.keyboard.press("Control+k")
     page.fill("#palette-input", "what would the agent see")
     page.keyboard.press("Enter")
+    answer_panel(page, "how do I restart the ingress")
     expect(page.locator("#inspect-modal")).to_be_visible(timeout=6000)
     chunk = page.locator(".inspect-chunk", has_text="Kubernetes Runbook")
     expect(chunk).to_be_visible(timeout=8000)

@@ -1,3 +1,4 @@
+import { askText, confirmAction, formPanel } from "/dialogs.js";
 /**
  * Canvas view — a minimal-but-real visual board over the JSON Canvas format
  * (https://jsoncanvas.org), interoperable with other JSON Canvas apps.
@@ -19,18 +20,12 @@ export function initCanvas(hostApi) { host = hostApi; }
 export async function openCanvasPicker() {
   const list = await host.api("/canvas");
   if (!list.length) return createCanvas();
-  const name = prompt(
-    "Open canvas:\n" + list.map((c) => `• ${c.name}`).join("\n") +
-    "\n\nType a name (or a new name to create):", list[0].name);
-  if (!name) return;
-  const hit = list.find((c) => c.name.toLowerCase() === name.toLowerCase());
-  if (hit) return openCanvas(hit.path);
-  const made = await host.api("/canvas", { method: "POST", body: { name } });
-  openCanvas(made.path);
+  const result=await formPanel({title:"Open canvas",submit:"Open canvas",fields:[{name:"path",label:"Canvas",options:list.map(c=>({value:c.path,label:c.name}))}]});
+  if(result)return openCanvas(result.path);
 }
 
 export async function createCanvas() {
-  const name = prompt("New canvas name:");
+  const name = await askText("New canvas name:");
   if (!name) return;
   try {
     const made = await host.api("/canvas", { method: "POST", body: { name } });
@@ -151,10 +146,10 @@ export async function openCanvas(path) {
       addEventListener("pointermove", onMove);
       addEventListener("pointerup", onUp);
     };
-    el.ondblclick = (ev) => {
+    el.ondblclick = async (ev) => {
       ev.stopPropagation();
       if (n.type === "file") return host.openNote(n.file);
-      const text = prompt("Card text:", n.text || "");
+      const text = await askText("Card text:", n.text || "");
       if (text !== null) { n.text = text; renderNodes(); scheduleSave(); }
     };
     if (n.type === "file")
@@ -177,10 +172,10 @@ export async function openCanvas(path) {
     view.zoom = Math.max(0.2, Math.min(2.5, view.zoom * factor));
     applyView();
   };
-  viewport.ondblclick = (ev) => {
+  viewport.ondblclick = async (ev) => {
     if (ev.target.closest(".cv-node")) return;
     const x = (ev.clientX - view.x) / view.zoom, y = (ev.clientY - view.y) / view.zoom;
-    const text = prompt("Card text (or [[Note Title]] to embed a note):");
+    const text = await askText("Card text (or [[Note Title]] to embed a note):");
     if (!text) return;
     const wiki = text.match(/^\[\[(.+?)\]\]$/);
     doc.nodes.push(wiki
@@ -189,6 +184,7 @@ export async function openCanvas(path) {
     renderNodes(); scheduleSave();
   };
   const onKey = (ev) => {
+    if(document.querySelector(".form-panel"))return;
     if (ev.key === "Escape") return close();
     if ((ev.key === "Delete" || ev.key === "Backspace") && selected
         && !ev.target.closest("input, textarea")) {

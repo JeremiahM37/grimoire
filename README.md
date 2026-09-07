@@ -48,7 +48,11 @@ Everything else follows from that one decision.
 
 Create notes in a dedicated panel, search titles and content, or explain the current note
 without changing it. The graph supports pan, zoom, search, and exploring a
-note’s connections on desktop and mobile.
+note’s connections on desktop and mobile. Both searches use arrow keys to choose
+a result, Enter to open it, and Escape to clear the query.
+
+Rename, templates, canvas cards and other actions use in-app panels. Dialogs
+keep keyboard focus inside, return it on close, and fit above the mobile keyboard.
 
 | Explore connections | Find a note |
 |---|---|

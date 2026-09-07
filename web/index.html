@@ -289,8 +289,8 @@
         <span>◉ Graph <span id="graph-stat" class="graph-stat"></span></span>
         <button id="graph-close" class="icon">✕</button>
       </header>
-      <div class="graph-controls"><input id="graph-search" type="search" placeholder="Find a note in the graph…" aria-label="Search graph notes"><select id="graph-scope" aria-label="Graph scope"><option value="linked">Connected notes</option><option value="local">Current note &amp; neighbors</option><option value="all">All notes</option></select><button id="graph-out" class="icon" aria-label="Zoom out">−</button><button id="graph-in" class="icon" aria-label="Zoom in">+</button><button id="graph-fit" class="btn">Fit</button></div>
-      <div class="graph-workspace"><canvas id="graph-canvas" tabindex="0" aria-label="Note graph. Drag to pan, scroll or use plus and minus to zoom. Search to select a note."></canvas><aside class="graph-inspector"><div id="graph-results" aria-live="polite"></div><div id="graph-selection"></div></aside></div>
+      <div class="graph-controls"><div class="note-search graph-search-wrap"><input id="graph-search" type="search" placeholder="Search note titles…" aria-label="Search graph notes"><button id="graph-search-clear" class="icon" aria-label="Clear graph search" hidden>✕</button></div><select id="graph-scope" aria-label="Graph scope"><option value="linked">Connected notes</option><option value="local">Current note &amp; neighbors</option><option value="all">All notes</option></select><button id="graph-out" class="icon" aria-label="Zoom out">−</button><button id="graph-in" class="icon" aria-label="Zoom in">+</button><button id="graph-fit" class="btn">Fit</button></div>
+      <div class="graph-workspace"><canvas id="graph-canvas" tabindex="0" aria-label="Note graph. Drag to pan, scroll or use plus and minus to zoom. Search to select a note."></canvas><aside class="graph-inspector"><p id="graph-search-status" role="status"></p><div id="graph-results" aria-live="polite"></div><div id="graph-selection"></div></aside></div>
       <p class="graph-help">Drag to pan · scroll or pinch to zoom · select a note to explore its links</p>
     </div>
   </div>

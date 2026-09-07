@@ -269,7 +269,7 @@ def capture(base: str):
         page.click("#graph-open")
         page.wait_for_timeout(1200)
         page.fill("#graph-search", "Deployment")
-        page.locator("#graph-results button").first.click()
+        page.locator("#graph-results .graph-show").first.click()
         page.fill("#graph-search", "")
         shot(page, "graph.png")
         page.click("#graph-close")
@@ -307,13 +307,13 @@ def capture(base: str):
         page.wait_for_timeout(900)
         shot(page, "agent-memory.png")
 
-        # Retrieval inspection asks for the query through a browser prompt(),
-        # so the dialog has to be answered rather than typed into.
-        page.once("dialog", lambda d: d.accept("why did the deploy still 502"))
+        # Retrieval inspection uses the same accessible form panel as other actions.
         page.click("#palette-open")
         page.fill("#palette-input", "retrieval inspection")
         page.wait_for_timeout(400)
         page.keyboard.press("Enter")
+        page.locator(".form-panel input").fill("why did the deploy still 502")
+        page.locator(".form-panel button[type=submit]").click()
         page.wait_for_selector("#inspect-modal:not(.hidden)", timeout=10000)
         page.wait_for_timeout(1500)
         shot(page, "retrieval-inspection.png")

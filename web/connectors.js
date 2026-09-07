@@ -1,3 +1,4 @@
+import { askText, confirmAction, formPanel } from "/dialogs.js";
 /**
  * Connector configuration, rendered from what the server says it supports.
  *
@@ -51,7 +52,7 @@ async function render() {
     render();
   }));
   body.querySelectorAll(".conn-del").forEach((b) => (b.onclick = async () => {
-    if (!confirm("Remove this connector? The notes it pulled are kept.")) return;
+    if (!await confirmAction("Remove this connector? The notes it pulled are kept.")) return;
     await api(`/connectors/${b.dataset.id}`, { method: "DELETE" });
     render();
   }));

@@ -1,5 +1,6 @@
 """Plugin runtime in a real browser: builtin plugins activate, fence renderers
 own their blocks, panels mount in the sidebar, KaTeX renders math offline."""
+from conftest import answer_panel
 from playwright.sync_api import expect
 
 
@@ -74,10 +75,10 @@ def test_opt_in_panels_mount_once_enabled(page, server):
 def test_plugin_scaffold_via_palette(page, server):
     page.goto(server)
     page.wait_for_selector("body[data-ready]", timeout=10000)
-    page.once("dialog", lambda d: d.accept("my-first-plugin"))
     page.keyboard.press("Control+k")
     page.fill("#palette-input", "create a plugin")
     page.keyboard.press("Enter")
+    answer_panel(page, "my-first-plugin")
     # skeleton exists and is listed as a disabled vault plugin
     page.wait_for_function(
         "async () => (await (await fetch('/api/plugins')).json())"

@@ -1,3 +1,4 @@
+import { askText, confirmAction, formPanel } from "/dialogs.js";
 /**
  * Accounts, spaces and API keys, in the console.
  *
@@ -104,7 +105,7 @@ async function render() {
     } catch (e) { toast(e.message, true); }
   };
   body.querySelectorAll(".ad-deluser").forEach((b) => (b.onclick = async () => {
-    if (!confirm(`Remove ${b.dataset.name}? Their notes stay in the vault.`)) return;
+    if (!await confirmAction(`Remove ${b.dataset.name}? Their notes stay in the vault.`)) return;
     try { await api(`/users/${b.dataset.id}`, { method: "DELETE" }); render(); }
     catch (e) { toast(e.message, true); }
   }));
@@ -139,20 +140,14 @@ function keyRow(k) {
 
 async function members(spaceId, name) {
   const list = await api(`/spaces/${spaceId}/members`).catch(() => []);
-  const who = prompt(
-    `${name} — members: ${list.map((m) => m.name + " (" + m.role + ")").join(", ") || "none"}\n\n` +
-    `Add an account by name (prefix with "read:" for read-only, "-" to remove):`);
-  if (!who) return;
+  const result=await formPanel({title:`Manage ${name} members`,description:`Current members: ${list.map(m=>m.name+' ('+m.role+')').join(', ')||'none'}`,submit:"Update membership",fields:[{name:"user",label:"Account name"},{name:"role",label:"Access",options:[{value:"reader",label:"Read only"},{value:"writer",label:"Read and write"},{value:"remove",label:"Remove access"}]}]});
+  if(!result)return;
   try {
-    if (who.startsWith("-")) {
-      const target = list.find((m) => m.name === who.slice(1).trim());
-      if (target) await api(`/spaces/${spaceId}/members/${target.user}`, { method: "DELETE" });
-    } else {
-      const readOnly = who.startsWith("read:");
-      await api(`/spaces/${spaceId}/members`, { method: "POST", body: {
-        user: readOnly ? who.slice(5).trim() : who.trim(),
-        role: readOnly ? "reader" : "writer" }});
-    }
+    if(result.role==='remove'){
+      const target=list.find(m=>m.name===result.user.trim());
+      if(!target)return toast('That account is not a member',true);
+      await api(`/spaces/${spaceId}/members/${target.user}`,{method:'DELETE'});
+    }else await api(`/spaces/${spaceId}/members`,{method:'POST',body:{user:result.user.trim(),role:result.role}});
     toast("membership updated");
   } catch (e) { toast(e.message, true); }
 }

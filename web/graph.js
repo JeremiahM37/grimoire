@@ -6,12 +6,12 @@ function closeGraph() { generation++;dispose();dispose=()=>{};$('#graph-modal').
 $('#graph-open').onclick=openGraph;
 $('#graph-close').onclick=closeGraph;
 $('#graph-modal').onclick=e=>{if(e.target.id==='graph-modal')closeGraph();};
-addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#graph-modal').classList.contains('hidden')){e.preventDefault();e.stopPropagation();closeGraph();}},true);
+addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#graph-modal').classList.contains('hidden')){e.preventDefault();e.stopPropagation();if($('#graph-search').value){$('#graph-search-clear').click();}else closeGraph();}},true);
 export async function openGraph() {
   dispose();const ticket=++generation;
   const modal=$('#graph-modal');modal.classList.remove('hidden');
   $('#graph-stat').textContent='Loading…';$('#graph-selection').textContent='Select a note to see its connections.';$('#graph-results').replaceChildren();
-  $('#graph-search').value='';$('#graph-close').focus();
+  $('#graph-search').value='';$('#graph-search-clear').hidden=true;$('#graph-search-status').textContent='';$('#graph-search').focus();
   let g;
   try {g=await api('/graph');} catch(e) {if(ticket===generation)$('#graph-stat').textContent=`Could not load graph: ${e.message}. Close and reopen to retry.`;return;}
   if(ticket!==generation)return;
@@ -52,7 +52,28 @@ export async function openGraph() {
       nodes.forEach(n=>{n.vx-=n.x*.0008*alpha;n.vy-=n.y*.0008*alpha;n.x+=n.vx;n.y+=n.vy;n.vx*=.7;n.vy*=.7;});ticks++;}
     for(let i=0;i<90;i++)step();fit();search();
   }
-  function search(){const q=$('#graph-search').value.trim().toLowerCase(),el=$('#graph-results');el.replaceChildren();if(!q)return;const hits=[...all.values()].filter(n=>(n.title+' '+n.id).toLowerCase().includes(q)).slice(0,12);if(!hits.length)el.textContent='No matching notes';for(const n of hits){const b=document.createElement('button');b.className='graph-neighbor';b.textContent=n.title||n.id;b.onclick=()=>focusNode(n.id);el.append(b);}}
+  let searchIndex=-1, searchHits=[];
+  function openResult(id){closeGraph();openNoteFn(id);}
+  function search(){
+    const q=$('#graph-search').value.trim().toLowerCase(),el=$('#graph-results');el.replaceChildren();searchIndex=-1;
+    $('#graph-search-clear').hidden=!q;
+    searchHits=q?[...all.values()].filter(n=>(n.title+' '+n.id).toLowerCase().includes(q)):[];
+    $('#graph-search-status').textContent=!q?'':searchHits.length?`${searchHits.length} results · Enter to open`:'No matching notes. Try fewer words.';
+    for(const n of searchHits){
+      const row=document.createElement('div');row.className='graph-result';
+      const open=document.createElement('button');open.className='graph-result-open';open.textContent=n.title||n.id;open.onclick=()=>openResult(n.id);
+      const show=document.createElement('button');show.className='graph-show';show.textContent='Connections';show.setAttribute('aria-label',`Show connections for ${n.title||n.id}`);show.onclick=()=>focusNode(n.id);
+      row.append(open,show);el.append(row);
+    }
+  }
+  $('#graph-search').onkeydown=e=>{
+    if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+      e.preventDefault();searchIndex=Math.max(0,Math.min(searchHits.length-1,searchIndex+(e.key==='ArrowDown'?1:-1)));
+      [...$('#graph-results').children].forEach((row,i)=>row.classList.toggle('kbd-sel',i===searchIndex));
+      $('#graph-results').children[searchIndex]?.scrollIntoView({block:'nearest'});
+    }else if(e.key==='Enter'&&searchHits.length){e.preventDefault();openResult(searchHits[Math.max(0,searchIndex)].id);}
+  };
+  $('#graph-search-clear').onclick=()=>{$('#graph-search').value='';search();$('#graph-search').focus();};
   function zoom(f,x=w/2,y=h/2){const z=Math.min(5,Math.max(.05,camera.z*f)),ratio=z/camera.z;camera.x=x-(x-camera.x)*ratio;camera.y=y-(y-camera.y)*ratio;camera.z=z;draw();}
   const pointers=new Map();let moved=false,start=null,pinch=null;
   function point(e){const r=cv.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};}

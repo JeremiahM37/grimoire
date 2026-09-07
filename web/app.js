@@ -1,3 +1,4 @@
+import { askText, confirmAction, formPanel } from "/dialogs.js";
 /* Grimoire console PWA — vanilla ES module, offline-capable, no build step
    (the one vendored artifact is the optional CM6 live editor, see web/editor.js) */
 import { $, api, toast, toastAction, esc, slugify } from "/util.js";
@@ -142,6 +143,7 @@ function openListSel(split) {
   if (row) split ? openSplit(row.dataset.path) : openNote(row.dataset.path);
 }
 function listNavKey(e) {
+  if(e.key === "Escape" && $("#search").value){e.preventDefault();e.stopPropagation();$("#search-clear").click();return;}
   if (e.key === "ArrowDown") { e.preventDefault(); moveListSel(listSel < 0 ? 0 : 1); }
   else if (e.key === "ArrowUp") { e.preventDefault(); moveListSel(-1); }
   else if (e.key === "Enter" && (listSel >= 0 || e.target.id === "search")) { e.preventDefault(); openListSel(e.ctrlKey || e.metaKey); }
@@ -159,7 +161,7 @@ async function duplicateByPath(path) {
 async function renameNote(path) {
   const n = await api(`/notes/${encodeURI(path)}`);
   const cur = n.title || path.replace(/\.md$/, "").split("/").pop();
-  const to = prompt("Rename note to:", cur);
+  const to = await askText("Rename note to:", cur);
   if (!to || to === cur) return;
   try {
     // rename = update the display title AND move the file to a matching slug
@@ -175,7 +177,7 @@ async function renameNote(path) {
   } catch (e) { toast(e.message, true); }
 }
 async function deleteNoteByPath(path) {
-  if (!confirm("Move this note to trash?")) return;
+  if (!await confirmAction("Move this note to trash?")) return;
   try {
     const r = await api(`/notes/${encodeURI(path)}`, { method: "DELETE" });
     if (state.path === path) { state.path = null; $("#title").value = ""; $("#content").value = ""; $("#content").readOnly = false; $("#backlinks").innerHTML = ""; $("#unlinked").innerHTML = ""; }
@@ -344,7 +346,7 @@ async function openDaily() {
   await loadList(); openNote(d.path);
 }
 async function deleteNote() {
-  if (!state.path || !confirm("Move this note to trash?")) return;
+  if (!state.path || !await confirmAction("Move this note to trash?")) return;
   const r = await api(`/notes/${encodeURI(state.path)}`, { method: "DELETE" });
   state.path = null; state.dirty = false; state.locked = false;
   $("#title").value = ""; $("#content").value = ""; $("#content").readOnly = false;
@@ -478,7 +480,7 @@ async function resolveAndOpen(target) {
   const aliasPath = state.aliases[target.toLowerCase()];
   if (aliasPath) return openNote(aliasPath);
   // create-on-click for unresolved links
-  if (confirm(`"${target}" doesn't exist yet. Create it?`)) {
+  if (await confirmAction(`"${target}" doesn't exist yet. Create it?`)) {
     const n = await api("/notes", { method: "POST", body: { title: target, body: `# ${target}\n\n` } });
     await loadList(); openNote(n.path);
   }
@@ -494,6 +496,7 @@ $('#search-open').onclick=focusSearch;
 addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.shiftKey&&e.key.toLowerCase()==='f'){e.preventDefault();focusSearch();}});
 $('#search-clear').onclick=()=>{$('#search').value='';$('#search').dispatchEvent(new Event('input'));$('#search').focus();};
 $('#search').oninput = (e) => {
+  listSel=-1;
   clearTimeout(searchTimer); const version=++searchVersion, q=e.target.value.trim();
   $('#search-clear').hidden=!q;
   if (state.filterTag) { state.filterTag=null; $('#tag-filter-bar')?.remove(); }
@@ -871,7 +874,7 @@ async function openHistory() {
     } catch (e) { toast(e.message, true); }
   }));
   b.querySelectorAll(".h-restore").forEach((x) => (x.onclick = async () => {
-    if (!confirm("Restore this version? The current text is kept in history.")) return;
+    if (!await confirmAction("Restore this version? The current text is kept in history.")) return;
     await api(`/notes/${encodeURI(state.path)}/history/${x.dataset.id}/restore`, { method: "POST" });
     $("#history-modal").classList.add("hidden");
     toast("Restored — the replaced version stays in history");
@@ -885,7 +888,7 @@ async function extractSelection() {
   const sel = Editor.isLive ? Editor.live.getSelection().text
     : ta.value.slice(ta.selectionStart, ta.selectionEnd);
   if (!sel.trim()) return toast("Select some text to extract first", true);
-  const title = prompt("Title for the extracted note:");
+  const title = await askText("Title for the extracted note:");
   if (!title) return;
   try {
     await api("/notes", { method: "POST", body: { title, body: sel.trim() + "\n" } });
@@ -901,12 +904,12 @@ async function extractSelection() {
 
 async function mergeIntoNote() {
   if (!state.path) return toast("Open a note first", true);
-  const target = prompt("Merge this note INTO which note? (title)");
+  const target = await askText("Merge this note INTO which note? (title)");
   if (!target) return;
   const hit = state.notes.find((n) => (n.title || "").toLowerCase() === target.toLowerCase());
   if (!hit) return toast(`No note titled "${target}"`, true);
   if (hit.path === state.path) return toast("Cannot merge a note into itself", true);
-  if (!confirm(`Append this note's content to "${hit.title}" and move this note to trash?`)) return;
+  if (!await confirmAction(`Append this note's content to "${hit.title}" and move this note to trash?`)) return;
   try {
     if (state.dirty) await save();
     const me = await api(`/notes/${encodeURI(state.path)}`);
@@ -922,7 +925,8 @@ async function mergeIntoNote() {
 /* ---------- unique (Zettelkasten timestamp) note ---------- */
 async function newUniqueNote() {
   const stamp = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 12);
-  const title = prompt("Title (optional):") || "";
+  const title = await askText("New unique note", "", {label:"Title (optional)", optional:true, submit:"Create note"});
+  if (title === null) return;
   try {
     const n = await api("/notes", { method: "POST",
       body: { path: `zettel/${stamp}${title ? "-" + title.toLowerCase().replace(/[^a-z0-9]+/g, "-") : ""}.md`,
@@ -991,7 +995,7 @@ function renderProvenance(n) {
    frontmatter — a decision that belongs in the file, where it survives a
    reindex and shows up in a diff. */
 async function vouchForNote(path) {
-  if (!confirm("Mark this note as trusted?\n\nAgents will then be allowed to "
+  if (!await confirmAction("Mark this note as trusted?\n\nAgents will then be allowed to "
     + "read it as instructions, and it will appear in trusted-only retrieval.")) return;
   try {
     await api("/trust/vouch", { method: "POST", body: { path } });
@@ -1012,7 +1016,7 @@ function relevance(items) {
 /* Retrieval inspection — show exactly which chunks the agent's ask/RAG layer
    would receive for a query. Trust surface: no hidden context. */
 async function openInspect() {
-  const q = prompt("What would the agent see for…");
+  const q = await askText("What would the agent see for…");
   if (!q) return;
   return inspectQuery(q, false);
 }
@@ -1263,8 +1267,9 @@ async function openGrantRequests() {
     b.querySelectorAll(".gr-approve").forEach((x) => (x.onclick = () => decide(x.dataset.id, "approve", {})));
     b.querySelectorAll(".gr-approve-short").forEach((x) =>
       (x.onclick = () => decide(x.dataset.id, "approve", { ttl_seconds: 600 })));
-    b.querySelectorAll(".gr-deny").forEach((x) => (x.onclick = () => {
-      const note = prompt("Why not? (the agent reads this and can act on it)") || "";
+    b.querySelectorAll(".gr-deny").forEach((x) => (x.onclick = async () => {
+      const note = await askText("Deny credential request", "", {label:"Reason (optional)", optional:true, submit:"Deny request"});
+      if (note === null) return;
       return decide(x.dataset.id, "deny", { note });
     }));
   } catch (e) { b.innerHTML = `<p class="vault-note">${esc(e.message)}</p>`; }
@@ -1344,7 +1349,7 @@ const COMMANDS = [
   { icon: "🗺", name: "Open canvas…", run: openCanvasPicker },
   { icon: "🗺", name: "New canvas", run: createCanvas },
   { icon: "🔌", name: "Create a plugin (skeleton in your vault)", run: async () => {
-    const name = prompt("Plugin name (lowercase, hyphens):");
+    const name = await askText("Plugin name (lowercase, hyphens):");
     if (!name) return;
     try {
       const r = await api("/plugins/scaffold", { method: "POST", body: { name } });
@@ -1399,10 +1404,9 @@ function importVault() {
   inp.click();
 }
 async function renameTag() {
-  const old = prompt("Rename which tag? (without #)");
-  if (!old) return;
-  const nw = prompt(`Rename #${old.replace(/^#/, "")} to: (without #)`);
-  if (!nw) return;
+  const values=await formPanel({title:"Rename tag",submit:"Rename tag",fields:[{name:"old",label:"Current tag"},{name:"new",label:"New tag"}]});
+  if(!values)return;
+  const old=values.old,nw=values.new;
   try {
     const r = await api("/tags/rename", { method: "POST", body: { old, new: nw } });
     toast(`Renamed #${r.renamed} → #${r.to} in ${r.notes} note(s)`);
@@ -1454,7 +1458,7 @@ async function openTrash() {
     await loadList(); openTrash(); toast("Restored"); openNote(n.path);
   }));
   b.querySelectorAll(".t-purge").forEach((x) => (x.onclick = async () => {
-    if (!confirm("Delete forever? This cannot be undone.")) return;
+    if (!await confirmAction("Delete forever? This cannot be undone.")) return;
     await api(`/trash/${x.dataset.id}`, { method: "DELETE" }); openTrash();
   }));
 }
@@ -1484,7 +1488,7 @@ async function refreshTemplates() {
 }
 async function saveAsTemplate() {
   if (!state.path) return toast("Open a note first", true);
-  const name = prompt("Template name:", $("#title").value || "");
+  const name = await askText("Template name:", $("#title").value || "");
   if (!name) return;
   try {
     await api("/templates", { method: "POST", body: { name, body: $("#content").value } });
@@ -1492,7 +1496,7 @@ async function saveAsTemplate() {
   } catch (e) { toast(e.message, true); }
 }
 async function newFromTemplate(tplPath) {
-  const title = prompt("Title for the new note:");
+  const title = await askText("Title for the new note:");
   if (!title) return;
   try {
     const n = await api("/templates/apply", { method: "POST", body: { template: tplPath, title } });
@@ -1787,7 +1791,7 @@ async function renderPluginSettings() {
     box.querySelectorAll("input[data-plugin]").forEach((cb) => {
       cb.onchange = async () => {
         if (cb.checked && cb.dataset.source === "vault" &&
-            !confirm(`"${cb.dataset.plugin}" is a vault plugin — it runs third-party code inside Grimoire. Enable it?`)) {
+            !await confirmAction(`"${cb.dataset.plugin}" is a vault plugin — it runs third-party code inside Grimoire. Enable it?`)) {
           cb.checked = false; return;
         }
         try {
