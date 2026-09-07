@@ -399,6 +399,7 @@ func (s *Server) health(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok":               true,
 		"version":          build.String(),
+		"build":            build.Current(),
 		"vault":            s.Vault.Root,
 		"notes":            notes,
 		"tags":             tags,

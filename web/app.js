@@ -25,7 +25,16 @@ async function loadList() {
   api("/tags").then((t) => (state.allTags = t || [])).catch(() => {});
   const h = await api("/health");
   state.rev = h.rev;
+  renderBuild(h);
   $("#stat").textContent = `${h.notes} notes · ${h.tags} tags · ${h.unresolved_links} unlinked`;
+}
+
+function renderBuild(h) {
+  const el = $("#running-build");
+  const b = h.build || {};
+  const status = b.modified === true ? "local changes" : b.modified === false ? "clean" : "build status unknown";
+  el.textContent = `${h.version} · ${b.revision ? b.revision.slice(0, 12) : "revision unknown"} · ${status}`;
+  el.title = b.revision || "VCS metadata was not recorded in this binary.";
 }
 
 /* Live sync: notice notes created/edited/deleted OUTSIDE this tab
@@ -35,6 +44,7 @@ async function pollRev() {
   if (document.hidden || state.dirty) return;   // don't fight an in-progress edit
   try {
     const h = await api("/health");
+    renderBuild(h);
     if (state.rev !== undefined && h.rev !== state.rev) {
       state.rev = h.rev;
       const notes = await api("/notes");
