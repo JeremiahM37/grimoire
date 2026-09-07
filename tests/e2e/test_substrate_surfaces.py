@@ -32,8 +32,10 @@ def test_memory_note_shows_badge_and_provenance(page, server):
 def test_normal_note_has_no_provenance_banner(page, server):
     page.goto(server)
     page.wait_for_selector("body[data-ready]", timeout=10000)
-    page.once("dialog", lambda d: d.accept("Ordinary"))
     page.click("#new-note")
+    page.fill("#new-note-title", "Ordinary")
+    page.click("#new-note-create")
+    page.wait_for_selector("#new-note-modal", state="hidden")
     expect(page.locator("#title")).to_have_value("Ordinary", timeout=8000)
     expect(page.locator("#provenance")).to_be_hidden()
 

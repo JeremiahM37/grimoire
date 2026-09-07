@@ -13,7 +13,7 @@ can use but never see. One self-hosted Go binary, mounted over MCP.
 ![go](https://img.shields.io/badge/go-1.26%2B-00add8)
 [![benchmarks](https://img.shields.io/badge/benchmarks-pre--registered%2C%20nulls%20included-b4741a)](benchmarks/)
 
-![Grimoire console](docs/screenshots/hero.png)
+![Grimoire dark-mode editor](docs/screenshots/hero-dark.png)
 
 </div>
 
@@ -44,13 +44,34 @@ app you use keeps working on the same files.
 
 Everything else follows from that one decision.
 
+## The dark-mode workspace
+
+Create notes in a dedicated panel, search titles and content, or explain the current note
+without changing it. The graph supports pan, zoom, search, and exploring a
+note’s connections on desktop and mobile.
+
+| Explore connections | Find a note |
+|---|---|
+| ![Searchable dark-mode note graph](docs/screenshots/graph.png) | ![Dark-mode note search](docs/screenshots/search-dark.png) |
+
+| Explain a note | On your phone |
+|---|---|
+| ![One-click note explanation](docs/screenshots/explain-dark.png) | ![Grimoire mobile dark mode](docs/screenshots/mobile.png) |
+
+| Create a note | Ask a question |
+|---|---|
+| ![Create a note in dark mode](docs/screenshots/new-note-dark.png) | ![Ask a question across notes](docs/screenshots/ask-dark.png) |
+
+Screenshots use a disposable demo vault with generic notes and a fixed demo AI response. Regenerate them
+with `.venv/bin/python tools/screenshots.py`.
+
 ## Agent memory that lives in your own markdown
 
 What an agent learns lands in those files too, as ordinary bullets with
 provenance. When it gets something wrong you fix the line — and the fix
 **outranks the agent's next write**, which is not true elsewhere.
 
-![Agent memory corrected by hand](docs/screenshots/memory-demo.gif)
+![Agent memory in dark mode](docs/screenshots/agent-memory.png)
 
 Most memory layers let you edit; Letta has a block editor, mem0 an update API.
 But an edit with no recorded *author* has no standing, so it holds only until

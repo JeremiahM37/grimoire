@@ -5,8 +5,10 @@ from playwright.sync_api import expect
 
 def _new_note(pg, title):
     pg.wait_for_selector("body[data-ready]", timeout=10000)   # app fully booted
-    pg.once("dialog", lambda d: d.accept(title))
     pg.click("#new-note")
+    pg.fill("#new-note-title", title)
+    pg.click("#new-note-create")
+    pg.wait_for_selector("#new-note-modal", state="hidden")
     expect(pg.locator("#title")).to_have_value(title, timeout=8000)
 
 

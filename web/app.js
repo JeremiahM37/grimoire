@@ -144,7 +144,7 @@ function openListSel(split) {
 function listNavKey(e) {
   if (e.key === "ArrowDown") { e.preventDefault(); moveListSel(listSel < 0 ? 0 : 1); }
   else if (e.key === "ArrowUp") { e.preventDefault(); moveListSel(-1); }
-  else if (e.key === "Enter" && listSel >= 0) { e.preventDefault(); openListSel(e.ctrlKey || e.metaKey); }
+  else if (e.key === "Enter" && (listSel >= 0 || e.target.id === "search")) { e.preventDefault(); openListSel(e.ctrlKey || e.metaKey); }
 }
 $("#search").addEventListener("keydown", listNavKey);
 $("#note-list").tabIndex = 0;
@@ -300,14 +300,45 @@ async function save() {
 // retry any pending save the moment connectivity returns
 addEventListener("online", () => { if (state.dirty) save(); });
 
-async function newNote() {
-  const title = prompt("New note title:");
-  if (!title) return;
-  try {
-    const n = await api("/notes", { method: "POST", body: { title, body: `# ${title}\n\n` } });
-    await loadList(); openNote(n.path);
-  } catch (e) { toast(e.message, true); }
+let creatingNote=false;
+function newNote() {
+  $('#new-note-form').reset();
+  $('#new-note-error').classList.add('hidden');
+  const folders=[...new Set(state.notes.map(n=>n.path.includes('/')?n.path.slice(0,n.path.lastIndexOf('/')):'').filter(Boolean))].sort();
+  $('#new-note-folders').replaceChildren(...folders.map(folder=>{const option=document.createElement('option');option.value=folder;return option;}));
+  $('#new-note-modal').classList.remove('hidden');
+  $('#new-note-title').focus();
 }
+function closeNewNote() {
+  if(creatingNote)return;
+  $('#new-note-modal').classList.add('hidden');
+  $('#new-note').focus();
+}
+$('#new-note-close').onclick=closeNewNote;
+$('#new-note-cancel').onclick=closeNewNote;
+$('#new-note-modal').onclick=e=>{if(e.target.id==='new-note-modal')closeNewNote();};
+$('#new-note-modal').onkeydown=e=>{if(e.key==='Escape'){e.stopPropagation();closeNewNote();}};
+$('#new-note-form').onsubmit=async e=>{
+  e.preventDefault();
+  if(creatingNote)return;
+  const title=$('#new-note-title').value.trim(),folder=$('#new-note-folder').value.trim().replace(/^\/+|\/+$/g,''),body=$('#new-note-body').value;
+  if(!title){$('#new-note-title').focus();return;}
+  creatingNote=true;$('#new-note-create').disabled=true;
+  $('#new-note-error').classList.add('hidden');
+  try {
+    const data={title,body:`# ${title}\n\n${body}`};
+    if(folder){
+      if(folder.split('/').some(part=>part==='..'||part==='.'||!part)||folder.includes('\\'))throw Error('Use a folder name such as Projects/Ideas.');
+      const slug=title.toLowerCase().replace(/[^\p{L}\p{N}]+/gu,'-').replace(/^-+|-+$/g,'')||'note';
+      data.path=`${folder}/${slug}.md`;
+    }
+    const n=await api('/notes',{method:'POST',body:data});
+    await loadList();await openNote(n.path);
+    $('#new-note-modal').classList.add('hidden');
+    $('#content').focus();
+  } catch(err){$('#new-note-error').textContent=err.message;$('#new-note-error').classList.remove('hidden');}
+  finally{creatingNote=false;$('#new-note-create').disabled=false;}
+};
 async function openDaily() {
   const d = await api("/daily");
   await loadList(); openNote(d.path);
@@ -453,16 +484,30 @@ async function resolveAndOpen(target) {
   }
 }
 /* ---------- search ---------- */
-let searchTimer;
-$("#search").oninput = (e) => {
-  clearTimeout(searchTimer);
-  const q = e.target.value.trim();
-  if (state.filterTag) { state.filterTag = null; $("#tag-filter-bar")?.remove(); }
-  searchTimer = setTimeout(async () => {
-    if (!q) return renderList(state.notes);
-    const res = await api(`/search?q=${encodeURIComponent(q)}`);
-    renderList(res, true);
-  }, 200);
+let searchTimer, searchVersion=0;
+function focusSearch() {
+  if (isNarrow()) $('#menu-open').click();
+  else setSidebarCollapsed(false);
+  $('#search').focus(); $('#search').select();
+}
+$('#search-open').onclick=focusSearch;
+addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.shiftKey&&e.key.toLowerCase()==='f'){e.preventDefault();focusSearch();}});
+$('#search-clear').onclick=()=>{$('#search').value='';$('#search').dispatchEvent(new Event('input'));$('#search').focus();};
+$('#search').oninput = (e) => {
+  clearTimeout(searchTimer); const version=++searchVersion, q=e.target.value.trim();
+  $('#search-clear').hidden=!q;
+  if (state.filterTag) { state.filterTag=null; $('#tag-filter-bar')?.remove(); }
+  if(!q){$('#search-status').textContent='';renderList(state.notes);return;}
+  // Titles appear immediately; full-text results replace them only for this query.
+  const titles=state.notes.filter(n=>(n.title+' '+n.path).toLowerCase().includes(q.toLowerCase()));
+  renderList(titles,true); $('#search-status').textContent='Searching note content…';
+  searchTimer=setTimeout(async()=>{
+    try { const res=await api(`/search?q=${encodeURIComponent(q)}`);
+      if(version!==searchVersion)return;
+      const seen=new Set(titles.map(n=>n.path));const results=[...titles,...res.filter(n=>!seen.has(n.path))];
+      renderList(results,true);$('#search-status').textContent=results.length?`${results.length} results · Enter to open`:'No matching notes. Try fewer words.';
+    } catch(e){if(version===searchVersion)$('#search-status').textContent=`Search unavailable: ${e.message}`;}
+  },200);
 };
 
 /* ---------- editor: toolbar, smart lists, tab ---------- */
@@ -743,14 +788,17 @@ $("#ask-close").onclick = () => $("#ask-modal").classList.add("hidden");
 $("#ask-modal").onclick = (e) => { if (e.target.id === "ask-modal") $("#ask-modal").classList.add("hidden"); };
 $("#ask-q").onkeydown = (e) => { if (e.key === "Enter") doAsk(); };
 $("#ask-go").onclick = doAsk;
+let askBusy=false;
 async function doAsk() {
+  if(askBusy)return;
   const q = $("#ask-q").value.trim();
   if (!q) return;
+  askBusy=true; $("#ask-go").disabled=true;
   $("#ask-answer").innerHTML = '<span class="thinking">thinking…</span>';
   $("#ask-cites").innerHTML = "";
   try {
     const r = await api("/ask", { method: "POST",
-      body: { q, include_private: $("#ask-priv").checked } });
+      body: { q, include_private: $("#ask-priv").value === "all" } });
     $("#ask-answer").textContent = r.answer;
     const relc = relevance(r.citations);
     $("#ask-cites").innerHTML = r.citations.map((c) =>
@@ -758,6 +806,7 @@ async function doAsk() {
     $("#ask-cites").querySelectorAll(".cite").forEach((a) =>
       (a.onclick = () => { $("#ask-modal").classList.add("hidden"); openNote(a.dataset.p); }));
   } catch (e) { $("#ask-answer").textContent = "Error: " + e.message; }
+  finally { askBusy=false; $("#ask-go").disabled=false; }
 }
 
 /* ---------- audio memo ---------- */
@@ -1528,8 +1577,26 @@ $("#ai-btn").onclick = (e) => {
 };
 $("#ai-menu").querySelectorAll(".mi").forEach((mi) => (mi.onclick = () => runAction(mi.dataset.a)));
 addEventListener("click", (e) => { if (!e.target.closest("#ai-btn,#ai-menu")) $("#ai-menu").classList.add("hidden"); });
+$('#explain-close').onclick=()=>$('#explain-modal').classList.add('hidden');
+$('#explain-modal').onclick=e=>{if(e.target.id==='explain-modal')$('#explain-close').click();};
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){ $('#explain-close').click(); $('#ask-close').click(); }});
+let explainBusy=false;
+async function explainNote() {
+  if(explainBusy)return;
+  const text=$('#content').value,title=$('#title').value;
+  if(!text.trim())return toast('Open a note with text first',true);
+  $('#explain-source').textContent=title;
+  $('#explain-modal').classList.remove('hidden');
+  $('#explain-close').focus();
+  $('#explain-answer').textContent='Explaining this note…';
+  explainBusy=true;
+  try {const r=await api('/actions',{method:'POST',body:{action:'summarize',text}});if(r.error)throw Error(r.error);$('#explain-answer').textContent=r.result;}
+  catch(e){$('#explain-answer').textContent=`Could not explain this note: ${e.message}`;}
+  finally{explainBusy=false;}
+}
 async function runAction(action) {
   $("#ai-menu").classList.add("hidden");
+  if(action === "explain") return explainNote();
   const sel = getSelection().toString();
   const text = sel || $("#content").value;
   if (!text.trim()) return toast("Nothing to work with", true);

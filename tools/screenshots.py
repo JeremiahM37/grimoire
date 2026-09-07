@@ -24,7 +24,7 @@ import time
 import urllib.request
 from pathlib import Path
 
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import expect, sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs" / "screenshots"
@@ -44,7 +44,7 @@ port:: 8443
 
 ## Rolling back a bad deploy
 
-1. `docker compose rollback` pins the previous image.
+1. Pin the previous image tag, then run `docker compose up -d`.
 2. If the proxy still returns 502, the namespaces are stale — do a full
    `--force-recreate`, not a plain restart.
 3. Confirm the error rate on [[Monitoring]] before declaring it over.
@@ -252,14 +252,15 @@ def capture(base: str):
     with sync_playwright() as p:
         browser = p.chromium.launch()
         ctx = browser.new_context(viewport={"width": 1440, "height": 900},
-                                  device_scale_factor=2)
+                                  device_scale_factor=2, color_scheme="dark")
+        ctx.add_init_script("localStorage.setItem('grimoire-theme', 'dark')")
         page = ctx.new_page()
         page.goto(base)
         page.wait_for_selector("body[data-ready]", timeout=15000)
         page.wait_for_timeout(800)
 
         open_note(page, "Deployment Runbook")
-        shot(page, "hero.png")
+        shot(page, "hero-dark.png")
 
         page.click("#preview-toggle")
         shot(page, "preview.png")
@@ -267,8 +268,36 @@ def capture(base: str):
 
         page.click("#graph-open")
         page.wait_for_timeout(1200)
+        page.fill("#graph-search", "Deployment")
+        page.locator("#graph-results button").first.click()
+        page.fill("#graph-search", "")
         shot(page, "graph.png")
         page.click("#graph-close")
+
+        page.click("#new-note")
+        page.fill("#new-note-title", "Weekend project ideas")
+        page.fill("#new-note-body", "A small dashboard to track the things we are building.")
+        shot(page, "new-note-dark.png")
+        page.click("#new-note-cancel")
+
+        page.fill("#search", "deploy")
+        page.wait_for_timeout(600)
+        shot(page, "search-dark.png")
+        page.click("#search-clear")
+        page.click("#ask-open")
+        shot(page, "ask-dark.png")
+        page.click("#ask-close")
+        # Deterministic demo response: screenshots need no configured AI backend.
+        page.route("**/api/actions", lambda route: route.fulfill(json={"result":
+            "This runbook explains how to recover from a bad deployment. "
+            "Restore the previous image, recreate containers if stale network "
+            "namespaces persist, and check monitoring before closing the incident."}))
+        page.click("#ai-btn")
+        page.locator('[data-a="explain"]').click()
+        expect(page.locator("#explain-answer")).to_contain_text("This runbook explains", timeout=20000)
+        shot(page, "explain-dark.png")
+        page.unroute("**/api/actions")
+        page.click("#explain-close")
 
         # agent memory: the 🤖 badges in the list plus the provenance banner
         page.click("#palette-open")
@@ -301,7 +330,6 @@ def capture(base: str):
         shot(page, "palette.png")
         page.keyboard.press("Escape")
 
-        page.click("#theme-toggle")
         page.wait_for_timeout(700)
         open_note(page, "Retrieval Notes")
         page.click("#preview-toggle")
@@ -313,7 +341,8 @@ def capture(base: str):
         ctx.close()
         mobile = browser.new_context(viewport={"width": 414, "height": 896},
                                      device_scale_factor=3, is_mobile=True,
-                                     has_touch=True)
+                                     has_touch=True, color_scheme="dark")
+        mobile.add_init_script("localStorage.setItem('grimoire-theme', 'dark')")
         mpage = mobile.new_page()
         mpage.goto(base)
         mpage.wait_for_selector("body[data-ready]", timeout=15000)
