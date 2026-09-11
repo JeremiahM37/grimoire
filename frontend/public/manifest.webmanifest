@@ -1,0 +1,10 @@
+{
+  "name": "Grimoire",
+  "short_name": "Grimoire",
+  "description": "Self-hosted personal context server",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#faf7f0",
+  "theme_color": "#faf7f0",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

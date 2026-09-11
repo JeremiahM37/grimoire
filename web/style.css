@@ -480,6 +480,9 @@ details.folder .note-row { padding-left: 26px; }
 /* ---------- canvas view ---------- */
 #canvas-view { position: fixed; inset: 0; z-index: 90; background: var(--paper);
   display: flex; flex-direction: column; }
+#canvas-view.modal { padding: 0; align-items: stretch; justify-content: stretch; }
+#canvas-view.modal > .modal-box { width: 100%; max-width: none; max-height: none; flex: 1;
+  border: 0; border-radius: 0; }
 .cv-head { display: flex; align-items: center; gap: 12px; padding: 8px 14px;
   border-bottom: 1px solid var(--line); font-family: var(--sans); }
 .cv-hint { font-size: 11.5px; color: var(--ink-soft); flex: 1; }
@@ -487,6 +490,7 @@ details.folder .note-row { padding-left: 26px; }
 .cv-viewport { flex: 1; position: relative; overflow: hidden; cursor: grab;
   background-image: radial-gradient(circle, var(--line) 1px, transparent 1px);
   background-size: 22px 22px; touch-action: none; }
+.cv-viewport.panning { cursor: grabbing; }
 .cv-edges { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .cv-edge { fill: none; stroke: var(--ink-soft); stroke-width: 1.6; opacity: .65; }
 .cv-layer { position: absolute; transform-origin: 0 0; }

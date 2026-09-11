@@ -298,7 +298,16 @@ func securityHeaders(frameOptions string, next http.Handler) http.Handler {
 }
 
 func (s *Server) staticHandler() http.Handler {
-	fs := http.FileServer(http.Dir(s.WebDir))
+	// The console is a Vite build.  Keep WebDir as the source of static assets
+	// (manifest, icons and a safe fallback for development), while making the
+	// independently-built React artifact the application shell.  This avoids a
+	// second server or a runtime dependency on the retired imperative modules.
+	root := s.WebDir
+	if candidate := filepath.Clean(filepath.Join(s.WebDir, "..", "frontend", "dist")); fileExists(filepath.Join(candidate, "index.html")) {
+		root = candidate
+	}
+	fs := http.FileServer(http.Dir(root))
+	vendor := http.FileServer(http.Dir(s.WebDir))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Without an explicit directive browsers fall back to heuristic caching
 		// (~10% of the file's age), so a shell asset that had sat unchanged for
@@ -308,11 +317,20 @@ func (s *Server) staticHandler() http.Handler {
 		w.Header().Set("Cache-Control", "no-cache")
 		// serve index.html for the app shell, files otherwise
 		if r.URL.Path == "/" {
-			http.ServeFile(w, r, filepath.Join(s.WebDir, "index.html"))
+			http.ServeFile(w, r, filepath.Join(root, "index.html"))
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, "/vendor/") {
+			vendor.ServeHTTP(w, r)
 			return
 		}
 		fs.ServeHTTP(w, r)
 	})
+}
+
+func fileExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir()
 }
 
 // ---------------------------------------------------------------- helpers

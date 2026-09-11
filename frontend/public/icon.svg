@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-label="Grimoire">
+  <rect width="192" height="192" rx="32" fill="#28342d"/>
+  <path d="M48 42h67c16 0 29 13 29 29v80H77c-16 0-29-13-29-29V42Zm29 22v58c0 4 3 7 7 7h38V71c0-4-3-7-7-7H77Z" fill="#faf7f0"/>
+  <path d="M77 130h67" stroke="#d18f45" stroke-width="10" stroke-linecap="round"/>
+</svg>
