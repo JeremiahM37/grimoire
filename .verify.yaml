@@ -28,6 +28,35 @@ options:
     viewport: [414, 896]
 
 steps:
+  - name: knowledge evidence works through the fresh server
+    actions:
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/notes
+          -H 'Content-Type: application/json'
+          -d '{"path":"knowledge-check.md","body":"# Knowledge check\n\nThe kestrel gateway uses copper certificates."}'
+      - shell: >
+          curl -sf http://127.0.0.1:9119/api/knowledge/graph
+          | python3 -c "import json,sys; graph=json.load(sys.stdin); assert any(n.get('path')=='knowledge-check.md' for n in graph['nodes']); assert 'revision' in graph"
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/knowledge/query
+          -H 'Content-Type: application/json'
+          -d '{"question":"What does the kestrel gateway use?","depth":2}'
+          | python3 -c "import json,sys; result=json.load(sys.stdin); assert any(c['path']=='knowledge-check.md' for c in result['citations']); assert result['graph']['revision']==result['revision']"
+      - shell: >
+          curl -sf 'http://127.0.0.1:9119/api/knowledge/source?path=knowledge-check.md'
+          | python3 -c "import json,sys; source=json.load(sys.stdin); assert 'copper certificates' in source['text']; assert source['trust']=='trusted'"
+
+  - name: imported document originals remain readable
+    actions:
+      - shell: >
+          printf 'Document verification copper evidence.' |
+          curl -sf -X POST http://127.0.0.1:9119/api/documents/import
+          -F 'file=@-;filename=verification.txt'
+          | python3 -c "import json,sys; result=json.load(sys.stdin); assert result['format']=='txt'; assert result['path'].startswith('documents/')"
+      - shell: >
+          curl -sf http://127.0.0.1:9119/api/documents |
+          python3 -c "import json,sys,urllib.parse,urllib.request; docs=json.load(sys.stdin)['documents']; doc=next(d for d in docs if d['path'].startswith('documents/verification-')); url='http://127.0.0.1:9119/api/documents/original?'+urllib.parse.urlencode({'path':doc['path']}); assert urllib.request.urlopen(url).read()==b'Document verification copper evidence.'"
+
   - name: api healthy
     actions:
       - shell: curl -sf http://127.0.0.1:9119/api/health | grep -q '"ok":true'
@@ -43,7 +72,7 @@ steps:
 
   - name: notes app renders in a browser
     actions:
-      - navigate: http://127.0.0.1:9119/
+      - navigate: http://127.0.0.1:9119/#verify-note.md
       - wait: 2
     expect:
       # NOTE: viewport is 414x896 (phone), where the sidebar is correctly collapsed
@@ -51,7 +80,7 @@ steps:
       vision: >
         a mobile note-taking app screen: a top bar with a ☰ menu button and a note
         title, a markdown formatting toolbar (B / I / H / list / link), and an editor
-        showing note text; warm paper-colored background; it is a working app UI, not
+        showing note text; a working React notes workspace with readable controls, not
         a blank white page, not an error message, not a stack trace
 
   - name: memory reconciles instead of accumulating
@@ -385,4 +414,3 @@ steps:
       # red on pushes whose code was fine. Same command, same paths, run
       # before the push instead of after it.
       - shell: cd /home/admin/projects/grimoire && .venv/bin/ruff check tests/ benchmarks/ clients/
-

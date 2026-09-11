@@ -4,16 +4,16 @@
 the CM6 live-preview editor (the default mode for real users).
 """
 import os
-import socket
 import subprocess
 import time
+import urllib.request
 from pathlib import Path
 
 import pytest
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[2]
-PORT = 9121
+PORT = int(os.environ.get("GRIMOIRE_E2E_PORT", "9121"))
 BASE = f"http://127.0.0.1:{PORT}"
 PHONE = {"width": 390, "height": 844}
 DESKTOP = {"width": 1280, "height": 860}
@@ -59,9 +59,14 @@ def server(tmp_path_factory):
     proc = subprocess.Popen([binary], cwd=ROOT, env=env,
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     for _ in range(100):
-        with socket.socket() as s:
-            if s.connect_ex(("127.0.0.1", PORT)) == 0:
-                break
+        if proc.poll() is not None:
+            raise RuntimeError(f"server exited before becoming healthy: {proc.returncode}")
+        try:
+            with urllib.request.urlopen(BASE + "/api/health", timeout=1) as response:
+                if response.status == 200:
+                    break
+        except OSError:
+            pass
         time.sleep(0.1)
     else:
         proc.kill(); raise RuntimeError("server did not start")
