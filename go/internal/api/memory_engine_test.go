@@ -195,7 +195,10 @@ func TestImmutableFactIsNeverSuperseded(t *testing.T) {
 	if out["op"] != "ADD" {
 		t.Fatalf("a pinned fact was reconciled away: %v", out)
 	}
-	facts := recallFacts(t, h, "")
+	if facts := recallFacts(t, h, ""); len(facts) != 1 || facts[0]["text"] != "the user prefers tabs" {
+		t.Fatalf("current recall included an unaccepted challenge: %v", facts)
+	}
+	facts := recallFacts(t, h, "?include_challenges=1")
 	if len(facts) != 2 {
 		t.Errorf("want both the pinned fact and the new one, got %q", texts(facts))
 	}

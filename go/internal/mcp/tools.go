@@ -356,8 +356,11 @@ func Tools() []tool {
 				"(op: ADD / UPDATE / DELETE / NOOP), so report a correction plainly — " +
 				"'the user prefers tabs now' — rather than hedging it into a new fact.",
 			InputSchema: obj(map[string]any{
-				"text":  strProp("what to remember"),
-				"topic": strProp("optional grouping, e.g. 'deploy'"),
+				"text":          strProp("what to remember"),
+				"target_id":     strProp("for a known correction: exact fact id from recall; requires target_path and expected_text; human corrections remain protected"),
+				"target_path":   strProp("note path of the fact being corrected"),
+				"expected_text": strProp("exact previously recalled text; stale corrections are rejected; supply one complete replacement fact as text"),
+				"topic":         strProp("optional grouping, e.g. 'deploy'"),
 				"origin": strProp("REQUIRED when you learned this from a document rather " +
 					"than from the user or your own work: the source you read it in " +
 					"(e.g. 'connector:slack:C123', 'web:example.com', or the note path). " +
@@ -387,6 +390,8 @@ func Tools() []tool {
 				"category": strProp("optional: only this bucket"),
 				"include_superseded": map[string]any{"type": "boolean",
 					"description": "also return beliefs that were later replaced, and what replaced them"},
+				"include_challenges": map[string]any{"type": "boolean",
+					"description": "also return disputed claims awaiting review; excluded from current beliefs by default"},
 				"explain": map[string]any{"type": "boolean",
 					"description": "include why each fact ranked where it did"},
 			}),

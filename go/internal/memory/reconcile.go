@@ -277,12 +277,15 @@ func DecideAs(fact, origin string, human bool, candidates []Entry) Decision {
 		// changed. This is checked before similarity because the two texts can
 		// be lexically distant ("prefers tabs" vs "prefers four-space
 		// indentation") and still be the same belief being overwritten.
-		if structured && !c.Immutable && !outranked(incoming, c) {
+		if structured {
 			cs, cp, cv, cok := Attribute(c.Text)
 			if cok && cs == subject && cp == predicate {
 				if cv == value && !negated {
 					return Decision{Op: OpNoop, Target: c.ID,
 						Why: "already recorded: " + c.Text}
+				}
+				if c.Immutable || outranked(incoming, c) {
+					return DecideTarget(fact, origin, human, c)
 				}
 				if negated {
 					return Decision{Op: OpDelete, Target: c.ID,
@@ -298,8 +301,11 @@ func DecideAs(fact, origin string, human bool, candidates []Entry) Decision {
 		// signal than lexical overlap and means the opposite thing: two
 		// statements that share most of their words but differ in the one
 		// number are a correction, not a duplicate.
-		if !negated && !c.Immutable && !outranked(incoming, c) {
+		if !negated {
 			if kind, ok := ValueUpdate(c.Text, fact); ok {
+				if c.Immutable || outranked(incoming, c) {
+					return DecideTarget(fact, origin, human, c)
+				}
 				return Decision{Op: OpUpdate, Text: fact, Target: c.ID,
 					Why: "supersedes (" + kind + " value changed): " + c.Text}
 			}
@@ -319,7 +325,7 @@ func DecideAs(fact, origin string, human bool, candidates []Entry) Decision {
 		!outranked(incoming, bestEntry):
 		return Decision{Op: OpDelete, Target: bestEntry.ID,
 			Why: "retracts: " + bestEntry.Text}
-	case outranked(incoming, bestEntry):
+	case outranked(incoming, bestEntry) && ((negated && bestSim >= relatedThreshold) || shortValueSlot(bestEntry.Text, fact)):
 		// Recorded, not silently dropped, and the reason is in the response so
 		// a caller can surface the disagreement rather than discovering later
 		// that two contradictory facts are both being recalled.
@@ -334,6 +340,39 @@ func DecideAs(fact, origin string, human bool, candidates []Entry) Decision {
 	default:
 		return Decision{Op: OpAdd, Text: fact, Why: "nothing related on file"}
 	}
+}
+
+func shortValueSlot(previous, next string) bool {
+	if len(Tokens(previous)) > 4 || len(Tokens(next)) > 4 {
+		return false
+	}
+	previousValues, nextValues := parseValues(previous), parseValues(next)
+	if len(previousValues) != 1 || len(nextValues) != 1 || previousValues[0].kind != nextValues[0].kind || !disjointValues(previousValues, nextValues) {
+		return false
+	}
+	previousTerms, nextTerms := slotTerms(previous), slotTerms(next)
+	if len(previousTerms) == 0 || len(previousTerms) != len(nextTerms) {
+		return false
+	}
+	for term := range previousTerms {
+		if !nextTerms[term] {
+			return false
+		}
+	}
+	return true
+}
+
+func DecideTarget(fact, origin string, human bool, target Entry) Decision {
+	if Normalize(fact) == Normalize(target.Text) {
+		return Decision{Op: OpNoop, Target: target.ID, Why: "already recorded"}
+	}
+	if target.Immutable || outranked(AuthorityOf(origin, human), target) {
+		return Decision{Op: OpAdd, Text: fact, Challenges: target.ID,
+			Why: "recorded alongside (" + AuthorityOf(origin, human).String() +
+				" may not supersede " + target.Authority().String() + "); protected or immutable fact requires review"}
+	}
+	return Decision{Op: OpUpdate, Text: fact, Target: target.ID,
+		Why: "explicit correction of identified fact"}
 }
 
 // sentenceRE splits on sentence terminators followed by whitespace. Clause

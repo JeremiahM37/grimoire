@@ -57,10 +57,13 @@ var scopeRE = regexp.MustCompile(`^[\p{L}\p{N}_][\p{L}\p{N}_.:/-]{0,60}$`)
 const reconcileCandidates = 12
 
 type memoryIn struct {
-	Text  string `json:"text"`
-	Topic string `json:"topic"`
-	Agent string `json:"agent"`
-	Task  string `json:"task"`
+	Text         string `json:"text"`
+	Topic        string `json:"topic"`
+	Agent        string `json:"agent"`
+	Task         string `json:"task"`
+	TargetID     string `json:"target_id"`
+	TargetPath   string `json:"target_path"`
+	ExpectedText string `json:"expected_text"`
 
 	// Session is mem0's run_id: the task or conversation this was learned in,
 	// so "what did this agent learn during that run" is answerable.
@@ -214,13 +217,22 @@ func (s *Server) rememberOne(w http.ResponseWriter, r *http.Request, m memoryIn)
 	}
 	task := strings.TrimSpace(m.Task)
 	rel := s.memoryRel(m.Topic)
+	if m.TargetID != "" {
+		rel = normPath(m.TargetPath)
+	}
 	// The topic decides the destination, and the topic comes from the caller.
 	if !s.requireWrite(w, r, normPath(rel)) {
 		return
 	}
 
 	facts := []string{text}
-	if m.Infer == nil || *m.Infer {
+	if m.TargetID != "" || m.TargetPath != "" || m.ExpectedText != "" {
+		if m.TargetID == "" || m.TargetPath == "" || m.ExpectedText == "" ||
+			(m.Infer != nil && !*m.Infer) || strings.TrimSpace(m.Scope) != "" {
+			writeErr(w, http.StatusBadRequest, "explicit corrections require target_id, target_path, expected_text and no scope or infer=false")
+			return
+		}
+	} else if m.Infer == nil || *m.Infer {
 		facts = s.AI.WithSurface("extract", agentFor(r)).ExtractFacts(text)
 	}
 
@@ -258,7 +270,45 @@ func (s *Server) reconcileFact(w http.ResponseWriter, r *http.Request, rel, fact
 	agent, task string, m memoryIn, expires string) (memoryResult, error) {
 
 	decision := memory.Decision{Op: memory.OpAdd, Text: fact, Why: "reconciliation disabled"}
-	if m.Infer == nil || *m.Infer {
+	if m.TargetID != "" {
+		targetPath := normPath(m.TargetPath)
+		hits, err := s.Index.MemoryEntries(index.MemoryQuery{Filter: filterFor(r, true),
+			Note: targetPath, ID: m.TargetID, Limit: 1, Now: vault.Now()})
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return memoryResult{}, errHandled
+		}
+		if !index.IsMemoryPath(targetPath) || len(hits) != 1 {
+			writeErr(w, http.StatusNotFound, "correction target not found")
+			return memoryResult{}, errHandled
+		}
+		target := hits[0]
+		note, readErr := s.Vault.Read(targetPath)
+		if readErr != nil {
+			writeErr(w, http.StatusConflict, "correction target changed; recall it again")
+			return memoryResult{}, errHandled
+		}
+		found := false
+		for _, current := range memory.Parse(note.Body) {
+			if current.ID == target.ID && current.Live(vault.Now()) {
+				target.Entry = current
+				found = true
+				break
+			}
+		}
+		if !found {
+			writeErr(w, http.StatusConflict, "correction target changed; recall it again")
+			return memoryResult{}, errHandled
+		}
+		if target.Text != m.ExpectedText {
+			writeErr(w, http.StatusConflict, "correction target changed; recall it again")
+			return memoryResult{}, errHandled
+		}
+		decision = memory.DecideTarget(fact, strings.TrimSpace(m.Origin), m.Human, target.Entry)
+		if decision.Op == memory.OpUpdate {
+			return s.applySupersession(w, r, target, decision, fact, agent, task, m, expires, rel)
+		}
+	} else if m.Infer == nil || *m.Infer {
 		query := index.MemoryQuery{
 			Filter: filterFor(r, true),
 			Query:  fact,
@@ -528,6 +578,7 @@ type entryOut struct {
 	Expires      string  `json:"expires,omitempty"`
 	Immutable    bool    `json:"immutable,omitempty"`
 	SupersededBy string  `json:"superseded_by,omitempty"`
+	Challenges   string  `json:"challenges,omitempty"`
 	Helpful      int     `json:"helpful,omitempty"`
 	Unhelpful    int     `json:"unhelpful,omitempty"`
 	Score        float64 `json:"score"`
@@ -567,7 +618,8 @@ func entriesOut(hits []index.MemoryHit, explain bool) []entryOut {
 			Session: h.Session, Category: h.Category, Stamp: h.Stamp,
 			Expires: h.Expires, Immutable: h.Immutable,
 			SupersededBy: h.SupersededBy, Helpful: h.Helpful,
-			Unhelpful: h.Unhelpful, Score: h.Score,
+			Challenges: h.Challenges,
+			Unhelpful:  h.Unhelpful, Score: h.Score,
 			Origin: h.Origin, Trust: trust.FromOrigin(h.Origin).String(),
 			Authority: h.Authority().String(),
 		}
@@ -616,6 +668,7 @@ func (s *Server) recall(w http.ResponseWriter, r *http.Request) {
 		Category:          strings.TrimSpace(r.URL.Query().Get("category")),
 		Note:              normPath(r.URL.Query().Get("path")),
 		IncludeSuperseded: boolParam(r, "include_superseded"),
+		AcceptedOnly:      !boolParam(r, "include_challenges") && !boolParam(r, "include_superseded") && asOf.IsZero(),
 		IncludeExpired:    boolParam(r, "include_expired"),
 		AsOf:              asOf,
 		Now:               vault.Now(),

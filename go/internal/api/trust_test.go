@@ -321,7 +321,7 @@ func TestRememberRecordsAndReportsAFactsOrigin(t *testing.T) {
 	}
 
 	var facts []map[string]any
-	decode(t, do(t, h, "GET", "/api/memory?q=kestrel+deploy+host&limit=10", nil), &facts)
+	decode(t, do(t, h, "GET", "/api/memory?q=kestrel+deploy+host&limit=10&include_challenges=1", nil), &facts)
 	var trusted, untrusted int
 	for _, f := range facts {
 		switch f["trust"] {

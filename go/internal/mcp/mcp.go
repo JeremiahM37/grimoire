@@ -498,7 +498,7 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 		body := map[string]any{
 			"text": str(args, "text"), "topic": str(args, "topic"),
 			"task": str(args, "task"), "agent": s.Agent}
-		for _, k := range []string{"session", "category", "expires_in", "origin"} {
+		for _, k := range []string{"session", "category", "expires_in", "origin", "target_id", "target_path", "expected_text"} {
 			if v := str(args, k); v != "" {
 				body[k] = v
 			}
@@ -516,7 +516,7 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 				q.Set(k, v)
 			}
 		}
-		for _, k := range []string{"include_superseded", "explain"} {
+		for _, k := range []string{"include_superseded", "include_challenges", "explain"} {
 			if boolean(args, k) {
 				q.Set(k, "1")
 			}

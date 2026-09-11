@@ -94,6 +94,9 @@ func (c *Client) DecideMemoryFrom(fact, origin string, candidates []memory.Entry
 // model cannot express the edit, rather than being asked not to make it.
 func (c *Client) DecideMemoryAs(fact, origin string, human bool, candidates []memory.Entry) memory.Decision {
 	rule := memory.DecideAs(fact, origin, human, candidates)
+	if rule.Challenges != "" {
+		return rule
+	}
 	backend := c.Backend()
 	if backend == "" || len(candidates) == 0 {
 		return rule
