@@ -634,10 +634,6 @@ func Extract(format string, b []byte) (string, error) {
 	}
 }
 
-type docxPara struct {
-	Text string `xml:",chardata"`
-}
-
 func extractDOCX(b []byte) (string, error) {
 	z, err := zip.NewReader(bytes.NewReader(b), int64(len(b)))
 	if err != nil {

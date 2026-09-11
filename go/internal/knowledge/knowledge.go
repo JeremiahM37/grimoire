@@ -572,12 +572,6 @@ func (s *Store) triplesForLocked(path string, n *vault.Note) []Triple {
 	return nil
 }
 
-func (s *Store) triplesFor(path string, n *vault.Note) []Triple {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.triplesForLocked(path, n)
-}
-
 type ExtractResult struct {
 	Path    string `json:"path"`
 	Status  string `json:"status"`
