@@ -28,15 +28,10 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - name: Build and stage the React console for archives
+      - name: Build the React console for archives
         run: |
           npm ci --prefix frontend
           npm run build --prefix frontend
-          # The archive's established web/ directory is the runtime contract.
-          # Vite has already consumed the source CSS and editor vendor bundle.
-          rm -rf web
-          mkdir web
-          cp -a frontend/dist/. web/
       # A tag that does not build is worse than no tag: the tests run here
       # too, so a release is never the first time this commit was compiled.
       - name: Tests
