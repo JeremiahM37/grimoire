@@ -413,4 +413,4 @@ steps:
       # so lint debt in a benchmark script reached main twice and turned CI
       # red on pushes whose code was fine. Same command, same paths, run
       # before the push instead of after it.
-      - shell: cd /home/admin/projects/grimoire && .venv/bin/ruff check tests/ benchmarks/ clients/
+      - shell: .venv/bin/ruff check tests/ benchmarks/ clients/

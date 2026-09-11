@@ -116,6 +116,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build the React console
+        working-directory: frontend
+        run: npm ci && npm run build
       - name: Build the server
         # The LangGraph adapter tests drive a real binary rather than a stub:
         # an adapter that satisfies an interface someone imagined is worth
@@ -168,6 +176,14 @@ jobs:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build the React console
+        working-directory: frontend
+        run: npm ci && npm run build
       - name: Build the server
         working-directory: go
         run: go build -o grimoire ./cmd/grimoire
@@ -204,7 +220,7 @@ jobs:
         # that catches a stale import in a benchmark should catch one in the
         # thing people pip install.
         run: ruff check tests/ benchmarks/ clients/
-      - name: Legacy browser flows against the built binary
+      - name: Browser flows against the React console and built binary
         timeout-minutes: 15
         run: pytest -q tests/e2e --ignore=tests/e2e/test_react_save.py
       - name: Retrieval gate

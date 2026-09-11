@@ -1,0 +1,16 @@
+.git
+**/node_modules
+**/.venv
+frontend/dist
+frontend/release
+frontend/.vite
+dist
+.venv
+.verify-artifacts
+__pycache__
+**/__pycache__
+.env
+.env.*
+*.db
+*.db-wal
+*.db-shm

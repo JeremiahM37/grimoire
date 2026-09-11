@@ -28,6 +28,22 @@ claude mcp add grimoire -- grimoire-mcp            # your agent now has all of i
 Or `docker run -p 9111:9111 -v grimoire-vault:/vault ghcr.io/jeremiahm37/grimoire:latest`.
 Releases ship static binaries for Linux, macOS and Windows on amd64/arm64.
 
+To build the console from a source checkout, use Node 24 and the Go version in
+`go/go.mod`:
+
+```bash
+npm ci --prefix frontend
+npm run build --prefix frontend
+go -C go build -o grimoire ./cmd/grimoire
+GRIMOIRE_VAULT=~/obsidian-vault ./go/grimoire
+```
+
+The console uses React and TypeScript. Its production assets are in
+`frontend/dist`; the server uses that directory when running from the checkout.
+Docker and release archives build and include those assets automatically, with
+no Node runtime required. Keep the generated worker and hashed assets together
+when deploying.
+
 ## Point your agent at the notes you already have
 
 Every agent-memory layer starts empty. mem0, Zep and Letta accumulate what an

@@ -7,6 +7,14 @@
 # The build stage stays on the BUILDER's architecture and cross-compiles, so a
 # multi-arch release does not run a Go toolchain under emulation (minutes
 # versus the better part of an hour for arm64).
+FROM --platform=$BUILDPLATFORM node:24-alpine AS frontend
+WORKDIR /src/frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend ./
+COPY web /src/web
+RUN npm run build
+
 FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS build
 ARG TARGETOS TARGETARCH
 ARG VERSION=""
@@ -37,7 +45,7 @@ FROM alpine:3.20
 WORKDIR /app
 COPY --from=build /out/grimoire /out/grimoire-mcp /usr/local/bin/
 COPY --from=model /root/.cache/huggingface /home/grimoire/.cache/huggingface
-COPY web ./web
+COPY --from=frontend /src/frontend/dist ./web
 COPY plugins ./plugins
 
 # run as a non-root user; the vault volume is the only writable path it needs

@@ -38,3 +38,8 @@ benchmarks/injection/run*.log
 # rebuilt by `run_memory_arm.py ingest`.
 benchmarks/longmemeval/ingest*.log
 benchmarks/longmemeval/*.log
+
+# Local verification output and dependency caches
+.verify-artifacts/
+node_modules/
+.venv
