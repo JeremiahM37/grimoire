@@ -122,6 +122,12 @@ func TestToolCallsHitTheExpectedEndpoints(t *testing.T) {
 		{"memory_graph", map[string]any{"entity": "priya"}, "GET /api/memory/graph"},
 		{"memory_feedback", map[string]any{"id": "a1", "path": "memory/x.md",
 			"helpful": true}, "POST /api/memory/feedback"},
+		{"knowledge_graph", map[string]any{"seed": "ops", "depth": 2}, "GET /api/knowledge/graph"},
+		{"extract_relationships", map[string]any{"paths": []any{"a.md"}, "force": true}, "POST /api/knowledge/extract"},
+		{"query_knowledge", map[string]any{"question": "where?", "limit": 3}, "POST /api/knowledge/query"},
+		{"read_source", map[string]any{"path": "docs/a.md"}, "GET /api/knowledge/source"},
+		{"list_documents", nil, "GET /api/documents"},
+		{"refresh_document", map[string]any{"path": "documents/a.md"}, "POST /api/documents/refresh"},
 	} {
 		seen = nil
 		call(t, s, map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/call",
@@ -165,6 +171,24 @@ func TestToolFailureIsReportedAsResult(t *testing.T) {
 	}
 	if resps[0]["error"] != nil {
 		t.Errorf("tool failure must not be a protocol error: %v", resps[0]["error"])
+	}
+}
+
+func TestExtractionPartialFailureIsReportedAsResultError(t *testing.T) {
+	s := stubAPI(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"results":[{"path":"a.md","status":"indexed","triples":2},{"path":"b.md","status":"error","error":"model unavailable"}]}`))
+	})
+	resps := call(t, s, map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+		"params": map[string]any{"name": "extract_relationships", "arguments": map[string]any{
+			"paths": []any{"a.md", "b.md"}}}})
+	result := resps[0]["result"].(map[string]any)
+	if result["isError"] != true {
+		t.Fatalf("partial extraction failure should set isError: %v", result)
+	}
+	text := result["content"].([]any)[0].(map[string]any)["text"].(string)
+	if !strings.Contains(text, "model unavailable") {
+		t.Fatalf("error should preserve per-file detail: %q", text)
 	}
 }
 

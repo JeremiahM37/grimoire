@@ -42,21 +42,28 @@ type annotations struct {
 // unclassified and silently defaulting to "looks harmless".
 var behaviour = map[string]annotations{
 	// Reads. Safe to call without asking, safe to retry.
-	"get_briefing":   {Title: "Read standing context", ReadOnlyHint: true, IdempotentHint: true},
-	"kb_info":        {Title: "Check the mount", ReadOnlyHint: true, IdempotentHint: true},
-	"search_notes":   {Title: "Search notes", ReadOnlyHint: true, IdempotentHint: true},
-	"ask_notes":      {Title: "Ask the notes", ReadOnlyHint: true, IdempotentHint: true},
-	"read_note":      {Title: "Read a note", ReadOnlyHint: true, IdempotentHint: true},
-	"list_notes":     {Title: "List notes", ReadOnlyHint: true, IdempotentHint: true},
-	"backlinks":      {Title: "Read backlinks", ReadOnlyHint: true, IdempotentHint: true},
-	"list_tags":      {Title: "List tags", ReadOnlyHint: true, IdempotentHint: true},
-	"stale_notes":    {Title: "List stale notes", ReadOnlyHint: true, IdempotentHint: true},
-	"get_fact":       {Title: "Look up an exact value", ReadOnlyHint: true, IdempotentHint: true},
-	"recall":         {Title: "Recall what is believed", ReadOnlyHint: true, IdempotentHint: true},
-	"memory_changes": {Title: "Read belief changes", ReadOnlyHint: true, IdempotentHint: true},
-	"memory_graph":   {Title: "Read the memory graph", ReadOnlyHint: true, IdempotentHint: true},
-	"memory_scopes":  {Title: "List memory scopes", ReadOnlyHint: true, IdempotentHint: true},
-	"list_grants":    {Title: "List credential grants", ReadOnlyHint: true, IdempotentHint: true},
+	"get_briefing":          {Title: "Read standing context", ReadOnlyHint: true, IdempotentHint: true},
+	"kb_info":               {Title: "Check the mount", ReadOnlyHint: true, IdempotentHint: true},
+	"search_notes":          {Title: "Search notes", ReadOnlyHint: true, IdempotentHint: true},
+	"ask_notes":             {Title: "Ask the notes", ReadOnlyHint: true, IdempotentHint: true},
+	"read_note":             {Title: "Read a note", ReadOnlyHint: true, IdempotentHint: true},
+	"list_notes":            {Title: "List notes", ReadOnlyHint: true, IdempotentHint: true},
+	"backlinks":             {Title: "Read backlinks", ReadOnlyHint: true, IdempotentHint: true},
+	"list_tags":             {Title: "List tags", ReadOnlyHint: true, IdempotentHint: true},
+	"stale_notes":           {Title: "List stale notes", ReadOnlyHint: true, IdempotentHint: true},
+	"get_fact":              {Title: "Look up an exact value", ReadOnlyHint: true, IdempotentHint: true},
+	"recall":                {Title: "Recall what is believed", ReadOnlyHint: true, IdempotentHint: true},
+	"memory_changes":        {Title: "Read belief changes", ReadOnlyHint: true, IdempotentHint: true},
+	"memory_graph":          {Title: "Read the memory graph", ReadOnlyHint: true, IdempotentHint: true},
+	"memory_scopes":         {Title: "List memory scopes", ReadOnlyHint: true, IdempotentHint: true},
+	"list_grants":           {Title: "List credential grants", ReadOnlyHint: true, IdempotentHint: true},
+	"knowledge_graph":       {Title: "Explore the knowledge graph", ReadOnlyHint: true, IdempotentHint: true},
+	"query_knowledge":       {Title: "Ask knowledge with evidence", ReadOnlyHint: true, IdempotentHint: true},
+	"read_source":           {Title: "Read a cited source", ReadOnlyHint: true, IdempotentHint: true},
+	"list_documents":        {Title: "List imported documents", ReadOnlyHint: true, IdempotentHint: true},
+	"refresh_document":      {Title: "Refresh an imported document", IdempotentHint: true},
+	"import_document":       {Title: "Import a document", DestructiveHint: true},
+	"extract_relationships": {Title: "Extract relationships", OpenWorldHint: true},
 
 	// Reads that leave the machine. Read-only here, open-world because they
 	// reach systems this server does not control.
@@ -131,6 +138,83 @@ func annotate(ts []tool) []tool {
 // Tools returns the advertised tool list.
 func Tools() []tool {
 	return annotate([]tool{
+		{
+			Name: "knowledge_graph",
+			Description: "Explore bounded, access-checked knowledge relationships. Use a seed, " +
+				"relation or query to navigate entities and documents; evidence on edges " +
+				"is the source to inspect, not a fabricated reasoning chain.",
+			InputSchema: obj(map[string]any{
+				"seed":              strProp("optional node id or label to focus"),
+				"depth":             intProp("bounded traversal depth, default 2"),
+				"limit":             intProp("maximum nodes, default 200"),
+				"relation":          strProp("optional relationship filter"),
+				"q":                 strProp("optional node search"),
+				"min_degree":        intProp("optional minimum relationship degree"),
+				"drop_noisy":        map[string]any{"type": "boolean", "description": "omit low-signal relationships"},
+				"include_documents": map[string]any{"type": "boolean", "description": "include document nodes"},
+				"include_chunks":    map[string]any{"type": "boolean", "description": "include source chunk nodes"},
+			}),
+		},
+		{
+			Name: "extract_relationships",
+			Description: "Extract semantic relationships from 1–10 existing note paths using " +
+				"the configured language model. This spends model resources and writes the " +
+				"derived relationship cache; graph GET remains structural and offline. Use " +
+				"force only when cached extraction is stale or intentionally being replaced.",
+			InputSchema: obj(map[string]any{
+				"paths": arrProp("1–10 vault-relative note paths"),
+				"force": map[string]any{"type": "boolean", "description": "recompute instead of using cached extraction"},
+			}, "paths"),
+		},
+		{
+			Name: "query_knowledge",
+			Description: "Ask a question across the knowledge corpus and return the answer, " +
+				"citations, and a bounded evidence graph. Use this when you need an answer " +
+				"rather than raw passages; verify each citation before acting.",
+			InputSchema: obj(map[string]any{
+				"question":          strProp("natural-language question"),
+				"limit":             intProp("maximum citations, default 8"),
+				"depth":             intProp("graph depth, default 2"),
+				"after":             strProp("optional inclusive date YYYY-MM-DD"),
+				"before":            strProp("optional inclusive date YYYY-MM-DD"),
+				"expand":            map[string]any{"type": "boolean", "description": "expand graph context"},
+				"min_degree":        intProp("optional minimum relationship degree"),
+				"drop_noisy":        map[string]any{"type": "boolean", "description": "omit low-signal relationships"},
+				"include_documents": map[string]any{"type": "boolean", "description": "include document nodes"},
+			}, "question"),
+		},
+		{
+			Name: "read_source",
+			Description: "Read one access-checked knowledge source by its cited path. Use the " +
+				"path returned by query_knowledge or knowledge_graph so citations remain " +
+				"navigable and provenance is preserved.",
+			InputSchema: obj(map[string]any{"path": strProp("source path from a citation")}, "path"),
+		},
+		{
+			Name: "list_documents",
+			Description: "List documents imported through the document package, including " +
+				"source path, format and extraction status. Use before refreshing or explaining " +
+				"an import failure.",
+			InputSchema: obj(map[string]any{}),
+		},
+		{
+			Name: "refresh_document",
+			Description: "Refresh one importer-owned generated document from its external " +
+				"source. Use the generated note path returned by list_documents; this may " +
+				"rewrite derived content but never accepts an arbitrary host file path.",
+			InputSchema: obj(map[string]any{"path": strProp("generated document path")}, "path"),
+		},
+		{
+			Name: "import_document",
+			Description: "Import a local document through a server-side multipart upload. " +
+				"Pass file contents, never an arbitrary host path; supported formats and " +
+				"extraction errors are reported by the documents package.",
+			InputSchema: obj(map[string]any{
+				"filename": strProp("name of the supplied document"),
+				"content":  strProp("base64-encoded document bytes"),
+				"path":     strProp("optional existing generated note path to replace explicitly; omit to import separately"),
+			}, "filename", "content"),
+		},
 		{
 			Name: "get_briefing",
 			Description: "START HERE when beginning work: the team's standing context in one " +

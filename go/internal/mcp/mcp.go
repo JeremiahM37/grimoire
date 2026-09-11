@@ -18,12 +18,15 @@ package mcp
 import (
 	"bufio"
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -250,6 +253,58 @@ func (s *Server) api(method, path string, body any) (any, error) {
 	return out, nil
 }
 
+func (s *Server) apiDocument(filename, content string, target ...string) (any, error) {
+	b, err := base64.StdEncoding.DecodeString(content)
+	if err != nil {
+		return nil, fmt.Errorf("import_document content must be base64: %w", err)
+	}
+	var body bytes.Buffer
+	mw := multipart.NewWriter(&body)
+	if len(target) > 0 && target[0] != "" {
+		if err := mw.WriteField("path", target[0]); err != nil {
+			return nil, err
+		}
+	}
+	part, err := mw.CreateFormFile("file", filename)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := part.Write(b); err != nil {
+		return nil, err
+	}
+	if err := mw.Close(); err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequest(http.MethodPost, s.BaseURL+"/api/documents/import", &body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	if s.AuthToken != "" {
+		req.Header.Set("Authorization", "Bearer "+s.AuthToken)
+	}
+	if s.AdminToken != "" {
+		req.Header.Set("X-Grimoire-Admin", s.AdminToken)
+	}
+	resp, err := s.Client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("POST /api/documents/import: %s: %s", resp.Status, strings.TrimSpace(string(raw)))
+	}
+	var out any
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return string(raw), nil
+	}
+	return out, nil
+}
+
 func str(args map[string]any, key string) string {
 	if v, ok := args[key].(string); ok {
 		return v
@@ -301,10 +356,83 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 	case "search_notes":
 		q := url.Values{}
 		q.Set("q", str(args, "query"))
+		if n := num(args, "limit", 0); n > 0 {
+			q.Set("limit", fmt.Sprint(n))
+		}
 		if boolean(args, "trusted_only") {
 			q.Set("trusted", "1")
 		}
 		return s.api("GET", "/api/search?"+q.Encode(), nil)
+	case "knowledge_graph":
+		q := url.Values{}
+		for _, k := range []string{"seed", "relation", "q", "min_degree", "drop_noisy", "include_documents", "include_chunks"} {
+			if v := str(args, k); v != "" {
+				q.Set(k, v)
+			}
+		}
+		for _, k := range []string{"drop_noisy", "include_documents", "include_chunks"} {
+			if _, ok := args[k]; ok && q.Get(k) == "" {
+				q.Set(k, strconv.FormatBool(boolean(args, k)))
+			}
+		}
+		for _, k := range []string{"depth", "limit"} {
+			if n := num(args, k, 0); n > 0 {
+				q.Set(k, fmt.Sprint(n))
+			}
+		}
+		return s.api("GET", "/api/knowledge/graph?"+q.Encode(), nil)
+	case "extract_relationships":
+		paths := strList(args, "paths")
+		if len(paths) == 0 || len(paths) > 10 {
+			return nil, fmt.Errorf("extract_relationships requires 1-10 paths")
+		}
+		result, err := s.api("POST", "/api/knowledge/extract", map[string]any{
+			"paths": paths,
+			"force": boolean(args, "force"),
+		})
+		if err != nil {
+			return nil, err
+		}
+		if extractionResultError(result) {
+			encoded, marshalErr := json.Marshal(result)
+			if marshalErr != nil {
+				return nil, fmt.Errorf("relationship extraction returned per-file errors")
+			}
+			return nil, fmt.Errorf("relationship extraction returned per-file errors: %s", encoded)
+		}
+		return result, nil
+	case "query_knowledge":
+		body := map[string]any{"question": str(args, "question")}
+		for _, k := range []string{"limit", "depth"} {
+			if n := num(args, k, 0); n > 0 {
+				body[k] = n
+			}
+		}
+		for _, k := range []string{"after", "before"} {
+			if v := str(args, k); v != "" {
+				body[k] = v
+			}
+		}
+		for _, k := range []string{"min_degree", "drop_noisy", "include_documents"} {
+			if n := num(args, k, 0); n > 0 {
+				body[k] = n
+			}
+			if _, ok := args[k]; ok && k != "min_degree" {
+				body[k] = boolean(args, k)
+			}
+		}
+		if _, ok := args["expand"]; ok {
+			body["expand"] = boolean(args, "expand")
+		}
+		return s.api("POST", "/api/knowledge/query", body)
+	case "read_source":
+		return s.api("GET", "/api/knowledge/source?path="+url.QueryEscape(str(args, "path")), nil)
+	case "list_documents":
+		return s.api("GET", "/api/documents", nil)
+	case "refresh_document":
+		return s.api("POST", "/api/documents/refresh", map[string]any{"path": str(args, "path")})
+	case "import_document":
+		return s.apiDocument(str(args, "filename"), str(args, "content"), str(args, "path"))
 	case "ask_notes":
 		q := url.Values{}
 		q.Set("q", str(args, "question"))
@@ -482,6 +610,33 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 	default:
 		return nil, fmt.Errorf("unknown tool: %s", name)
 	}
+}
+
+func extractionResultError(result any) bool {
+	response, ok := result.(map[string]any)
+	if !ok {
+		return false
+	}
+	if message, ok := response["error"].(string); ok && strings.TrimSpace(message) != "" {
+		return true
+	}
+	results, ok := response["results"].([]any)
+	if !ok {
+		return false
+	}
+	for _, item := range results {
+		entry, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		if message, ok := entry["error"].(string); ok && strings.TrimSpace(message) != "" {
+			return true
+		}
+		if status, ok := entry["status"].(string); ok && strings.EqualFold(status, "error") {
+			return true
+		}
+	}
+	return false
 }
 
 func strOr(v, def string) string {

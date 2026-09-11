@@ -109,6 +109,7 @@ Agents without a grant can *ask*; asking grants nothing.
 | **Credentials — use, never read** | **`use_credential`** · **`list_grants`** · **`request_credential`** · **`check_credential_request`** |
 | **Agent memory** | **`remember`** · **`recall`** · **`forget`** · **`memory_changes`** · **`memory_graph`** · **`memory_feedback`** · **`memory_scopes`** · **`consolidate_memory`** |
 | Knowledge | `search_notes` · `ask_notes` · `read_note` · `list_notes` · `backlinks` · `list_tags` · `stale_notes` |
+| Knowledge expansion | `query_knowledge` · `knowledge_graph` · `read_source` · `extract_relationships` · `list_documents` · `refresh_document` · `import_document` |
 | The web | `search_web` · `open_urls` |
 | Writing | `create_note` · `update_note` · `append_daily` |
 | Exact values | `get_fact` · **`set_fact`** |
