@@ -28,6 +28,10 @@ options:
     viewport: [414, 896]
 
 steps:
+  - name: selective memory hooks pass their regression suite
+    actions:
+      - shell: .venv/bin/python -m pytest -q clients/hooks/tests
+
   - name: knowledge evidence works through the fresh server
     actions:
       - shell: >
@@ -230,7 +234,7 @@ steps:
           | grep -q 'prod-1.internal'
       # …and the ticket's version is on file, marked.
       - shell: >
-          curl -sf 'http://127.0.0.1:9119/api/memory?q=deploy+host&limit=10'
+          curl -sf 'http://127.0.0.1:9119/api/memory?q=deploy+host&limit=10&include_challenges=1'
           | grep -q '"trust":"untrusted"'
 
   - name: knowledge that needs re-checking is listed, and confirming clears it

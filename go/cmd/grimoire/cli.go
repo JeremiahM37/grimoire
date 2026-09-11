@@ -745,6 +745,9 @@ decisions, and agent memory, exposed through the ` + "`grimoire`" + ` MCP tools.
   ` + "`search_notes`" + ` / ` + "`ask_notes`" + ` / ` + "`recall`" + ` — the team records accepted fixes
   that are not visible in the code.
 - Persist anything future agents need with ` + "`remember`" + `.
+- If automatic Grimoire reference data already answers the question, use it
+  instead of fetching the same facts again. Retrieve explicitly when it is
+  missing, stale, ambiguous, or outside the configured automatic scope.
 `
 
 const reflectHook = `#!/usr/bin/env python3
@@ -799,6 +802,9 @@ func cmdAgentSetup(args []string) int {
 	fmt.Println()
 	fmt.Println("# 2. Add to the repo's CLAUDE.md / AGENTS.md so agents consult the KB:")
 	fmt.Print(agentSnippet)
+	fmt.Println("# Optional selective automatic context: clients/hooks/grimoire_context.py")
+	fmt.Println("# Configure manual (default), scoped, or all; see docs/AUTOMATIC_MEMORY.md.")
+	fmt.Println("# The lookup hook needs no LLM call or extra reflection turn.")
 	fmt.Println("# 3. Optional but measured to matter: a reflection hook so agents")
 	fmt.Println("#    RECORD what they learn before finishing (benchmarked: without it,")
 	fmt.Println("#    agents solve tasks and write nothing). Save as")
