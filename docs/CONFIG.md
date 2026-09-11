@@ -141,6 +141,41 @@ calling is not a decision about what they may read.
 
 ## Diagnosing
 
+## Terminal and MCP knowledge interfaces
+
+`grimoire query QUESTION` is a one-shot knowledge query. With no question it
+reads newline-separated questions from stdin, or opens a repeatable console on
+a terminal; Ctrl-D, Ctrl-C, `:q`, and `:quit` exit cleanly. `--plain` prints
+the answer, citations, and typed relationship/evidence navigation; `--json`
+preserves one API response per question for pipes. `:source PATH` and
+`:graph [SEED]` navigate cited evidence in the console. `--watch FOLDER` keeps
+the imported corpus current while querying. `grimoire graph`, `grimoire source
+PATH`, and `grimoire documents` provide one-shot navigation. `grimoire
+documents watch FOLDER` performs recursive initial/update/delete reconciliation;
+`documents refresh PATH` refreshes an importer-owned note. `grimoire
+document-import FILE` uploads file bytes through the document API and never
+treats a client-supplied path as a server path. Query filters include `depth`,
+`limit`, `after`, `before`, and `expand`. Graph filters include `depth`,
+`limit`, `seed`, `relation`, `q`, `min_degree`, `drop_noisy`,
+`include_documents`, and `include_chunks`.
+
+Semantic relationship extraction is explicit: `grimoire knowledge extract
+PATH... [--force]` sends at most ten existing note paths to the configured LLM.
+It reports `indexed`, `cached`, or `error` per path and exits non-zero when any
+file fails. The equivalent MCP tool is `extract_relationships`; it is
+model-spending and cache-writing. `knowledge_graph` never spends model calls:
+it returns structural relationships and includes cached semantic relationships
+when extraction has already populated them. `POST /api/knowledge/extract` is
+the HTTP contract for the same operation.
+
+The MCP server exposes the same backend through stdio by default. Set
+`GRIMOIRE_MCP_TRANSPORT=http` for streamable HTTP, `GRIMOIRE_MCP_ADDR` (or
+`GRIMOIRE_MCP_PORT`) for its bind address, and `GRIMOIRE_MCP_TOKEN` for a
+non-loopback bind. Knowledge parity tools are `query_knowledge`,
+`knowledge_graph`, `read_source`, and `extract_relationships`; document parity tools are
+`list_documents`, `refresh_document`, and `import_document`. The latter accepts a filename and
+base64-encoded bytes, not an arbitrary local path.
+
 `grimoire doctor` compares the vault, the index and what an agent can
 reach, and reports the pairs that disagree. It exits non-zero on a failure, so
 it works from a healthcheck or a unit file as well as from a terminal.

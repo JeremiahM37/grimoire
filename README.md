@@ -132,6 +132,69 @@ Retrieval is inspectable — *"what would the agent see for X?"* returns the exa
 chunks. Untrusted content (connectors, web pages) carries an origin, is fenced
 before a reader sees it, and may not supersede something you wrote.
 
+## Documents and knowledge workflows
+
+The browser workspace can upload and browse imported documents, ask questions,
+open cited sources, and explore the graph. The same operations are available
+without the browser:
+
+```bash
+grimoire document-import report.pdf --json
+grimoire documents
+grimoire documents refresh documents/report.md
+grimoire documents watch ~/incoming
+grimoire knowledge extract notes/plan.md notes/decision.md --json
+grimoire query --watch ~/incoming --plain
+```
+
+Imports accept Markdown, plain text, PDF, and DOCX. PDF extraction requires
+`pdftotext` (on Debian, install `poppler-utils`); image-only or scanned PDFs
+are reported as unsupported rather than silently OCRed. DOCX text is read from
+the document XML. Imported notes retain source metadata. Refresh updates notes
+owned by the importer; a manual edit is preserved and reported, and deleting a
+source does not remove unrelated hand-authored notes. Direct edits to ordinary
+Markdown are picked up by the native vault watcher. Watch folders reconcile
+recursively on startup and then apply file updates and deletes. They do not
+watch files outside the selected folder, and a process must remain running for
+updates to continue.
+
+Use `document-import FILE --path EXISTING_NOTE` or MCP `import_document`'s
+optional `path` to replace an imported document explicitly. Use the generated
+note path returned by the first import; reusing a filename alone does not replace it.
+
+The HTTP equivalents are `POST /api/documents/import` (multipart field
+`file`), `GET /api/documents`, `POST /api/documents/refresh`,
+`POST /api/knowledge/query`, `GET /api/knowledge/source`, and
+`GET /api/knowledge/graph`. Query supports `depth`, `limit`, `after`, `before`,
+and `expand`. Graph supports `depth`, `limit`, `seed`, `relation`, `q`,
+`min_degree`, `drop_noisy`, `include_documents`, and `include_chunks`.
+`after` and `before` filter note dates/source timestamps;
+they are corpus filters, not a claim about when an answer was generated.
+
+Relationship extraction is an explicit model operation:
+`POST /api/knowledge/extract` accepts up to ten note paths and returns
+per-file `indexed`, `cached`, or `error` results. `--force` asks for a fresh
+extraction. It requires a configured LLM and writes cached semantic
+relationships. `knowledge_graph` remains model-free and works offline: it
+shows structural relationships plus any cached semantic relationships already
+available. No measured accuracy advantage over other systems is claimed here; compare
+systems only with a reproducible evaluation.
+
+Imports are limited to 25 MiB, with at most 8 MiB of extracted text. Semantic
+indexing accepts at most 1 MiB per source, processes overlapping 8 KiB chunks,
+and reports an error rather than silently indexing a prefix if it exceeds 256
+relationships. Source previews are capped at 1 MiB and marked when truncated.
+PDF OCR is not included. A folder watcher stops with an explicit source error
+on a failed import or a manual-edit conflict; correct it and restart the watcher.
+
+MCP clients get the same parity through `query_knowledge`, `knowledge_graph`,
+`read_source`, `list_documents`, `refresh_document`, and `import_document`.
+`extract_relationships` is deliberately annotated as model-spending and
+cache-writing; it returns an MCP `isError` result for an unavailable model or
+per-file extraction failure. `import_document` takes `{filename, content}`
+where `content` is base64-encoded bytes, while `refresh_document` takes a
+document path.
+
 ## Cloud agents too, not just local ones
 
 A local agent launches `grimoire-mcp` over stdio. A hosted one — Claude.ai,
