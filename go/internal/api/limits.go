@@ -61,6 +61,8 @@ func isUpload(r *http.Request) bool {
 // this server's.
 var costlyPrefixes = []string{
 	"/api/ask", "/api/web/", "/api/connectors/", "/api/actions", "/api/audio",
+	"/api/knowledge/query", "/api/documents/import", "/api/documents/refresh",
+	"/api/knowledge/extract",
 }
 
 func costly(path string) bool {

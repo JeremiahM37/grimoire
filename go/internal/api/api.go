@@ -24,9 +24,11 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/auth"
 	"github.com/JeremiahM37/grimoire/go/internal/connectors"
 	"github.com/JeremiahM37/grimoire/go/internal/crdtstore"
+	"github.com/JeremiahM37/grimoire/go/internal/documents"
 	"github.com/JeremiahM37/grimoire/go/internal/history"
 	"github.com/JeremiahM37/grimoire/go/internal/identity"
 	"github.com/JeremiahM37/grimoire/go/internal/index"
+	"github.com/JeremiahM37/grimoire/go/internal/knowledge"
 	"github.com/JeremiahM37/grimoire/go/internal/markdown"
 	"github.com/JeremiahM37/grimoire/go/internal/readlog"
 	"github.com/JeremiahM37/grimoire/go/internal/secrets"
@@ -38,15 +40,17 @@ import (
 
 // Server holds everything the handlers need.
 type Server struct {
-	Index    *index.Index
-	Vault    *vault.Vault
-	Settings *settings.Store
-	History  *history.Store
-	Secrets  *secrets.Vault
-	Broker   *secrets.Broker
-	CRDT     *crdtstore.Store
-	AI       *ai.Client
-	Auth     *auth.Store
+	Index     *index.Index
+	Vault     *vault.Vault
+	Settings  *settings.Store
+	History   *history.Store
+	Secrets   *secrets.Vault
+	Broker    *secrets.Broker
+	CRDT      *crdtstore.Store
+	AI        *ai.Client
+	Auth      *auth.Store
+	Knowledge *knowledge.Store
+	Documents *documents.Store
 	// Identity resolves callers that are not on this machine. Nil or empty
 	// means no resolution, which is the default and preserves the historical
 	// behaviour exactly.
@@ -81,6 +85,12 @@ type Server struct {
 // ordering explicit documents the same hazard the Python side has, where a
 // greedy /notes/{path} would otherwise swallow /notes/random.
 func (s *Server) Routes() http.Handler {
+	if s.Knowledge == nil && s.Index != nil && s.Vault != nil {
+		s.Knowledge = knowledge.New(s.Index, s.Vault)
+	}
+	if s.Documents == nil && s.Index != nil && s.Vault != nil {
+		s.Documents = documents.New(s.Vault, s.Index)
+	}
 	// Attach the provenance gate here rather than at every construction site.
 	// It is a security control, so the safe state is on-by-default: a caller
 	// that forgets to wire it would silently get the weaker broker, and the
@@ -111,6 +121,14 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/search", s.search)
 	mux.HandleFunc("GET /api/retrieve", s.retrieve)
 	mux.HandleFunc("GET /api/context", s.contextEndpoint)
+	mux.HandleFunc("GET /api/knowledge/graph", s.knowledgeGraph)
+	mux.HandleFunc("POST /api/knowledge/query", s.knowledgeQuery)
+	mux.HandleFunc("POST /api/knowledge/extract", s.userOnly(s.knowledgeExtract))
+	mux.HandleFunc("GET /api/knowledge/source", s.knowledgeSource)
+	mux.HandleFunc("POST /api/documents/import", s.userOnly(s.importDocument))
+	mux.HandleFunc("GET /api/documents", s.listDocuments)
+	mux.HandleFunc("POST /api/documents/refresh", s.userOnly(s.refreshDocument))
+	mux.HandleFunc("GET /api/documents/original", s.serveDocumentOriginal)
 	mux.HandleFunc("GET /api/tags", s.tags)
 	mux.HandleFunc("GET /api/templates", s.listTemplates)
 	mux.HandleFunc("POST /api/templates/apply", s.applyTemplate)
