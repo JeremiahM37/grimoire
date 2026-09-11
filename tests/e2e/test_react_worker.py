@@ -1,5 +1,13 @@
 """The built worker supports the console offline without caching note content."""
+import pytest
 from playwright.sync_api import expect
+
+
+@pytest.fixture
+def page(browser):
+    context = browser.new_context(service_workers="allow")
+    yield context.new_page()
+    context.close()
 
 
 def test_react_worker_offline_shell_and_private_content_exclusion(page, server):

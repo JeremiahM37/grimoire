@@ -96,7 +96,9 @@ def browser():
 def page(browser, server, request):
     """A page pinned to the CLASSIC editor — this suite drives the textarea
     directly. Live-editor behavior has its own fixture below (live_page)."""
-    ctx = browser.new_context(viewport=getattr(request, "param", DESKTOP))
+    # Routed fixture responses must not be bypassed by a controlling worker.
+    # Offline/worker tests explicitly create a worker-enabled context.
+    ctx = browser.new_context(viewport=getattr(request, "param", DESKTOP), service_workers="block")
     ctx.add_init_script("localStorage.setItem('grimoire-editor-mode', 'classic')")
     pg = ctx.new_page()
     yield pg
@@ -106,7 +108,7 @@ def page(browser, server, request):
 @pytest.fixture()
 def live_page(browser, server):
     """A page running the CM6 live-preview editor (the default mode)."""
-    ctx = browser.new_context(viewport=DESKTOP)
+    ctx = browser.new_context(viewport=DESKTOP, service_workers="block")
     ctx.add_init_script("localStorage.setItem('grimoire-editor-mode', 'live')")
     pg = ctx.new_page()
     yield pg
