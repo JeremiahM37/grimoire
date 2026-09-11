@@ -62,8 +62,8 @@ def test_failed_save_keeps_latest_draft_and_blocks_navigation(page, server):
 def test_delete_stays_deleted_until_explicit_undo(page, server):
     path=create(page,server,'Explicit React undo')
     page.goto(server+'/#'+path);expect(page.locator('#content')).to_have_value('original\n')
-    page.on('dialog',lambda dialog:dialog.accept())
     page.locator('#delete-note').click()
+    page.locator('.form-panel button[type=submit]').click()
     expect(page.get_by_role('button',name='Undo delete',exact=True)).to_be_visible()
     page.wait_for_timeout(5300)
     assert page.request.get(server+'/api/notes/'+path).status==404

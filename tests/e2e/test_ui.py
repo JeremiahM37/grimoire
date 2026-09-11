@@ -1161,8 +1161,7 @@ def test_mobile_edge_swipe_opens_and_closes_sidebar(browser, server):
           side.dispatchEvent(mk('touchstart', 200, 300));
           side.dispatchEvent(mk('touchend', 40, 300));
         }""")
-        pg.wait_for_function(
-            "() => !document.querySelector('#sidebar').classList.contains('open')", timeout=4000)
+        expect(pg.locator('#sidebar')).not_to_have_class(re.compile(r'\bopen\b'), timeout=4000)
     finally:
         ctx.close()
 
@@ -1357,6 +1356,8 @@ def test_explain_note_is_one_click_and_does_not_edit(page, server):
     expect(page.locator("#content")).to_have_value("A cache stores reusable results.")
     assert calls==[{"action":"summarize","text":"A cache stores reusable results."}]
     assert page.locator('#ask-modal input[type="checkbox"]').count()==0
+    page.click("#explain-close")
+    page.click("#ask-open")
     expect(page.locator("#ask-priv")).to_have_value("public")
 
 @pytest.mark.parametrize("page", [DESKTOP, PHONE], indirect=True, ids=["desktop", "phone"])

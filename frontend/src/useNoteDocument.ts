@@ -9,8 +9,12 @@ function persist(note: Note) {
   try {
     if (note.encrypted || note.locked) {
       localStorage.removeItem(draftKey(note.path));
+      const legacy=JSON.parse(localStorage.getItem('grimoire-draft')||'null');
+      if(legacy?.path===note.path)localStorage.removeItem('grimoire-draft');
       return;
     }
+    // Keep the prior console's single-draft format readable during upgrades.
+    localStorage.setItem('grimoire-draft',JSON.stringify({path:note.path,title:note.title,content:note.body}));
     localStorage.setItem(
       draftKey(note.path),
       JSON.stringify({ title: note.title, body: note.body }),
@@ -93,7 +97,7 @@ export function useNoteDocument(
           }
           void callbacks.current.onSaved().catch(() => undefined);
         } catch (error) {
-          setSaveState(note.encrypted ? "failed · unsaved" : "failed · draft kept");
+          setSaveState((navigator.onLine ? "failed" : "offline") + (note.encrypted ? " · unsaved" : " · draft kept"));
           if (activeRef.current?.path === note.path) persist(activeRef.current);
           callbacks.current.onError(
             error instanceof Error ? error.message : "Save failed",
