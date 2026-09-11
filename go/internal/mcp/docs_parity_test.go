@@ -119,7 +119,10 @@ func TestREADMEEnvVarsAreImplemented(t *testing.T) {
 	// moved to docs/CONFIG.md when the README was cut down, and a test that
 	// still read only README.md would have gone on passing while covering
 	// almost nothing — the silent kind of regression this test exists to catch.
-	envRE := regexp.MustCompile(`GRIMOIRE_[A-Z_]+`)
+	envRE := regexp.MustCompile(`\bGRIMOIRE_[A-Z_]+\b`)
+	if names := envRE.FindAllString("AGENTDECK_GRIMOIRE_CONTEXT_MODE GRIMOIRE_PORT", -1); len(names) != 1 || names[0] != "GRIMOIRE_PORT" {
+		t.Fatalf("environment matcher confused host and server settings: %v", names)
+	}
 	documented := map[string]bool{}
 	for _, rel := range []string{"README.md", "docs/CONFIG.md"} {
 		b, err := os.ReadFile(filepath.Join(root, rel))
