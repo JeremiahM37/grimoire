@@ -38,6 +38,14 @@ const usage = `grimoire — local-first AI-native notes
   grimoire daily [text...]            append to today's daily note (or open it)
   grimoire capture [text...]          quick capture → inbox + daily link
   grimoire search QUERY               full-text search the vault
+  grimoire query [QUESTION...]        ask knowledge with citations (interactive if omitted)
+  grimoire knowledge extract PATH... extract semantic relationships (max 10)
+  grimoire graph [--seed ID]          inspect bounded knowledge graph as JSON or text
+  grimoire source PATH                print one knowledge source with provenance
+  grimoire documents                  list imported documents
+  grimoire documents watch FOLDER     recursively watch external documents
+  grimoire documents refresh PATH     refresh an imported document
+  grimoire document-import FILE       import a document through the server API
   grimoire remember TEXT [--topic T] [--session S] [--category C]
                     [--expires-in 72h] [--immutable] [--verbatim] [--human]
                                       record a fact, reconciled against what is known
@@ -100,6 +108,9 @@ func commands() map[string]func([]string) int {
 	return map[string]func([]string) int{
 		"new": cmdNew, "daily": cmdDaily, "capture": cmdCapture,
 		"search": cmdSearch, "ls": cmdLs, "open": cmdOpen,
+		"query": cmdKnowledgeQuery, "graph": cmdKnowledgeGraph, "source": cmdKnowledgeSource,
+		"knowledge": cmdKnowledge,
+		"documents": cmdDocuments, "document-import": cmdDocumentImport,
 		"remember": cmdRemember, "recall": cmdRecall, "forget": cmdForget,
 		"challenges": cmdChallenges,
 		"doctor":     cmdDoctor, "reindex": cmdReindex, "import": cmdImport, "ingest": cmdIngest, "seed-demo": cmdSeedDemo,
