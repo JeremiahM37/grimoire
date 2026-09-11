@@ -148,6 +148,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/complete", s.complete)
 	mux.HandleFunc("POST /api/memory", s.remember)
 	mux.HandleFunc("GET /api/memory", s.recall)
+	mux.HandleFunc("GET /api/memory/context", s.memoryContext)
 	mux.HandleFunc("GET /api/memory/export", s.exportMemory)
 	mux.HandleFunc("GET /api/memory/changes", s.memoryChanges)
 	mux.HandleFunc("GET /api/memory/facets", s.memoryFacets)

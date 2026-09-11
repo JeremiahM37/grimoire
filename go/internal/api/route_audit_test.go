@@ -97,6 +97,7 @@ var routeAccess = map[string]access{
 	"GET /api/facts":              scoped,
 	"GET /api/complete":           scoped,
 	"GET /api/memory":             scoped,
+	"GET /api/memory/context":     scoped,
 	"GET /api/memory/export":      scoped, // every fact the caller may read
 	"GET /api/memory/changes":     scoped, // fact text, so the same filter as recall
 	"GET /api/memory/facets":      scoped, // scope names are drawn from facts

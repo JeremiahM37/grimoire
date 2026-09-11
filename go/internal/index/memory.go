@@ -61,6 +61,7 @@ type MemoryQuery struct {
 
 	// Structured narrowing. Empty means "any".
 	Note     string
+	Paths    []string
 	Agent    string
 	Task     string
 	Session  string
@@ -74,7 +75,9 @@ type MemoryQuery struct {
 	SessionSet bool
 
 	// Query ranks the survivors. Empty returns them newest first.
-	Query string
+	Query        string
+	LexicalOnly  bool
+	AcceptedOnly bool
 
 	// QueryVector ranks by a vector the caller already computed, for a
 	// framework that owns its embedding step. It must be in THIS server's
@@ -229,6 +232,11 @@ func (ix *Index) MemoryEntries(q MemoryQuery) ([]MemoryHit, error) {
 		where = append(where, "note=?")
 		args = append(args, q.Note)
 	}
+	if len(q.Paths) > 0 {
+		clause, values := MemoryPathClause("note", q.Paths)
+		where = append(where, clause)
+		args = append(args, values...)
+	}
 	if q.ID != "" {
 		where = append(where, "id=?")
 		args = append(args, q.ID)
@@ -251,6 +259,9 @@ func (ix *Index) MemoryEntries(q MemoryQuery) ([]MemoryHit, error) {
 	}
 	if !q.IncludeSuperseded && q.AsOf.IsZero() {
 		where = append(where, "superseded_by=''")
+	}
+	if q.AcceptedOnly {
+		where = append(where, "challenges=''")
 	}
 	if !q.Filter.IncludePrivate {
 		where = append(where, "private=0")
@@ -316,6 +327,21 @@ func (ix *Index) MemoryEntries(q MemoryQuery) ([]MemoryHit, error) {
 		return nil, err
 	}
 	return ix.rankMemory(cands, q), nil
+}
+
+func MemoryPathClause(column string, paths []string) (string, []any) {
+	clauses := make([]string, 0, len(paths))
+	var args []any
+	for _, path := range paths {
+		if strings.HasSuffix(path, "/") {
+			clauses = append(clauses, "substr("+column+",1,length(?))=?")
+			args = append(args, path, path)
+		} else {
+			clauses = append(clauses, column+"=?")
+			args = append(args, path)
+		}
+	}
+	return "(" + strings.Join(clauses, " OR ") + ")", args
 }
 
 // allows applies the space and reader-list checks to one row.
@@ -403,7 +429,7 @@ func (ix *Index) rankMemory(cands []memoryRow, q MemoryQuery) []MemoryHit {
 	}
 
 	qVec := q.QueryVector
-	if len(qVec) == 0 {
+	if len(qVec) == 0 && !q.LexicalOnly {
 		qVec = firstVec(ix.Emb.Embed([]string{q.Query}))
 	}
 	qNorm := norm(qVec)
