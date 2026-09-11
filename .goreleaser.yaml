@@ -52,8 +52,14 @@ archives:
       # directory component, so it shipped web/vendor/editor.js and left out
       # index.html and every other top-level file. The archive built, the
       # binary started, and the console answered 404.
-      - src: frontend/dist/*
+      - src: frontend/dist/*.*
         dst: web
+        strip_parent: true
+      - src: frontend/dist/assets/*
+        dst: web/assets
+        strip_parent: true
+      - src: frontend/dist/vendor/*
+        dst: web/vendor
         strip_parent: true
       - plugins
 
