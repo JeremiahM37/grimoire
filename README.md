@@ -13,7 +13,7 @@ can use but never see. One self-hosted Go binary, mounted over MCP.
 ![go](https://img.shields.io/badge/go-1.26%2B-00add8)
 [![benchmarks](https://img.shields.io/badge/benchmarks-pre--registered%2C%20nulls%20included-b4741a)](benchmarks/)
 
-![Grimoire dark-mode editor](docs/screenshots/hero-dark.png)
+![Grimoire dark-mode editor](docs/screenshots/editor-current.png)
 
 </div>
 
@@ -46,10 +46,10 @@ when deploying.
 
 ## Point your agent at the notes you already have
 
-Every agent-memory layer starts empty. mem0, Zep and Letta accumulate what an
-agent learns from talking to you — useful, and not the problem. The runbooks and
-decisions you have been writing for years already answer most of what your agent
-asks, and it cannot see any of them. So you paste. Again.
+The runbooks and decisions you have been writing for years already answer many
+of your agent's questions. Without a connection to those notes, you keep pasting
+the same context into new sessions. Grimoire makes that existing knowledge
+available alongside the facts your agents deliberately save.
 
 Grimoire's substrate is a folder of markdown you already own — an **Obsidian**
 vault, a Logseq graph, a plain `~/notes`. It needs no plugin and does not need
@@ -70,32 +70,24 @@ a result, Enter to open it, and Escape to clear the query.
 Rename, templates, canvas cards and other actions use in-app panels. Dialogs
 keep keyboard focus inside, return it on close, and fit above the mobile keyboard.
 
-| Explore connections | Find a note |
+| Notes and connections | Persistent project memory |
 |---|---|
-| ![Searchable dark-mode note graph](docs/screenshots/graph.png) | ![Dark-mode note search](docs/screenshots/search-dark.png) |
+| ![Current searchable note graph](docs/screenshots/graph-current.png) | ![AgentDeck project facts stored as editable Markdown](docs/screenshots/project-memory-current.png) |
 
-| Explain a note | On your phone |
-|---|---|
-| ![One-click note explanation](docs/screenshots/explain-dark.png) | ![Grimoire mobile dark mode](docs/screenshots/mobile.png) |
-
-| Create a note | Ask a question |
-|---|---|
-| ![Create a note in dark mode](docs/screenshots/new-note-dark.png) | ![Ask a question across notes](docs/screenshots/ask-dark.png) |
-
-Screenshots use a disposable demo vault with generic notes and a fixed demo AI response. Regenerate them
-with `.venv/bin/python tools/screenshots.py`.
+These are real captures of the current React UI using a disposable sample vault,
+not personal notes. The project-memory image comes from a real AgentDeck →
+Grimoire provisioning and recall walkthrough, with no paid model calls.
 
 ## Agent memory that lives in your own markdown
 
 What an agent learns lands in those files too, as ordinary bullets with
 provenance. When it gets something wrong you fix the line — and the fix
-**outranks the agent's next write**, which is not true elsewhere.
+**outranks a recognized conflicting agent write**. Explicit correction targets
+avoid relying on fuzzy matching to identify the fact being corrected.
 
-![Agent memory in dark mode](docs/screenshots/agent-memory.png)
+![Persistent project memory in the current editor](docs/screenshots/project-memory-current.png)
 
-Most memory layers let you edit; Letta has a block editor, mem0 an update API.
-But an edit with no recorded *author* has no standing, so it holds only until
-the next write lands on that slot. Reconciliation here compares authority before
+Reconciliation compares authority before
 recency — `human` > `agent` > `pulled` — and a refused overwrite becomes a
 challenge you settle rather than a silent revert.
 
@@ -107,6 +99,53 @@ grimoire challenges --note memory/ops.md --concede ID  # the agent was right
 
 Hand edits need no marker: an entry's id is a hash of its own content, so text
 that changed after the id was minted is text another hand changed.
+
+## Automatic memory, on your terms
+
+Grimoire is **both document retrieval and persistent agent memory**, not just a
+chat box over a folder. Search/RAG finds evidence in your notes and imported
+documents. `remember` writes durable, attributed facts; `recall` reads accepted
+current knowledge; correction history and challenges preserve disagreements.
+The files survive process restarts and remain readable outside Grimoire.
+
+Automatic context is a separate, configurable read path:
+
+| Mode | What gets consulted |
+|---|---|
+| Manual/off | Nothing automatically; agents use explicit MCP tools when asked. |
+| Scoped | Only the configured files or directories, within existing permissions. |
+| All | The readable corpus, still excluding private/untrusted content from automatic context. |
+
+Optional native Claude Code/Codex hooks default to **manual**. When enabled,
+they select relevant excerpts without generation or embedding calls, skip
+obvious acknowledgements, deduplicate recent context, and impose a 2,400-byte
+default retrieval budget. No match means no injected excerpts. Explicit
+`search_notes`, `recall`, and `ask_notes` remain available for deeper lookup.
+
+Correction APIs accept `target_id`, `target_path`, and `expected_text` together.
+Stale targets are rejected; lower-authority writes challenge human/immutable
+facts instead of replacing them. Unresolved challenges are omitted from default
+fact recall, but remain inspectable. This does not solve every paraphrased
+contradiction or guarantee that an agent follows the supplied context.
+
+### With AgentDeck
+
+[AgentDeck](https://github.com/JeremiahM37/agentdeck) manages agents, tasks,
+worktrees, approvals, and terminals. Grimoire supplies their durable knowledge.
+Set `AGENTDECK_GRIMOIRE_URL` and choose
+`AGENTDECK_GRIMOIRE_CONTEXT_MODE=project` to connect them:
+
+- Creating, importing, or promoting a project provisions a unique memory note.
+  The association survives renaming; setup failures are visible and retryable.
+- Launches, task dispatch, and messages sent through Deck retrieve only the
+  assigned project's context by default. Additional reference paths are explicit.
+- Agents receive the memory destination; requested handoffs save to the same
+  topic. Conversation transcripts are not automatically turned into facts.
+- Unassigned sessions get no automatic project memory. Manual/off and all-corpus
+  modes remain available, and Grimoire works independently of AgentDeck.
+
+Direct terminal typing requires the optional native hook for per-prompt lookup.
+See [configuration, API, cost controls, and limitations](docs/AUTOMATIC_MEMORY.md).
 
 ## Credentials it can use but never read
 
