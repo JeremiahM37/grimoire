@@ -358,6 +358,8 @@ one that cost a feature its default. Full methods and per-question data in
 
 - **Config** — every knob is an env var: [docs/CONFIG.md](docs/CONFIG.md).
   Nothing is required; an empty environment gives a working server.
+- **Selective automatic memory** — manual, scoped, or whole-vault lookup,
+  bounded native hooks, and AgentDeck integration: [docs/AUTOMATIC_MEMORY.md](docs/AUTOMATIC_MEMORY.md).
 - **Security** — threat model, what is and is not defended: [SECURITY.md](SECURITY.md).
 - **Architecture** — [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) ·
   **design decisions** — [DESIGN.md](DESIGN.md) ·

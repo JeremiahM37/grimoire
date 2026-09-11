@@ -129,6 +129,19 @@ establish a new LongMemEval score or solve arbitrary contradiction recognition.
 
 ## AgentDeck integration
 
+New AgentDeck projects automatically receive a unique managed note at
+`memory/agentdeck-<random-id>.md` when automatic memory is enabled. The association
+is stored in AgentDeck's database, survives renames, and is also created for
+imports and promoted sessions. AgentDeck reports setup status and provides an
+idempotent retry endpoint; failed setup does not overwrite notes or block project
+creation. Deleting the project does not delete its accumulated memory.
+
+New projects read this managed note by default, plus any explicitly configured
+reference paths. Launch/task prompts include a short destination hint so agents
+can write durable facts to the same topic; that hint is additional to the
+retrieval byte budget. Requested handoffs use the same topic and topic-scoped
+reconciliation. Manual/off modes do not provision notes or make automatic reads.
+
 AgentDeck's optional Grimoire provider owns the mapping from an assigned
 AgentDeck project to this generic path-scoped API. It automatically supplies
 bounded context for task dispatch, interactive launch/resume, and messages
@@ -149,7 +162,7 @@ JSON object keyed by the exact AgentDeck project name:
 }
 ```
 
-Without an override, project mode uses `memory/<slug>.md`, `memory/<slug>/`, and
+For existing projects without a managed topic or override, project mode uses `memory/<slug>.md`, `memory/<slug>/`, and
 `Agent Memory/project_<underscore_slug>.md`. These are explicit conventions,
 not discovery of every related note. Map additional project documents yourself.
 Older servers fail open with no automatic context, never an unscoped fallback.
@@ -159,4 +172,4 @@ for 30 minutes. A service restart resets this cache. It does not observe text
 typed directly into an attached terminal or the host's compaction events; for
 those paths install the native hook with the same project scope. Avoid enabling
 both paths for the same messages unless you accept separate deduplication caches.
-No live installation, service restart, or deployment is performed by these changes.
+Enablement is controlled by the host configuration, not by installing Grimoire.
