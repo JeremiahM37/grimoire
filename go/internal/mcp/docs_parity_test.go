@@ -190,7 +190,7 @@ func TestReadmeMCPConfigUsesEnvTheServerReads(t *testing.T) {
 	// The env keys grimoire-mcp resolves: the two constants it is launched
 	// with, plus the ones read directly for transport and auth.
 	reads := map[string]bool{
-		EnvURL: true, EnvAgentName: true,
+		EnvURL: true, EnvAgentName: true, EnvSession: true,
 		"GRIMOIRE_PORT": true, "GRIMOIRE_AUTH_TOKEN": true,
 		"GRIMOIRE_MCP_TRANSPORT": true, "GRIMOIRE_MCP_ADDR": true,
 		"GRIMOIRE_MCP_PORT": true,

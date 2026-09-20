@@ -48,6 +48,7 @@ const ProtocolVersion = "2024-11-05"
 const (
 	EnvURL       = "GRIMOIRE_URL"        // API base the MCP server talks to
 	EnvAgentName = "GRIMOIRE_AGENT_NAME" // provenance stamped on what it writes
+	EnvSession   = "GRIMOIRE_SESSION"    // the run those writes belong to
 	EnvMCPToken  = "GRIMOIRE_MCP_TOKEN"  // bearer token the http transport demands
 )
 
@@ -65,6 +66,14 @@ const Instructions = "This server is the team's knowledge base and memory: runbo
 type Server struct {
 	BaseURL string
 	Agent   string
+
+	// Session names the run this server was started for. Whatever launched the
+	// agent knows which run it is; the model does not, and a session the model
+	// has to remember to pass is a session that is nearly always blank. Set, it
+	// is stamped on every write the same way Agent is, so the launcher and the
+	// store share one key for "what did this run learn" without the model being
+	// involved — or able to file its writes under another run.
+	Session string
 	Client  *http.Client
 
 	// AuthToken is presented to the API when it is gated by
@@ -99,6 +108,7 @@ func New(baseURL, agent string) *Server {
 	return &Server{
 		BaseURL:   strings.TrimRight(baseURL, "/"),
 		Agent:     agent,
+		Session:   strings.TrimSpace(os.Getenv(EnvSession)),
 		AuthToken: os.Getenv("GRIMOIRE_AUTH_TOKEN"),
 		// The administrative surface can be gated separately, and some tools
 		// here are on it — list_grants reads the credential console's own
@@ -506,6 +516,11 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 		if boolean(args, "immutable") {
 			body["immutable"] = true
 		}
+		// Provenance, like the agent above: the launcher's session wins over
+		// anything the caller supplied.
+		if s.Session != "" {
+			body["session"] = s.Session
+		}
 		return s.api("POST", "/api/memory", body)
 	case "recall":
 		q := url.Values{}
@@ -538,6 +553,9 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 		}
 		if v := str(args, "agent"); v != "" {
 			q.Set("agent", v)
+		}
+		if v := str(args, "session"); v != "" {
+			q.Set("session", v)
 		}
 		if n := num(args, "limit", 0); n > 0 {
 			q.Set("limit", fmt.Sprint(n))

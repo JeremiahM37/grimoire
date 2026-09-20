@@ -153,6 +153,55 @@ func TestRememberAttributionIsServerControlled(t *testing.T) {
 	}
 }
 
+// The launcher knows which run this is; the model does not. A configured session
+// is stamped on every write, and the model cannot file a write under another run.
+func TestRememberSessionComesFromTheLauncher(t *testing.T) {
+	var body map[string]any
+	s := stubAPI(t, func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&body)
+		w.Write([]byte(`{"ok":true}`))
+	})
+	remember := func(args map[string]any) {
+		body = nil
+		call(t, s, map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+			"params": map[string]any{"name": "remember", "arguments": args}})
+	}
+	// Not configured: behaviour is what it always was — the caller's session
+	// passes through, and none is invented.
+	remember(map[string]any{"text": "x"})
+	if _, present := body["session"]; present {
+		t.Errorf("no session was configured or passed, got %v", body["session"])
+	}
+	remember(map[string]any{"text": "x", "session": "model-chosen"})
+	if body["session"] != "model-chosen" {
+		t.Errorf("session = %v, want the caller's when none is configured", body["session"])
+	}
+	s.Session = "agentdeck-s124"
+	remember(map[string]any{"text": "x"})
+	if body["session"] != "agentdeck-s124" {
+		t.Errorf("session = %v, want the launcher's", body["session"])
+	}
+	remember(map[string]any{"text": "x", "session": "someone-elses-run"})
+	if body["session"] != "agentdeck-s124" {
+		t.Errorf("session = %v: a write must not be filed under another run", body["session"])
+	}
+}
+
+// "What did that run write" is only answerable if the filter reaches the API.
+func TestMemoryChangesForwardsTheSessionFilter(t *testing.T) {
+	var query string
+	s := stubAPI(t, func(w http.ResponseWriter, r *http.Request) {
+		query = r.URL.RawQuery
+		w.Write([]byte(`{"changes":[]}`))
+	})
+	call(t, s, map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+		"params": map[string]any{"name": "memory_changes", "arguments": map[string]any{
+			"session": "agentdeck-s124", "since": "24h"}}})
+	if !strings.Contains(query, "session=agentdeck-s124") || !strings.Contains(query, "since=24h") {
+		t.Errorf("query = %q", query)
+	}
+}
+
 // A failing tool should come back as a result the agent can read and adapt to,
 // not as a protocol error that looks like a transport fault.
 func TestToolFailureIsReportedAsResult(t *testing.T) {

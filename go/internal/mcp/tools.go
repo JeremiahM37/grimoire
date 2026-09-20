@@ -421,8 +421,9 @@ func Tools() []tool {
 			InputSchema: obj(map[string]any{
 				"since": strProp("how far back — a duration like '7d', '24h', or an " +
 					"RFC3339 instant (default 7d)"),
-				"agent": strProp("optional: only this agent's beliefs"),
-				"limit": intProp("max rows (default 100)"),
+				"agent":   strProp("optional: only this agent's beliefs"),
+				"session": strProp("optional: only what one run wrote, by its session id"),
+				"limit":   intProp("max rows (default 100)"),
 			}),
 		},
 		{
