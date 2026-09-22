@@ -120,7 +120,7 @@ func TestREADMEEnvVarsAreImplemented(t *testing.T) {
 	// still read only README.md would have gone on passing while covering
 	// almost nothing — the silent kind of regression this test exists to catch.
 	envRE := regexp.MustCompile(`\bGRIMOIRE_[A-Z_]+\b`)
-	if names := envRE.FindAllString("AGENTDECK_GRIMOIRE_CONTEXT_MODE GRIMOIRE_PORT", -1); len(names) != 1 || names[0] != "GRIMOIRE_PORT" {
+	if names := envRE.FindAllString("LECTERN_GRIMOIRE_CONTEXT_MODE GRIMOIRE_PORT", -1); len(names) != 1 || names[0] != "GRIMOIRE_PORT" {
 		t.Fatalf("environment matcher confused host and server settings: %v", names)
 	}
 	documented := map[string]bool{}

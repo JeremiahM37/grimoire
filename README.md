@@ -72,10 +72,10 @@ keep keyboard focus inside, return it on close, and fit above the mobile keyboar
 
 | Notes and connections | Persistent project memory |
 |---|---|
-| ![Current searchable note graph](docs/screenshots/graph-current.png) | ![AgentDeck project facts stored as editable Markdown](docs/screenshots/project-memory-current.png) |
+| ![Current searchable note graph](docs/screenshots/graph-current.png) | ![Lectern project facts stored as editable Markdown](docs/screenshots/project-memory-current.png) |
 
 These are real captures of the current React UI using a disposable sample vault,
-not personal notes. The project-memory image comes from a real AgentDeck →
+not personal notes. The project-memory image comes from a real Lectern →
 Grimoire provisioning and recall walkthrough, with no paid model calls.
 
 ## Agent memory that lives in your own markdown
@@ -128,12 +128,12 @@ facts instead of replacing them. Unresolved challenges are omitted from default
 fact recall, but remain inspectable. This does not solve every paraphrased
 contradiction or guarantee that an agent follows the supplied context.
 
-### With AgentDeck
+### With Lectern
 
-[AgentDeck](https://github.com/JeremiahM37/agentdeck) manages agents, tasks,
+[Lectern](https://github.com/JeremiahM37/lectern) (AgentDeck until its v2.3) manages agents, tasks,
 worktrees, approvals, and terminals. Grimoire supplies their durable knowledge.
-Set `AGENTDECK_GRIMOIRE_URL` and choose
-`AGENTDECK_GRIMOIRE_CONTEXT_MODE=project` to connect them:
+Set `LECTERN_GRIMOIRE_URL` and choose
+`LECTERN_GRIMOIRE_CONTEXT_MODE=project` to connect them:
 
 - Creating, importing, or promoting a project provisions a unique memory note.
   The association survives renaming; setup failures are visible and retryable.
@@ -142,7 +142,7 @@ Set `AGENTDECK_GRIMOIRE_URL` and choose
 - Agents receive the memory destination; requested handoffs save to the same
   topic. Conversation transcripts are not automatically turned into facts.
 - Unassigned sessions get no automatic project memory. Manual/off and all-corpus
-  modes remain available, and Grimoire works independently of AgentDeck.
+  modes remain available, and Grimoire works independently of Lectern.
 
 Direct terminal typing requires the optional native hook for per-prompt lookup.
 See [configuration, API, cost controls, and limitations](docs/AUTOMATIC_MEMORY.md).
@@ -398,7 +398,7 @@ one that cost a feature its default. Full methods and per-question data in
 - **Config** — every knob is an env var: [docs/CONFIG.md](docs/CONFIG.md).
   Nothing is required; an empty environment gives a working server.
 - **Selective automatic memory** — manual, scoped, or whole-vault lookup,
-  bounded native hooks, and AgentDeck integration: [docs/AUTOMATIC_MEMORY.md](docs/AUTOMATIC_MEMORY.md).
+  bounded native hooks, and Lectern integration: [docs/AUTOMATIC_MEMORY.md](docs/AUTOMATIC_MEMORY.md).
 - **Security** — threat model, what is and is not defended: [SECURITY.md](SECURITY.md).
 - **Architecture** — [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) ·
   **design decisions** — [DESIGN.md](DESIGN.md) ·

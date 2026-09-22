@@ -1,6 +1,6 @@
 # Selective automatic memory
 
-Grimoire does not require AgentDeck, an agent framework, or automatic context.
+Grimoire does not require Lectern, an agent framework, or automatic context.
 Explicit MCP tools remain available in every mode. Automatic context is a
 separate, opt-in read path: it does not record transcripts or write memories.
 
@@ -127,12 +127,12 @@ Recognized protected disagreements cannot be discarded by a later model verdict.
 These changes improve correction delivery and selective recall; they do not
 establish a new LongMemEval score or solve arbitrary contradiction recognition.
 
-## AgentDeck integration
+## Lectern integration
 
-New AgentDeck projects automatically receive a unique managed note at
-`memory/agentdeck-<random-id>.md` when automatic memory is enabled. The association
-is stored in AgentDeck's database, survives renames, and is also created for
-imports and promoted sessions. AgentDeck reports setup status and provides an
+New Lectern projects automatically receive a unique managed note at
+`memory/lectern-<random-id>.md` when automatic memory is enabled. The association
+is stored in Lectern's database, survives renames, and is also created for
+imports and promoted sessions. Lectern reports setup status and provides an
 idempotent retry endpoint; failed setup does not overwrite notes or block project
 creation. Deleting the project does not delete its accumulated memory.
 
@@ -142,14 +142,14 @@ can write durable facts to the same topic; that hint is additional to the
 retrieval byte budget. Requested handoffs use the same topic and topic-scoped
 reconciliation. Manual/off modes do not provision notes or make automatic reads.
 
-AgentDeck's optional Grimoire provider owns the mapping from an assigned
-AgentDeck project to this generic path-scoped API. It automatically supplies
+Lectern's optional Grimoire provider owns the mapping from an assigned
+Lectern project to this generic path-scoped API. It automatically supplies
 bounded context for task dispatch, interactive launch/resume, and messages
-submitted through AgentDeck's send API. No project assignment means no lookup.
+submitted through Lectern's send API. No project assignment means no lookup.
 
-`AGENTDECK_GRIMOIRE_CONTEXT_MODE` selects `project` (default with a configured
-provider), `all`, `manual`, or `off`. `AGENTDECK_GRIMOIRE_CONTEXT_PROJECTS` is a
-JSON object keyed by the exact AgentDeck project name:
+`LECTERN_GRIMOIRE_CONTEXT_MODE` selects `project` (default with a configured
+provider), `all`, `manual`, or `off`. `LECTERN_GRIMOIRE_CONTEXT_PROJECTS` is a
+JSON object keyed by the exact Lectern project name:
 
 ```json
 {
@@ -167,7 +167,7 @@ For existing projects without a managed topic or override, project mode uses `me
 not discovery of every related note. Map additional project documents yourself.
 Older servers fail open with no automatic context, never an unscoped fallback.
 
-AgentDeck keeps per-session fingerprints in memory and deduplicates sent context
+Lectern keeps per-session fingerprints in memory and deduplicates sent context
 for 30 minutes. A service restart resets this cache. It does not observe text
 typed directly into an attached terminal or the host's compaction events; for
 those paths install the native hook with the same project scope. Avoid enabling

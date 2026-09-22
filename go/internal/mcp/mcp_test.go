@@ -176,13 +176,13 @@ func TestRememberSessionComesFromTheLauncher(t *testing.T) {
 	if body["session"] != "model-chosen" {
 		t.Errorf("session = %v, want the caller's when none is configured", body["session"])
 	}
-	s.Session = "agentdeck-s124"
+	s.Session = "lectern-s124"
 	remember(map[string]any{"text": "x"})
-	if body["session"] != "agentdeck-s124" {
+	if body["session"] != "lectern-s124" {
 		t.Errorf("session = %v, want the launcher's", body["session"])
 	}
 	remember(map[string]any{"text": "x", "session": "someone-elses-run"})
-	if body["session"] != "agentdeck-s124" {
+	if body["session"] != "lectern-s124" {
 		t.Errorf("session = %v: a write must not be filed under another run", body["session"])
 	}
 }
@@ -196,8 +196,8 @@ func TestMemoryChangesForwardsTheSessionFilter(t *testing.T) {
 	})
 	call(t, s, map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/call",
 		"params": map[string]any{"name": "memory_changes", "arguments": map[string]any{
-			"session": "agentdeck-s124", "since": "24h"}}})
-	if !strings.Contains(query, "session=agentdeck-s124") || !strings.Contains(query, "since=24h") {
+			"session": "lectern-s124", "since": "24h"}}})
+	if !strings.Contains(query, "session=lectern-s124") || !strings.Contains(query, "since=24h") {
 		t.Errorf("query = %q", query)
 	}
 }

@@ -112,7 +112,7 @@ Not a cloud SaaS. Not a proprietary format (everything is markdown + a rebuildab
 - **Devices table** tracks each client for sync state + per-device revoke.
 
 ### 4.6 AI-native surface (MCP in and out)
-- **grimoire as MCP server:** exposes tools — the shipped list is in the README and is checked against the server by a test; this line records the original intent, and some names moved (`write_note` shipped as `update_note`, `list_backlinks` as `backlinks`, and `link_notes` was dropped). Any MCP client (Claude Code, claude.ai bridge, homelab Discord bot, agentdeck agents) can read/query/write your notes. This is how "easily incorporates AI" is delivered — not a chat box, a protocol.
+- **grimoire as MCP server:** exposes tools — the shipped list is in the README and is checked against the server by a test; this line records the original intent, and some names moved (`write_note` shipped as `update_note`, `list_backlinks` as `backlinks`, and `link_notes` was dropped). Any MCP client (Claude Code, claude.ai bridge, homelab Discord bot, lectern agents) can read/query/write your notes. This is how "easily incorporates AI" is delivered — not a chat box, a protocol.
 - **grimoire as MCP client / secret broker:** using vault secrets + grants, grimoire can call *other* MCP servers or services on the AI's behalf (scoped, audited).
 - Inline AI actions in the editor (summarize, expand, link-suggest, tag-suggest) route through the same backend.
 
@@ -167,7 +167,7 @@ Four kinds, all hermetic by default (temp vault, no network, local stub embedder
 1. **Unit** — markdown parse/frontmatter, wiki-link resolution + backlinks, FTS ranking, secret seal/unseal (round-trip + wrong-passphrase), grant expiry, sync delta computation, export renderer.
 2. **API** — every endpoint against a temp vault; note CRUD writes real files; ask-notes with a stub retriever; secret grant lifecycle; capture/audio (mock transcriber).
 3. **E2E (Playwright)** — real browser: create/edit a note, `[[` autocomplete + backlink appears, daily note, search, ask, lock/unlock vault, capture inbox, offline write → reconnect → sync. Phone + desktop viewports.
-4. **Regression** — every fixed bug gets a red-green test (fails before, passes after) — the discipline proven on agentdeck.
+4. **Regression** — every fixed bug gets a red-green test (fails before, passes after) — the discipline proven on lectern.
 5. **Negative / adversarial** — malformed frontmatter, path-traversal in note paths (`../`), oversized uploads, wrong passphrase, expired/over-scope grant denied, secret never appears in search/RAG/API responses, sync conflict produces a conflict copy (never silent loss), injection in `[[links]]`/titles, unauthorized secret read → 403. Security assertions are tests, not hopes.
 
 `.verify.yaml` wires unit+API+e2e + a real headless UI flow (create→link→search→ask), per the homelab house rule.
