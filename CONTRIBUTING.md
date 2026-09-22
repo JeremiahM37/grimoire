@@ -34,8 +34,9 @@ cd go && go build -o grimoire ./cmd/grimoire   # the e2e suite runs this binary
 verify run .verify.yaml                        # live smoke on an isolated port
 ```
 
-Changed any file in the PWA shell? **Bump `CACHE` in `web/sw.js`** or clients
-keep the old version.
+Changed the console? Rebuild it (`npm run build --prefix frontend`); the
+service worker's cache key is derived from the build, so clients pick up the
+new shell on their next load.
 
 ## Style
 

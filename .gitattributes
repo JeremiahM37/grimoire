@@ -1,0 +1,4 @@
+# Built and vendored artifacts are not source; keep them out of the language bar.
+web/vendor/** linguist-vendored=true
+plugins/*/vendor/** linguist-vendored=true
+frontend/dist/** linguist-generated=true
