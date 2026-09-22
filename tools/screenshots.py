@@ -261,6 +261,8 @@ def capture(base: str):
 
         open_note(page, "Deployment Runbook")
         shot(page, "hero-dark.png")
+        # The README's lead image is this same capture under its own name.
+        shutil.copyfile(OUT / "hero-dark.png", OUT / "editor-current.png")
 
         page.click("#preview-toggle")
         shot(page, "preview.png")
@@ -272,6 +274,7 @@ def capture(base: str):
         page.locator("#graph-results .graph-show").first.click()
         page.fill("#graph-search", "")
         shot(page, "graph.png")
+        shutil.copyfile(OUT / "graph.png", OUT / "graph-current.png")
         page.click("#graph-close")
 
         page.click("#new-note")
@@ -309,6 +312,10 @@ def capture(base: str):
         # The memory view may leave a dialog open; the palette is behind it.
         page.keyboard.press("Escape")
         page.wait_for_timeout(300)
+        # The memory note itself, with its provenance banner: this is what the
+        # README shows as "project memory you can read and edit".
+        open_note(page, "Memory:")
+        shot(page, "project-memory-current.png")
 
         # Retrieval inspection uses the same accessible form panel as other actions.
         page.click("#palette-open")
