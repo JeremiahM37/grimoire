@@ -1,0 +1,104 @@
+/* React workspace: explicit control styles avoid native button chrome on note rows. */
+:root {
+  color-scheme: light;
+  --paper: #ffffff;
+  --paper2: #f5f6f8;
+  --ink: #252936;
+  --ink-soft: #687181;
+  --line: #e4e7ed;
+  --accent: #6455ce;
+  --link: #4862ad;
+  --selection: #eceafa;
+  --hover: #eceef3;
+  --shadow: 0 8px 32px #18203914;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: #191b22; --paper2: #14161c; --ink: #e2e5ee;
+    --ink-soft: #959eaf; --line: #2b303b; --accent: #b0a4f6;
+    --link: #a2b5ef; --selection: #302c46; --hover: #222630;
+    --shadow: 0 8px 32px #0004;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #191b22; --paper2: #14161c; --ink: #e2e5ee;
+  --ink-soft: #959eaf; --line: #2b303b; --accent: #b0a4f6;
+  --link: #a2b5ef; --selection: #302c46; --hover: #222630;
+  --shadow: 0 8px 32px #0004;
+}
+.react-app { font-size: 14px; }
+.react-app button { font-family: var(--sans); cursor: pointer; }
+.react-app button:disabled { cursor: default; opacity: .5; }
+.react-app #side-head { padding: 20px 18px 16px; gap: 8px; }
+.react-app #side-head h1 { font: 650 20px/1.3 var(--sans); letter-spacing: -.7px; flex: 1; }
+.react-app #side-head h1::before { content: '✧'; color: var(--accent); margin-right: 9px; }
+.react-app .note-search { margin: 0 14px 12px; }
+.react-app #search { font-size: 12px; padding: 10px 30px 10px 12px; border-radius: 7px; }
+.react-app .side-actions { display: grid; gap: 3px; padding: 0 14px 14px; }
+.quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+.react-app .btn { font-size: 13px; min-height: 36px; box-shadow: none; }
+.react-app #new-note { background: var(--accent); color: var(--paper); border-color: transparent; font-weight: 600; }
+.react-app .side-actions > .btn { background: transparent; border: 0; text-align: left; padding: 8px 10px; min-height: 34px; color: var(--ink-soft); }
+.react-app .side-actions > .btn:hover { background: var(--hover); color: var(--ink); }
+.workspace-label, .library-heading { font-size: 10px; font-weight: 650; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-soft); }
+.workspace-label { padding: 0 10px 6px; }
+.library-heading { display: flex; justify-content: space-between; padding: 13px 24px 8px; border-top: 1px solid var(--line); }
+.react-app kbd { float: right; font: 10px var(--sans); border: 1px solid var(--line); border-radius: 4px; padding: 2px 5px; }
+.react-app #note-list { padding: 0 12px 12px; overflow-x: hidden; scrollbar-width: thin; }
+.react-app .note-row {
+  appearance: none; display: block; width: 100%; min-width: 0; text-align: left;
+  border: 0; border-radius: 6px; box-shadow: none; background: transparent;
+  color: var(--ink); font: 13px/1.4 var(--sans); padding: 10px 12px; margin: 1px 0;
+}
+.react-app .note-row .t, .react-app .note-row .m { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.react-app .note-row .t { font-weight: 500; }
+.react-app .note-row .m { font-size: 10px; margin-top: 4px; opacity: .85; }
+.react-app .note-row:hover { background: var(--hover); }
+.react-app .note-row.active { background: var(--selection); color: var(--accent); box-shadow: none; }
+.react-app .note-row.active .t { font-weight: 650; }
+.react-app .note-row:focus-visible, .react-app .note-row.kbd-sel { outline: 2px solid var(--accent); outline-offset: -2px; box-shadow: none; }
+.react-app .folder-head { padding: 12px 10px 6px; font-size: 11px; color: var(--ink-soft); }
+.react-app .folder-head::before { content: '›'; display: inline-block; margin-right: 8px; }
+.react-app details[open] > .folder-head::before { transform: rotate(90deg); }
+.react-app #side-foot { padding: 12px 18px; font-size: 10px; }
+.react-app #running-build { margin-top: 4px; font-size: 9px; opacity: .65; overflow-wrap: anywhere; }
+.react-app #ed-head { min-height: 64px; padding: 12px 24px; gap: 10px; }
+.react-app #title { font: 550 16px/1.4 var(--sans); min-width: 0; }
+.react-app .icon { min-width: 30px; min-height: 30px; font-size: 15px; }
+.react-app #ed-toolbar { padding: 7px 24px; gap: 6px; background: var(--paper); }
+.react-app #content, .react-app #preview { padding: 32px clamp(24px, 6vw, 96px); }
+.react-app #live-editor .cm-content { padding: 32px 0; }
+.react-app #live-editor .cm-scroller { padding: 0 clamp(24px, 6vw, 96px); }
+.react-app .md { font-size: 15px; line-height: 1.8; }
+.react-app #note-connections { background: var(--paper); border-top: 1px solid var(--line); }
+.react-app #note-connections > summary { padding: 12px 24px; font-size: 11px; color: var(--ink-soft); }
+.workspace-empty { display: grid; place-items: center; padding: 32px; text-align: center; }
+.workspace-empty > div { max-width: 420px; margin-top: -6vh; }
+.empty-mark { font-size: 48px; color: var(--accent); }
+.workspace-empty h2 { font-size: 26px; font-weight: 550; letter-spacing: -.7px; margin: 20px 0 12px; }
+.workspace-empty p { color: var(--ink-soft); line-height: 1.7; }
+.empty-actions { display: flex; gap: 10px; margin: 26px 0 20px; }
+.workspace-empty small { color: var(--ink-soft); font-size: 11px; }
+.react-app .modal-box { border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); }
+@media (max-width: 780px) {
+  .react-app #ed-head { min-height: 56px; padding: 8px 12px; gap: 4px; }
+  .react-app #ed-toolbar { padding: 6px 12px; }
+  .react-app #side-head { padding-top: calc(16px + env(safe-area-inset-top)); }
+  .react-app #content, .react-app #preview { padding: 22px 18px; }
+  .react-app #live-editor .cm-scroller { padding: 0 18px; }
+  .react-app .note-row { min-height: 48px; }
+  .react-app .side-actions > .btn { min-height: 38px; }
+  .workspace-empty { padding: 24px; }
+  .workspace-empty h2 { font-size: 23px; }
+}
+.react-app #live-editor .cm-editor, .react-app #live-editor .cm-scroller { font-family: var(--sans); font-size: 15px; line-height: 1.8; }
+.react-app .gr-h { font-weight: 650; letter-spacing: -.025em; }
+.react-app .md h1, .react-app .md h2, .react-app .md h3 { font-family: var(--sans); letter-spacing: -.025em; }
+@media (max-width: 780px) {
+  .react-app #wordcount { display: none; }
+}
+.react-app #search-clear { appearance: none; border: 0; background: transparent; color: var(--ink-soft); border-radius: 5px; right: 5px; top: 5px; width: 26px; height: 26px; }
+.react-app #search-clear:hover { background: var(--hover); }
+.react-app #wordcount, .react-app #save-state { font-size: 11px; color: var(--ink-soft); }

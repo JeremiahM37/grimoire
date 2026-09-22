@@ -306,6 +306,9 @@ def capture(base: str):
         page.keyboard.press("Enter")
         page.wait_for_timeout(900)
         shot(page, "agent-memory.png")
+        # The memory view may leave a dialog open; the palette is behind it.
+        page.keyboard.press("Escape")
+        page.wait_for_timeout(300)
 
         # Retrieval inspection uses the same accessible form panel as other actions.
         page.click("#palette-open")

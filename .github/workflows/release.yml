@@ -34,6 +34,12 @@ jobs:
           npm run build --prefix frontend
       # A tag that does not build is worse than no tag: the tests run here
       # too, so a release is never the first time this commit was compiled.
+      # The document extractor shells out to pdftotext; CI installs it, and a
+      # release must run the same suite CI does.
+      - name: Test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y poppler-utils
       - name: Tests
         working-directory: go
         run: go test ./...
