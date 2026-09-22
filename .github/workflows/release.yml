@@ -106,8 +106,15 @@ jobs:
       - name: Mirror the tag for the go/ submodule
         run: |
           set -euo pipefail
-          git tag "go/${GITHUB_REF_NAME}" "${GITHUB_REF_NAME}"
-          git push origin "go/${GITHUB_REF_NAME}"
+          # A re-run of a release must not fail on its own earlier success:
+          # the module proxy has the first push cached, so the tag is never
+          # moved, only created when absent.
+          if git ls-remote --exit-code --tags origin "refs/tags/go/${GITHUB_REF_NAME}" >/dev/null; then
+            echo "go/${GITHUB_REF_NAME} already published"
+          else
+            git tag "go/${GITHUB_REF_NAME}" "${GITHUB_REF_NAME}"
+            git push origin "go/${GITHUB_REF_NAME}"
+          fi
 
   image:
     runs-on: ubuntu-latest
