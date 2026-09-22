@@ -151,11 +151,11 @@ func newEnv(fetchModel bool) (*env, error) {
 		SyncPeer:     os.Getenv("GRIMOIRE_SYNC_PEER"),
 		SyncToken:    os.Getenv("GRIMOIRE_SYNC_TOKEN"),
 		SyncInterval: atoiOr(os.Getenv("GRIMOIRE_SYNC_INTERVAL"), 0),
-		WebDir:       envOr("GRIMOIRE_WEB_DIR", ""),
+		WebDir:       envOr("GRIMOIRE_WEB_DIR", firstDir(besideBinary("web"), "/usr/local/share/grimoire/web", "/usr/share/grimoire/web", "")),
 		AuthToken:    os.Getenv("GRIMOIRE_AUTH_TOKEN"),
 		AdminToken:   os.Getenv("GRIMOIRE_ADMIN_TOKEN"),
 		FrameOptions: envOr("GRIMOIRE_FRAME_OPTIONS", "SAMEORIGIN"),
-		PluginDir:    envOr("GRIMOIRE_PLUGIN_DIR", "plugins"),
+		PluginDir:    envOr("GRIMOIRE_PLUGIN_DIR", firstDir("plugins", besideBinary("plugins"), "/usr/local/share/grimoire/plugins", "/usr/share/grimoire/plugins", "plugins")),
 		DailyDir:     envOr("GRIMOIRE_DAILY_DIR", "journal"),
 		InboxDir:     envOr("GRIMOIRE_INBOX_DIR", "inbox"),
 	}
@@ -393,6 +393,41 @@ func atoiOr(s string, def int) int {
 		return n
 	}
 	return def
+}
+
+// besideBinary returns <dir of the running executable>/<name> when that
+// directory exists, else "". A release archive is the binary next to web/ and
+// plugins/, and a Homebrew or Scoop install keeps that layout, so an install
+// works with no environment set; GRIMOIRE_WEB_DIR and GRIMOIRE_PLUGIN_DIR
+// still win when given.
+func besideBinary(name string) string {
+	exe, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	if real, err := filepath.EvalSymlinks(exe); err == nil {
+		exe = real
+	}
+	p := filepath.Join(filepath.Dir(exe), name)
+	if st, err := os.Stat(p); err == nil && st.IsDir() {
+		return p
+	}
+	return ""
+}
+
+// firstDir returns the first candidate that is an existing directory, else the
+// last candidate: for plugins that is the historical working-directory
+// default, for the console the empty string that means "no static files".
+func firstDir(candidates ...string) string {
+	for _, c := range candidates {
+		if c == "" {
+			continue
+		}
+		if st, err := os.Stat(c); err == nil && st.IsDir() {
+			return c
+		}
+	}
+	return candidates[len(candidates)-1]
 }
 
 func envOr(key, def string) string {

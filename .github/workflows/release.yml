@@ -46,14 +46,19 @@ jobs:
         with:
           version: "~> v2"
           args: release --snapshot --clean --skip=publish
+        env:
+          TAP_DEPLOY_KEY: unused-for-snapshot
+          SCOOP_DEPLOY_KEY: unused-for-snapshot
       - name: The archive must be a working install
         run: |
           set -euo pipefail
           mkdir -p /tmp/relcheck && tar xzf dist/grimoire_linux_amd64.tar.gz -C /tmp/relcheck
           cd /tmp/relcheck
           test -f web/index.html
-          GRIMOIRE_VAULT=$PWD/vault GRIMOIRE_PORT=9911 GRIMOIRE_WEB_DIR=$PWD/web \
-            GRIMOIRE_PLUGIN_DIR=$PWD/plugins GRIMOIRE_LOCAL_EMBED=off ./grimoire &
+          # No GRIMOIRE_WEB_DIR / GRIMOIRE_PLUGIN_DIR: the binary must find
+          # both beside itself, which is what every installer relies on.
+          cd /tmp && GRIMOIRE_VAULT=/tmp/relcheck/vault GRIMOIRE_PORT=9911 GRIMOIRE_LOCAL_EMBED=off /tmp/relcheck/grimoire &
+          cd /tmp/relcheck
           for _ in $(seq 1 30); do curl -sf localhost:9911/api/health >/dev/null && break; sleep 1; done
           test "$(curl -s -o /dev/null -w '%{http_code}' localhost:9911/)" = 200
           curl -sf localhost:9911/ > /tmp/grimoire-release-index.html
@@ -72,6 +77,14 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAP_DEPLOY_KEY: ${{ secrets.TAP_DEPLOY_KEY }}
+          SCOOP_DEPLOY_KEY: ${{ secrets.SCOOP_DEPLOY_KEY }}
+      # The installer must work against what was just published.
+      - name: install.sh installs this release
+        run: |
+          set -euo pipefail
+          GRIMOIRE_VERSION="${GITHUB_REF_NAME}" GRIMOIRE_INSTALL_PREFIX=/tmp/instcheck sh install.sh
+          /tmp/instcheck/bin/grimoire version | grep -q "${GITHUB_REF_NAME#v}"
 
       # `go install …@latest` is the install the README leads with, and it did
       # not resolve to the release. The module lives in the go/ subdirectory, so

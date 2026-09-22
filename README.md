@@ -18,15 +18,24 @@ can use but never see. One self-hosted Go binary, mounted over MCP.
 </div>
 
 ```bash
-go install github.com/JeremiahM37/grimoire/go/cmd/grimoire@latest
-go install github.com/JeremiahM37/grimoire/go/cmd/grimoire-mcp@latest
+curl -fsSL https://raw.githubusercontent.com/JeremiahM37/grimoire/main/install.sh | sh   # Linux, macOS
 
 GRIMOIRE_VAULT=~/obsidian-vault grimoire serve &   # the folder you already have
 claude mcp add grimoire -- grimoire-mcp            # your agent now has all of it
 ```
 
-Or `docker run -p 9111:9111 -v grimoire-vault:/vault ghcr.io/jeremiahm37/grimoire:latest`.
-Releases ship static binaries for Linux, macOS and Windows on amd64/arm64.
+| | |
+|---|---|
+| **Homebrew** (macOS) | `brew install JeremiahM37/tap/grimoire` |
+| **Windows** (PowerShell) | `irm https://raw.githubusercontent.com/JeremiahM37/grimoire/main/install.ps1 \| iex` |
+| **Scoop** (Windows) | `scoop bucket add jeremiahm37 https://github.com/JeremiahM37/scoop-bucket && scoop install grimoire` |
+| **Debian / Ubuntu**, **Fedora / RHEL** | the `.deb` / `.rpm` on the [latest release](https://github.com/JeremiahM37/grimoire/releases/latest) |
+| **Docker** | `docker run -p 9111:9111 -v grimoire-vault:/vault ghcr.io/jeremiahm37/grimoire:latest` |
+| **Go** | `go install github.com/JeremiahM37/grimoire/go/cmd/grimoire@latest` (and `…/grimoire-mcp@latest`) |
+
+Every channel ships the same static binaries for Linux, macOS and Windows on
+amd64 and arm64, verified against the release's `checksums.txt`; the console
+and plugins are files beside the binary, which finds them there.
 
 To build the console from a source checkout, use Node 24 and the Go version in
 `go/go.mod`:

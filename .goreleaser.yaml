@@ -66,6 +66,73 @@ archives:
 checksum:
   name_template: checksums.txt
 
+nfpms:
+  - id: packages
+    package_name: grimoire
+    vendor: JeremiahM37
+    homepage: https://github.com/JeremiahM37/grimoire
+    maintainer: JeremiahM37 <JeremiahM37@users.noreply.github.com>
+    description: Personal knowledge base and agent memory server; notes as Markdown, RAG, MCP.
+    license: MIT
+    formats: [deb, rpm]
+    bindir: /usr/local/bin
+    # The console and the plugins are served from disk; the binary looks in
+    # /usr/local/share/grimoire when nothing sits beside it.
+    contents:
+      - src: frontend/dist/
+        dst: /usr/local/share/grimoire/web
+      - src: plugins/
+        dst: /usr/local/share/grimoire/plugins
+      - src: deploy/grimoire.service
+        dst: /usr/share/doc/grimoire/grimoire.service
+        type: config
+
+homebrew_casks:
+  # The cask stages the whole archive, binary beside web/ and plugins/, which
+  # is the layout the binary finds on its own (through the bin symlink).
+  - name: grimoire
+    repository:
+      owner: JeremiahM37
+      name: homebrew-tap
+      branch: main
+      git:
+        url: git@github.com:JeremiahM37/homebrew-tap.git
+        private_key: "{{ .Env.TAP_DEPLOY_KEY }}"
+    directory: Casks
+    homepage: https://github.com/JeremiahM37/grimoire
+    description: Personal knowledge base and agent memory server
+    license: MIT
+    binaries: [grimoire, grimoire-mcp]
+    hooks:
+      post:
+        install: |
+          if system_command("/usr/bin/xattr", args: ["-h"]).exit_status == 0
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/grimoire"]
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/grimoire-mcp"]
+          end
+    commit_author:
+      name: JeremiahM37
+      email: JeremiahM37@users.noreply.github.com
+    commit_msg_template: "grimoire {{ .Tag }}"
+
+scoops:
+  - name: grimoire
+    repository:
+      owner: JeremiahM37
+      name: scoop-bucket
+      branch: main
+      git:
+        url: git@github.com:JeremiahM37/scoop-bucket.git
+        private_key: "{{ .Env.SCOOP_DEPLOY_KEY }}"
+    directory: bucket
+    homepage: https://github.com/JeremiahM37/grimoire
+    description: Personal knowledge base and agent memory server
+    license: MIT
+    commit_author:
+      name: JeremiahM37
+      email: JeremiahM37@users.noreply.github.com
+    commit_msg_template: "grimoire {{ .Tag }}"
+
 snapshot:
   version_template: "{{ incpatch .Version }}-next"
 
@@ -85,11 +152,13 @@ release:
   header: |
     ## Install
 
-    Download the archive for your platform below, or:
-
     ```bash
-    # @latest, not @{{ .Tag }}: the module lives in the go/ subdirectory, so Go
-    # resolves version tags as go/vX.Y.Z rather than vX.Y.Z
-    go install github.com/JeremiahM37/grimoire/go/cmd/grimoire@latest
+    curl -fsSL https://raw.githubusercontent.com/JeremiahM37/grimoire/main/install.sh | sh   # Linux, macOS
+    brew install JeremiahM37/tap/grimoire                                                   # Homebrew
+    scoop bucket add jeremiahm37 https://github.com/JeremiahM37/scoop-bucket && scoop install grimoire   # Windows
     docker run -p 9111:9111 -v grimoire-vault:/vault ghcr.io/jeremiahm37/grimoire:{{ .Version }}
+    go install github.com/JeremiahM37/grimoire/go/cmd/grimoire@latest    # the module lives in go/, so @latest resolves the go/{{ .Tag }} tag
     ```
+
+    Windows PowerShell one-liner: `irm https://raw.githubusercontent.com/JeremiahM37/grimoire/main/install.ps1 | iex`.
+    Archives (binary beside `web/` and `plugins/`: extract and run), `.deb`, `.rpm` and `checksums.txt` are attached below.
