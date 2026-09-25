@@ -279,6 +279,13 @@ unauthenticated public bind would publish the vault *and* the ability to spend
 its secrets. Put it behind your own TLS (a reverse proxy, `tailscale serve`, or
 a tunnel) and give the client the URL plus the token.
 
+**claude.ai's and ChatGPT's own connector UIs can't use that token** — both
+run from the vendor's cloud and only support OAuth. Set `GRIMOIRE_PUBLIC_BASE`
+and `GRIMOIRE_OAUTH_AUTHORIZE_BASE` to turn on OAuth 2.1 + PKCE + Dynamic
+Client Registration on `/mcp` instead, with a private, owner-only consent page
+so nobody but you can ever approve a connection. See
+[docs/web-connectors.md](docs/web-connectors.md).
+
 ## Know which agent is actually asking
 
 Once agents run on more than one machine, the name on a memory stops being a

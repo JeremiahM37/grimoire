@@ -35,6 +35,11 @@ Everything is environment-driven (same variables bare-metal, systemd, Docker):
 | `GRIMOIRE_MCP_ADDR` / `_PORT` | `127.0.0.1` / `9112` | Bind for the MCP http transport |
 | `GRIMOIRE_MCP_TOKEN` | *(empty)* | Bearer token the MCP http transport demands. **Required to bind anything but loopback** — the server refuses to start otherwise, because that transport carries the vault and the credential broker. Clients send `Authorization: Bearer …`, or `?token=` when they cannot set headers |
 | `GRIMOIRE_URL` | `http://127.0.0.1:$PORT` | API the MCP server talks to |
+| `GRIMOIRE_PUBLIC_BASE` / `GRIMOIRE_OAUTH_AUTHORIZE_BASE` | *(unset = OAuth off)* | Enable OAuth 2.1 on `/mcp` for claude.ai/ChatGPT connectors — public tunnel base + private, owner-only consent base. See [web-connectors.md](web-connectors.md) |
+| `GRIMOIRE_OAUTH_AUTHORIZE_ADDR` | `127.0.0.1:9115` | Bind address for the private consent listener |
+| `GRIMOIRE_OAUTH_DB` | `~/.grimoire-mcp/oauth.db` | Registered OAuth clients and issued tokens (hashed) |
+| `GRIMOIRE_OAUTH_ALLOWED_LOGINS` | *(empty)* | Tailscale logins trusted to auto-approve a connector without the admin token |
+| `GRIMOIRE_OAUTH_ALLOWED_REDIRECTS` | claude.ai/chatgpt.com/openai.com + localhost | Redirect-URI host allowlist for Dynamic Client Registration; replaces the default |
 | `GRIMOIRE_PLUGIN_DIR` | `plugins` | Where plugin bundles are loaded from |
 | `GRIMOIRE_MODEL_DIR` | *(cache dir)* | Where the local embedding model is stored |
 | `GRIMOIRE_EMBED_BASE_URL` / `_API_KEY` | *(empty)* | OpenAI-compatible embeddings endpoint |
@@ -172,7 +177,11 @@ the HTTP contract for the same operation.
 The MCP server exposes the same backend through stdio by default. Set
 `GRIMOIRE_MCP_TRANSPORT=http` for streamable HTTP, `GRIMOIRE_MCP_ADDR` (or
 `GRIMOIRE_MCP_PORT`) for its bind address, and `GRIMOIRE_MCP_TOKEN` for a
-non-loopback bind. Knowledge parity tools are `query_knowledge`,
+non-loopback bind. To add `/mcp` as a claude.ai or ChatGPT connector — which
+can only authenticate with OAuth, never a static token — set
+`GRIMOIRE_PUBLIC_BASE` and `GRIMOIRE_OAUTH_AUTHORIZE_BASE`; see
+[docs/web-connectors.md](web-connectors.md) for the full setup and the rest
+of the `GRIMOIRE_OAUTH_*` variables. Knowledge parity tools are `query_knowledge`,
 `knowledge_graph`, `read_source`, and `extract_relationships`; document parity tools are
 `list_documents`, `refresh_document`, and `import_document`. The latter accepts a filename and
 base64-encoded bytes, not an arbitrary local path.

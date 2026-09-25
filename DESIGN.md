@@ -114,6 +114,7 @@ Not a cloud SaaS. Not a proprietary format (everything is markdown + a rebuildab
 ### 4.6 AI-native surface (MCP in and out)
 - **grimoire as MCP server:** exposes tools — the shipped list is in the README and is checked against the server by a test; this line records the original intent, and some names moved (`write_note` shipped as `update_note`, `list_backlinks` as `backlinks`, and `link_notes` was dropped). Any MCP client (Claude Code, claude.ai bridge, homelab Discord bot, lectern agents) can read/query/write your notes. This is how "easily incorporates AI" is delivered — not a chat box, a protocol.
 - **grimoire as MCP client / secret broker:** using vault secrets + grants, grimoire can call *other* MCP servers or services on the AI's behalf (scoped, audited).
+- **Web connectors:** `/mcp` also speaks OAuth 2.1 + PKCE + Dynamic Client Registration (`internal/oauth`), so claude.ai and ChatGPT — which can only authenticate to a remote MCP server via OAuth, never a static header — can add it as a connector. See `docs/web-connectors.md` for the split public/private-listener design and `SECURITY.md`'s "Web connectors" section for the threat model; off unless `GRIMOIRE_PUBLIC_BASE` is set.
 - Inline AI actions in the editor (summarize, expand, link-suggest, tag-suggest) route through the same backend.
 
 ### 4.7 Capture

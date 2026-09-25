@@ -169,6 +169,56 @@ and never needs the key. Editing requires an unlocked vault.
   index never leave.
 - **No CORS headers** are set → browsers enforce same-origin for API calls.
 
+## Web connectors (OAuth on the MCP transport)
+
+`grimoire-mcp`'s `/mcp` endpoint can be added to claude.ai or ChatGPT as a
+remote connector — see `docs/web-connectors.md` for the full design and
+config. Summary of the controls, since this is the one surface in the
+product explicitly designed to be reached from someone else's cloud:
+
+- **Off by default.** OAuth activates only when both `GRIMOIRE_PUBLIC_BASE`
+  and `GRIMOIRE_OAUTH_AUTHORIZE_BASE` are set. `GRIMOIRE_MCP_TOKEN`'s
+  static-bearer behaviour is unchanged and unrestricted, exactly as before.
+- **Two listeners, split by trust, not by a check.** The consent page
+  (`/oauth/authorize`) that actually grants access is never registered on
+  the public mux at all (`internal/oauth`'s `RegisterPublic` vs
+  `RegisterPrivate`) — a request for it there gets Go's ordinary 404, so
+  there is no conditional to misconfigure into exposing it. It is served
+  only from a second process listener meant to bind loopback or a tailnet
+  address (`GRIMOIRE_OAUTH_AUTHORIZE_ADDR`), reached in production through
+  `tailscale serve` terminating TLS.
+- **Only the vault's owner can approve.** The consent page identifies the
+  caller through the existing Tailscale identity backend
+  (`internal/identity`), gated by `GRIMOIRE_OAUTH_ALLOWED_LOGINS` — being on
+  the tailnet is not sufficient by itself, only a listed login is trusted —
+  and falls back to the Grimoire admin token typed into the page otherwise.
+  Dynamic Client Registration itself has no access control (that's what lets
+  a client with no prior relationship to this server register at all); this
+  human approval step is what stands between that and a live token.
+- **PKCE (`S256` only) is mandatory**, redirect URIs must be `https` or
+  `localhost`, and a redirect URI's *host* must be on
+  `GRIMOIRE_OAUTH_ALLOWED_REDIRECTS` (default: claude.ai/claude.com,
+  chatgpt.com, `*.openai.com`, localhost) before DCR will register it — then
+  `/oauth/authorize` holds the client to the *exact* URI it registered.
+- **Tokens are opaque and stored hashed** (SHA-256), the same rule
+  `internal/auth` already applies to sessions and API keys. Access tokens
+  live 1 hour; refresh tokens live 30 days and rotate on every use, so a
+  refresh token that leaks and is later reused by its legitimate owner
+  invalidates the copy an attacker was holding.
+- **Every token is audience-bound** to this server's `/mcp` (RFC 8707) —
+  checked at issuance and on every request — so a token cannot be replayed
+  against a different resource.
+- **Scoped access.** `notes:read`, `notes:write`, `memory`, `credentials`.
+  `credentials` — the tools that reach `internal/secrets`'s broker — is
+  never granted to a web connector unless the owner explicitly ticks it on
+  the consent page, regardless of what the client requested. Tool listing
+  and tool calls are both filtered to the token's granted scopes; an
+  out-of-scope call gets `403` with `WWW-Authenticate:
+  error="insufficient_scope"`.
+- **Revocation.** `GRIMOIRE_OAUTH_AUTHORIZE_BASE/admin/oauth`, gated by
+  `GRIMOIRE_ADMIN_TOKEN`, lists every connected client and can revoke all of
+  a client's tokens in one action.
+
 ## Reading the read audit
 
 The restricted-read trail (`read_audit`) is now queried as well as written:

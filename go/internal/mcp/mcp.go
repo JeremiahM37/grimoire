@@ -29,6 +29,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/JeremiahM37/grimoire/go/internal/oauth"
 )
 
 // ProtocolVersion is the MCP revision this server speaks.
@@ -97,8 +99,17 @@ type Server struct {
 
 	// AdminToken is presented to the administrative surface when that is
 	// gated separately — list_grants and the credential console's own state
-	// live there.
+	// live there. It also gates the OAuth consent page's fallback login and
+	// the connected-clients admin console when OAuth is configured — see
+	// internal/oauth.
 	AdminToken string
+
+	// OAuth, when set, is the authorization server for the public
+	// Streamable-HTTP transport: claude.ai and ChatGPT authenticate to /mcp
+	// with a token it issued rather than InboundToken. Nil (the default)
+	// leaves every existing deployment exactly as it was — see checkAuth in
+	// http.go.
+	OAuth *oauth.Handler
 }
 
 func New(baseURL, agent string) *Server {
