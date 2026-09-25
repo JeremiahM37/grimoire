@@ -8,11 +8,15 @@ services:
     image: grimoire-notes:latest
     container_name: grimoire-notes
     ports:
-      - "9111:9111"
+      - "${GRIMOIRE_BIND:-127.0.0.1}:9111:9111"
     volumes:
-      - ./vault:/vault            # your notes live here — plain .md files you own
+      - grimoire-vault:/vault     # initialized with the container user as owner
     environment:
       # optional: point at a local Ollama to make "ask your notes" generative
       # GRIMOIRE_OLLAMA_URL: http://ollama:11434
       GRIMOIRE_VAULT: /vault
+      GRIMOIRE_AUTH_TOKEN: "${GRIMOIRE_AUTH_TOKEN:-}"
     restart: unless-stopped
+
+volumes:
+  grimoire-vault:

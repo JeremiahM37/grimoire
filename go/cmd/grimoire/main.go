@@ -151,7 +151,7 @@ func newEnv(fetchModel bool) (*env, error) {
 		SyncPeer:     os.Getenv("GRIMOIRE_SYNC_PEER"),
 		SyncToken:    os.Getenv("GRIMOIRE_SYNC_TOKEN"),
 		SyncInterval: atoiOr(os.Getenv("GRIMOIRE_SYNC_INTERVAL"), 0),
-		WebDir:       envOr("GRIMOIRE_WEB_DIR", firstDir(besideBinary("web"), "/usr/local/share/grimoire/web", "/usr/share/grimoire/web", "")),
+		WebDir:       envOr("GRIMOIRE_WEB_DIR", firstDir(besideBinary("web"), besideBinary("../frontend/dist"), "frontend/dist", "/usr/local/share/grimoire/web", "/usr/share/grimoire/web", "")),
 		AuthToken:    os.Getenv("GRIMOIRE_AUTH_TOKEN"),
 		AdminToken:   os.Getenv("GRIMOIRE_ADMIN_TOKEN"),
 		FrameOptions: envOr("GRIMOIRE_FRAME_OPTIONS", "SAMEORIGIN"),
@@ -215,11 +215,11 @@ func run(args []string) error {
 	// read, so the server always bound every interface. That is the wrong
 	// default to pair with an optional auth token: on a machine with any
 	// non-trusted network attached, the secrets routes were reachable from it.
-	host := envOr("GRIMOIRE_HOST", "")
+	host := envOr("GRIMOIRE_HOST", "127.0.0.1")
 	if v, ok := flagValue(args, "--host"); ok {
 		host = v
 	}
-	if e.server.AuthToken == "" && host == "" {
+	if e.server.AuthToken == "" && (host == "" || host == "0.0.0.0" || host == "::") {
 		if e.server.AdminToken == "" && (e.auth == nil || !e.auth.Enabled()) {
 			log.Printf("WARNING: serving on all interfaces with no GRIMOIRE_AUTH_TOKEN " +
 				"and no GRIMOIRE_ADMIN_TOKEN — anyone who can reach this port can read " +

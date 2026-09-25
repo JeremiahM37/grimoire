@@ -1,5 +1,5 @@
 # systemd unit for a bare-metal install.
-#   cd go && go build -o /usr/local/bin/grimoire ./cmd/grimoire
+#   GRIMOIRE_INSTALL_PREFIX=/usr/local sh install.sh
 #   sudo cp deploy/grimoire.service /etc/systemd/system/
 #   sudo systemctl enable --now grimoire
 #
@@ -12,8 +12,13 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=grimoire
-WorkingDirectory=/opt/grimoire
+DynamicUser=yes
+StateDirectory=grimoire
+CacheDirectory=grimoire
+WorkingDirectory=/var/lib/grimoire
+Environment=HOME=/var/lib/grimoire
+Environment=XDG_CACHE_HOME=/var/cache/grimoire
+Environment=GRIMOIRE_HOST=127.0.0.1
 Environment=GRIMOIRE_VAULT=/var/lib/grimoire/vault
 Environment=GRIMOIRE_PORT=9111
 # point at a reachable Ollama to enable generative ask-your-notes
@@ -25,9 +30,8 @@ Environment=GRIMOIRE_EMBED_MODEL=nomic-embed-text
 # uncomment to allow brokered calls to private-range hosts (LAN services);
 # cloud-metadata and link-local addresses stay blocked either way
 #Environment=GRIMOIRE_BROKER_ALLOW_PRIVATE=1
-# the binary serves the console and plugins from explicit paths
-Environment=GRIMOIRE_WEB_DIR=/opt/grimoire/web
-Environment=GRIMOIRE_PLUGIN_DIR=/opt/grimoire/plugins
+# The release installer/packages provide assets in /usr/local/share/grimoire.
+# Set GRIMOIRE_HOST and GRIMOIRE_AUTH_TOKEN explicitly for remote access.
 ExecStart=/usr/local/bin/grimoire
 Restart=on-failure
 RestartSec=5

@@ -9,7 +9,11 @@ permissions:
   packages: write   # push the container image to ghcr
 
 jobs:
+  first-install:
+    uses: ./.github/workflows/first-install.yml
+
   binaries:
+    needs: first-install
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -77,6 +81,9 @@ jobs:
           ./grimoire version
           kill %1
 
+      - name: Real installer and failed-upgrade preservation
+        run: python3 tools/test-install-script.py dist/grimoire_linux_amd64.tar.gz
+
       - uses: goreleaser/goreleaser-action@v6
         with:
           version: "~> v2"
@@ -117,6 +124,7 @@ jobs:
           fi
 
   image:
+    needs: first-install
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

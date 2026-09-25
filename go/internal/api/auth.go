@@ -41,8 +41,28 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
+		if r.URL.Path == "/auth/token" && r.Method == http.MethodPost {
+			r.Body = http.MaxBytesReader(w, r.Body, 4096)
+			if err := r.ParseForm(); err != nil {
+				tokenLoginPage(w, true)
+				return
+			}
+			got := sha256.Sum256([]byte(r.PostForm.Get("token")))
+			if subtle.ConstantTimeCompare(got[:], want[:]) != 1 {
+				tokenLoginPage(w, true)
+				return
+			}
+			setAuthCookie(w, r, r.PostForm.Get("token"))
+			w.Header().Set("Cache-Control", "no-store")
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+			return
+		}
 		presented, fromQuery := presentedToken(r)
 		if presented == "" {
+			if r.Method == http.MethodGet && r.URL.Path == "/" {
+				tokenLoginPage(w, false)
+				return
+			}
 			unauthorized(w)
 			return
 		}
@@ -58,6 +78,10 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 			ok = subtle.ConstantTimeCompare(got[:], sync[:]) == 1
 		}
 		if !ok {
+			if r.Method == http.MethodGet && r.URL.Path == "/" {
+				tokenLoginPage(w, true)
+				return
+			}
 			unauthorized(w)
 			return
 		}

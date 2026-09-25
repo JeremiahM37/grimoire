@@ -30,12 +30,14 @@ claude mcp add grimoire -- grimoire-mcp            # your agent now has all of i
 | **Windows** (PowerShell) | `irm https://raw.githubusercontent.com/JeremiahM37/grimoire/main/install.ps1 \| iex` |
 | **Scoop** (Windows) | `scoop bucket add jeremiahm37 https://github.com/JeremiahM37/scoop-bucket && scoop install grimoire` |
 | **Debian / Ubuntu**, **Fedora / RHEL** | the `.deb` / `.rpm` on the [latest release](https://github.com/JeremiahM37/grimoire/releases/latest) |
-| **Docker** | `docker run -p 9111:9111 -v grimoire-vault:/vault ghcr.io/jeremiahm37/grimoire:latest` |
+| **Docker** | `docker run -p 127.0.0.1:9111:9111 -v grimoire-vault:/vault ghcr.io/jeremiahm37/grimoire:latest` |
 | **Go** | `go install github.com/JeremiahM37/grimoire/go/cmd/grimoire@latest` (and `…/grimoire-mcp@latest`) |
 
-Every channel ships the same static binaries for Linux, macOS and Windows on
-amd64 and arm64, verified against the release's `checksums.txt`; the console
-and plugins are files beside the binary, which finds them there.
+Release archives and packages ship static binaries for Linux, macOS and Windows
+on amd64 and arm64, verified against `checksums.txt`, plus console/plugin files.
+`go install` installs the executables only. The shell installer defaults to
+`~/.local`; the native server defaults to localhost. See [fresh installs and
+remote setup](docs/FIRST_INSTALL.md) for Docker, tokens, services and upgrades.
 
 To build the console from a source checkout, use Node 24 and the Go version in
 `go/go.mod`:

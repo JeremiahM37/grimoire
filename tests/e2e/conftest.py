@@ -4,6 +4,7 @@
 the CM6 live-preview editor (the default mode for real users).
 """
 import os
+import socket
 import subprocess
 import time
 import urllib.request
@@ -23,14 +24,13 @@ VAULT = None
 
 
 def _free(port):
-    try:
-        out = subprocess.run(["ss", "-tlnp"], capture_output=True, text=True).stdout
-        for line in out.splitlines():
-            if f":{port} " in line and "pid=" in line:
-                subprocess.run(["kill", "-9", line.split("pid=")[1].split(",")[0]],
-                               capture_output=True)
-    except Exception:
-        pass
+    # A test must never kill an unrelated listener to claim its port.
+    with socket.socket() as listener:
+        listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            listener.bind(("127.0.0.1", port))
+        except OSError as error:
+            raise RuntimeError(f"test port {port} is occupied; choose GRIMOIRE_E2E_PORT") from error
 
 
 @pytest.fixture(scope="session")
@@ -81,7 +81,7 @@ def server(tmp_path_factory):
         proc.wait(timeout=10)
     except subprocess.TimeoutExpired:
         proc.kill()
-    _free(PORT)
+        proc.wait(timeout=5)
 
 
 @pytest.fixture(scope="session")

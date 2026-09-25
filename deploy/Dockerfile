@@ -17,7 +17,7 @@ RUN npm run build
 
 FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS build
 ARG TARGETOS TARGETARCH
-ARG VERSION=""
+ARG VERSION="dev"
 WORKDIR /src
 COPY go/go.mod go/go.sum ./go/
 RUN cd go && go mod download
@@ -42,6 +42,7 @@ RUN cd go && CGO_ENABLED=0 go build -o /native/grimoire ./cmd/grimoire \
     && /native/grimoire fetch-model
 
 FROM alpine:3.20
+RUN apk add --no-cache ca-certificates poppler-utils
 WORKDIR /app
 COPY --from=build /out/grimoire /out/grimoire-mcp /usr/local/bin/
 COPY --from=model /root/.cache/huggingface /home/grimoire/.cache/huggingface

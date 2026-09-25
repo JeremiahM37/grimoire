@@ -25,7 +25,8 @@ case "$(uname -m)" in
   aarch64|arm64) arch=arm64 ;;
   *) echo "unsupported CPU: $(uname -m)" >&2; exit 1 ;;
 esac
-if [ "$version" = latest ]; then base="https://github.com/$repo/releases/latest/download"
+if [ -n "${GRIMOIRE_RELEASE_BASE:-}" ]; then base="$GRIMOIRE_RELEASE_BASE"
+elif [ "$version" = latest ]; then base="https://github.com/$repo/releases/latest/download"
 else base="https://github.com/$repo/releases/download/$version"; fi
 archive="grimoire_${os}_${arch}.tar.gz"
 
@@ -38,12 +39,7 @@ if command -v sha256sum >/dev/null 2>&1; then got=$(sha256sum "$tmp/$archive" | 
 else got=$(shasum -a 256 "$tmp/$archive" | cut -d' ' -f1); fi
 [ -n "$want" ] && [ "$want" = "$got" ] || { echo "checksum mismatch for $archive" >&2; exit 1; }
 
-prefix="${GRIMOIRE_INSTALL_PREFIX:-}"
-if [ -z "$prefix" ]; then
-  if [ -w /usr/local/bin ] && [ -w /usr/local/share ] 2>/dev/null; then prefix=/usr/local
-  elif command -v sudo >/dev/null 2>&1 && [ -d /usr/local ]; then prefix=/usr/local
-  else prefix="$HOME/.local"; fi
-fi
+prefix="${GRIMOIRE_INSTALL_PREFIX:-$HOME/.local}"
 share="$prefix/share/grimoire"; bin="$prefix/bin"
 # Decide once whether writing the prefix needs sudo: it does when the prefix
 # (or, if it does not exist yet, its parent) is not ours to write.
@@ -52,10 +48,20 @@ if [ -w "$probe" ]; then run() { "$@"; }; else echo "Installing under $prefix ne
 run mkdir -p "$share" "$bin"
 # A fresh tree each time: stale console assets from an older release would
 # otherwise sit beside the new ones.
-run rm -rf "$share.new"; run mkdir -p "$share.new"
-run tar xzf "$tmp/$archive" -C "$share.new"
-run rm -rf "$share"; run mv "$share.new" "$share"
+stage="$share.new.$$"
+run mkdir -p "$stage"
+run tar xzf "$tmp/$archive" -C "$stage"
+[ -x "$stage/grimoire" ] && [ -x "$stage/grimoire-mcp" ] && [ -f "$stage/web/index.html" ] || {
+  echo "Archive is incomplete; existing installation kept." >&2; exit 1;
+}
+previous="$share.previous.$$"
+if [ -e "$share" ] || [ -L "$share" ]; then run mv "$share" "$previous"; fi
+if ! run mv "$stage" "$share"; then
+  if [ -e "$previous" ]; then run mv "$previous" "$share"; fi
+  exit 1
+fi
+if [ -e "$previous" ]; then echo "Previous installation retained at $previous"; fi
 for b in grimoire grimoire-mcp; do run ln -sfn "$share/$b" "$bin/$b"; done
 echo "Installed $("$bin/grimoire" version) to $share (linked in $bin)"
-case ":$PATH:" in *":$bin:"*) ;; *) echo "Note: $bin is not on your PATH." ;; esac
-echo "Next: 'GRIMOIRE_VAULT=~/notes grimoire' serves your vault at http://localhost:9111; see https://github.com/$repo#quick-start"
+case ":$PATH:" in *":$bin:"*) ;; *) echo "Add to your shell profile: export PATH=\"$bin:\$PATH\"" ;; esac
+printf 'Next: GRIMOIRE_VAULT="$HOME/notes" "%s/grimoire" serve\nOpen http://localhost:9111\n' "$bin"
