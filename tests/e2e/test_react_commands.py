@@ -2,6 +2,7 @@
 import io
 import zipfile
 
+from conftest import reload_ready
 from playwright.sync_api import expect
 
 
@@ -38,7 +39,14 @@ def test_find_random_and_sync_commands(page, server):
     with page.expect_response('**/api/notes/random') as selected:
         command(page, 'Open random note')
     path = selected.value.json()['path']
-    expect(page).to_have_url(server + '/#' + path)
+    assert page.evaluate('decodeURIComponent(location.hash.slice(1))') == path
+    expect(page.locator('#title')).to_have_value(
+        page.request.get(server + '/api/notes/' + path).json()['title']
+    )
+    reload_ready(page)
+    expect(page.locator('#title')).to_have_value(
+        page.request.get(server + '/api/notes/' + path).json()['title']
+    )
     requests = []
     def sync(route):
         requests.append(route.request.method)
@@ -47,3 +55,24 @@ def test_find_random_and_sync_commands(page, server):
     command(page, 'Sync now')
     expect(page.locator('[role=alert]')).to_contain_text('2 pulled, 3 pushed')
     assert requests == ['POST']
+
+
+def test_nested_note_deep_link_opens_after_reload(page, server):
+    path = 'projects/deep-link-route-check.md'
+    created = page.request.post(server + '/api/notes', data={
+        'path': path,
+        'body': '# Nested note\n\nA nested note opens from its deep link.\n',
+    })
+    assert created.status == 201, created.text()
+
+    page.goto(server + '/#projects%2Fdeep-link-route-check.md')
+    expect(page.locator('#title')).to_have_value('Nested note')
+    expect(page.locator('#content')).to_have_value(
+        '# Nested note\n\nA nested note opens from its deep link.\n'
+    )
+
+    reload_ready(page)
+    expect(page.locator('#title')).to_have_value('Nested note')
+    expect(page.locator('#content')).to_have_value(
+        '# Nested note\n\nA nested note opens from its deep link.\n'
+    )
