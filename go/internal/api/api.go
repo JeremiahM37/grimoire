@@ -22,6 +22,7 @@ import (
 
 	"github.com/JeremiahM37/grimoire/go/internal/ai"
 	"github.com/JeremiahM37/grimoire/go/internal/auth"
+	"github.com/JeremiahM37/grimoire/go/internal/cloudsync"
 	"github.com/JeremiahM37/grimoire/go/internal/connectors"
 	"github.com/JeremiahM37/grimoire/go/internal/crdtstore"
 	"github.com/JeremiahM37/grimoire/go/internal/documents"
@@ -60,6 +61,7 @@ type Server struct {
 	Runner       *connectors.Runner
 	Web          *websearch.Client
 	Sync         *gsync.Client
+	Cloud        *cloudsync.Engine
 	SyncPeer     string
 	SyncToken    string
 	SyncInterval int
@@ -247,6 +249,16 @@ func (s *Server) Routes() http.Handler {
 	// and the anonymous probe could not see it because a server with no peer
 	// configured refuses on that ground first.
 	mux.HandleFunc("POST /api/sync/now", s.adminOnly(s.syncNow))
+	// Sync through a cloud-drive folder; see cloudsync.go.
+	mux.HandleFunc("GET /api/sync/folder", s.adminOnly(s.getCloudSync))
+	mux.HandleFunc("POST /api/sync/folder", s.adminOnly(s.setupCloudSync))
+	mux.HandleFunc("DELETE /api/sync/folder", s.adminOnly(s.disableCloudSync))
+	mux.HandleFunc("POST /api/sync/folder/now", s.adminOnly(s.cloudSyncNow))
+	mux.HandleFunc("PUT /api/sync/folder/options", s.adminOnly(s.cloudSyncOptions))
+	mux.HandleFunc("GET /api/sync/folder/probe", s.adminOnly(s.probeCloudFolder))
+	mux.HandleFunc("GET /api/sync/folder/browse", s.adminOnly(s.browseCloudFolder))
+	mux.HandleFunc("GET /api/sync/folder/deleted", s.adminOnly(s.cloudDeleted))
+	mux.HandleFunc("POST /api/sync/folder/restore", s.adminOnly(s.cloudRestore))
 	mux.HandleFunc("POST /api/sync/pull", s.syncPull)
 	mux.HandleFunc("POST /api/sync/push", s.syncPush)
 	mux.HandleFunc("POST /api/facts", s.setFact)

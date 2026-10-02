@@ -190,6 +190,17 @@ var routeAccess = map[string]access{
 	"GET /api/plugins":              authed,
 	"GET /api/sync/status":          authed,
 	"POST /api/sync/now":            admin, // a whole-vault transfer to the peer
+	// Folder sync: hands the whole vault to a folder, lists directories on
+	// this machine, restores notes.
+	"GET /api/sync/folder":          admin,
+	"POST /api/sync/folder":         admin,
+	"DELETE /api/sync/folder":       admin,
+	"POST /api/sync/folder/now":     admin,
+	"PUT /api/sync/folder/options":  admin,
+	"GET /api/sync/folder/probe":    admin,
+	"GET /api/sync/folder/browse":   admin,
+	"GET /api/sync/folder/deleted":  admin,
+	"POST /api/sync/folder/restore": admin,
 	"GET /api/crdt/doc/{path...}":   scoped,
 	"POST /api/crdt/merge":          scoped,
 	"GET /api/vault/status":         authed, // lock state only, never a name or value
