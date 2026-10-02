@@ -286,8 +286,9 @@ func (e *Engine) SyncOnce() (Stats, error) {
 	defer release()
 
 	st := e.loadState()
-	st.LastAttempt = e.now().UnixMilli()
+	started := e.now().UnixMilli()
 	stats, err := e.syncLocked(st)
+	st.LastAttempt = started // after: a first round resets the state it is handed
 	if err != nil {
 		st.LastError = AsError(err)
 	} else {
