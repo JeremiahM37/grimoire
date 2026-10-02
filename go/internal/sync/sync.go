@@ -166,13 +166,25 @@ func ConflictName(rel string) string {
 }
 
 func conflictNameUnless(rel string, taken func(string) bool) string {
-	base := strings.TrimSuffix(rel, ".md")
+	// Notes keep the .md the note path always has; an attachment or a canvas
+	// keeps its own extension, or the copy would stop being an image.
+	ext := ".md"
+	if e := filepath.Ext(rel); e != "" && e != ".md" && !strings.ContainsAny(e, " /") {
+		ext = e
+	}
+	base := strings.TrimSuffix(rel, ext)
 	stamp := vault.Now().Format("20060102-150405")
-	name := fmt.Sprintf("%s (conflict %s).md", base, stamp)
+	name := fmt.Sprintf("%s (conflict %s)%s", base, stamp, ext)
 	for i := 2; taken(name) && i < 100; i++ {
-		name = fmt.Sprintf("%s (conflict %s-%d).md", base, stamp, i)
+		name = fmt.Sprintf("%s (conflict %s-%d)%s", base, stamp, i, ext)
 	}
 	return name
+}
+
+// ConflictNameUnless is ConflictName with a taken() predicate, for the cloud
+// folder sync, which preserves attachments and canvases as well as notes.
+func ConflictNameUnless(rel string, taken func(string) bool) string {
+	return conflictNameUnless(rel, taken)
 }
 
 // Apply is the server half: accept one pushed change, refusing to overwrite a

@@ -34,3 +34,21 @@ func TestConflictNamesDoNotCollideWithinASecond(t *testing.T) {
 		}
 	}
 }
+
+// The cloud folder sync preserves canvases and attachments too; a copy that
+// lost its extension would stop opening as what it is.
+func TestConflictNamesKeepNonNoteExtensions(t *testing.T) {
+	old := vault.Now
+	vault.Now = func() time.Time { return time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC) }
+	t.Cleanup(func() { vault.Now = old })
+	never := func(string) bool { return false }
+	if got := ConflictNameUnless("boards/plan.canvas", never); got != "boards/plan (conflict 20260820-120000).canvas" {
+		t.Errorf("canvas = %q", got)
+	}
+	if got := ConflictNameUnless("attachments/x.png", never); got != "attachments/x (conflict 20260820-120000).png" {
+		t.Errorf("attachment = %q", got)
+	}
+	if got := ConflictNameUnless("notes/plan", never); got != "notes/plan (conflict 20260820-120000).md" {
+		t.Errorf("extensionless = %q", got)
+	}
+}
