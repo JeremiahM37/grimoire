@@ -250,6 +250,9 @@ func TestThreeDevicesConverge(t *testing.T) {
 		t.Fatalf("want 3 notes, got %v", names(a.files()))
 	}
 	st := a.e.Status()
+	if st.LastSync == 0 || st.Error != nil {
+		t.Fatalf("status should report a successful sync: %+v", st)
+	}
 	if len(st.Devices) != 3 {
 		t.Fatalf("status should list 3 devices, got %+v", st.Devices)
 	}
