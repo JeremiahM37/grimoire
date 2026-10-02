@@ -55,6 +55,7 @@ live editor).
 | `internal/readlog` | The restricted-read trail, and the burst detector that reads it back |
 | `internal/crdt`, `internal/crdtstore` | Sequence CRDT for concurrent note-body merges |
 | `internal/sync` | Bidirectional delta sync with a peer |
+| `internal/cloudsync` | Sync and backup through a cloud-drive folder: encrypted, one writer per file |
 | `internal/watcher` | Debounced filesystem watcher |
 | `internal/settings` | UI-editable operational settings (`.grimoire/settings.json`) |
 | `internal/api` | HTTP surface, one file per domain; `Routes()` assembles + security headers |
@@ -112,6 +113,18 @@ until explicitly enabled. Full contract in [PLUGINS.md](PLUGINS.md).
   engine server-side with `include_private=False`.
 * **Sync**: CRDT-first per note (shared atom ids after first contact),
   conflict-copy fallback — data is never silently lost.
+* **Folder sync** (`internal/cloudsync`): each device writes only
+  `GrimoireSync/devices/<id>/` (an encrypted manifest of `{path, keyed hash,
+  mtime, deleted, ancestry}` plus content-addressed encrypted blobs) and reads
+  everyone else's, so a cloud drive never sees two writers on one file. A
+  round: scan the vault (stat cache) → fold local edits into this device's
+  manifest → for each peer, diff its manifest against the entry last merged
+  from it (the per-peer base) → fast-forward when the peer's ancestry contains
+  our version, ignore it when ours contains theirs, otherwise merge through
+  the same CRDT documents the peer sync uses (shipped as blobs) or keep a
+  conflict copy → upload blobs, then publish the manifest. Unavailable
+  objects are skipped and retried, never read as deletions. Device-local
+  state and the key live in `.grimoire/cloudsync/`.
 * **Pulled document**: connector → `Runner.write` sets `origin:` in the
   frontmatter → ordinary note write → `index.upsert` stamps `notes.untrusted`
   and `vectors.untrusted` → ranking can exclude it (`Filter.TrustedOnly`,

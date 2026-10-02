@@ -398,6 +398,66 @@ live preview, wiki-links, backlinks, graph, daily notes, transclusion, canvas,
 query blocks, templates. Mount an existing vault and daily-drive it; the agent
 substrate is there when you want it.
 
+## Sync between devices without a server
+
+You don't need a home server to use Grimoire on more than one computer. Pick a
+folder that a cloud drive you already have keeps in sync, choose a passphrase,
+and Grimoire keeps your notes in step through that folder. The folder also holds
+a complete encrypted backup, so a new or replacement computer gets the whole
+vault back by pointing at it.
+
+**Set it up** in Settings, Sync & backup, choose "A folder my cloud drive
+syncs", pick the folder and enter a passphrase twice. Or from a terminal:
+
+```bash
+grimoire sync folder ~/Dropbox/Grimoire     # asks for the passphrase
+grimoire sync status                       # last sync, devices, problems
+```
+
+Grimoire suggests the folders it finds. Use a new, empty folder for it, such as
+`Grimoire` inside your drive:
+
+| Cloud drive | Folder to pick | Notes |
+|---|---|---|
+| Dropbox | `~/Dropbox/Grimoire` (newer Macs: `~/Library/CloudStorage/Dropbox/Grimoire`) | Works as is. |
+| iCloud Drive (Mac) | `~/Library/Mobile Documents/com~apple~CloudDocs/Grimoire` (iCloud Drive in Finder) | Right-click the folder in Finder and choose **Keep Downloaded**, so macOS doesn't swap files for placeholders. |
+| iCloud Drive (Windows) | `~/iCloudDrive/Grimoire` | Set the folder to **Always keep on this device**. |
+| OneDrive | `~/OneDrive/Grimoire` | Set the folder to **Always keep on this device** if Files On-Demand is on. |
+| Google Drive | `~/Google Drive/Grimoire`, `~/My Drive/Grimoire`, `/Volumes/GoogleDrive/My Drive/Grimoire` or `G:\My Drive\Grimoire` | In Drive for desktop, **mirror** the folder or make it available offline. |
+
+**Add another computer**: install Grimoire, wait for the cloud drive to finish
+downloading the folder, then pick the same folder and enter the same passphrase.
+It downloads every note, and from then on each device syncs about once a
+minute, a few seconds after you edit, or when you press **Sync now**.
+
+What to know:
+
+- **The passphrase can't be recovered.** If you forget it, the backup can't be
+  read, and Grimoire can't recover it. Your notes on each computer are
+  unaffected, so you can turn sync off and start a new backup.
+- **Everything in the folder is encrypted**, file names included. Someone who
+  can read your cloud drive sees how many files there are and roughly how big
+  they are, never note names or contents.
+- **Notes, attachments and canvases sync.** Templates, plugins, hidden folders
+  and Grimoire's own `.grimoire/` folder (search index, settings, credential
+  vault) stay on each device.
+- **Edits on two computers at once are merged** where Grimoire can merge text,
+  and kept side by side as a `(conflict …)` copy where it can't. Editing a note
+  that another device deleted keeps the note. Nothing is dropped silently.
+- **Deleted notes stay restorable for 90 days**: Settings, Sync & backup,
+  **Deleted notes…**, or `grimoire sync deleted` and `grimoire sync restore PATH`.
+  A note deleted by another device also lands in this device's Trash.
+- **Phones**: there is no Grimoire phone app yet, and the folder is encrypted,
+  so a phone can't open the notes through the cloud drive app. On a phone, use
+  the web app from a computer running Grimoire on your network, or sync the
+  vault folder itself with a markdown app.
+- `grimoire sync off` (or **Off** in Settings) stops syncing on that computer
+  and forgets its copy of the key. The backup and your other devices are left
+  alone.
+
+Running Grimoire on a home server instead? "Another Grimoire (home server)"
+keeps using the peer sync configured with `GRIMOIRE_SYNC_PEER`.
+
 ## Measured
 
 Pre-registered protocols, nulls and corrections published alongside — including
