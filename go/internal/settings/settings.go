@@ -57,6 +57,24 @@ var Fields = map[string]Field{
 	"web_search_cx":       {"GRIMOIRE_WEB_SEARCH_CX", ""}, // google programmable search id
 }
 
+// InternalFields are persisted in the same file and resolved the same way, but
+// are owned by a dedicated surface rather than the generic settings form: the
+// cloud folder sync is configured through a flow that also derives a key, and
+// a bare text box that changed the folder would bypass it.
+var InternalFields = map[string]Field{
+	"sync_folder":          {"GRIMOIRE_SYNC_FOLDER", ""},
+	"sync_folder_interval": {"GRIMOIRE_SYNC_FOLDER_INTERVAL", "60"},
+	"device_name":          {"GRIMOIRE_DEVICE_NAME", ""},
+}
+
+func lookup(key string) (Field, bool) {
+	if f, ok := Fields[key]; ok {
+		return f, true
+	}
+	f, ok := InternalFields[key]
+	return f, ok
+}
+
 // Store reads and writes the settings file.
 type Store struct {
 	path string
@@ -83,7 +101,7 @@ func (s *Store) load() map[string]string {
 
 // Get returns the effective value: settings.json wins, then env, then default.
 func (s *Store) Get(key string) string {
-	f, known := Fields[key]
+	f, known := lookup(key)
 	if v := s.load()[key]; v != "" {
 		return v
 	}
@@ -117,6 +135,15 @@ func Keys() []string {
 // Update merges a patch and persists it. Empty values clear a stored override
 // so the environment default takes over again.
 func (s *Store) Update(patch map[string]string) error {
+	return s.update(patch, Fields)
+}
+
+// UpdateInternal is Update for InternalFields.
+func (s *Store) UpdateInternal(patch map[string]string) error {
+	return s.update(patch, InternalFields)
+}
+
+func (s *Store) update(patch map[string]string, allowed map[string]Field) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -126,7 +153,7 @@ func (s *Store) Update(patch map[string]string) error {
 		_ = json.Unmarshal(raw, &cur)
 	}
 	for k, v := range patch {
-		if _, known := Fields[k]; !known {
+		if _, known := allowed[k]; !known {
 			continue // never persist an unknown key from a request body
 		}
 		if v == "" {
