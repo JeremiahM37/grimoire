@@ -67,7 +67,6 @@ func (e *Engine) Run(stop <-chan struct{}, rev func() int64) {
 			continue
 		}
 		kicked = false
-		lastRound = now
 		if _, err := e.SyncOnce(); err != nil && !IsCode(err, CodeBusy) {
 			log.Printf("cloud sync: %v", err)
 		}
