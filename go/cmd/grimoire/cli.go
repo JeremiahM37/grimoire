@@ -68,6 +68,15 @@ const usage = `grimoire — local-first AI-native notes
                                       static HTML export (--published: only
                                       notes marked publish: true)
   grimoire sync PEER_URL [--watch] [--interval N] [--token T]
+                                      sync with another Grimoire (home server)
+  grimoire sync folder PATH [--device NAME] [--interval N]
+                                      sync + back up through a cloud-drive folder
+                                      (passphrase: prompt, stdin, or GRIMOIRE_SYNC_PASSPHRASE)
+  grimoire sync status                folder sync: last sync, devices, problems
+  grimoire sync now                   run a folder sync round now
+  grimoire sync off                   stop folder sync on this device (the backup stays)
+  grimoire sync deleted               deleted notes the folder can still restore
+  grimoire sync restore PATH          bring one back
   grimoire agent-setup [API_URL]      print MCP + agent-context setup
   grimoire serve [--port N]           run the web app + API (the default)
   grimoire user add NAME [--admin]    create an account (prompts for a password)
@@ -699,8 +708,14 @@ func truthyFlag(v string) bool {
 }
 
 func cmdSync(args []string) int {
+	if len(args) > 0 {
+		if sub, ok := cloudSyncCommands()[args[0]]; ok {
+			return sub(args[1:])
+		}
+	}
 	if len(args) == 0 || strings.HasPrefix(args[0], "--") {
-		return fail("usage: grimoire sync PEER_URL [--watch] [--interval N] [--token T]")
+		return fail("usage: grimoire sync PEER_URL [--watch] [--interval N] [--token T]\n" +
+			"       grimoire sync folder PATH | status | now | off | deleted | restore PATH")
 	}
 	peer := args[0]
 	token, _ := flagValue(args, "--token")
