@@ -23,6 +23,10 @@ Everything is environment-driven (same variables bare-metal, systemd, Docker):
 | `GRIMOIRE_WEB_SEARCH_URL` / `_KEY` / `_CX` | *(empty)* | SearXNG base URL · provider key (or `vault:name` to read it from the credential vault) · Google engine id |
 | `GRIMOIRE_DAILY_DIR` / `GRIMOIRE_INBOX_DIR` | `journal` / `inbox` | Vault sub-folders |
 | `GRIMOIRE_SYNC_PEER` / `_TOKEN` / `_INTERVAL` | *(off)* | Background sync with a peer |
+| `GRIMOIRE_SYNC_FOLDER` | *(off)* | Sync and back up through a folder a cloud drive syncs (Dropbox, iCloud Drive, OneDrive, Google Drive). Usually set from Settings or `grimoire sync folder PATH`, which store it in `.grimoire/settings.json`; that stored value wins over this variable, and `off` there turns it off |
+| `GRIMOIRE_SYNC_PASSPHRASE` / `_FILE` | *(empty)* | Passphrase for the folder backup, used once to derive and store the key (a fresh device, or `grimoire sync folder` without a prompt). With `GRIMOIRE_SYNC_FOLDER` set, the server joins the backup at startup, or creates one if the folder has none. Prefer `_FILE` (mode 0600) |
+| `GRIMOIRE_SYNC_FOLDER_INTERVAL` | `60` | Seconds between folder sync rounds (minimum 10). A local edit also triggers a round a few seconds later |
+| `GRIMOIRE_DEVICE_NAME` | hostname | How this device is named in folder sync status |
 | `GRIMOIRE_VAULT_IDLE_LOCK` | `900` | Credential-vault auto-lock (seconds) |
 | `GRIMOIRE_VAULT_PASSPHRASE_FILE` | *(empty)* | Unlock the credential vault at startup from a `0600` file — for a headless server whose agents need the broker after every restart (see SECURITY.md) |
 | `GRIMOIRE_BROKER_ALLOW_PRIVATE` | `0` | Allow brokered calls to private-range hosts |

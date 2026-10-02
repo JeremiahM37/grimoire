@@ -246,6 +246,44 @@ edit is silently lost — a pull that would overwrite a locally-changed note fir
 preserves the local copy as a `… (conflict …)` file, and pushes are conflict-
 copied on the peer.
 
+### Sync through a cloud-drive folder
+
+Folder sync (`grimoire sync folder`, Settings, Sync & backup) treats the cloud
+drive as untrusted storage: it can read, delete, roll back or corrupt anything
+in the folder.
+
+- **Encryption.** A key is stretched from the passphrase with Argon2id (t=3,
+  64 MiB, 4 lanes, 16-byte random salt), split with HKDF-SHA256 into an
+  encryption key and a naming key. Every object is gzip-compressed then sealed
+  with XChaCha20-Poly1305 under a random 24-byte nonce; the associated data
+  binds it to its role and name, so a blob cannot be served as a manifest or
+  one device's manifest moved into another device's directory.
+- **No names leak.** Blobs are named by an HMAC-SHA256 of their content under
+  the naming key; paths, titles and device names live only inside encrypted
+  per-device manifests. What the folder does reveal: the number of devices,
+  the number and approximate sizes of stored objects, and when they change.
+- **The header** (`GrimoireSync/grimoire-sync.json`) is the one plaintext file:
+  format version, KDF parameters and salt, and an HMAC check value. The check
+  value lets a device say "wrong passphrase" instead of failing obscurely; it
+  is as resistant to guessing as the KDF makes the passphrase, no more.
+- **The derived key is stored on each device**, in `.grimoire/cloudsync/key.json`
+  (mode 0600, directory 0700), so sync can run unattended. Anyone who can read
+  that file can read the backup, exactly as anyone who can read the vault can
+  read the notes. It never enters the folder or any synced content, and
+  `grimoire sync off` deletes it. `grimoire backup` archives `.grimoire/`, so
+  treat such an archive as holding the key.
+- **Incoming paths are confined.** A device only writes notes (`.md`),
+  canvases (`.canvas`) and files under `attachments/`, through the same
+  `SafeRawPath` sandbox as every other write: a manifest cannot place a file in
+  `.grimoire/`, `plugins/`, a hidden directory, or outside the vault. Every blob
+  is authenticated and its content re-hashed against its name before use.
+- **Rollback and damage are not deletions.** A missing, truncated, tampered or
+  older manifest or blob is skipped and retried; only an authenticated
+  tombstone deletes a note, and that note goes to the local Trash. Someone
+  holding the passphrase can of course write anything a device would accept.
+- **A forgotten passphrase is unrecoverable** by design: nothing escrowed, no
+  reset.
+
 ## Deployment guidance
 
 - Front grimoire with your own authenticated reverse proxy (the homelab uses
