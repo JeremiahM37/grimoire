@@ -360,3 +360,47 @@ func FromText(text, site string) *Doc {
 	d.LocalEdit(text)
 	return d
 }
+
+// SharesHistory reports whether two replicas have ever exchanged state: any
+// atom or tombstone in common. Two documents built independently from text
+// share nothing, and joining them would interleave both copies of the text,
+// so a caller that cannot prove shared history should not Merge.
+func (d *Doc) SharesHistory(other *Doc) bool {
+	for k := range other.atoms {
+		if _, ok := d.atoms[k]; ok {
+			return true
+		}
+		if _, ok := d.tombs[k]; ok {
+			return true
+		}
+	}
+	for k := range other.tombs {
+		if _, ok := d.atoms[k]; ok {
+			return true
+		}
+		if _, ok := d.tombs[k]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+// Adopt makes this replica's text equal to text while taking on other's atom
+// ids, so the next concurrent edit between the two replicas merges instead of
+// duplicating. It is how a replica fast-forwards to a peer's newer version.
+//
+// Our own live atoms that other does not have are tombstoned rather than
+// forgotten, so a third replica that still carries them cannot bring them
+// back. The final LocalEdit is a no-op in the normal case and guarantees the
+// result is exactly text when the histories disagree.
+func (d *Doc) Adopt(other *Doc, text string) *Doc {
+	for k, a := range d.atoms {
+		if _, ok := other.atoms[k]; !ok {
+			d.tombs[k] = a.id
+			delete(d.atoms, k)
+		}
+	}
+	d.Merge(other)
+	d.LocalEdit(text)
+	return d
+}

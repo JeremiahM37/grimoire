@@ -151,3 +151,27 @@ func (s *Store) Merge(rel, body, peerJSON string) (string, error) {
 	}
 	return mine.Text(), nil
 }
+
+// SharesHistory reports whether our document for rel and a peer's document
+// have exchanged state before, which is what makes a Merge of the two safe.
+func (s *Store) SharesHistory(rel, body, peerJSON string) bool {
+	peer, err := crdt.FromJSON(peerJSON, "peer")
+	if err != nil {
+		return false
+	}
+	return s.reconciled(rel, body).SharesHistory(peer)
+}
+
+// Adopt fast-forwards our document for rel to a peer's version: the text
+// becomes target and the atom ids become the peer's, so later concurrent edits
+// merge. body is the note body on disk before the write ("" if none).
+func (s *Store) Adopt(rel, body, peerJSON, target string) error {
+	if !Mergeable(rel, target) {
+		return s.DeleteDoc(rel)
+	}
+	peer, err := crdt.FromJSON(peerJSON, "peer")
+	if err != nil {
+		return err
+	}
+	return s.SaveDoc(rel, s.reconciled(rel, body).Adopt(peer, target))
+}
