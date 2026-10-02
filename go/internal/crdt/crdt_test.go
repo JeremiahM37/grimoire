@@ -176,3 +176,22 @@ func TestPythonStringEscaping(t *testing.T) {
 		}
 	}
 }
+
+func TestAdoptTakesPeerTextAndIdsThenMerges(t *testing.T) {
+	a := FromText("hello world", "a")
+	b := FromText("hello world", "b") // same text, no shared history
+	if a.SharesHistory(b) {
+		t.Fatal("independent documents must not share history")
+	}
+	b.Adopt(a, a.Text())
+	if b.Text() != "hello world" || !b.SharesHistory(a) {
+		t.Fatalf("adopt: text %q shares %v", b.Text(), b.SharesHistory(a))
+	}
+	// concurrent edits now merge cleanly instead of duplicating
+	a.LocalEdit("hello brave world")
+	b.LocalEdit("hello world!")
+	a.Merge(b)
+	if got := a.Text(); got != "hello brave world!" {
+		t.Fatalf("merge after adopt = %q", got)
+	}
+}
