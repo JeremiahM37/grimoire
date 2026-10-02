@@ -23,6 +23,7 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/ai"
 	"github.com/JeremiahM37/grimoire/go/internal/api"
 	"github.com/JeremiahM37/grimoire/go/internal/auth"
+	"github.com/JeremiahM37/grimoire/go/internal/cloudsync"
 	"github.com/JeremiahM37/grimoire/go/internal/connectors"
 	"github.com/JeremiahM37/grimoire/go/internal/crdtstore"
 	"github.com/JeremiahM37/grimoire/go/internal/db"
@@ -81,6 +82,7 @@ type env struct {
 	db       *db.DB
 	settings *settings.Store
 	sync     *gsync.Client
+	cloud    *cloudsync.Engine
 	server   *api.Server
 	handler  http.Handler
 	embedder index.Embedder
@@ -159,6 +161,20 @@ func newEnv(fetchModel bool) (*env, error) {
 		DailyDir:     envOr("GRIMOIRE_DAILY_DIR", "journal"),
 		InboxDir:     envOr("GRIMOIRE_INBOX_DIR", "inbox"),
 	}
+	// Folder sync writes through the same index and CRDT store as everything
+	// else; a note deleted on another device goes to this device's trash, and
+	// one it overwrites keeps its previous body in version history.
+	cloud := cloudsync.New(v, ix, crdt, store, grimoireDir)
+	cloud.Snapshot = srv.History.Snapshot
+	cloud.Trash = func(rel string) error {
+		title := rel
+		if n, err := v.Read(rel); err == nil {
+			title = n.Title
+		}
+		_, err := srv.TrashNote(rel, title)
+		return err
+	}
+	srv.Cloud = cloud
 	// The index writes each row's space, and the server owns the mapping from
 	// path to space. Wiring it after construction keeps the index free of any
 	// dependency on accounts: with none configured it stamps everything
@@ -174,7 +190,7 @@ func newEnv(fetchModel bool) (*env, error) {
 		Client:     connectorClient(),
 	}
 
-	return &env{vault: v, index: ix, db: database, settings: store, sync: syncer,
+	return &env{vault: v, index: ix, db: database, settings: store, sync: syncer, cloud: cloud,
 		server: srv, handler: srv.Routes(), embedder: emb, auth: accounts,
 		dailyDir: srv.DailyDir, inboxDir: srv.InboxDir}, nil
 }
@@ -301,6 +317,12 @@ func run(args []string) error {
 			time.Duration(syncInterval)*time.Second, done)
 	}
 
+	// Sync through a cloud-drive folder. The loop idles while it is off, so
+	// turning it on in the console needs no restart. A headless install can
+	// configure it entirely from the environment.
+	bootstrapCloudSync(e.cloud)
+	go e.cloud.Run(done, e.index.Rev)
+
 	// The read-audit writer, and its retention. An audit trail that grows
 	// forever becomes its own liability: a permanent list of who looked at
 	// which sensitive document. GRIMOIRE_READ_AUDIT_DAYS=0 keeps everything.
@@ -348,6 +370,52 @@ func run(args []string) error {
 	}
 	<-done
 	return nil
+}
+
+// bootstrapCloudSync sets folder sync up from GRIMOIRE_SYNC_FOLDER plus
+// GRIMOIRE_SYNC_PASSPHRASE(_FILE) when the device has no key yet: the path a
+// server with no console session needs.
+func bootstrapCloudSync(c *cloudsync.Engine) {
+	folder := c.Folder()
+	if folder == "" {
+		return
+	}
+	if _, err := os.Stat(filepath.Join(c.Dir, "key.json")); err == nil {
+		return
+	}
+	pass, err := syncPassphraseFromEnv()
+	if err != nil {
+		log.Printf("cloud sync: %v", err)
+		return
+	}
+	if pass == "" {
+		log.Printf("cloud sync: %s is configured but this device has no key yet; "+
+			"run `grimoire sync folder %s` or set GRIMOIRE_SYNC_PASSPHRASE_FILE", folder, folder)
+		return
+	}
+	created, err := c.Setup(cloudsync.SetupOptions{Folder: folder, Passphrase: pass, Create: true})
+	if err != nil {
+		log.Printf("cloud sync: %v", err)
+		return
+	}
+	if created {
+		log.Printf("cloud sync: started a new backup in %s", folder)
+	} else {
+		log.Printf("cloud sync: joined the backup in %s", folder)
+	}
+}
+
+// syncPassphraseFromEnv reads GRIMOIRE_SYNC_PASSPHRASE_FILE, then
+// GRIMOIRE_SYNC_PASSPHRASE. "" with no error means neither is set.
+func syncPassphraseFromEnv() (string, error) {
+	if path := strings.TrimSpace(os.Getenv("GRIMOIRE_SYNC_PASSPHRASE_FILE")); path != "" {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			return "", fmt.Errorf("reading GRIMOIRE_SYNC_PASSPHRASE_FILE: %w", err)
+		}
+		return strings.TrimRight(string(raw), "\r\n"), nil
+	}
+	return os.Getenv("GRIMOIRE_SYNC_PASSPHRASE"), nil
 }
 
 // newEmbedder builds the backend ladder, in the same precedence the Python
