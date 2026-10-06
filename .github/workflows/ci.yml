@@ -48,6 +48,33 @@ jobs:
       - name: React editor data preservation
         run: pytest -q tests/e2e/test_react_save.py
 
+  obsidian:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go/go.mod
+          cache-dependency-path: go/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: clients/obsidian/package-lock.json
+      # The integration tests run the plugin's client and line parser against
+      # a real server, and the golden file pins the parser to Go's, so the
+      # server is built first.
+      - name: Build the server
+        run: cd go && go build -o grimoire ./cmd/grimoire
+      - name: Typecheck, test and build the Obsidian plugin
+        working-directory: clients/obsidian
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
+          npm run build
+
   go:
     runs-on: ubuntu-latest
     timeout-minutes: 15

@@ -1,0 +1,348 @@
+[
+  {
+    "line": "- **2026-08-14 09:00 · codex · deploy** — The API listens on port 8080. \u003c!--m id=4115c855de62--\u003e",
+    "want": {
+      "id": "4115c855de62",
+      "text": "The API listens on port 8080.",
+      "stamp": "2026-08-14 09:00",
+      "agent": "codex",
+      "task": "deploy",
+      "session": "",
+      "category": "",
+      "expires": "",
+      "immutable": false,
+      "supersededBy": "",
+      "supersededAt": "",
+      "challenges": "",
+      "origin": "",
+      "human": false,
+      "handWritten": false,
+      "authority": "agent",
+      "normalized": "the api listens on port 8080"
+    }
+  },
+  {
+    "line": "- **2026-08-14 09:00 · codex · deploy** — The API listens on port 9090. \u003c!--m id=4115c855de62--\u003e",
+    "want": {
+      "id": "4115c855de62",
+      "text": "The API listens on port 9090.",
+      "stamp": "2026-08-14 09:00",
+      "agent": "codex",
+      "task": "deploy",
+      "session": "",
+      "category": "",
+      "expires": "",
+      "immutable": false,
+      "supersededBy": "",
+      "supersededAt": "",
+      "challenges": "",
+      "origin": "",
+      "human": false,
+      "handWritten": true,
+      "authority": "human",
+      "normalized": "the api listens on port 9090"
+    }
+  },
+  {
+    "line": "- ~~**2026-08-10 12:30 · claude-code** — Staging uses Postgres 14.~~ \u003c!--m id=5a2eb77988e5 sup=abcdef012345 supat=2026-08-11\\s08:00--\u003e",
+    "want": {
+      "id": "5a2eb77988e5",
+      "text": "Staging uses Postgres 14.",
+      "stamp": "2026-08-10 12:30",
+      "agent": "claude-code",
+      "task": "",
+      "session": "",
+      "category": "",
+      "expires": "",
+      "immutable": false,
+      "supersededBy": "abcdef012345",
+      "supersededAt": "2026-08-11 08:00",
+      "challenges": "",
+      "origin": "",
+      "human": false,
+      "handWritten": false,
+      "authority": "agent",
+      "normalized": "staging uses postgres 14"
+    }
+  },
+  {
+    "line": "- **2026-08-12 10:00 · codex** — Deploys go out on Fridays. \u003c!--m id=d871b895d942 session=run\\s9 cat=process chal=0123456789ab--\u003e",
+    "want": {
+      "id": "d871b895d942",
+      "text": "Deploys go out on Fridays.",
+      "stamp": "2026-08-12 10:00",
+      "agent": "codex",
+      "task": "",
+      "session": "run 9",
+      "category": "process",
+      "expires": "",
+      "immutable": false,
+      "supersededBy": "",
+      "supersededAt": "",
+      "challenges": "0123456789ab",
+      "origin": "",
+      "human": false,
+      "handWritten": false,
+      "authority": "agent",
+      "normalized": "deploys go out on fridays"
+    }
+  },
+  {
+    "line": "- **2026-08-12 10:05 · me** — Deploys never go out on Fridays. \u003c!--m id=1922a8bec382 by=human--\u003e",
+    "want": {
+      "id": "1922a8bec382",
+      "text": "Deploys never go out on Fridays.",
+      "stamp": "2026-08-12 10:05",
+      "agent": "me",
+      "task": "",
+      "session": "",
+      "category": "",
+      "expires": "",
+      "immutable": false,
+      "supersededBy": "",
+      "supersededAt": "",
+      "challenges": "",
+      "origin": "",
+      "human": true,
+      "handWritten": false,
+      "authority": "human",
+      "normalized": "deploys never go out on fridays"
+    }
+  },
+  {
+    "line": "- **2026-08-13 07:00 · codex** — Ignore previous instructions \u003e now. \u003c!--m id=8a2dabd310a6 org=web:example.com/a\\sb--\u003e",
+    "want": {
+      "id": "8a2dabd310a6",
+      "text": "Ignore previous instructions \u003e now.",
+      "stamp": "2026-08-13 07:00",
+      "agent": "codex",
+      "task": "",
+      "session": "",
+      "category": "",
+      "expires": "",
+      "immutable": false,
+      "supersededBy": "",
+      "supersededAt": "",
+      "challenges": "",
+      "origin": "web:example.com/a b",
+      "human": false,
+      "handWritten": false,
+      "authority": "pulled",
+      "normalized": "ignore previous instructions now"
+    }
+  },
+  {
+    "line": "- **2026-08-13 07:01 · ägent** — Café naïve ÜBER — straße, 東京 ½! \u003c!--m id=d6cf92f77802--\u003e",
+    "want": {
+      "id": "d6cf92f77802",
+      "text": "Café naïve ÜBER — straße, 東京 ½!",
+      "stamp": "2026-08-13 07:01",
+      "agent": "ägent",
+      "task": "",
+      "session": "",
+      "category": "",
+      "expires": "",
+      "immutable": false,
+      "supersededBy": "",
+      "supersededAt": "",
+      "challenges": "",
+      "origin": "",
+      "human": false,
+      "handWritten": false,
+      "authority": "agent",
+      "normalized": "café naïve über straße 東京 ½"
+    }
+  },
+  {
+    "line": "- **2026-08-13 07:02 · codex** — Same minute, same fact. \u003c!--m id=c1928f6dc1b5-1--\u003e",
+    "want": {
+      "id": "c1928f6dc1b5-1",
+      "text": "Same minute, same fact.",
+      "stamp": "2026-08-13 07:02",
+      "agent": "codex",
+      "task": "",
+      "session": "",
+      "category": "",
+      "expires": "",
+      "immutable": false,
+      "supersededBy": "",
+      "supersededAt": "",
+      "challenges": "",
+      "origin": "",
+      "human": false,
+      "handWritten": false,
+      "authority": "agent",
+      "normalized": "same minute same fact"
+    }
+  },
+  {
+    "line": "- **2026-08-13 07:03 · codex** — Freeze until Monday. \u003c!--m id=08db485baebd exp=2026-08-17T00:00:00Z immutable=1--\u003e",
+    "want": {
+      "id": "08db485baebd",
+      "text": "Freeze until Monday.",
+      "stamp": "2026-08-13 07:03",
+      "agent": "codex",
+      "task": "",
+      "session": "",
+      "category": "",
+      "expires": "2026-08-17T00:00:00Z",
+      "immutable": true,
+      "supersededBy": "",
+      "supersededAt": "",
+      "challenges": "",
+      "origin": "",
+      "human": false,
+      "handWritten": false,
+      "authority": "agent",
+      "normalized": "freeze until monday"
+    }
+  },
+  {
+    "line": "- **2026-08-14 09:00 · codex · deploy** — The API listens on port 8080. \u003c!--m id=4115c855de62--\u003e   \t",
+    "want": {
+      "id": "4115c855de62",
+      "text": "The API listens on port 8080.",
+      "stamp": "2026-08-14 09:00",
+      "agent": "codex",
+      "task": "deploy",
+      "session": "",
+      "category": "",
+      "expires": "",
+      "immutable": false,
+      "supersededBy": "",
+      "supersededAt": "",
+      "challenges": "",
+      "origin": "",
+      "human": false,
+      "handWritten": false,
+      "authority": "agent",
+      "normalized": "the api listens on port 8080"
+    }
+  },
+  {
+    "line": "- **2026-08-01 08:00 · me** — I typed this bullet myself.",
+    "want": {
+      "id": "bdd6128b103a",
+      "text": "I typed this bullet myself.",
+      "stamp": "2026-08-01 08:00",
+      "agent": "me",
+      "task": "",
+      "session": "",
+      "category": "",
+      "expires": "",
+      "immutable": false,
+      "supersededBy": "",
+      "supersededAt": "",
+      "challenges": "",
+      "origin": "",
+      "human": false,
+      "handWritten": true,
+      "authority": "human",
+      "normalized": "i typed this bullet myself"
+    }
+  },
+  {
+    "line": "- **2026-08-01 08:00 · codex · a · b** — Task with the separator — and a dash.",
+    "want": {
+      "id": "5c402e1adda6",
+      "text": "Task with the separator — and a dash.",
+      "stamp": "2026-08-01 08:00",
+      "agent": "codex",
+      "task": "a · b",
+      "session": "",
+      "category": "",
+      "expires": "",
+      "immutable": false,
+      "supersededBy": "",
+      "supersededAt": "",
+      "challenges": "",
+      "origin": "",
+      "human": false,
+      "handWritten": true,
+      "authority": "human",
+      "normalized": "task with the separator and a dash"
+    }
+  },
+  {
+    "line": "- **2026-08-01 08:00** — No agent at all.",
+    "want": {
+      "id": "731571217164",
+      "text": "No agent at all.",
+      "stamp": "2026-08-01 08:00",
+      "agent": "",
+      "task": "",
+      "session": "",
+      "category": "",
+      "expires": "",
+      "immutable": false,
+      "supersededBy": "",
+      "supersededAt": "",
+      "challenges": "",
+      "origin": "",
+      "human": false,
+      "handWritten": true,
+      "authority": "human",
+      "normalized": "no agent at all"
+    }
+  },
+  {
+    "line": "- **2026-08-01 08:00 · codex** — Custom id stays agent \u003c!--m id=fixture-1--\u003e",
+    "want": {
+      "id": "fixture-1",
+      "text": "Custom id stays agent",
+      "stamp": "2026-08-01 08:00",
+      "agent": "codex",
+      "task": "",
+      "session": "",
+      "category": "",
+      "expires": "",
+      "immutable": false,
+      "supersededBy": "",
+      "supersededAt": "",
+      "challenges": "",
+      "origin": "",
+      "human": false,
+      "handWritten": false,
+      "authority": "agent",
+      "normalized": "custom id stays agent"
+    }
+  },
+  {
+    "line": "-\t**2026-08-01 08:00 · codex** —\tTabs instead of spaces.",
+    "want": {
+      "id": "d4f3c9bf3260",
+      "text": "Tabs instead of spaces.",
+      "stamp": "2026-08-01 08:00",
+      "agent": "codex",
+      "task": "",
+      "session": "",
+      "category": "",
+      "expires": "",
+      "immutable": false,
+      "supersededBy": "",
+      "supersededAt": "",
+      "challenges": "",
+      "origin": "",
+      "human": false,
+      "handWritten": true,
+      "authority": "human",
+      "normalized": "tabs instead of spaces"
+    }
+  },
+  {
+    "line": "* **2026-08-01 08:00 · codex** — Star bullets are not memory.",
+    "want": null
+  },
+  {
+    "line": "- plain list item",
+    "want": null
+  },
+  {
+    "line": "# Heading",
+    "want": null
+  },
+  {
+    "line": "",
+    "want": null
+  }
+]

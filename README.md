@@ -111,6 +111,17 @@ grimoire challenges --note memory/ops.md --concede ID  # the agent was right
 Hand edits need no marker: an entry's id is a hash of its own content, so text
 that changed after the id was minted is text another hand changed.
 
+### In Obsidian
+
+The [Obsidian plugin](clients/obsidian/) shows all of this where you already
+edit the notes. Each memory line is badged with the agent that wrote it, or
+as yours once you have written or edited it. When an agent disputes one of
+your lines, the status bar says so and the panel lets you keep yours or
+accept the agent's. "What would my agent see?" shows the exact chunks
+retrieval hands an agent for a question.
+
+![Obsidian: a dispute between you and codex, settled from the panel](docs/screenshots/obsidian-dispute.png)
+
 ## Automatic memory, on your terms
 
 Grimoire is **both document retrieval and persistent agent memory**, not just a
@@ -182,6 +193,11 @@ Agents without a grant can *ask*; asking grants nothing.
 | Orientation | `get_briefing` · `kb_info` |
 
 <!-- tools:end -->
+
+Every agent pays for those schemas on every request, about 6.2k tokens for
+all 35. `GRIMOIRE_MCP_TOOLS=core` mounts the six an agent uses in ordinary
+work (briefing, search, read, remember, recall, use_credential) for about
+1.4k; add others by name, e.g. `core,ask_notes,get_fact`.
 
 Any MCP client works. `grimoire agent-setup` prints the config plus a
 CLAUDE.md/AGENTS.md snippet, since agents read context files more reliably than
