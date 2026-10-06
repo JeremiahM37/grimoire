@@ -110,6 +110,10 @@ type Server struct {
 	// leaves every existing deployment exactly as it was — see checkAuth in
 	// http.go.
 	OAuth *oauth.Handler
+
+	// Profile restricts the advertised tools; nil advertises all of them.
+	// Set from GRIMOIRE_MCP_TOOLS — see profile.go.
+	Profile map[string]bool
 }
 
 func New(baseURL, agent string) *Server {
@@ -194,7 +198,7 @@ func (s *Server) handle(req request) *response {
 			"instructions":    Instructions,
 		})
 	case "tools/list":
-		return ok(map[string]any{"tools": Tools()})
+		return ok(map[string]any{"tools": s.advertised()})
 	case "tools/call":
 		return s.callTool(req, ok)
 	case "ping":
@@ -214,7 +218,13 @@ func (s *Server) callTool(req request, ok func(any) *response) *response {
 		return &response{JSONRPC: "2.0", ID: req.ID,
 			Error: &rpcError{Code: -32602, Message: "invalid params"}}
 	}
-	result, err := s.dispatch(params.Name, params.Arguments)
+	var result any
+	var err error
+	if s.offers(params.Name) {
+		result, err = s.dispatch(params.Name, params.Arguments)
+	} else {
+		err = fmt.Errorf("unknown tool: %s", params.Name)
+	}
 	if err != nil {
 		// Tool failures are reported as results with isError, not as protocol
 		// errors: the agent should see the message and adapt, not have the

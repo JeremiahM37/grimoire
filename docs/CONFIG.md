@@ -39,6 +39,7 @@ Everything is environment-driven (same variables bare-metal, systemd, Docker):
 | `GRIMOIRE_MCP_ADDR` / `_PORT` | `127.0.0.1` / `9112` | Bind for the MCP http transport |
 | `GRIMOIRE_MCP_TOKEN` | *(empty)* | Bearer token the MCP http transport demands. **Required to bind anything but loopback** — the server refuses to start otherwise, because that transport carries the vault and the credential broker. Clients send `Authorization: Bearer …`, or `?token=` when they cannot set headers |
 | `GRIMOIRE_URL` | `http://127.0.0.1:$PORT` | API the MCP server talks to |
+| `GRIMOIRE_MCP_TOOLS` | `all` | Which tools the MCP server advertises. `core` is six tools (`get_briefing`, `search_notes`, `read_note`, `remember`, `recall`, `use_credential`), about 1.4k tokens of schema against about 6.2k for all 35. Add others by name: `core,ask_notes,get_fact`. An unknown name stops the server rather than silently dropping a tool |
 | `GRIMOIRE_PUBLIC_BASE` / `GRIMOIRE_OAUTH_AUTHORIZE_BASE` | *(unset = OAuth off)* | Enable OAuth 2.1 on `/mcp` for claude.ai/ChatGPT connectors — public tunnel base + private, owner-only consent base. See [web-connectors.md](web-connectors.md) |
 | `GRIMOIRE_OAUTH_AUTHORIZE_ADDR` | `127.0.0.1:9115` | Bind address for the private consent listener |
 | `GRIMOIRE_OAUTH_DB` | `~/.grimoire-mcp/oauth.db` | Registered OAuth clients and issued tokens (hashed) |
