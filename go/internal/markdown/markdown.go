@@ -190,8 +190,20 @@ func wasList(block, key string) bool {
 }
 
 func scalar(v string) Value {
-	v = strings.Trim(strings.TrimSpace(v), `"`)
-	v = strings.Trim(v, "'")
+	v = strings.TrimSpace(v)
+	switch {
+	case len(v) >= 2 && v[0] == '"' && v[len(v)-1] == '"':
+		// A properly double-quoted YAML string: unescape it, so a value written
+		// quoted because it contains ": " or a quote reads back unchanged.
+		v = unescapeDoubleQuoted(v[1 : len(v)-1])
+	case len(v) >= 2 && v[0] == '\'' && v[len(v)-1] == '\'':
+		v = strings.ReplaceAll(v[1:len(v)-1], "''", "'")
+	default:
+		// Anything else keeps the old forgiving behaviour: stray quotes at
+		// either end are dropped rather than rejected.
+		v = strings.Trim(v, `"`)
+		v = strings.Trim(v, "'")
+	}
 	switch strings.ToLower(v) {
 	case "true":
 		return true
@@ -199,6 +211,36 @@ func scalar(v string) Value {
 		return false
 	}
 	return v
+}
+
+// unescapeDoubleQuoted handles the escapes a YAML double-quoted scalar most
+// often carries. An unknown escape is kept as written rather than dropped.
+func unescapeDoubleQuoted(s string) string {
+	if !strings.Contains(s, `\`) {
+		return s
+	}
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		if s[i] != '\\' || i+1 == len(s) {
+			b.WriteByte(s[i])
+			continue
+		}
+		i++
+		switch s[i] {
+		case '\\', '"', '/':
+			b.WriteByte(s[i])
+		case 'n':
+			b.WriteByte('\n')
+		case 't':
+			b.WriteByte('\t')
+		case 'r':
+			b.WriteByte('\r')
+		default:
+			b.WriteByte('\\')
+			b.WriteByte(s[i])
+		}
+	}
+	return b.String()
 }
 
 func stripCode(body string) string {
