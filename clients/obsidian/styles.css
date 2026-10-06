@@ -1,0 +1,254 @@
+/* Badges on memory lines. Each agent keeps one hue (--grimoire-hue). */
+.grimoire-badge {
+  display: inline-block;
+  margin-left: 0.5em;
+  padding: 0 0.5em;
+  border-radius: 999px;
+  font-size: 0.75em;
+  font-weight: 500;
+  line-height: 1.6;
+  white-space: nowrap;
+  vertical-align: 0.1em;
+  cursor: pointer;
+  user-select: none;
+  color: hsl(var(--grimoire-hue, 220) 55% 35%);
+  background: hsl(var(--grimoire-hue, 220) 70% 92%);
+  border: 1px solid hsl(var(--grimoire-hue, 220) 45% 80%);
+}
+
+.theme-dark .grimoire-badge {
+  color: hsl(var(--grimoire-hue, 220) 70% 78%);
+  background: hsl(var(--grimoire-hue, 220) 35% 20%);
+  border-color: hsl(var(--grimoire-hue, 220) 30% 32%);
+}
+
+.grimoire-badge-human {
+  color: var(--text-on-accent);
+  background: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+}
+
+.theme-dark .grimoire-badge-human {
+  color: var(--text-on-accent);
+  background: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+}
+
+.grimoire-badge-dispute,
+.theme-dark .grimoire-badge-dispute {
+  color: var(--text-on-accent);
+  background: var(--color-orange);
+  border-color: var(--color-orange);
+}
+
+.grimoire-badge-pulled,
+.theme-dark .grimoire-badge-pulled {
+  color: var(--color-red);
+  background: transparent;
+  border-color: var(--color-red);
+}
+
+.grimoire-badge-replaced,
+.grimoire-badge-expired,
+.theme-dark .grimoire-badge-replaced,
+.theme-dark .grimoire-badge-expired {
+  color: var(--text-faint);
+  background: transparent;
+  border-color: var(--background-modifier-border);
+}
+
+/* Lines */
+.grimoire-mem-replaced,
+.grimoire-mem-expired {
+  opacity: 0.6;
+}
+
+.cm-line.grimoire-mem-dispute,
+li.grimoire-mem-dispute {
+  box-shadow: inset 3px 0 0 var(--color-orange);
+}
+
+.cm-line.grimoire-mem-human,
+li.grimoire-mem-human {
+  box-shadow: inset 3px 0 0 var(--interactive-accent);
+}
+
+/* Status bar */
+.grimoire-status {
+  cursor: pointer;
+}
+
+.grimoire-status.is-dispute {
+  color: var(--color-orange);
+  font-weight: 600;
+}
+
+.grimoire-status.is-offline {
+  color: var(--text-faint);
+}
+
+.grimoire-notice {
+  cursor: pointer;
+}
+
+/* Panel */
+.grimoire-panel {
+  padding: var(--size-4-2) var(--size-4-3);
+}
+
+.grimoire-panel-head {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+  margin-bottom: var(--size-4-3);
+}
+
+.grimoire-panel-title {
+  flex: 1;
+  font-weight: 600;
+}
+
+.grimoire-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-faint);
+}
+
+.grimoire-dot.is-online {
+  background: var(--color-green);
+}
+
+.grimoire-section {
+  margin-bottom: var(--size-4-5);
+}
+
+.grimoire-section-title {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--font-ui-small);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: var(--size-4-2);
+}
+
+.grimoire-count {
+  color: var(--text-faint);
+}
+
+.grimoire-empty {
+  color: var(--text-faint);
+  font-size: var(--font-ui-small);
+}
+
+.grimoire-card {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  padding: var(--size-4-2) var(--size-4-3);
+  margin-bottom: var(--size-4-2);
+  background: var(--background-primary);
+}
+
+.grimoire-challenge {
+  border-left: 3px solid var(--color-orange);
+}
+
+.grimoire-card-meta {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+
+.grimoire-card-meta .grimoire-badge {
+  margin-left: 0;
+}
+
+.grimoire-claim {
+  margin: var(--size-2-2) 0 var(--size-4-2);
+  font-size: var(--font-ui-small);
+}
+
+.grimoire-claim-agent {
+  color: var(--text-normal);
+}
+
+.grimoire-claim-human {
+  font-weight: 600;
+}
+
+.grimoire-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--size-4-2);
+  align-items: center;
+}
+
+.grimoire-actions button {
+  font-size: var(--font-ui-small);
+}
+
+.grimoire-toggle {
+  display: block;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  margin-bottom: var(--size-4-2);
+}
+
+.grimoire-change {
+  padding: var(--size-2-3) 0;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.grimoire-change-retracted .grimoire-change-text,
+.grimoire-change-expired .grimoire-change-text {
+  text-decoration: line-through;
+  color: var(--text-faint);
+}
+
+.grimoire-change-text {
+  font-size: var(--font-ui-small);
+  cursor: pointer;
+  margin: var(--size-2-1) 0;
+}
+
+.grimoire-change-text:hover {
+  color: var(--text-accent);
+}
+
+.grimoire-path {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+  font-family: var(--font-monospace);
+}
+
+.grimoire-warn {
+  color: var(--color-red);
+}
+
+.grimoire-agent-row {
+  padding: var(--size-2-2) 0;
+}
+
+/* Modals */
+.grimoire-query {
+  width: 100%;
+  margin-bottom: var(--size-4-3);
+}
+
+.grimoire-tell {
+  width: 100%;
+}
+
+.grimoire-results {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.grimoire-chunk-text {
+  white-space: pre-wrap;
+  font-size: var(--font-ui-smaller);
+  max-height: 12em;
+  overflow-y: auto;
+  margin: var(--size-2-2) 0 0;
+}

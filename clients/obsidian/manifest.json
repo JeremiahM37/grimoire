@@ -1,0 +1,10 @@
+{
+  "id": "grimoire-memory",
+  "name": "Grimoire Agent Memory",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "See what your AI agents remember in your vault: who wrote each memory line, disagreements to settle, and exactly what an agent would retrieve.",
+  "author": "Jeremiah Mackey",
+  "authorUrl": "https://github.com/JeremiahM37/grimoire",
+  "isDesktopOnly": false
+}
