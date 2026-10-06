@@ -49,9 +49,42 @@ func FMEntry(key string, value markdown.Value) string {
 			return key + ": true"
 		}
 		return key + ": false"
+	case string:
+		return key + ": " + yamlScalar(v)
 	default:
 		return fmt.Sprintf("%s: %v", key, value)
 	}
+}
+
+// yamlScalar writes a string so YAML reads it back as the same string.
+//
+// Plain is kept whenever it is safe, so files look the way a person would have
+// typed them. It is not safe for "Memory: ops" — the second ": " makes the line
+// a nested mapping, which Obsidian rejects as invalid properties — nor for a
+// leading indicator character, a " #" (the rest becomes a comment), or a line
+// break. Those are double-quoted with \ and \" escaped,
+// which markdown.ParseFrontmatter unescapes.
+func yamlScalar(s string) string {
+	if s == "" || !needsQuoting(s) {
+		return s
+	}
+	// Quoted or not, a value loses its edge whitespace, exactly as plain YAML
+	// would have trimmed it.
+	s = strings.TrimSpace(s)
+	return `"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`, "\n", `\n`, "\r", `\r`, "\t", `\t`).Replace(s) + `"`
+}
+
+func needsQuoting(s string) bool {
+	// Edge whitespace is deliberately NOT a reason to quote: plain YAML trims
+	// it, which is what every note written before quoting existed got, and a
+	// title should not grow a trailing space just because it can be kept.
+	if strings.ContainsAny(s, "\n\r\t") {
+		return true
+	}
+	if strings.ContainsRune("-?:,[]{}#&*!|>'\"%@`", rune(s[0])) {
+		return true
+	}
+	return strings.Contains(s, ": ") || strings.HasSuffix(s, ":") || strings.Contains(s, " #")
 }
 
 // PatchFrontmatter merges managed keys into an existing raw frontmatter block.
