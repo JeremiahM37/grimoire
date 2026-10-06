@@ -117,6 +117,9 @@ type Server struct {
 
 	allowOnce sync.Once
 	allow     *allowCache
+	// Profile restricts the advertised tools; nil advertises all of them.
+	// Set from GRIMOIRE_MCP_TOOLS — see profile.go.
+	Profile map[string]bool
 }
 
 func New(baseURL, agent string) *Server {
@@ -205,7 +208,7 @@ func (s *Server) handleIn(rc callCtx, req request) *response {
 			"instructions":    Instructions,
 		})
 	case "tools/list":
-		return ok(map[string]any{"tools": s.toolsFor(rc)})
+		return ok(map[string]any{"tools": s.advertised(s.toolsFor(rc))})
 	case "tools/call":
 		return s.callTool(rc, req, ok)
 	case "ping":
@@ -225,9 +228,12 @@ func (s *Server) callTool(rc callCtx, req request, ok func(any) *response) *resp
 		return &response{JSONRPC: "2.0", ID: req.ID,
 			Error: &rpcError{Code: -32602, Message: "invalid params"}}
 	}
-	args, err := s.prepareCall(rc, params.Name, params.Arguments)
 	var result any
-	if err == nil {
+	var args map[string]any
+	var err error
+	if !s.offers(params.Name) {
+		err = fmt.Errorf("unknown tool: %s", params.Name)
+	} else if args, err = s.prepareCall(rc, params.Name, params.Arguments); err == nil {
 		result, err = s.dispatch(params.Name, args)
 	}
 	if err != nil {

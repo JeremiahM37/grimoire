@@ -34,6 +34,12 @@ func main() {
 		base = "http://127.0.0.1:" + envOr("GRIMOIRE_PORT", "9111")
 	}
 	srv := mcp.New(base, os.Getenv(mcp.EnvAgentName))
+	profile, err := mcp.ParseToolProfile(os.Getenv(mcp.EnvTools))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "grimoire-mcp:", err)
+		os.Exit(1)
+	}
+	srv.Profile = profile
 
 	oa, err := oauthFromEnv(srv.AdminToken)
 	if err != nil {
