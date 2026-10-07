@@ -341,6 +341,22 @@ def test_coding_agent_surfaces(stub, g):
     assert body["use_model"] is True and body["turns"][0]["text"] == "hi"
 
 
+def test_file_memory_duplicates_and_delta_refresh(stub, g):
+    stub.on("GET", "/api/banks/s/file-memory", {"items": []})
+    stub.on("GET", "/api/banks/s/duplicates", {"candidates": []})
+    stub.on("POST", "/api/banks/s/duplicates/merge", {"kept": "a"})
+    stub.on("POST", "/api/banks/s/mental-models/m/refresh", {"status": "queued"})
+    bank = g.bank("s")
+    bank.file_memory("src/a.go", limit=3)
+    bank.duplicates(min_score=0.7, type="fact")
+    bank.merge_duplicates("a", "b")
+    bank.refresh_mental_model("m", mode="delta")
+    assert stub.find("GET", "/api/banks/s/file-memory")[0]["path"] == "/api/banks/s/file-memory?path=src%2Fa.go&limit=3"
+    assert stub.find("GET", "/api/banks/s/duplicates")[0]["path"] == "/api/banks/s/duplicates?min_score=0.7&type=fact"
+    assert stub.find("POST", "/api/banks/s/duplicates/merge")[0]["body"] == {"keep": "a", "merge": "b"}
+    assert stub.find("POST", "/api/banks/s/mental-models/m/refresh")[0]["body"] == {"mode": "delta"}
+
+
 # ---- memory wrapper ------------------------------------------------------
 
 
