@@ -101,6 +101,24 @@ var behaviour = map[string]annotations{
 	"list_bank_documents":  {Title: "List bank documents", ReadOnlyHint: true, IdempotentHint: true},
 	"get_bank_document":    {Title: "Read a bank document", ReadOnlyHint: true, IdempotentHint: true},
 	"delete_bank_document": {Title: "Delete a bank document", DestructiveHint: true, IdempotentHint: true},
+	"reflect":              {Title: "Reason over a memory bank", ReadOnlyHint: true},
+	"consolidate":          {Title: "Consolidate a memory bank", IdempotentHint: true},
+	"list_observations":    {Title: "List bank observations", ReadOnlyHint: true, IdempotentHint: true},
+	"get_bank_memory":      {Title: "Read a bank memory", ReadOnlyHint: true, IdempotentHint: true},
+	"list_mental_models":   {Title: "List mental models", ReadOnlyHint: true, IdempotentHint: true},
+	"get_mental_model":     {Title: "Read a mental model", ReadOnlyHint: true, IdempotentHint: true},
+	"create_mental_model":  {Title: "Create a mental model"},
+	"update_mental_model":  {Title: "Update a mental model", DestructiveHint: true, IdempotentHint: true},
+	"delete_mental_model":  {Title: "Delete a mental model", DestructiveHint: true, IdempotentHint: true},
+	"refresh_mental_model": {Title: "Refresh a mental model", IdempotentHint: true},
+	"list_directives":      {Title: "List bank directives", ReadOnlyHint: true, IdempotentHint: true},
+	"create_directive":     {Title: "Add a bank directive"},
+	"delete_directive":     {Title: "Delete a bank directive", DestructiveHint: true, IdempotentHint: true},
+	"list_operations":      {Title: "List bank operations", ReadOnlyHint: true, IdempotentHint: true},
+	"get_operation":        {Title: "Check a bank operation", ReadOnlyHint: true, IdempotentHint: true},
+	"cancel_operation":     {Title: "Cancel a bank operation", DestructiveHint: true, IdempotentHint: true},
+	"list_bank_templates":  {Title: "List bank templates", ReadOnlyHint: true, IdempotentHint: true},
+	"import_bank_template": {Title: "Apply a bank template"},
 
 	"use_credential":           {Title: "Use a credential", OpenWorldHint: true},
 	"request_credential":       {Title: "Ask for a credential"},
@@ -561,5 +579,5 @@ func Tools() []tool {
 				"id": strProp("the request id returned by request_credential"),
 			}, "id"),
 		},
-	}, bankTools()...))
+	}, append(bankTools(), bankReasoningTools()...)...))
 }
