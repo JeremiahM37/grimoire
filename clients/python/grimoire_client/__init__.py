@@ -29,6 +29,7 @@ __all__ = [
     "Bank",
     "Banks",
     "NotAvailable",
+    "ModelRequired",
     "MemoryClient",
     "with_memory",
     "Grimoire",
@@ -527,5 +528,5 @@ def _message_of(payload: bytes) -> str:
 
 
 # Imported last: these modules use the transport helpers defined above.
-from .banks import AsyncBank, Bank, Banks, NotAvailable  # noqa: E402
+from .banks import AsyncBank, Bank, Banks, ModelRequired, NotAvailable  # noqa: E402
 from .openai_memory import MemoryClient, with_memory  # noqa: E402

@@ -18,6 +18,7 @@ from grimoire_client import (
     AsyncBank,
     Grimoire,
     GrimoireError,
+    ModelRequired,
     NotAvailable,
     NotFound,
     with_memory,
@@ -180,17 +181,130 @@ def test_missing_route_is_not_available_but_missing_bank_is_not_found(stub, g):
         g.bank("s").cancel_operation("o1")
 
 
-def test_reflect_and_mental_model_paths(stub, g):
-    stub.on("POST", "/api/banks/s/reflect", {"text": "because"})
-    assert g.bank("s").reflect("why?", budget="low")["text"] == "because"
+def test_reflect_body_and_shape(stub, g):
+    stub.on("POST", "/api/banks/s/reflect", {"text": "because", "mode": "extractive",
+                                             "based_on": {"memories": [], "observations": [],
+                                                          "mental_models": [], "directives": []},
+                                             "trace": None})
+    out = g.bank("s").reflect("why?", budget="low")
+    assert out["text"] == "because" and out["mode"] == "extractive"
     assert stub.calls[-1]["body"] == {"query": "why?", "budget": "low", "include": {"facts": {}}}
-    g.bank("s").refresh_mental_model("people/dana")
+    g.bank("s").reflect("why?", types=["world"], tags=["a"], tags_match="any", include_tool_calls=True,
+                        exclude_mental_models=True)
+    assert stub.calls[-1]["body"] == {"query": "why?", "fact_types": ["world"], "tags": ["a"],
+                                      "tags_match": "any", "exclude_mental_models": True,
+                                      "include": {"facts": {}, "tool_calls": {}}}
+    g.bank("s").reflect("why?", include_facts=False, trace=True)
+    assert stub.calls[-1]["body"] == {"query": "why?", "trace": True}
+
+
+def test_mental_model_calls(stub, g):
+    bank = g.bank("s")
+    stub.on("POST", "/api/banks/s/mental-models",
+            {"mental_model": {"id": "people/dana"}, "mental_model_id": "people/dana", "operation_id": None}, 201)
+    out = bank.create_mental_model("Dana", "Who is Dana?", folder="people", id="dana", tags=["t"],
+                                   refresh="auto", budget="mid", fact_types=["world"])
+    assert out["mental_model_id"] == "people/dana" and out["operation_id"] is None
+    assert stub.calls[-1]["body"] == {"name": "Dana", "question": "Who is Dana?", "id": "dana",
+                                      "folder": "people", "tags": ["t"], "refresh": "auto",
+                                      "budget": "mid", "fact_types": ["world"]}
+    # The old keyword names still work.
+    bank.create_mental_model("Ctx", source_query="what matters?", refresh_after_consolidation=False)
+    assert stub.calls[-1]["body"] == {"name": "Ctx", "question": "what matters?", "refresh": "manual"}
+    with pytest.raises(ValueError):
+        bank.create_mental_model("No question")
+
+    bank.refresh_mental_model("people/dana")
     assert stub.calls[-1]["path"] == "/api/banks/s/mental-models/people%2Fdana/refresh"
-    g.bank("s").accept_proposal("m1")
-    assert stub.calls[-1]["path"] == "/api/banks/s/mental-models/m1/proposal/accept"
-    g.bank("s").create_mental_model("Ctx", "what matters?", id="ctx", refresh_after_consolidation=True)
-    assert stub.calls[-1]["body"] == {"name": "Ctx", "source_query": "what matters?", "tags": [],
-                                      "id": "ctx", "trigger": {"refresh_after_consolidation": True}}
+    bank.accept_proposal("people/dana")
+    assert stub.calls[-1]["path"] == "/api/banks/s/mental-models/people%2Fdana/proposal/accept"
+    bank.reject_proposal("m1")
+    assert stub.calls[-1]["path"] == "/api/banks/s/mental-models/m1/proposal/reject"
+    bank.update_mental_model("people/dana", body="My own words.")
+    assert stub.calls[-1]["method"] == "PATCH" and stub.calls[-1]["body"] == {"body": "My own words."}
+    bank.move_mental_model("people/dana", "team")
+    assert stub.calls[-1]["body"] == {"folder": "team"}
+    bank.mental_model_history("people/dana", "3")
+    assert stub.calls[-1]["path"] == "/api/banks/s/mental-models/people%2Fdana/history/3"
+    bank.mental_models(folder="people", detail=True, tags=["a", "b"])
+    assert stub.calls[-1]["path"] == "/api/banks/s/mental-models?tags=a%2Cb&folder=people&detail=full"
+
+    stub.on("GET", "/api/banks/s/mental-models-tree", {"roots": [{"kind": "folder", "name": "people"}]})
+    assert bank.mental_model_tree()[0]["name"] == "people"
+    stub.on("GET", "/api/banks/s/mental-models-export", {"files": [{"path": "index.md", "content": "#"}]})
+    assert bank.export_mental_models()[0]["path"] == "index.md"
+    stub.on("GET", "/api/banks/s/mental-models-export", "# Index\n")
+    assert bank.export_mental_models(markdown=True) == "# Index\n"
+    assert stub.calls[-1]["path"] == "/api/banks/s/mental-models-export?format=markdown"
+
+
+def test_model_required_is_its_own_error(stub, g):
+    stub.on("POST", "/api/banks/s/mental-models/m/refresh",
+            {"detail": "model_required: this needs a language model and none is configured",
+             "code": "model_required"}, 409)
+    with pytest.raises(ModelRequired) as info:
+        g.bank("s").refresh_mental_model("m")
+    assert info.value.status == 409 and "model_required" in info.value.message
+    stub.on("POST", "/api/banks/s/consolidate", {"detail": "bank already exists"}, 409)
+    with pytest.raises(GrimoireError) as other:
+        g.bank("s").consolidate()
+    assert not isinstance(other.value, ModelRequired)
+
+
+def test_observations_directives_and_webhooks(stub, g):
+    bank = g.bank("s")
+    stub.on("GET", "/api/banks/s/observations", {"items": [{"id": "o1"}], "total": 1, "history": []})
+    assert bank.observations(authority="human", include_history=True)["items"][0]["id"] == "o1"
+    assert stub.calls[-1]["path"] == "/api/banks/s/observations?authority=human&include_history=true"
+    bank.delete_observation("o1", force=True)
+    assert stub.calls[-1]["path"] == "/api/banks/s/observations/o1?force=true"
+    bank.clear_observations()
+    assert (stub.calls[-1]["method"], stub.calls[-1]["path"]) == ("DELETE", "/api/banks/s/observations")
+
+    stub.on("POST", "/api/banks/s/directives", {"id": "d1", "text": "Be brief."}, 201)
+    bank.create_directive("Be brief.", name="Brevity", priority=2, tags=["x"])
+    assert stub.calls[-1]["body"] == {"text": "Be brief.", "name": "Brevity", "tags": ["x"], "priority": 2}
+    bank.update_directive("d1", is_active=False)
+    assert stub.calls[-1]["body"] == {"is_active": False}
+    bank.directives()
+    assert stub.calls[-1]["path"] == "/api/banks/s/directives?active_only=false"
+
+    bank.create_webhook("https://example.com/h", event_types=["retain.completed"])
+    assert stub.calls[-1]["body"] == {"url": "https://example.com/h", "enabled": True,
+                                      "events": ["retain.completed"]}
+    stub.on("GET", "/api/banks/s/webhooks/w1/deliveries", {"items": [{"id": "x"}]})
+    assert bank.webhook_deliveries("w1", limit=5) == [{"id": "x"}]
+
+
+def test_operations_and_wait(stub, g):
+    bank = g.bank("s")
+    stub.on("GET", "/api/banks/s/operations",
+            {"bank_id": "s", "operations": [{"id": "op-1", "kind": "retain", "type": "retain",
+                                             "status": "queued"}], "total": 1})
+    out = bank.operations(status="queued", type="retain")
+    assert out["operations"][0]["kind"] == "retain" and out["total"] == 1
+    assert stub.calls[-1]["path"] == "/api/banks/s/operations?status=queued&type=retain"
+
+    states = iter(["queued", "running", "completed"])
+    bank.operation = lambda op_id: {"id": op_id, "status": next(states)}  # type: ignore[method-assign]
+    assert bank.wait_operation("op-1", interval=0)["status"] == "completed"
+    bank.operation = lambda op_id: {"id": op_id, "status": "running"}  # type: ignore[method-assign]
+    with pytest.raises(TimeoutError):
+        bank.wait_operation("op-1", timeout=0, interval=0)
+
+
+def test_templates_and_import(stub, g):
+    stub.on("GET", "/api/bank-templates", {"templates": [{"id": "assistant"}]})
+    assert g.banks.templates() == [{"id": "assistant"}]
+    g.banks.template("coding-agent")
+    assert stub.calls[-1]["path"] == "/api/bank-templates/coding-agent"
+    g.bank("s").import_template(template="support", dry_run=True)
+    assert stub.calls[-1]["path"] == "/api/banks/s/import?dry_run=true"
+    assert stub.calls[-1]["body"] == {"template": "support"}
+    g.bank("s").import_template({"version": "1", "directives": [{"text": "x"}]})
+    assert stub.calls[-1]["body"] == {"manifest": {"version": "1", "directives": [{"text": "x"}]}}
+    with pytest.raises(ValueError):
+        g.bank("s").import_template()
 
 
 def test_templates_not_available(stub, g):

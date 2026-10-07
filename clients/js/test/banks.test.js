@@ -5,7 +5,7 @@ import assert from 'node:assert/strict'
 import { beforeEach, describe, it } from 'node:test'
 
 import Grimoire, { GrimoireError, NotFound } from '../index.js'
-import { Bank, Banks, NotAvailable, formatMemories, withMemory } from '../banks.js'
+import { Bank, Banks, ModelRequired, NotAvailable, formatMemories, withMemory } from '../banks.js'
 
 let calls
 let routes
@@ -98,7 +98,7 @@ describe('bank client', () => {
     await assert.rejects(new Banks(g).templates(), NotAvailable)
   })
 
-  it('builds the newer endpoint paths', async () => {
+  it('builds the reasoning endpoint paths', async () => {
     route('POST', '/api/banks/support/reflect', { text: 'because' })
     assert.equal((await bank.reflect('why?', { budget: 'low' })).text, 'because')
     assert.deepEqual(calls.at(-1).body, { query: 'why?', budget: 'low', include: { facts: {} } })
@@ -106,6 +106,77 @@ describe('bank client', () => {
     assert.equal(calls.at(-1).path, '/api/banks/support/mental-models/people%2Fdana/refresh')
     await bank.rejectProposal('m1')
     assert.equal(calls.at(-1).path, '/api/banks/support/mental-models/m1/proposal/reject')
+  })
+
+  it('sends reflect fields under the server names', async () => {
+    await bank.reflect('why?', { types: ['world'], tags: ['a'], includeToolCalls: true, excludeMentalModels: true })
+    assert.deepEqual(calls.at(-1).body, {
+      query: 'why?', fact_types: ['world'], tags: ['a'], exclude_mental_models: true,
+      include: { facts: {}, tool_calls: {} },
+    })
+    await bank.reflect('why?', { includeFacts: false, trace: true })
+    assert.deepEqual(calls.at(-1).body, { query: 'why?', trace: true })
+  })
+
+  it('creates, edits, moves and exports mental models', async () => {
+    route('POST', '/api/banks/support/mental-models', { mental_model: { id: 'people/dana' }, mental_model_id: 'people/dana', operation_id: null }, 201)
+    const made = await bank.createMentalModel('Dana', 'Who is Dana?', { folder: 'people', refresh: 'manual', factTypes: ['world'] })
+    assert.equal(made.operation_id, null)
+    assert.deepEqual(calls.at(-1).body, { name: 'Dana', question: 'Who is Dana?', folder: 'people', refresh: 'manual', fact_types: ['world'] })
+    await bank.createMentalModel('Ctx', undefined, { sourceQuery: 'what?', refreshAfterConsolidation: true })
+    assert.deepEqual(calls.at(-1).body, { name: 'Ctx', question: 'what?', refresh: 'auto' })
+    assert.throws(() => bank.createMentalModel('No question'), TypeError)
+    await bank.updateMentalModel('people/dana', { body: 'Mine.' })
+    assert.equal(calls.at(-1).method, 'PATCH')
+    assert.equal(calls.at(-1).path, '/api/banks/support/mental-models/people%2Fdana')
+    await bank.moveMentalModel('people/dana', 'team')
+    assert.deepEqual(calls.at(-1).body, { folder: 'team' })
+    await bank.mentalModels({ detail: true, folder: 'people' })
+    assert.equal(calls.at(-1).search, '?folder=people&detail=full')
+    route('GET', '/api/banks/support/mental-models-tree', { roots: [{ kind: 'folder', name: 'people' }] })
+    assert.equal((await bank.mentalModelTree())[0].name, 'people')
+    route('GET', '/api/banks/support/mental-models-export', '# Index\n')
+    assert.equal(await bank.exportMentalModels({ markdown: true }), '# Index\n')
+    assert.equal(calls.at(-1).search, '?format=markdown')
+  })
+
+  it('throws ModelRequired for a 409 model_required only', async () => {
+    route('POST', '/api/banks/support/consolidate', { detail: 'model_required: none configured', code: 'model_required' }, 409)
+    await assert.rejects(bank.consolidate(), (e) => e instanceof ModelRequired && e.code === 'model_required' && e.status === 409)
+    route('POST', '/api/banks/support/consolidate', { detail: 'something else' }, 409)
+    await assert.rejects(bank.consolidate(), (e) => e instanceof GrimoireError && !(e instanceof ModelRequired))
+  })
+
+  it('reads observations, directives, operations and templates', async () => {
+    route('GET', '/api/banks/support/observations', { items: [{ id: 'o1' }], total: 1, history: [] })
+    assert.equal((await bank.observations({ includeHistory: true, authority: 'human' })).items[0].id, 'o1')
+    assert.equal(calls.at(-1).search, '?authority=human&include_history=true')
+    await bank.deleteObservation('o1', { force: true })
+    assert.equal(calls.at(-1).search, '?force=true')
+    await bank.directives()
+    assert.equal(calls.at(-1).search, '?active_only=false')
+    await bank.createDirective('Be brief.', { name: 'Brief', priority: 2 })
+    assert.deepEqual(calls.at(-1).body, { text: 'Be brief.', name: 'Brief', priority: 2 })
+    await bank.operations({ status: 'queued', type: 'retain' })
+    assert.equal(calls.at(-1).search, '?status=queued&type=retain')
+    await bank.createWebhook('https://example.com/h', { eventTypes: ['retain.completed'] })
+    assert.deepEqual(calls.at(-1).body, { url: 'https://example.com/h', enabled: true, events: ['retain.completed'] })
+    await bank.importTemplate('support', { dryRun: true })
+    assert.deepEqual(calls.at(-1).body, { template: 'support' })
+    assert.equal(calls.at(-1).search, '?dry_run=true')
+    await bank.importTemplate({ version: '1', directives: [{ text: 'x' }] })
+    assert.deepEqual(calls.at(-1).body, { manifest: { version: '1', directives: [{ text: 'x' }] } })
+    await new Banks(g).template('coding-agent')
+    assert.equal(calls.at(-1).path, '/api/bank-templates/coding-agent')
+  })
+
+  it('waits for an operation to finish', async () => {
+    const states = ['queued', 'running', 'completed']
+    g._fetch = () => Promise.resolve(new Response(JSON.stringify({ id: 'op-1', kind: 'retain', type: 'retain', status: states.shift() })))
+    const op = await bank.waitOperation('op-1', { intervalMs: 0 })
+    assert.equal(op.status, 'completed')
+    g._fetch = () => Promise.resolve(new Response(JSON.stringify({ id: 'op-1', status: 'running' })))
+    await assert.rejects(bank.waitOperation('op-1', { timeoutMs: 0, intervalMs: 0 }), GrimoireError)
   })
 })
 

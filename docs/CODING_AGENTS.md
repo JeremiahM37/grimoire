@@ -60,24 +60,59 @@ env = { GRIMOIRE_URL = "http://127.0.0.1:9111", GRIMOIRE_AGENT_NAME = "codex", G
 On a gated server add `GRIMOIRE_AUTH_TOKEN`. Put it in the launcher's
 environment rather than a file you commit.
 
+**One bank per endpoint, over HTTP.** For a client that speaks MCP over HTTP,
+run `grimoire-mcp` with its HTTP transport. Per-bank endpoints live there — on
+the MCP process's own port (default `127.0.0.1:9112`), **not** on the Grimoire
+server's port, which only serves the REST API the MCP process calls:
+
+```bash
+GRIMOIRE_MCP_TRANSPORT=http GRIMOIRE_MCP_PORT=9112 \
+GRIMOIRE_URL=http://127.0.0.1:9111 GRIMOIRE_AGENT_NAME=claude-code \
+  /path/to/grimoire-mcp
+```
+
+```bash
+claude mcp add --transport http grimoire-myrepo \
+  http://127.0.0.1:9112/mcp/coding-agent:myrepo
+```
+
+`/mcp/<bank>` hands the agent exactly that bank: the tools take no `bank`
+argument and `list_banks` / `create_bank` are not offered. `/mcp` with an
+`X-Bank-Id: <bank>` header makes that bank the default instead. It binds
+loopback and has no authentication of its own: set `GRIMOIRE_MCP_TOKEN` (sent
+as `Authorization: Bearer …`) or put it behind a proxy before exposing it. A
+bank's `mcp_tools` setting (e.g. `grimoire bank update coding-agent:myrepo
+--config mcp_tools=bank_recall,reflect`) narrows what an agent may call on it.
+
 The bank tools the agent gets:
 
 | tool | what it does |
 |---|---|
-| `retain` | hand over content (text, or a JSON array of `{speaker, text, timestamp}` turns) to extract facts from |
-| `bank_recall` | recall facts for a question, within a token budget |
+| `retain` | hand over content (text, or a JSON array of `{speaker, text, timestamp}` turns) to extract facts from; queued, returns an `operation_id` |
+| `bank_recall` | recall facts (and observations) for a question, within a token budget |
+| `reflect` | answer a question by reasoning over mental models, observations and facts, citing what it used |
 | `list_banks`, `create_bank`, `bank_profile` | banks and their missions |
-| `list_bank_memories`, `delete_bank_memory` | browse and remove facts (a fact a person wrote needs `force`) |
+| `list_bank_memories`, `get_bank_memory`, `delete_bank_memory` | browse and remove facts (a fact a person wrote needs `force`) |
 | `list_entities` | people, components and tools the bank knows about |
 | `list_bank_documents`, `get_bank_document`, `delete_bank_document` | the sources facts came from |
+| `consolidate`, `list_observations` | distil facts into observations, and read them |
+| `list_mental_models`, `get_mental_model`, `create_mental_model`, `update_mental_model`, `delete_mental_model`, `refresh_mental_model` | standing questions whose answers the bank keeps written down (the `coding-agent` template creates three) |
+| `list_directives`, `create_directive`, `delete_directive` | standing rules every reflect answer follows |
+| `list_operations`, `get_operation`, `cancel_operation` | background work: retains, consolidations, refreshes |
+| `list_bank_templates`, `import_bank_template` | bank templates |
+
+Consolidation and mental-model refreshes need a language model on the server
+(`model_required` otherwise); reflect then answers by quoting what recall
+finds.
 
 Add a line to the repository's `CLAUDE.md` / `AGENTS.md` so the agent uses them:
 
 ```markdown
 This repository has a Grimoire memory bank (`coding-agent:myrepo`, via the
-`grimoire` MCP server). Before starting a task, `bank_recall` the goal. After a
-decision, a dead end or a user preference, `retain` it in a sentence or two,
-with the reason. Memory is a record of the past: verify it against the code.
+`grimoire` MCP server). Before starting a task, `bank_recall` the goal (or
+`reflect` on a question about the project). After a decision, a dead end or a
+user preference, `retain` it in a sentence or two, with the reason. Memory is a
+record of the past: verify it against the code.
 ```
 
 A good bank profile helps extraction keep the right things:
@@ -116,7 +151,10 @@ document, `session:<session_id>`, tagged `source:session`.
 The whole transcript is sent each time and replaces the stored document, so
 the hook is idempotent: the server re-extracts only the chunks that changed,
 and the hook skips the request entirely when nothing changed since its last
-send. With `GRIMOIRE_BANK_RECALL=1` it also handles `UserPromptSubmit`: it
+send. The retain is queued (`async`): the server answers at once with an
+operation id and extracts in the background, so a long transcript never holds
+the agent up (`grimoire bank ops ls coding-agent:myrepo` shows the work). A
+server without the operations queue is retained into in the foreground. With `GRIMOIRE_BANK_RECALL=1` it also handles `UserPromptSubmit`: it
 recalls from the bank with the prompt and adds up to 4 KB of facts as context,
 marking a person's facts and disputed ones.
 
@@ -176,9 +214,17 @@ hook](AUTOMATIC_MEMORY.md):
 
 ## Reading what the bank learned
 
-The **Banks** panel in the web app (command palette: "Memory banks") lists
-each bank's facts, documents and entities and has a recall playground.
+The **Memory banks** panel in the web app (command palette: "Memory banks")
+shows each bank's facts, documents, entities, observations, mental models (as
+a folder tree, with refresh and any pending proposal to accept or reject),
+directives and background operations, and has a playground for recall (with
+each arm's ranks) and reflect (with the memories it cited).
 `grimoire bank recall coding-agent:myrepo "why is the cache keyed by commit?"`
-does the same from a shell. Correct a fact in its file and it is yours from
-then on: re-retains, document replacement and model re-extraction never
-overwrite it.
+and `grimoire bank reflect coding-agent:myrepo "…"` do the same from a shell.
+
+Correct a fact in its file and it is yours from then on: re-retains, document
+replacement and model re-extraction never overwrite it. The same holds one
+level up: an observation you edit is never revised by consolidation (the
+model's disagreement is filed beside it as a challenge), and a mental model
+whose text you edited is never overwritten — the next refresh waits as a
+proposal for you to accept or reject.

@@ -66,6 +66,7 @@ def test_retains_text_turns_into_the_repo_bank(environment, repo, tmp_path):
     assert item["tags"] == ["source:session"]
     assert item["update_mode"] == "replace"
     assert item["timestamp"] == "2026-10-07T10:00:00Z"
+    assert body["async"] is True
     assert item["content"] == [
         {"speaker": "user", "text": "Why does the build fail?", "timestamp": "2026-10-07T10:00:00Z"},
         {"speaker": "assistant", "text": "The cache is stale; clear it.",
@@ -130,6 +131,30 @@ def test_failures_leave_no_marker_so_the_next_stop_retries(environment, repo, tm
     sent = []
     hook.run(event(transcript, repo), environment, lambda *a: sent.append(a) or {})
     assert len(sent) == 1
+
+
+def test_server_without_a_queue_retains_in_the_foreground(environment, repo, tmp_path):
+    import io
+    import urllib.error
+
+    transcript = claude_transcript(tmp_path / "t.jsonl")
+    bodies = []
+
+    def old_server(base, token, path, body, timeout):
+        bodies.append(body)
+        if body.get("async"):
+            raise urllib.error.HTTPError(base + path, 400, "Bad Request", {}, io.BytesIO(
+                b'{"detail": "async retain is not available yet; send async=false"}'))
+        return {"success": True}
+
+    hook.run(event(transcript, repo), environment, old_server)
+    assert [b.get("async") for b in bodies] == [True, None]
+
+    def other_400(base, token, path, body, timeout):
+        raise urllib.error.HTTPError(base + path, 400, "Bad Request", {}, io.BytesIO(b'{"detail": "items"}'))
+
+    with pytest.raises(urllib.error.HTTPError):
+        hook.run(event(transcript, repo, session="s2"), environment, other_400)
 
 
 def test_oversized_transcript_keeps_the_newest_turns(environment, repo, tmp_path, monkeypatch):

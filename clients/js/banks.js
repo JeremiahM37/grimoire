@@ -23,10 +23,10 @@
 import { GrimoireError, NotFound, Unauthorized, VaultLocked } from './index.js'
 
 /**
- * The server does not have this bank feature (yet). Raised by the newer
- * endpoints — reflect, observations, mental models, operations, webhooks,
- * templates — when the route itself is missing. A missing bank is still
- * NotFound.
+ * The server does not have this bank feature. Raised by the reasoning
+ * endpoints — reflect, observations, mental models, directives, operations,
+ * webhooks, templates — on a server from before them, which answers 404 for
+ * the route itself. A missing bank is still NotFound.
  */
 export class NotAvailable extends NotFound {
   constructor(...args) {
@@ -34,6 +34,22 @@ export class NotAvailable extends NotFound {
     this.name = 'NotAvailable'
   }
 }
+
+/**
+ * The call needs a language model and the server has none configured
+ * (409 `{code: 'model_required'}`): consolidation, a mental-model refresh.
+ * Reflect answers extractively instead of throwing it.
+ */
+export class ModelRequired extends GrimoireError {
+  constructor(...args) {
+    super(...args)
+    this.name = 'ModelRequired'
+    this.code = 'model_required'
+  }
+}
+
+/** Operation statuses after which nothing more happens. */
+export const TERMINAL_STATUSES = ['completed', 'failed', 'cancelled']
 
 const seg = (value) => encodeURIComponent(String(value))
 
@@ -63,7 +79,18 @@ function messageOf(text) {
   }
 }
 
-function errorFor(status, message, url) {
+function codeOf(text) {
+  try {
+    const code = JSON.parse(text)?.code
+    return typeof code === 'string' ? code : ''
+  } catch {
+    return ''
+  }
+}
+
+function errorFor(status, text, url) {
+  const message = messageOf(text)
+  if (status === 409 && codeOf(text) === 'model_required') return new ModelRequired(status, message, url)
   if (status === 404) return new NotFound(status, message, url)
   if (status === 401 || status === 403) return new Unauthorized(status, message, url)
   if (status === 423) return new VaultLocked(status, message, url)
@@ -71,7 +98,7 @@ function errorFor(status, message, url) {
 }
 
 /** One HTTP call through a Grimoire client's url, token, agent and fetch. */
-export async function bankRequest(client, method, path, body) {
+export async function bankRequest(client, method, path, body, options = {}) {
   const url = client.url + path
   const headers = { Accept: 'application/json' }
   if (body !== undefined) headers['Content-Type'] = 'application/json'
@@ -86,7 +113,8 @@ export async function bankRequest(client, method, path, body) {
     throw new GrimoireError(0, `cannot reach grimoire: ${cause.message}`, url)
   }
   const text = await response.text()
-  if (!response.ok) throw errorFor(response.status, messageOf(text), url)
+  if (!response.ok) throw errorFor(response.status, text, url)
+  if (options.raw) return text
   if (!text) return null
   try {
     return JSON.parse(text)
@@ -100,9 +128,9 @@ export async function bankRequest(client, method, path, body) {
  * with the router's plain "404 page not found" (or 405 when the path exists
  * for another method); a missing bank answers JSON detail and stays NotFound.
  */
-export async function featureRequest(client, method, path, body) {
+export async function featureRequest(client, method, path, body, options) {
   try {
-    return await bankRequest(client, method, path, body)
+    return await bankRequest(client, method, path, body, options)
   } catch (error) {
     const missingRoute = error instanceof NotFound && /page not found/i.test(error.detail ?? '')
     if (missingRoute || error?.status === 405) {
@@ -123,8 +151,8 @@ export class Bank {
     return bankRequest(this.client, method, `/api/banks/${seg(this.id)}${path}`, body)
   }
 
-  #feature(method, path, body) {
-    return featureRequest(this.client, method, `/api/banks/${seg(this.id)}${path}`, body)
+  #feature(method, path, body, options) {
+    return featureRequest(this.client, method, `/api/banks/${seg(this.id)}${path}`, body, options)
   }
 
   // ---- profile ------------------------------------------------------
@@ -138,9 +166,11 @@ export class Bank {
 
   /**
    * Hand the bank raw content (text, or an array of {speaker, text,
-   * timestamp} turns). `async: true` asks for a queued retain; a server
-   * without the operations queue refuses that, and the retain then runs
-   * synchronously with `async_fallback: true` on the result.
+   * timestamp} turns). `async: true` queues it: the server answers at once
+   * with `{async: true, operation_id, operation_ids, items_count}`, and
+   * `waitOperation` follows it. A server without the operations queue
+   * refuses that, and the retain then runs synchronously with
+   * `async_fallback: true` on the result.
    */
   async retain(content, options = {}) {
     let items = options.items
@@ -209,53 +239,191 @@ export class Bank {
   deleteDocument(id, options = {}) { return this.#req('DELETE', `/documents/${seg(id)}${qs({ force: options.force })}`) }
   chunk(id) { return this.#req('GET', `/chunks/${seg(id)}`) }
 
-  // ---- newer endpoints -------------------------------------------------
-  // Routes a server may not have yet; each throws NotAvailable when missing.
-  // Keep them together: this block is the one place to align later.
+  // ---- reasoning endpoints ----------------------------------------------
+  // Reflect, observations, mental models, directives, operations, webhooks
+  // and templates. A server from before these routes throws NotAvailable;
+  // a call that needs a language model the server lacks throws
+  // ModelRequired (error.code === 'model_required').
 
+  /** Counts, including `model_available`. */
+  stats() { return this.#feature('GET', '/stats') }
+
+  /**
+   * Answer `query` by reasoning over the bank. The result always has `text`,
+   * `mode` ('llm' or 'extractive') and `based_on` {memories, observations,
+   * mental_models, directives}; `trace` only with `includeToolCalls` or
+   * `trace: true`. `types` is accepted as an alias of `factTypes`.
+   */
   reflect(query, options = {}) {
     const body = { query }
     const fields = [
       ['budget', options.budget], ['max_tokens', options.maxTokens], ['context', options.context],
-      ['response_schema', options.responseSchema], ['types', options.types], ['tags', options.tags],
-      ['tags_match', options.tagsMatch],
+      ['response_schema', options.responseSchema], ['fact_types', options.factTypes ?? options.types],
+      ['tags', options.tags], ['tags_match', options.tagsMatch], ['tag_groups', options.tagGroups],
+      ['apply_all_directives', options.applyAllDirectives],
+      ['exclude_mental_models', options.excludeMentalModels],
+      ['exclude_mental_model_ids', options.excludeMentalModelIds],
+      ['query_timestamp', iso(options.queryTimestamp)],
     ]
     for (const [key, value] of fields) if (value !== undefined && value !== null) body[key] = value
     const include = {}
     if (options.includeFacts !== false) include.facts = {}
     if (options.includeToolCalls) include.tool_calls = {}
     if (Object.keys(include).length) body.include = include
+    if (options.trace) body.trace = true
     return this.#feature('POST', '/reflect', body)
   }
-  observations(options = {}) { return this.#feature('GET', '/observations' + qs(options)) }
+
+  // observations and consolidation
+
+  /** `{items, total}`, plus `history` with `includeHistory`. */
+  observations(options = {}) {
+    return this.#feature('GET', '/observations' + qs({
+      q: options.q, authority: options.authority, tags: options.tags?.join(','),
+      tags_match: options.tagsMatch, include_history: options.includeHistory ? 'true' : undefined,
+      limit: options.limit, offset: options.offset,
+    }))
+  }
+  /** `{observation, history}`. */
+  observation(id) { return this.#feature('GET', `/observations/${seg(id)}`) }
+  /** Retire one into history; a person's needs `{ force: true }`. */
+  deleteObservation(id, options = {}) { return this.#feature('DELETE', `/observations/${seg(id)}${qs({ force: options.force })}`) }
+  /** Retire every model observation (a person's stay). */
+  clearObservations() { return this.#feature('DELETE', '/observations') }
+  /** Queue a consolidation: `{operation_id, deduplicated}`. */
   consolidate() { return this.#feature('POST', '/consolidate', {}) }
-  mentalModels() { return this.#feature('GET', '/mental-models') }
+
+  // mental models — ids are paths ('people/dana'), one encoded segment
+
+  /** `{items, total}`; bodies with `detail: true`. */
+  mentalModels(options = {}) {
+    return this.#feature('GET', '/mental-models' + qs({
+      tags: options.tags?.join(','), tags_match: options.tagsMatch, folder: options.folder,
+      detail: options.detail ? 'full' : undefined,
+    }))
+  }
   mentalModel(id) { return this.#feature('GET', `/mental-models/${seg(id)}`) }
-  createMentalModel(name, sourceQuery, options = {}) {
-    const body = { name, source_query: sourceQuery, tags: options.tags ?? [] }
-    if (options.id) body.id = options.id
-    if (options.maxTokens !== undefined) body.max_tokens = options.maxTokens
-    if (options.refreshAfterConsolidation !== undefined) {
-      body.trigger = { refresh_after_consolidation: options.refreshAfterConsolidation }
+  /**
+   * Create a standing question. Returns `{mental_model, mental_model_id,
+   * operation_id}`; `operation_id` is null when `body` was given or the
+   * server has no model. `id` is the whole path; without one the id is
+   * `folder` plus a slug of `name`. `options.sourceQuery` and
+   * `refreshAfterConsolidation` are accepted from older callers.
+   */
+  createMentalModel(name, question, options = {}) {
+    const q = question ?? options.question ?? options.sourceQuery
+    if (!q) throw new TypeError('createMentalModel needs a question')
+    let refresh = options.refresh
+    if (refresh === undefined && options.refreshAfterConsolidation !== undefined) {
+      refresh = options.refreshAfterConsolidation ? 'auto' : 'manual'
     }
+    const body = { name, question: q }
+    const fields = [
+      ['id', options.id], ['folder', options.folder], ['tags', options.tags], ['refresh', refresh],
+      ['max_tokens', options.maxTokens], ['budget', options.budget], ['fact_types', options.factTypes],
+      ['body', options.body],
+    ]
+    for (const [key, value] of fields) if (value !== undefined && value !== null) body[key] = value
     return this.#feature('POST', '/mental-models', body)
   }
+  /** Patch any create field (snake_case). `body` is a person's edit; `folder` moves it and changes its id. */
+  updateMentalModel(id, fields) { return this.#feature('PATCH', `/mental-models/${seg(id)}`, fields) }
+  /** Move to `folder` ('' for the top); resolves to the model under its new id. */
+  moveMentalModel(id, folder) { return this.updateMentalModel(id, { folder }) }
+  deleteMentalModel(id) { return this.#feature('DELETE', `/mental-models/${seg(id)}`) }
+  /** Queue a refresh: `{operation_id, status, deduplicated}`. */
   refreshMentalModel(id) { return this.#feature('POST', `/mental-models/${seg(id)}/refresh`, {}) }
   acceptProposal(id) { return this.#feature('POST', `/mental-models/${seg(id)}/proposal/accept`, {}) }
   rejectProposal(id) { return this.#feature('POST', `/mental-models/${seg(id)}/proposal/reject`, {}) }
-  deleteMentalModel(id) { return this.#feature('DELETE', `/mental-models/${seg(id)}`) }
-  operations(options = {}) { return this.#feature('GET', '/operations' + qs(options)) }
+  /** The model's versions, or one version's `content`. */
+  mentalModelHistory(id, version) {
+    const tail = version === undefined ? '' : `/${seg(version)}`
+    return this.#feature('GET', `/mental-models/${seg(id)}/history${tail}`)
+  }
+  /** Knowledge-page tree: `[{kind: 'folder'|'page', name, path, model?, children?}]`. */
+  async mentalModelTree(options = {}) {
+    return (await this.#feature('GET', '/mental-models-tree' + qs({ folder: options.folder })))?.roots ?? []
+  }
+  /** `[{path, content}]`, or with `{ markdown: true }` one markdown string. */
+  async exportMentalModels(options = {}) {
+    if (options.markdown) return this.#feature('GET', '/mental-models-export?format=markdown', undefined, { raw: true })
+    return (await this.#feature('GET', '/mental-models-export'))?.files ?? []
+  }
+
+  // directives
+
+  /** `{items, total}`; inactive ones too unless `activeOnly`. */
+  directives(options = {}) {
+    return this.#feature('GET', '/directives' + qs({
+      tags: options.tags?.join(','), active_only: options.activeOnly ? 'true' : 'false',
+    }))
+  }
+  createDirective(text, options = {}) {
+    const body = { text }
+    const fields = [['name', options.name], ['tags', options.tags], ['priority', options.priority], ['is_active', options.isActive]]
+    for (const [key, value] of fields) if (value !== undefined && value !== null) body[key] = value
+    return this.#feature('POST', '/directives', body)
+  }
+  /** Patch text, name, tags, priority, is_active. */
+  updateDirective(id, fields) { return this.#feature('PATCH', `/directives/${seg(id)}`, fields) }
+  deleteDirective(id) { return this.#feature('DELETE', `/directives/${seg(id)}`) }
+
+  // operations
+
+  /** `{bank_id, operations, total}`; each has `kind` (= `type`) and `status`. */
+  operations(options = {}) {
+    return this.#feature('GET', '/operations' + qs({
+      status: options.status, type: options.type ?? options.kind, limit: options.limit, offset: options.offset,
+    }))
+  }
   operation(id) { return this.#feature('GET', `/operations/${seg(id)}`) }
   cancelOperation(id) { return this.#feature('DELETE', `/operations/${seg(id)}`) }
+  /**
+   * Poll until the operation is completed, failed or cancelled, and resolve
+   * to it (a failure is returned, not thrown: read `error`). Rejects with a
+   * GrimoireError after `timeoutMs`.
+   */
+  async waitOperation(id, options = {}) {
+    const timeoutMs = options.timeoutMs ?? 120000
+    const intervalMs = options.intervalMs ?? 500
+    const deadline = Date.now() + timeoutMs
+    for (;;) {
+      const op = await this.operation(id)
+      if (TERMINAL_STATUSES.includes(op?.status)) return op
+      if (Date.now() >= deadline) throw new GrimoireError(0, `operation ${id} is still ${op?.status}`, '')
+      await new Promise((resolve) => setTimeout(resolve, intervalMs))
+    }
+  }
+
+  // webhooks
+
+  /** `{items, total}`. */
   webhooks() { return this.#feature('GET', '/webhooks') }
+  /** The secret (generated when not given) is in the response this once. */
   createWebhook(url, options = {}) {
     const body = { url, enabled: options.enabled ?? true }
     if (options.secret) body.secret = options.secret
-    if (options.eventTypes?.length) body.event_types = options.eventTypes
+    const events = options.events ?? options.eventTypes
+    if (events?.length) body.events = events
     return this.#feature('POST', '/webhooks', body)
   }
   updateWebhook(id, fields) { return this.#feature('PATCH', `/webhooks/${seg(id)}`, fields) }
   deleteWebhook(id) { return this.#feature('DELETE', `/webhooks/${seg(id)}`) }
+  async webhookDeliveries(id, options = {}) {
+    return (await this.#feature('GET', `/webhooks/${seg(id)}/deliveries${qs({ limit: options.limit })}`))?.items ?? []
+  }
+
+  // templates
+
+  /** The bank's configuration as a template manifest. */
+  export() { return this.#feature('GET', '/export') }
+  /** Apply a manifest, or `{ template: '<built-in id>' }`; additive. */
+  importTemplate(manifestOrTemplate, options = {}) {
+    const body = typeof manifestOrTemplate === 'string' ? { template: manifestOrTemplate }
+      : manifestOrTemplate?.template ? { template: manifestOrTemplate.template }
+        : { manifest: manifestOrTemplate?.manifest ?? manifestOrTemplate }
+    return this.#feature('POST', '/import' + qs({ dry_run: options.dryRun ? 'true' : undefined }), body)
+  }
 }
 
 /** The bank collection. */
@@ -264,7 +432,9 @@ export class Banks {
   bank(id) { return new Bank(this.client, id) }
   async list() { return (await bankRequest(this.client, 'GET', '/api/banks'))?.banks ?? [] }
   create(id, fields = {}) { return bankRequest(this.client, 'POST', '/api/banks', { bank_id: id, ...fields }) }
+  /** Built-in templates `[{id, name, description, manifest}]`; needs a signed-in user where accounts exist. */
   async templates() { return (await featureRequest(this.client, 'GET', '/api/bank-templates'))?.templates ?? [] }
+  template(id) { return featureRequest(this.client, 'GET', `/api/bank-templates/${seg(id)}`) }
 }
 
 // ---- memory wrapper ------------------------------------------------------
