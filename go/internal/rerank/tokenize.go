@@ -84,10 +84,10 @@ func (t *pairTokenizer) encodePair(query, doc string, maxLen int) (ids, types []
 // truncateLongestFirst returns how many tokens of each sequence to keep so the
 // pair fits in target, using the HF tokenizers "longest_first" rule: the
 // shorter sequence is kept whole when the longer one can absorb the cut,
-// otherwise the budget is split evenly with any odd token going to the second
-// sequence. This is a closed form, not the one-token-at-a-time loop of the
-// older Python tokenizers, and the two differ on ties — the fast tokenizer is
-// the reference here.
+// otherwise the budget is split evenly with any odd token going to the longer
+// sequence (the second, on a tie). This is a closed form, not the
+// one-token-at-a-time loop of the older Python tokenizers, and the two differ
+// on ties — the fast tokenizer is the reference here.
 func truncateLongestFirst(na, nb, target int) (int, int) {
 	if target < 0 {
 		target = 0
@@ -95,22 +95,14 @@ func truncateLongestFirst(na, nb, target int) (int, int) {
 	if na+nb <= target {
 		return na, nb
 	}
-	first, second := na, nb
-	swap := first > second
-	if swap {
-		first, second = second, first
+	short := min(na, nb)
+	keepShort, keepLong := short, max(short, target-short)
+	if short > target || keepShort+keepLong > target {
+		keepShort = target / 2
+		keepLong = keepShort + target%2
 	}
-	if first > target {
-		second = first
-	} else {
-		second = max(first, target-first)
+	if na > nb {
+		return min(na, keepLong), min(nb, keepShort)
 	}
-	if first+second > target {
-		first = target / 2
-		second = first + target%2
-	}
-	if swap {
-		first, second = second, first
-	}
-	return min(na, first), min(nb, second)
+	return min(na, keepShort), min(nb, keepLong)
 }
