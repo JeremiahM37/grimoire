@@ -34,6 +34,7 @@ func (s *Server) bankRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/banks/{bank}/documents/{id}", s.getBankDocument)
 	mux.HandleFunc("DELETE /api/banks/{bank}/documents/{id}", s.deleteBankDocument)
 	mux.HandleFunc("GET /api/banks/{bank}/chunks/{id}", s.getBankChunk)
+	mux.HandleFunc("GET /api/banks/{bank}/context", s.bankContext)
 	s.bankReasoningRoutes(mux)
 }
 
@@ -600,4 +601,20 @@ func (s *Server) getBankChunk(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, c)
+}
+
+// bankContext renders what a coding agent is shown when a session starts, held
+// under max_chars (default 9000).
+func (s *Server) bankContext(w http.ResponseWriter, r *http.Request) {
+	id, ok := s.bankReadable(w, r)
+	if !ok {
+		return
+	}
+	n, _ := strconv.Atoi(r.URL.Query().Get("max_chars"))
+	res, err := s.Banks.SessionContext(id, bank.ContextOptions{MaxChars: n, Source: r.URL.Query().Get("source")})
+	if err != nil {
+		writeBankErr(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
 }

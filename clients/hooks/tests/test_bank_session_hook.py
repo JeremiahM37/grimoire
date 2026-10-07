@@ -221,3 +221,41 @@ def test_private_spans_and_secrets_never_leave_the_machine(environment, repo, tm
 def test_sanitize_leaves_placeholders_and_prose_alone():
     text = 'api_key = "TODO"  and ordinary words about tokens'
     assert hook.sanitize(text) == text
+
+
+def start_event(repo, source="startup"):
+    return {"hook_event_name": "SessionStart", "session_id": "s", "cwd": str(repo), "source": source}
+
+
+def test_fit_items_drops_the_lowest_value_until_it_fits():
+    items = ["- most valuable"] + ["- filler %d %s" % (i, "z" * 50) for i in range(40)]
+    text, kept, dropped = hook.fit_items("<a>\n", items, "\n</a>", 500)
+    assert len(text) <= 500 and kept + dropped == len(items) and dropped > 0
+    assert "- most valuable" in text and "left out" in text
+    assert "filler 0 " in text and "filler 39 " not in text  # the tail went first
+    assert hook.fit_items("<a>\n", ["x" * 900], "</a>", 500) == ("", 0, 1)
+
+
+def test_hook_limit_is_configurable_and_clamped():
+    assert hook.hook_limit({}) == 9000
+    assert hook.hook_limit({"GRIMOIRE_HOOK_MAX_CHARS": "2000"}) == 2000
+    assert hook.hook_limit({"GRIMOIRE_HOOK_MAX_CHARS": "99999"}) == hook.MAX_HOOK_CHARS < 10000
+    assert hook.hook_limit({"GRIMOIRE_HOOK_MAX_CHARS": "5"}) == hook.MIN_HOOK_CHARS
+    assert hook.hook_limit({"GRIMOIRE_HOOK_MAX_CHARS": "junk"}) == 9000
+
+
+def test_session_start_injection_is_opt_in_and_never_exceeds_the_limit(environment, repo):
+    seen = []
+
+    def get(base, token, path, timeout):
+        seen.append(path)
+        return {"context": "<grimoire_bank_context>\n" + "line\n" * 5000 + "</grimoire_bank_context>"}
+
+    assert hook.run(start_event(repo), environment, get=get) is None  # not enabled
+    on = {**environment, "GRIMOIRE_BANK_CONTEXT": "1", "GRIMOIRE_HOOK_MAX_CHARS": "1500"}
+    out = hook.run(start_event(repo, "compact"), on, get=get)
+    text = out["hookSpecificOutput"]["additionalContext"]
+    assert out["hookSpecificOutput"]["hookEventName"] == "SessionStart"
+    assert len(text) <= 1500
+    assert seen[0] == "/api/banks/coding-agent%3Amy-repo/context?max_chars=1500&source=compact"
+    assert hook.run(start_event(repo), on, get=lambda *a: {"context": ""}) is None

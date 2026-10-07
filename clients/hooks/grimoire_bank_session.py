@@ -10,6 +10,10 @@ A Claude Code / Codex command hook, Python 3 standard library only.
   the server re-extracts only the chunks that changed.
 - ``UserPromptSubmit`` (only with ``GRIMOIRE_BANK_RECALL=1``): recall from the
   bank with the prompt and add what comes back as context.
+- ``SessionStart`` (only with ``GRIMOIRE_BANK_CONTEXT=1``): add the bank's
+  standing rules and knowledge as context. Every injection is measured and its
+  lowest-value items dropped until it fits ``GRIMOIRE_HOOK_MAX_CHARS`` (default
+  9000; Claude Code truncates hook output over 10,000).
 
 Opt-in (``GRIMOIRE_BANK_SESSIONS=1`` for retain). Loopback HTTP or HTTPS only,
 short timeouts, bounded sizes, and fail-open: any problem means the agent
@@ -31,7 +35,9 @@ from pathlib import Path
 MAX_TRANSCRIPT_BYTES = 8_000_000   # read at most the newest 8 MB of a transcript
 MAX_TURN_CHARS = 8_000
 MAX_CONTENT_BYTES = 1_500_000      # oldest turns are dropped beyond this
-MAX_CONTEXT_BYTES = 4_000
+MAX_CONTEXT_BYTES = 4_000          # default budget for a per-prompt recall injection
+DEFAULT_HOOK_CHARS = 9_000         # Claude Code truncates hook output over 10,000 characters
+MIN_HOOK_CHARS, MAX_HOOK_CHARS = 300, 9_800
 BANK_ID = re.compile(r"[a-z0-9][a-z0-9._:-]{0,63}")
 INJECTED = re.compile(
     r"<(system-reminder|grimoire[\w-]*|hook_prompt|task-notification|relevant_memories|"
@@ -230,6 +236,47 @@ def read_turns(transcript_path):
     return turns
 
 
+def hook_limit(environment, default=DEFAULT_HOOK_CHARS):
+    """The most characters an injection may render (GRIMOIRE_HOOK_MAX_CHARS)."""
+    try:
+        value = int(environment.get("GRIMOIRE_HOOK_MAX_CHARS", default))
+    except ValueError:
+        value = default
+    return max(MIN_HOOK_CHARS, min(MAX_HOOK_CHARS, value))
+
+
+def fit_items(head, items, tail, limit):
+    """Render head + items + tail under ``limit`` characters.
+
+    Items come in descending value. The rendered size is measured and the
+    lowest-value (last) item is dropped until it fits, with a note saying how
+    many were left out. Returns (text, kept, dropped); text is "" when not even
+    the first item fits whole.
+    """
+    kept = list(items)
+    while kept:
+        dropped = len(items) - len(kept)
+        note = ("\n(%d lower-value items left out.)" % dropped) if dropped else ""
+        text = head + "\n".join(kept) + note + tail
+        if len(text) <= limit:
+            return text, len(kept), dropped
+        kept.pop()
+    return "", 0, len(items)
+
+
+def request_get(base, token, path, timeout):
+    headers = {"Accept": "application/json", "X-Grimoire-Agent": "coding-agent-hook"}
+    if token:
+        headers["Authorization"] = "Bearer " + token
+    request = urllib.request.Request(base + path, headers=headers, method="GET")
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
+    with opener.open(request, timeout=timeout) as response:
+        raw = response.read(256001)
+    if len(raw) > 256000:
+        raise ValueError("oversized response")
+    return json.loads(raw) if raw else {}
+
+
 def request_json(base, token, path, body, timeout):
     headers = {"Accept": "application/json", "Content-Type": "application/json",
                "X-Grimoire-Agent": "coding-agent-hook"}
@@ -340,18 +387,31 @@ def recall(event, environment, base, bank, send):
             "Recalled from this repository's memory bank; a record of the past, which may or "
             "may not bear on the task. Verify against the code.\n")
     tail = "\n</grimoire_bank_memories>"
-    body = ""
-    for line in lines:
-        if len((head + body + line + "\n" + tail).encode()) > MAX_CONTEXT_BYTES:
-            break
-        body += line + "\n"
-    if not body:
+    default = MAX_CONTEXT_BYTES if "GRIMOIRE_HOOK_MAX_CHARS" not in environment else DEFAULT_HOOK_CHARS
+    body, kept, _ = fit_items(head, lines, tail, hook_limit(environment, default))
+    if not kept:
         return None
     return {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit",
-                                   "additionalContext": head + body.rstrip("\n") + tail}}
+                                   "additionalContext": body}}
 
 
-def run(event, environment=None, send=request_json):
+def start_context(event, environment, base, bank, get):
+    """SessionStart: the bank's digest, rules and knowledge, under the limit."""
+    limit = hook_limit(environment)
+    source = event.get("source", "startup")
+    source = source if source in {"startup", "resume", "clear", "compact"} else "startup"
+    query = urllib.parse.urlencode({"max_chars": limit, "source": source})
+    out = get(base, environment.get("GRIMOIRE_AUTH_TOKEN", ""),
+              "/api/banks/" + urllib.parse.quote(bank, safe="") + "/context?" + query, 2.5)
+    text = out.get("context") if isinstance(out, dict) else None
+    if not isinstance(text, str) or not text.strip():
+        return None
+    if len(text) > limit:  # the server should have fitted it; never trust that blindly
+        text = text[:limit - 1].rstrip() + "…"
+    return {"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": text}}
+
+
+def run(event, environment=None, send=request_json, get=request_get):
     environment = os.environ if environment is None else environment
     name = event.get("hook_event_name", "")
     if name in {"Stop", "SessionEnd"}:
@@ -359,6 +419,9 @@ def run(event, environment=None, send=request_json):
             return None
     elif name == "UserPromptSubmit":
         if environment.get("GRIMOIRE_BANK_RECALL") != "1":
+            return None
+    elif name == "SessionStart":
+        if environment.get("GRIMOIRE_BANK_CONTEXT") != "1":
             return None
     else:
         return None
@@ -370,6 +433,8 @@ def run(event, environment=None, send=request_json):
     if bank is None:
         debug(environment, "no bank: set GRIMOIRE_BANK or run inside a git repository")
         return None
+    if name == "SessionStart":
+        return start_context(event, environment, base, bank, get)
     if name == "UserPromptSubmit":
         return recall(event, environment, base, bank, send)
     return retain(event, environment, base, bank, send)
