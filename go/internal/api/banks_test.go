@@ -333,3 +333,27 @@ func TestBanksFollowSpacesAndMembership(t *testing.T) {
 		t.Error("anonymous recall leaked")
 	}
 }
+
+func TestRetainOverHTTPDropsPrivateSpansAndRedactsOnRequest(t *testing.T) {
+	s, h := testServer(t)
+	key := "ghp_" + strings.Repeat("aB3dE5gH7j", 4)
+	w := do(t, h, "POST", "/api/banks/priv/memories", map[string]any{"items": []map[string]any{
+		{"content": "Priya works at Shopify. <private>her badge number is 90210</private> Key " + key,
+			"scan_secrets": true, "document_id": "d"}}})
+	if w.Code != http.StatusOK {
+		t.Fatalf("retain = %d %s", w.Code, w.Body)
+	}
+	_ = filepath.Walk(s.Vault.Root, func(p string, info os.FileInfo, err error) error {
+		if err == nil && !info.IsDir() {
+			raw, _ := os.ReadFile(p)
+			if strings.Contains(string(raw), "90210") || strings.Contains(string(raw), key) {
+				t.Errorf("%s holds private or secret text", p)
+			}
+		}
+		return nil
+	})
+	if w := do(t, h, "POST", "/api/banks/priv/memories", map[string]any{"items": []map[string]any{
+		{"content": "<private>only this</private>"}}}); w.Code != http.StatusOK {
+		t.Errorf("an all-private retain must be a quiet success: %d %s", w.Code, w.Body)
+	}
+}

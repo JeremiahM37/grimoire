@@ -241,3 +241,40 @@ func entropy(s string) float64 {
 	}
 	return h
 }
+
+// RedactText replaces every suspected credential in text with a marker that
+// names its kind, and reports how many it replaced.
+//
+// It uses the same shapes and the same entropy bar as ScanText, so what is
+// redacted is what a scan would have reported. A sealed body is left alone.
+func RedactText(text string) (string, int) {
+	count := 0
+	lines := strings.Split(text, "\n")
+	for i, raw := range lines {
+		if strings.Contains(raw, EncPrefix) {
+			continue
+		}
+		for _, p := range patterns {
+			p := p
+			lines[i] = p.re.ReplaceAllStringFunc(lines[i], func(match string) string {
+				count++
+				if p.group > 0 {
+					sub := p.re.FindStringSubmatch(match)
+					if p.group < len(sub) && sub[p.group] != "" {
+						return strings.Replace(match, sub[p.group], "[REDACTED:"+p.kind+"]", 1)
+					}
+				}
+				return "[REDACTED:" + p.kind + "]"
+			})
+		}
+		lines[i] = assignment.ReplaceAllStringFunc(lines[i], func(match string) string {
+			sub := assignment.FindStringSubmatch(match)
+			if len(sub) < 3 || placeholders[strings.ToLower(sub[2])] || !looksRandom(sub[2]) {
+				return match
+			}
+			count++
+			return strings.Replace(match, sub[2], "[REDACTED:possible "+strings.ToLower(sub[1])+"]", 1)
+		})
+	}
+	return strings.Join(lines, "\n"), count
+}

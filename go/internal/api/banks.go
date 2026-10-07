@@ -243,11 +243,13 @@ type itemIn struct {
 	ResolveEntities *bool             `json:"resolve_entities"`
 	Tags            json.RawMessage   `json:"tags"`
 	UpdateMode      string            `json:"update_mode"`
+	ScanSecrets     bool              `json:"scan_secrets"`
 }
 
 func (in itemIn) item() (bank.Item, error) {
 	it := bank.Item{Context: in.Context, DocumentID: strings.TrimSpace(in.DocumentID),
-		Entities: in.Entities, ResolveEntities: in.ResolveEntities, UpdateMode: in.UpdateMode}
+		Entities: in.Entities, ResolveEntities: in.ResolveEntities, UpdateMode: in.UpdateMode,
+		ScanSecrets: in.ScanSecrets}
 	var str string
 	if json.Unmarshal(in.Content, &str) == nil {
 		it.Content = str
