@@ -29,7 +29,7 @@ or merge the snippets in sections 1 and 3 by hand.
 
 ```bash
 grimoire agent install [--claude-code] [--codex] [--bank NAME] [--url URL]
-                       [--recall] [--no-mcp] [--no-tools] [--dry-run]
+                       [--recall] [--files] [--no-mcp] [--no-tools] [--dry-run]
 grimoire agent status
 grimoire agent uninstall
 ```
@@ -235,6 +235,7 @@ environment in the agent launcher:
 |---|---|
 | `GRIMOIRE_BANK_SESSIONS=1` | required to retain anything |
 | `GRIMOIRE_BANK_RECALL=1` | also inject recalled facts on each prompt |
+| `GRIMOIRE_BANK_FILES=1` | `PreToolUse` on `Read` (Claude Code; `install --files`): inject what the bank remembers about that file, once per file per session, within a 2,500-character budget |
 | `GRIMOIRE_BANK_CONTEXT=1` | inject the bank's rules, knowledge and last-session digest at `SessionStart` |
 | `GRIMOIRE_BANK_TOOLS=1` | record file edits and commands at `PostToolUse` (see below) |
 | `GRIMOIRE_BANK_DIGEST=0` | turn the session digest off (on by default with `GRIMOIRE_BANK_SESSIONS=1`) |

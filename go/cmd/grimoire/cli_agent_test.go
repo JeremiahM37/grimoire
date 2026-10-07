@@ -221,3 +221,38 @@ func TestAgentCommandNeedsAnAgentAndAValidBank(t *testing.T) {
 		t.Error("unknown subcommand")
 	}
 }
+
+func TestAgentInstallFilesFlagAddsReadHookAndKeepsAPersonsPreToolUse(t *testing.T) {
+	home := agentHome(t)
+	settings := filepath.Join(home, ".claude", "settings.json")
+	if err := os.MkdirAll(filepath.Dir(settings), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mine := `{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"guard.sh"}]}]}}`
+	if err := os.WriteFile(settings, []byte(mine), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if code := cmdAgent([]string{"install", "--claude-code", "--bank", "coding-agent:demo"}); code != 0 {
+		t.Fatalf("install = %d", code)
+	}
+	pre := readJSON(t, settings)["hooks"].(map[string]any)["PreToolUse"].([]any)
+	if len(pre) != 1 || strings.Contains(string(mustJSON(pre)), "GRIMOIRE_BANK_FILES") {
+		t.Fatalf("file memory must be off by default: %v", pre)
+	}
+	if code := cmdAgent([]string{"install", "--claude-code", "--bank", "coding-agent:demo", "--files"}); code != 0 {
+		t.Fatalf("install --files = %d", code)
+	}
+	pre = readJSON(t, settings)["hooks"].(map[string]any)["PreToolUse"].([]any)
+	got := string(mustJSON(pre))
+	if len(pre) != 2 || !strings.Contains(got, "guard.sh") || !strings.Contains(got, "GRIMOIRE_BANK_FILES=1") ||
+		!strings.Contains(got, `"matcher":"Read"`) {
+		t.Fatalf("PreToolUse = %s", got)
+	}
+	if code := cmdAgent([]string{"install", "--claude-code", "--bank", "coding-agent:demo"}); code != 0 {
+		t.Fatal("reinstall without --files")
+	}
+	pre = readJSON(t, settings)["hooks"].(map[string]any)["PreToolUse"].([]any)
+	if len(pre) != 1 || !strings.Contains(string(mustJSON(pre)), "guard.sh") {
+		t.Fatalf("dropping --files must remove only ours: %v", pre)
+	}
+}
