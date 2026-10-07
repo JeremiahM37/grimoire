@@ -256,3 +256,60 @@ func TestAgentInstallFilesFlagAddsReadHookAndKeepsAPersonsPreToolUse(t *testing.
 		t.Fatalf("dropping --files must remove only ours: %v", pre)
 	}
 }
+
+// A fake `codex app-server` that answers hooks/list the way Codex 0.157 does.
+// Codex runs a hook only once config.toml holds its trusted_hash, so the
+// installer must copy Codex's own hash for every hook it wrote, and no other.
+func TestAgentInstallCodexRecordsTrustForItsOwnHooksOnly(t *testing.T) {
+	home := agentHome(t)
+	bin := t.TempDir()
+	fake := `#!/bin/sh
+while read -r line; do
+  case "$line" in *hooks/list*)
+    h="$CODEX_HOME/hooks.json"
+    echo "{\"id\":2,\"result\":{\"data\":[{\"cwd\":\"/\",\"hooks\":[" \
+      "{\"key\":\"$h:stop:0:0\",\"command\":\"python3 grimoire_bank_session.py\",\"sourcePath\":\"$h\",\"currentHash\":\"sha256:aaa\"}," \
+      "{\"key\":\"$h:stop:1:0\",\"command\":\"someone-elses-hook\",\"sourcePath\":\"$h\",\"currentHash\":\"sha256:bbb\"}]}]}}" | tr -d '\n'; echo; exit 0;;
+  esac
+done
+`
+	if err := os.WriteFile(filepath.Join(bin, "codex"), []byte(fake), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	config := filepath.Join(home, ".codex", "config.toml")
+	if err := os.MkdirAll(filepath.Dir(config), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	original := "model = \"gpt\"\n"
+	if err := os.WriteFile(config, []byte(original), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if code := cmdAgent([]string{"install", "--codex"}); code != 0 {
+		t.Fatal("install failed")
+	}
+	text, _ := os.ReadFile(config)
+	if !strings.Contains(string(text), `trusted_hash = "sha256:aaa"`) || strings.Contains(string(text), "sha256:bbb") {
+		t.Fatalf("trust block wrong:\n%s", text)
+	}
+	if code := cmdAgent([]string{"install", "--codex"}); code != 0 {
+		t.Fatal("second install failed")
+	}
+	if again, _ := os.ReadFile(config); string(again) != string(text) {
+		t.Errorf("trust block is not idempotent:\n%s\n---\n%s", text, again)
+	}
+	for _, b := range backups(t, filepath.Dir(config)) {
+		if strings.Contains(b, "config.toml") {
+			// The earliest copy is the user's own file, even with several edits in one second.
+			if kept, _ := os.ReadFile(b); string(kept) != original {
+				t.Errorf("backup %s = %q, want the original", b, kept)
+			}
+		}
+	}
+	if code := cmdAgent([]string{"uninstall", "--codex"}); code != 0 {
+		t.Fatal("uninstall failed")
+	}
+	if after, _ := os.ReadFile(config); string(after) != original {
+		t.Fatalf("config.toml after uninstall:\n%q", after)
+	}
+}

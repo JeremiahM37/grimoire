@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -42,6 +44,8 @@ digest), PostToolUse (local activity buffer), Stop and SessionEnd (retain the
 session and write its digest). --recall adds UserPromptSubmit recall. --files (Claude
 Code only, off by default) adds a PreToolUse hook on Read that injects what the bank
 remembers about the file being read.
+Codex runs a hook only after it is trusted, so install asks the installed codex for each
+hook's hash and records it in a managed block of config.toml (uninstall removes it).
 Files: Claude Code ~/.claude/settings.json and ~/.claude.json; Codex ~/.codex/hooks.json
 and ~/.codex/config.toml.`
 
@@ -50,6 +54,8 @@ const (
 	agentMarker  = agenthook.FileName
 	tomlBegin    = "# >>> grimoire agent install (managed block; `grimoire agent uninstall` removes it) >>>"
 	tomlEnd      = "# <<< grimoire agent install <<<"
+	trustBegin   = "# >>> grimoire agent install: hook trust (managed block; `grimoire agent uninstall` removes it) >>>"
+	trustEnd     = "# <<< grimoire agent install: hook trust <<<"
 	installedKey = "GRIMOIRE_INSTALLED_BY"
 	installedVal = "grimoire agent install"
 )
@@ -247,6 +253,14 @@ func installAgent(t *agentTarget, o agentOptions) ([]string, error) {
 		return out, err
 	}
 
+	if t.name == "codex" {
+		msg, err := trustCodexHooks(t, o)
+		out = append(out, "hook trust: "+msg)
+		if err != nil {
+			return out, err
+		}
+	}
+
 	if o.noMCP {
 		return out, nil
 	}
@@ -286,6 +300,13 @@ func uninstallAgent(t *agentTarget, o agentOptions) ([]string, error) {
 	out = append(out, "hooks: "+msg)
 	if err != nil {
 		return out, err
+	}
+	if t.name == "codex" {
+		msg, err = uninstallTrust(t.mcpFile, o.dryRun)
+		out = append(out, "hook trust: "+msg)
+		if err != nil {
+			return out, err
+		}
 	}
 	if t.mcpIsTOML {
 		msg, err = uninstallTOMLMCP(t.mcpFile, o.dryRun)
@@ -381,8 +402,12 @@ func applyFile(path string, old, next []byte, changed, dryRun bool) (string, err
 	msg := path + " (updated"
 	if old != nil {
 		backup := path + ".grimoire-backup-" + time.Now().UTC().Format("20060102-150405")
-		if err := writeAtomic(backup, old, 0o600); err != nil {
-			return msg + ")", fmt.Errorf("backing up %s: %w", path, err)
+		// Two edits to one file in the same second share a name; the first copy
+		// is the user's original, so it is never overwritten.
+		if _, err := os.Stat(backup); err != nil {
+			if err := writeAtomic(backup, old, 0o600); err != nil {
+				return msg + ")", fmt.Errorf("backing up %s: %w", path, err)
+			}
 		}
 		msg += ", old copy at " + backup
 	}
@@ -643,12 +668,16 @@ func tomlBlock(command string, env map[string]string) string {
 }
 
 func splitTOMLBlock(text string) (before, after string, found bool) {
-	i := strings.Index(text, tomlBegin)
-	j := strings.Index(text, tomlEnd)
+	return splitBetween(text, tomlBegin, tomlEnd)
+}
+
+func splitBetween(text, begin, end string) (before, after string, found bool) {
+	i := strings.Index(text, begin)
+	j := strings.Index(text, end)
 	if i < 0 || j < i {
 		return text, "", false
 	}
-	return text[:i], strings.TrimPrefix(text[j+len(tomlEnd):], "\n"), true
+	return text[:i], strings.TrimPrefix(text[j+len(end):], "\n"), true
 }
 
 func installTOMLMCP(path, command string, env map[string]string, dryRun bool) (string, error) {
@@ -693,6 +722,163 @@ func uninstallTOMLMCP(path string, dryRun bool) (string, error) {
 	if !found {
 		return path + " (no entry of ours)", nil
 	}
+	next := strings.TrimRight(before, "\n")
+	if next != "" && after != "" {
+		next += "\n\n"
+	} else if next != "" {
+		next += "\n"
+	}
+	next += after
+	return applyFile(path, raw, []byte(next), true, dryRun)
+}
+
+// codexHook is the part of a hooks/list entry the trust step needs.
+type codexHook struct {
+	Key         string `json:"key"`
+	Command     string `json:"command"`
+	SourcePath  string `json:"sourcePath"`
+	CurrentHash string `json:"currentHash"`
+}
+
+// listCodexHooks asks Codex itself for its hooks and their hashes. Codex runs a
+// hook only once config.toml holds a trusted_hash for it, and the hash is
+// Codex's own, so the only dependable source is Codex.
+func listCodexHooks(codexHome string) ([]codexHook, error) {
+	bin, err := exec.LookPath("codex")
+	if err != nil {
+		return nil, errors.New("codex is not on PATH")
+	}
+	cmd := exec.Command(bin, "app-server", "--listen", "stdio://")
+	cmd.Env = append(os.Environ(), "CODEX_HOME="+codexHome)
+	in, err := cmd.StdinPipe()
+	if err != nil {
+		return nil, err
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, err
+	}
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+	defer func() { _ = cmd.Process.Kill(); _ = cmd.Wait() }()
+	type result struct {
+		hooks []codexHook
+		err   error
+	}
+	done := make(chan result, 1)
+	go func() {
+		sc := bufio.NewScanner(stdout)
+		sc.Buffer(make([]byte, 1<<20), 8<<20)
+		for sc.Scan() {
+			var msg struct {
+				ID     int `json:"id"`
+				Result struct {
+					Data []struct {
+						Hooks []codexHook `json:"hooks"`
+					} `json:"data"`
+				} `json:"result"`
+				Error *struct {
+					Message string `json:"message"`
+				} `json:"error"`
+			}
+			if json.Unmarshal(sc.Bytes(), &msg) != nil || msg.ID != 2 {
+				continue
+			}
+			if msg.Error != nil {
+				done <- result{err: errors.New(msg.Error.Message)}
+				return
+			}
+			var hooks []codexHook
+			for _, d := range msg.Result.Data {
+				hooks = append(hooks, d.Hooks...)
+			}
+			done <- result{hooks: hooks}
+			return
+		}
+		done <- result{err: errors.New("codex app-server closed without answering")}
+	}()
+	for _, line := range []string{
+		`{"id":1,"method":"initialize","params":{"clientInfo":{"name":"grimoire","version":"1"}}}`,
+		`{"method":"initialized"}`,
+		`{"id":2,"method":"hooks/list","params":{"cwds":[]}}`,
+	} {
+		if _, err := io.WriteString(in, line+"\n"); err != nil {
+			return nil, err
+		}
+	}
+	select {
+	case r := <-done:
+		return r.hooks, r.err
+	case <-time.After(20 * time.Second):
+		return nil, errors.New("codex app-server did not answer in 20s")
+	}
+}
+
+// trustCodexHooks records Codex's own hash for each hook this command wrote, in a
+// managed block of config.toml. Without it Codex 0.157+ lists the hooks as
+// untrusted and silently never runs them. Only hooks carrying our marker in
+// our own hooks.json are trusted; anything else Codex finds is left for you.
+func trustCodexHooks(t *agentTarget, o agentOptions) (string, error) {
+	if o.dryRun {
+		return "would record Codex's trust for the hooks above", nil
+	}
+	hooks, err := listCodexHooks(t.dir)
+	if err != nil {
+		return "skipped (" + err.Error() + "); open /hooks in Codex and trust the grimoire hooks", nil
+	}
+	raw, err := os.ReadFile(t.mcpFile)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return "", err
+	}
+	text := string(raw)
+	before, after, _ := splitBetween(text, trustBegin, trustEnd)
+	outside := before + after
+	var b strings.Builder
+	n := 0
+	for _, h := range hooks {
+		if h.SourcePath != t.hooksFile || !strings.Contains(h.Command, agentMarker) || h.CurrentHash == "" {
+			continue
+		}
+		if strings.Contains(outside, "[hooks.state."+tomlString(h.Key)+"]") {
+			continue // the user already holds an entry for this key; leave it
+		}
+		fmt.Fprintf(&b, "[hooks.state.%s]\ntrusted_hash = %s\n", tomlString(h.Key), tomlString(h.CurrentHash))
+		n++
+	}
+	next := strings.TrimRight(before, "\n")
+	if next != "" {
+		next += "\n\n"
+	}
+	if n > 0 {
+		next += trustBegin + "\n" + b.String() + trustEnd + "\n"
+	}
+	if after = strings.TrimLeft(after, "\n"); after != "" {
+		next += "\n" + after
+	}
+	if n == 0 && strings.TrimSpace(next) == "" {
+		next = ""
+	}
+	msg, err := applyFile(t.mcpFile, raw, []byte(next), next != text, false)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%d hook(s) trusted in %s", n, msg), nil
+}
+
+func uninstallTrust(path string, dryRun bool) (string, error) {
+	raw, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return path + " (no entry of ours)", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	before, after, found := splitBetween(string(raw), trustBegin, trustEnd)
+	if !found {
+		return path + " (no entry of ours)", nil
+	}
+	after = strings.TrimLeft(after, "\n")
 	next := strings.TrimRight(before, "\n")
 	if next != "" && after != "" {
 		next += "\n\n"
