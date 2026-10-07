@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -428,15 +429,26 @@ func (s *Server) refreshModel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	mid := r.PathValue("id")
-	if _, err := s.Banks.GetModel(id, mid); err != nil {
+	cur, err := s.Banks.GetModel(id, mid)
+	if err != nil {
 		writeBankErr(w, err)
 		return
 	}
-	if !s.AI.Available() {
+	var req struct {
+		Mode string `json:"mode"`
+	}
+	if r.Body != nil {
+		_ = json.NewDecoder(io.LimitReader(r.Body, 4096)).Decode(&req)
+	}
+	if req.Mode != "" && req.Mode != "full" && req.Mode != "delta" {
+		writeErr(w, http.StatusBadRequest, "mode must be full or delta")
+		return
+	}
+	if mode := firstNonEmpty(req.Mode, cur.RefreshMode); mode != "delta" && !s.AI.Available() {
 		writeBankErr(w, bank.ErrModelRequired)
 		return
 	}
-	opID, dedup, err := s.Banks.EnqueueRefresh(id, mid)
+	opID, dedup, err := s.Banks.EnqueueRefreshMode(id, mid, req.Mode)
 	if err != nil {
 		writeBankErr(w, err)
 		return
@@ -887,3 +899,12 @@ func (sr *settingsReranker) Score(ctx context.Context, q string, docs []string) 
 }
 
 var _ bank.Reranker = (*settingsReranker)(nil)
+
+func firstNonEmpty(xs ...string) string {
+	for _, x := range xs {
+		if x != "" {
+			return x
+		}
+	}
+	return ""
+}

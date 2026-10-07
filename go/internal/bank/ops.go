@@ -561,6 +561,7 @@ func (e *Engine) runConsolidationOp(ctx context.Context, op *Operation) (any, er
 
 type refreshPayload struct {
 	ModelID string `json:"mental_model_id"`
+	Mode    string `json:"mode,omitempty"`
 }
 
 func (e *Engine) runRefreshOp(ctx context.Context, op *Operation) (any, error) {
@@ -568,13 +569,18 @@ func (e *Engine) runRefreshOp(ctx context.Context, op *Operation) (any, error) {
 	if err := json.Unmarshal(op.Payload, &p); err != nil {
 		return nil, fmt.Errorf("bad refresh payload: %w", err)
 	}
-	return e.RefreshModel(ctx, op.BankID, p.ModelID)
+	return e.RefreshModelWith(ctx, op.BankID, p.ModelID, RefreshOpts{Mode: p.Mode})
 }
 
 // EnqueueRefresh queues a mental-model refresh; one waiting refresh of a
 // model absorbs another.
 func (e *Engine) EnqueueRefresh(bankID, modelID string) (string, bool, error) {
-	return e.Enqueue(bankID, OpRefreshModel, refreshPayload{ModelID: modelID}, "refresh:"+modelID)
+	return e.EnqueueRefreshMode(bankID, modelID, "")
+}
+
+// EnqueueRefreshMode queues a refresh with an explicit mode (full or delta).
+func (e *Engine) EnqueueRefreshMode(bankID, modelID, mode string) (string, bool, error) {
+	return e.Enqueue(bankID, OpRefreshModel, refreshPayload{ModelID: modelID, Mode: mode}, "refresh:"+modelID)
 }
 
 // EnqueueConsolidation queues a consolidation; one already waiting absorbs
