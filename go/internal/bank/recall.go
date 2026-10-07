@@ -279,17 +279,14 @@ func (e *Engine) Recall(ctx context.Context, bankID string, req RecallRequest) (
 	var kwList []int32
 	kwScore := map[int32]float64{}
 	if prof.Setting("enable_text_search", "true") == "true" {
-		terms, err := e.keywordTerms(q)
-		if err != nil {
-			return nil, err
-		}
-		if tr != nil {
-			tr.KeywordTerms = terms
-		}
-		if len(terms) > 0 {
-			kwList, kwScore, err = e.keywordArm(c, bankID, terms, tb, visible)
+		if terms := keywordTerms(q); len(terms) > 0 {
+			var used []string
+			kwList, kwScore, used, err = e.keywordArm(c, bankID, terms, tb, visible)
 			if err != nil {
 				return nil, err
+			}
+			if tr != nil {
+				tr.KeywordTerms = used
 			}
 		}
 	}
@@ -698,11 +695,8 @@ func init() {
 	}
 }
 
-// keywordTerms picks the query terms the keyword arm searches for: content
-// words, and when there are more than keywordMaxTerms of them, the rarest
-// ones — a long question's common words would otherwise drown its specific
-// ones in an OR query.
-func (e *Engine) keywordTerms(q string) ([]string, error) {
+// keywordTerms is the query's content words, deduplicated, in order.
+func keywordTerms(q string) []string {
 	var terms []string
 	seen := map[string]bool{}
 	for _, t := range tokenizeQuery(q) {
@@ -712,81 +706,117 @@ func (e *Engine) keywordTerms(q string) ([]string, error) {
 		seen[t] = true
 		terms = append(terms, t)
 	}
-	if len(terms) <= keywordMaxTerms {
-		return terms, nil
-	}
-	df := make(map[string]int, len(terms))
-	for _, t := range terms {
-		n, err := e.Index.DB.Count("SELECT COUNT(*) FROM bank_units_fts WHERE bank_units_fts MATCH ?", `body:"`+strings.ReplaceAll(t, `"`, `""`)+`"`)
-		if err != nil {
-			return terms[:keywordMaxTerms], nil
-		}
-		df[t] = n
-	}
-	order := append([]string(nil), terms...)
-	sort.SliceStable(order, func(a, b int) bool { return df[order[a]] < df[order[b]] })
-	keep := map[string]bool{}
-	for _, t := range order[:keywordMaxTerms] {
-		keep[t] = true
-	}
-	var out []string
-	for _, t := range terms {
-		if keep[t] {
-			out = append(out, t)
-		}
-	}
-	return out, nil
+	return terms
 }
 
-// keywordArm runs the FTS5 query, confined to the bank by its token. Terms
-// are quoted (user input never reaches FTS as syntax) and OR-ed; bm25 ranks.
-func (e *Engine) keywordArm(c *bankCache, bankID string, terms []string, tb int, visible func(int32) bool) ([]int32, map[int32]float64, error) {
-	quoted := make([]string, len(terms))
-	for i, t := range terms {
-		quoted[i] = `"` + strings.ReplaceAll(t, `"`, `""`) + `"`
+// BM25 parameters.
+const (
+	bm25K1 = 1.2
+	bm25B  = 0.75
+)
+
+// keywordArm ranks facts by BM25 over the query's content words.
+//
+// Matching — tokenising, Porter stemming, finding the facts that contain a
+// term — is FTS5's, one MATCH per term confined to the bank by its token.
+// Scoring is done here. FTS5's own bm25() costs about five microseconds per
+// matching row, because it re-reads every row's position lists, and a common
+// word in a 20,000-fact bank matches thousands: measured, that was 10–45 ms of
+// a 15–50 ms recall. A per-term MATCH that returns only row ids costs a few
+// hundred microseconds, and gives each term's document frequency for free —
+// which is both BM25's idf and how the rarest terms are chosen when a long
+// question has more than keywordMaxTerms of them.
+//
+// Facts are one or two sentences, so a term almost never repeats within one;
+// term frequency is taken as 1, which makes the score exact for nearly every
+// fact and leaves length normalisation doing the rest.
+func (e *Engine) keywordArm(c *bankCache, bankID string, terms []string, tb int, visible func(int32) bool) ([]int32, map[int32]float64, []string, error) {
+	bk := bkToken(bankID)
+	type posting struct {
+		term string
+		pos  []int32
 	}
-	expr := `bk:"` + bkToken(bankID) + `" AND body:(` + strings.Join(quoted, " OR ") + `)`
-	// Fetch past the budget: the type and tag filters apply after FTS.
-	rows, err := e.Index.DB.Query("SELECT rowid, bm25(bank_units_fts, 0.0, 1.0) FROM bank_units_fts"+
-		" WHERE bank_units_fts MATCH ? ORDER BY bm25(bank_units_fts, 0.0, 1.0) LIMIT ?", expr, tb*4+50)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer rows.Close()
-	scores := map[int32]float64{}
-	var list []int32
-	for rows.Next() {
-		var rid int64
-		var s float64
-		if err := rows.Scan(&rid, &s); err != nil {
-			return nil, nil, err
-		}
-		p, ok := c.byRID[rid]
-		if !ok || !visible(p) {
+	var lists []posting
+	for _, t := range terms {
+		// Postings are memoised for the life of the cache, which every write
+		// to the bank replaces, so a memo is never stale.
+		c.postMu.Lock()
+		ps, hit := c.postings[t]
+		c.postMu.Unlock()
+		if hit {
+			if len(ps) > 0 {
+				lists = append(lists, posting{t, ps})
+			}
 			continue
 		}
-		list = append(list, p)
-		scores[p] = -s
+		expr := `bk:"` + bk + `" AND body:"` + strings.ReplaceAll(t, `"`, `""`) + `"`
+		rows, err := e.Index.DB.Query("SELECT rowid FROM bank_units_fts WHERE bank_units_fts MATCH ?", expr)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		ps = nil
+		for rows.Next() {
+			var rid int64
+			if err := rows.Scan(&rid); err != nil {
+				rows.Close()
+				return nil, nil, nil, err
+			}
+			if p, ok := c.byRID[rid]; ok {
+				ps = append(ps, p)
+			}
+		}
+		rows.Close()
+		c.postMu.Lock()
+		if len(c.postings) < 50000 {
+			c.postings[t] = ps
+		}
+		c.postMu.Unlock()
+		if len(ps) > 0 {
+			lists = append(lists, posting{t, ps})
+		}
 	}
-	if err := rows.Err(); err != nil {
-		return nil, nil, err
+	// The rarest terms carry the question; keep at most keywordMaxTerms.
+	if len(lists) > keywordMaxTerms {
+		sort.SliceStable(lists, func(a, b int) bool { return len(lists[a].pos) < len(lists[b].pos) })
+		lists = lists[:keywordMaxTerms]
 	}
-	// Equal scores are ordered by position in the bank, not by row id: row
-	// ids depend on the order files happened to be indexed in, and a rebuild
-	// must not reorder a recall.
-	sort.SliceStable(list, func(a, b int) bool {
+	used := make([]string, len(lists))
+	n := float64(len(c.units))
+	avg := c.avgBodyLen()
+	scores := make([]float64, len(c.units))
+	var touched []int32
+	for i, pl := range lists {
+		used[i] = pl.term
+		df := float64(len(pl.pos))
+		idf := math.Log(1 + (n-df+0.5)/(df+0.5))
+		for _, p := range pl.pos {
+			if scores[p] == 0 {
+				touched = append(touched, p)
+			}
+			norm := 1 - bm25B + bm25B*float64(c.bodyLen[p])/avg
+			scores[p] += idf * (bm25K1 + 1) / (1 + bm25K1*norm)
+		}
+	}
+	list := touched[:0]
+	for _, p := range touched {
+		if visible(p) {
+			list = append(list, p)
+		}
+	}
+	sort.Slice(list, func(a, b int) bool {
 		if scores[list[a]] != scores[list[b]] {
 			return scores[list[a]] > scores[list[b]]
 		}
 		return list[a] < list[b]
 	})
 	if len(list) > tb {
-		for _, p := range list[tb:] {
-			delete(scores, p)
-		}
 		list = list[:tb]
 	}
-	return list, scores, nil
+	out := make(map[int32]float64, len(list))
+	for _, p := range list {
+		out[p] = scores[p]
+	}
+	return list, out, used, nil
 }
 
 // ------------------------------------------------------------ graph arm

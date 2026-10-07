@@ -17,6 +17,7 @@ import (
 
 	"github.com/JeremiahM37/grimoire/go/internal/ai"
 	"github.com/JeremiahM37/grimoire/go/internal/index"
+	"github.com/JeremiahM37/grimoire/go/internal/markdown"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
 )
 
@@ -192,6 +193,23 @@ func (e *Engine) IndexBankFile(note *vault.Note) error {
 	}
 	e.bump(id)
 	return nil
+}
+
+// keepFrontmatter layers the keys this package owns over a file's existing
+// frontmatter. A rewrite must not drop what a person added — a `readers:`
+// list restricting who may open the bank, an alias, a tag — and the vault's
+// patching writer removes any flat key the new frontmatter does not carry.
+func (e *Engine) keepFrontmatter(rel string, ours *markdown.Frontmatter) *markdown.Frontmatter {
+	n, err := e.Vault.Read(rel)
+	if err != nil {
+		return ours
+	}
+	merged := n.Frontmatter.Clone()
+	for _, k := range ours.Keys() {
+		v, _ := ours.Get(k)
+		merged.Set(k, v)
+	}
+	return merged
 }
 
 func stemOf(rel string) string { return strings.TrimSuffix(path.Base(rel), ".md") }
@@ -511,9 +529,14 @@ type bankCache struct {
 	byTime  map[string][]int32
 	timePos []int32
 	humans  []int32
+	// bodyLen is each fact's keyword-searchable length in tokens.
+	bodyLen []int32
 
 	semMu   sync.Mutex
 	semMemo map[int32][]neighbor
+
+	postMu   sync.Mutex
+	postings map[string][]int32
 }
 
 type neighbor struct {
@@ -563,7 +586,7 @@ func (e *Engine) loadCache(bankID string, rev int64) (*bankCache, error) {
 		return nil, err
 	}
 	c := &bankCache{rev: rev, byID: map[string]int32{}, byRID: map[int64]int32{}, entByLow: map[string]int32{},
-		byTime: map[string][]int32{}, semMemo: map[int32][]neighbor{}}
+		byTime: map[string][]int32{}, semMemo: map[int32][]neighbor{}, postings: map[string][]int32{}}
 	var blobs [][]byte
 	var causes [][]string
 	for rows.Next() {
@@ -607,9 +630,11 @@ func (e *Engine) loadCache(bankID string, rev int64) (*bankCache, error) {
 		normalize(row)
 	}
 	c.timePos = make([]int32, len(c.units))
+	c.bodyLen = make([]int32, len(c.units))
 	for i := range c.units {
 		u := &c.units[i]
 		c.timePos[i] = -1
+		c.bodyLen[i] = int32(len(strings.Fields(u.Text)) + len(u.Entities) + len(strings.Fields(u.Context)))
 		for _, cid := range causes[i] {
 			if p, ok := c.byID[cid]; ok {
 				u.Causes = append(u.Causes, p)
@@ -651,6 +676,17 @@ func (e *Engine) loadCache(bankID string, rev int64) (*bankCache, error) {
 		}
 	}
 	return c, nil
+}
+
+func (c *bankCache) avgBodyLen() float64 {
+	if len(c.bodyLen) == 0 {
+		return 1
+	}
+	var sum int64
+	for _, n := range c.bodyLen {
+		sum += int64(n)
+	}
+	return math.Max(1, float64(sum)/float64(len(c.bodyLen)))
 }
 
 func normalize(v []float32) {
