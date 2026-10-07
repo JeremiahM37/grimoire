@@ -512,6 +512,7 @@ func (e *Engine) retainDocument(ctx context.Context, prof *Profile, docID string
 			}
 		}
 	}
+	e.challengeAcrossDocuments(ctx, c, docID, added)
 	all := append(kept, added...)
 	dedupIDs(all)
 	// File order: by chunk, keeping each chunk's facts in extraction order;

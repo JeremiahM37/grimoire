@@ -1352,7 +1352,11 @@ func (c *bankCache) conflicts(h, m *unit) bool {
 	if _, ok := memory.ValueUpdate(h.Text, m.Text); ok {
 		return true
 	}
-	return sameSourceRewrite(h.ID, h.Doc, h.Chunk, h.Text, m.ID, m.Doc, m.Chunk, m.Text)
+	if sameSourceRewrite(h.ID, h.Doc, h.Chunk, h.Text, m.ID, m.Doc, m.Chunk, m.Text) {
+		return true
+	}
+	// A different value or a denial about the same entity in another document.
+	return h.Doc != m.Doc && ruleConflict(h.Text, h.Entities, m.Text, m.Entities)
 }
 
 // sameSourceRewrite is the signature of a person's correction meeting a
