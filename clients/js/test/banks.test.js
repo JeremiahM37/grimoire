@@ -170,6 +170,11 @@ describe('bank client', () => {
     await assert.rejects(bank.consolidate(), (e) => e instanceof GrimoireError && !(e instanceof ModelRequired))
   })
 
+  it('edits an observation', async () => {
+    route('PATCH', '/api/banks/support/observations/o1', { observation: { id: 'o1' } })
+    assert.equal((await bank.updateObservation('o1', 'new')).observation.id, 'o1')
+  })
+
   it('reads observations, directives, operations and templates', async () => {
     route('GET', '/api/banks/support/observations', { items: [{ id: 'o1' }], total: 1, history: [] })
     assert.equal((await bank.observations({ includeHistory: true, authority: 'human' })).items[0].id, 'o1')

@@ -321,6 +321,8 @@ export class Bank {
   /** `{observation, history}`. */
   observation(id) { return this.#feature('GET', `/observations/${seg(id)}`) }
   /** Retire one into history; a person's needs `{ force: true }`. */
+  /** Replace an observation's text; the edit is marked human, so consolidation keeps it. */
+  updateObservation(id, text) { return this.#feature('PATCH', `/observations/${seg(id)}`, { text }) }
   deleteObservation(id, options = {}) { return this.#feature('DELETE', `/observations/${seg(id)}${qs({ force: options.force })}`) }
   /** Retire every model observation (a person's stay). */
   clearObservations() { return this.#feature('DELETE', '/observations') }
