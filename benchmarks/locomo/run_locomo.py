@@ -173,6 +173,13 @@ def phase_retrieve():
 _print_lock = threading.Lock()
 
 
+# The CLI's default system prompt and tool schemas add about 21k tokens to every
+# call. A reader or judge needs neither, so each call carries no tools and this
+# one-line system prompt instead. Reported "context tokens" below include only
+# what the benchmark itself sends.
+LEAN_SYSTEM_PROMPT = "Answer the user's question using only the text they provide. Be brief."
+
+
 def claude_call(prompt, model, timeout=240):
     """One CLI call from an empty cwd; returns (text, input_tokens)."""
     empty = Path(tempfile.gettempdir()) / "locomo-empty-cwd"
@@ -181,7 +188,8 @@ def claude_call(prompt, model, timeout=240):
     # per-argv-string limit (MAX_ARG_STRLEN, 128 KiB) when passed as an arg
     p = subprocess.run(
         ["claude", "-p", "--model", model, "--output-format", "json",
-         "--strict-mcp-config", "--max-turns", "1"],
+         "--strict-mcp-config", "--max-turns", "1",
+         "--tools", "", "--system-prompt", LEAN_SYSTEM_PROMPT],
         input=prompt, capture_output=True, text=True, timeout=timeout, cwd=empty)
     if p.returncode != 0:
         raise RuntimeError(f"claude exit {p.returncode}: {p.stderr[:300]}")
