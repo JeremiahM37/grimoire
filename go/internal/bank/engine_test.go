@@ -66,12 +66,11 @@ func (s *stubLLM) handler(w http.ResponseWriter, r *http.Request) {
 }
 
 type harness struct {
-	e     *Engine
-	ix    *index.Index
-	v     *vault.Vault
-	llm   *stubLLM
-	root  string
-	reset func()
+	e    *Engine
+	ix   *index.Index
+	v    *vault.Vault
+	llm  *stubLLM
+	root string
 }
 
 func newHarness(t *testing.T, withLLM bool) *harness {

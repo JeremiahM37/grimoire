@@ -8,14 +8,6 @@ import (
 // ref is Wednesday 24 May 2023, mid-afternoon.
 var ref = time.Date(2023, 5, 24, 15, 30, 0, 0, time.UTC)
 
-func d(s string) time.Time {
-	t, err := time.Parse("2006-01-02", s)
-	if err != nil {
-		panic(err)
-	}
-	return t
-}
-
 func TestParseWindow(t *testing.T) {
 	cases := []struct {
 		q          string
