@@ -22,6 +22,7 @@ import (
 
 	"github.com/JeremiahM37/grimoire/go/internal/ai"
 	"github.com/JeremiahM37/grimoire/go/internal/auth"
+	"github.com/JeremiahM37/grimoire/go/internal/bank"
 	"github.com/JeremiahM37/grimoire/go/internal/cloudsync"
 	"github.com/JeremiahM37/grimoire/go/internal/connectors"
 	"github.com/JeremiahM37/grimoire/go/internal/crdtstore"
@@ -52,6 +53,8 @@ type Server struct {
 	Auth      *auth.Store
 	Knowledge *knowledge.Store
 	Documents *documents.Store
+	// Banks is the memory-bank engine; built in Routes when nil.
+	Banks *bank.Engine
 	// Identity resolves callers that are not on this machine. Nil or empty
 	// means no resolution, which is the default and preserves the historical
 	// behaviour exactly.
@@ -93,6 +96,18 @@ func (s *Server) Routes() http.Handler {
 	if s.Documents == nil && s.Index != nil && s.Vault != nil {
 		s.Documents = documents.New(s.Vault, s.Index)
 	}
+	if s.Banks == nil && s.Index != nil && s.Vault != nil {
+		var hist bank.Snapshotter
+		if s.History != nil {
+			hist = s.History
+		}
+		s.Banks = bank.New(s.Index, s.Vault, s.AI, hist)
+	}
+	// The index keeps the bank caches in step with banks/ on every write,
+	// watcher event and rebuild.
+	if s.Banks != nil && s.Index != nil {
+		s.Index.Banks = s.Banks
+	}
 	// Attach the provenance gate here rather than at every construction site.
 	// It is a security control, so the safe state is on-by-default: a caller
 	// that forgets to wire it would silently get the weaker broker, and the
@@ -111,6 +126,7 @@ func (s *Server) Routes() http.Handler {
 	s.connectorRoutes(mux)
 	s.webRoutes(mux)
 	s.metricsRoutes(mux)
+	s.bankRoutes(mux)
 	mux.HandleFunc("POST /api/reindex", s.adminOnly(s.reindex))
 	mux.HandleFunc("GET /api/aliases", s.aliases)
 	mux.HandleFunc("GET /api/notes", s.listNotes)
