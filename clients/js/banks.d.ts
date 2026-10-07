@@ -308,6 +308,7 @@ export declare class Bank {
   reflect(query: string, options?: ReflectOptions): Promise<ReflectResponse>
   observations(options?: { q?: string; authority?: 'human' | 'agent'; tags?: string[]; tagsMatch?: TagsMatch; includeHistory?: boolean; limit?: number; offset?: number }): Promise<{ items: Observation[]; total: number; history?: Observation[] }>
   observation(id: string): Promise<{ observation: Observation; history: Observation[] }>
+  updateObservation(id: string, text: string): Promise<{ observation: Observation }>
   deleteObservation(id: string, options?: { force?: boolean }): Promise<Json>
   clearObservations(): Promise<{ retired: number }>
   consolidate(): Promise<{ operation_id: string; deduplicated: boolean }>

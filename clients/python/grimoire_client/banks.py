@@ -437,6 +437,10 @@ class Bank:
         """``{"observation": {...}, "history": [...]}``."""
         return self._feature("GET", "/observations/" + _seg(observation_id))
 
+    def update_observation(self, observation_id: str, text: str) -> dict[str, Any]:
+        """Replace an observation's text. The edit is marked human, so consolidation keeps it."""
+        return self._feature("PATCH", "/observations/" + _seg(observation_id), {"text": text})
+
     def delete_observation(self, observation_id: str, *, force: bool = False) -> dict[str, Any]:
         """Retire one observation into history. A person's needs ``force=True``."""
         return self._feature("DELETE", "/observations/" + _seg(observation_id) + _q({"force": force or None}))

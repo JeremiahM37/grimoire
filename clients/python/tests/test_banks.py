@@ -256,6 +256,9 @@ def test_observations_directives_and_webhooks(stub, g):
     stub.on("GET", "/api/banks/s/observations", {"items": [{"id": "o1"}], "total": 1, "history": []})
     assert bank.observations(authority="human", include_history=True)["items"][0]["id"] == "o1"
     assert stub.calls[-1]["path"] == "/api/banks/s/observations?authority=human&include_history=true"
+    stub.on("PATCH", "/api/banks/s/observations/o1", {"observation": {"id": "o1"}})
+    bank.update_observation("o1", "new")
+    assert (stub.calls[-1]["method"], stub.calls[-1]["path"]) == ("PATCH", "/api/banks/s/observations/o1")
     bank.delete_observation("o1", force=True)
     assert stub.calls[-1]["path"] == "/api/banks/s/observations/o1?force=true"
     bank.clear_observations()
