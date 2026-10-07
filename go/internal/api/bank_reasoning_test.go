@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/JeremiahM37/grimoire/go/internal/bank"
 	"time"
 )
 
@@ -194,5 +196,40 @@ func TestAsyncRetainOverHTTPAndOperations(t *testing.T) {
 	}
 	if w := do(t, h, "DELETE", "/api/banks/b/webhooks/"+wh["id"].(string), nil); w.Code != 200 {
 		t.Errorf("delete webhook = %d", w.Code)
+	}
+}
+
+func TestPatchObservationMakesItAPersons(t *testing.T) {
+	s, h := testServer(t)
+	if w := do(t, h, "POST", "/api/banks/b/memories", map[string]any{"items": []map[string]any{
+		{"content": "Alice likes tea.", "document_id": "d1"}}}); w.Code != 200 {
+		t.Fatalf("retain = %d %s", w.Code, w.Body)
+	}
+	body := bank.FormatObservations(bank.ObservationsFile{Current: []bank.Observation{{ID: "oapi1", Text: "Alice likes tea"}}})
+	if _, err := s.Vault.Write(bank.ObservationsPath("b"), body, nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Index.Upsert(bank.ObservationsPath("b")); err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	decode(t, do(t, h, "GET", "/api/banks/b/observations/oapi1", nil), &got)
+	if got["observation"].(map[string]any)["authority"] != "agent" {
+		t.Fatalf("setup: %v", got)
+	}
+	w := do(t, h, "PATCH", "/api/banks/b/observations/oapi1", map[string]any{"text": "Alice prefers green tea"})
+	if w.Code != 200 {
+		t.Fatalf("patch = %d %s", w.Code, w.Body)
+	}
+	decode(t, do(t, h, "GET", "/api/banks/b/observations/oapi1", nil), &got)
+	o := got["observation"].(map[string]any)
+	if o["text"] != "Alice prefers green tea" || o["authority"] != "human" || len(got["history"].([]any)) != 1 {
+		t.Errorf("after patch = %v", got)
+	}
+	if w := do(t, h, "PATCH", "/api/banks/b/observations/oapi1", map[string]any{"text": " "}); w.Code != 400 {
+		t.Errorf("empty = %d", w.Code)
+	}
+	if w := do(t, h, "PATCH", "/api/banks/b/observations/nope", map[string]any{"text": "x"}); w.Code != 404 {
+		t.Errorf("unknown = %d", w.Code)
 	}
 }

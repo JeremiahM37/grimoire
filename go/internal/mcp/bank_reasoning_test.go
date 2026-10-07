@@ -88,6 +88,11 @@ func TestPerBankMCPEndpoints(t *testing.T) {
 		"arguments": map[string]any{}})
 	rpc(t, h, "/mcp", map[string]string{"X-Bank-Id": "dflt"}, "tools/call", map[string]any{"name": "list_directives",
 		"arguments": map[string]any{"bank": "explicit"}})
+	rpc(t, h, "/mcp", map[string]string{"X-Bank-Id": "dflt"}, "tools/call", map[string]any{"name": "update_observation",
+		"arguments": map[string]any{"id": "o1", "text": "new words"}})
+	if last := seen[len(seen)-1]; last.method != "PATCH" || last.path != "/api/banks/dflt/observations/o1" {
+		t.Errorf("update_observation sent %+v", last)
+	}
 	var paths []string
 	for _, r := range seen {
 		paths = append(paths, r.path)

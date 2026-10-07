@@ -54,7 +54,7 @@ const bankUsage = `usage: grimoire bank COMMAND [args] [--url URL] [--token T] [
   entities BANK [NAME]                   entities, or one entity with its facts
   documents BANK [ID] [--rm] [--force]   documents, one document, or delete it
   observations BANK [--q TEXT] [--human] [--history]
-  observations show BANK ID | rm BANK ID [--force] | consolidate BANK
+  observations show BANK ID | edit BANK ID TEXT | rm BANK ID [--force] | consolidate BANK
   models ls BANK | tree BANK | show BANK ID | history BANK ID | export BANK [--markdown]
   models create BANK NAME --query Q [--id ID] [--folder F] [--tags a,b] [--body TEXT|--body-file F]
   models refresh BANK ID | accept BANK ID | reject BANK ID | rm BANK ID

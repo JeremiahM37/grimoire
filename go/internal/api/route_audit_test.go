@@ -93,6 +93,7 @@ var routeAccess = map[string]access{
 	"GET /api/banks/{bank}/observations":                         scoped,
 	"DELETE /api/banks/{bank}/observations":                      scoped,
 	"GET /api/banks/{bank}/observations/{id}":                    scoped,
+	"PATCH /api/banks/{bank}/observations/{id}":                  scoped,
 	"DELETE /api/banks/{bank}/observations/{id}":                 scoped,
 	"POST /api/banks/{bank}/consolidate":                         scoped,
 	"GET /api/banks/{bank}/mental-models":                        scoped,

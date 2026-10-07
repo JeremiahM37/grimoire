@@ -257,7 +257,7 @@ func bankObservations(c *bankClient, f *bankFlags) error {
 		return err
 	}
 	switch first {
-	case "consolidate", "show", "rm", "delete", "ls", "list":
+	case "consolidate", "show", "edit", "rm", "delete", "ls", "list":
 		bank, err := f.need(1, "BANK")
 		if err != nil {
 			return err
@@ -291,6 +291,20 @@ func bankObservations(c *bankClient, f *bankFlags) error {
 					fmt.Printf("  ~ %s (%s)\n", h.Text, orDash(h.SupersededAt))
 				}
 			}
+			return nil
+		case "edit":
+			id, err := f.need(2, "observation ID")
+			if err != nil {
+				return err
+			}
+			text, err := f.need(3, "new text")
+			if err != nil {
+				return err
+			}
+			if err := c.do("PATCH", bankPath(bank, "observations", url.PathEscape(id)), map[string]any{"text": text}, nil); err != nil {
+				return notYet(err, "observations")
+			}
+			fmt.Printf("edited %s; it is now yours, so consolidation will not rewrite it\n", id)
 			return nil
 		case "rm", "delete":
 			id, err := f.need(2, "observation ID")

@@ -2,6 +2,7 @@ package bank
 
 import (
 	"context"
+	"errors"
 	"encoding/json"
 	"regexp"
 	"strings"
@@ -357,5 +358,65 @@ func TestFreshBankMergesRelatedFactsAcrossBatches(t *testing.T) {
 		if !strings.Contains(sawSystem, want) {
 			t.Errorf("consolidation prompt lacks %q", want)
 		}
+	}
+}
+
+func TestEditedObservationBecomesAPersonsAndSurvivesConsolidation(t *testing.T) {
+	h := newHarness(t, true)
+	revise := false
+	cons := &consolidator{plan: func(ids, texts []string, existing []map[string]any) map[string]any {
+		if len(existing) > 0 && revise {
+			return map[string]any{"updates": []any{map[string]any{"observation_id": existing[0]["id"],
+				"text": "Alice lives in Nice", "source_fact_ids": []any{ids[0]}}}}
+		}
+		return map[string]any{"creates": []any{map[string]any{"text": "Alice is based in Lyon", "source_fact_ids": []any{ids[0]}}}}
+	}}
+	h.llm.route = cons.route(extractOnly(livesIn("Lyon")))
+	h.retain(t, "b", Item{Content: "Alice: Lyon.", DocumentID: "d1"})
+	if _, err := h.e.Consolidate(context.Background(), "b"); err != nil {
+		t.Fatal(err)
+	}
+	of, _, _ := h.e.readObservations("b")
+	if len(of.Current) == 0 || of.Current[0].IsHuman() {
+		t.Fatalf("setup: %+v", of.Current)
+	}
+	id := of.Current[0].ID
+	if _, err := h.e.UpdateObservation("b", id, "  "); !errors.Is(err, ErrInvalid) {
+		t.Errorf("empty text: %v", err)
+	}
+	if _, err := h.e.UpdateObservation("b", "onope", "x"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("unknown id: %v", err)
+	}
+	out, err := h.e.UpdateObservation("b", id, "Alice has lived in Lyon since 2019")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.ID != id || !strings.Contains(h.read(t, ObservationsPath("b")), "by=human") {
+		t.Fatalf("edit = %+v\n%s", out, h.read(t, ObservationsPath("b")))
+	}
+	_, hist, _ := h.e.GetObservation("b", id)
+	if len(hist) != 1 || hist[0].Text != "Alice is based in Lyon" {
+		t.Errorf("history = %+v", hist)
+	}
+	// A new fact makes the model want to revise it: it is filed as a challenge.
+	revise = true
+	h.llm.route = cons.route(extractOnly(func(string) (string, string) {
+		return extractionReply(map[string]any{"what": "Alice moved to Nice", "fact_type": "world", "fact_kind": "conversation",
+			"entities": []any{"Alice", "Nice"}}), "stop"
+	}))
+	h.retain(t, "b", Item{Content: "Alice: Nice.", DocumentID: "d2"})
+	res, err := h.e.Consolidate(context.Background(), "b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	of, _, _ = h.e.readObservations("b")
+	var mine *Observation
+	for i := range of.Current {
+		if of.Current[i].ID == id {
+			mine = &of.Current[i]
+		}
+	}
+	if mine == nil || !mine.IsHuman() || mine.Text != "Alice has lived in Lyon since 2019" || res.Challenges != 1 || res.Updated != 0 {
+		t.Fatalf("person's observation changed: %+v res=%+v", mine, res)
 	}
 }
