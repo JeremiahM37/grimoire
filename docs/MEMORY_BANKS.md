@@ -23,6 +23,7 @@ banks/<bank>/facts/<doc>.md        one bullet per extracted fact
 banks/<bank>/observations.md       consolidated observations, with a "## History" of what they replaced
 banks/<bank>/models/<id>.md        mental models; folders under models/ are the knowledge-page tree
 banks/<bank>/proposals/<id>.md     an answer a refresh could not write over a person's edit
+banks/<bank>/sessions/<id>.md      a coding-agent session's "where we left off" digest (see below)
 ```
 
 A fact is a bullet with a machine trailer:
@@ -84,6 +85,14 @@ Observations and mental models follow the same rule — see below.
 
 `POST /api/banks/{bank}/memories` (MCP `retain`). The bank is created on first
 use.
+
+**Private text is never stored.** Anything between `<private>` and `</private>`
+is removed from the content and the context before extraction, queueing or any
+write, whichever way it arrives (API, MCP, CLI, hook). A `<private>` with no
+closing tag hides the rest of the content, and a retain whose every item is
+private succeeds and stores nothing. Set `"scan_secrets": true` on an item and
+credentials the secret scanner recognises (the `grimoire secret scan` shapes)
+are replaced with `[REDACTED:kind]` first; the session hook sets it.
 
 ```jsonc
 { "items": [{
@@ -196,6 +205,9 @@ parallel; the cache is rebuilt after any write to that bank.
 | `GET /api/banks/{bank}/entities[/{id or name}]` | entities with mention counts; one entity with its facts and companions |
 | `GET /api/banks/{bank}/documents[/{id}]`, `DELETE …/documents/{id}` | sources |
 | `GET /api/banks/{bank}/chunks/{chunk_id}` | one source chunk |
+| `GET /api/banks/{bank}/context` | what a coding agent is shown at session start, rendered under `max_chars` (default 9000), with `source=startup|resume|clear|compact` |
+| `POST /api/banks/{bank}/sessions/{session}/digest`, `GET …/sessions` | write or refresh a session's digest; list digests, newest first |
+| `GET /api/banks/{bank}/index`, `…/timeline`, `…/lookup` | progressive disclosure: a compact index, the entries around one, and entries in full by id |
 
 Bank ids are lowercase letters, digits and `._:-` (at most 64); `:` names a
 family of banks (`coding-agent:grimoire`) and is stored as `__` on disk.
@@ -466,6 +478,37 @@ Import is additive: it creates the bank if needed, sets what the manifest
 names, and removes nothing. Models are matched by id (their question and
 settings updated, their answer never touched), directives by name (or text).
 
+## Session start, digests and progressive disclosure
+
+**Session context.** `GET /api/banks/{bank}/context?max_chars=9000` renders the
+text a coding agent is shown when a session begins. Candidates are ordered by
+value: the last session's digest, directives, mental models (a person's first),
+observations, then facts (a person's first, newest first). The renderer measures
+the finished text and drops the lowest-value item until it fits; if the single
+best item is still too long it is cut at a line. Claude Code replaces hook
+output over 10,000 characters with a short stub, which is why the default is
+9,000 and the hook clamps the limit (`GRIMOIRE_HOOK_MAX_CHARS`) to 9,800. It
+needs no model.
+
+**Session digests.** `banks/<bank>/sessions/<session>.md` holds four parts, a
+request, what was learned, what was done and what comes next, between two
+marker comments (`<!-- grimoire:generated digest -->` … `<!-- /grimoire:generated -->`).
+With a model configured and `use_model` set, one call writes them; otherwise,
+or if that call fails, a rule-based digest does (first request, assistant
+sentences that state a cause or decision, files and failed commands, sentences
+that look ahead). Text above or below the markers is yours and is never touched.
+If you edit inside the markers, or delete them, the note is pinned: the next
+write is skipped and the response says so. The latest digest is the first thing
+session context shows.
+
+**Index, timeline, get.** `bank_index` lists one line per fact or observation
+(`#f3a9c1b2 2026-10-01 fact ~12t  title`), newest first or ranked by a query;
+`bank_timeline` shows the entries dated around an `#id` or a day; `bank_get`
+reads entries in full by `#id`. The short id is `#` and the first eight
+characters of the id; any unique prefix of four or more characters resolves,
+and the full id always works. Context lines and recall results can be cited the
+same way.
+
 ## MCP
 
 `grimoire-mcp` serves the bank tools over stdio (bank from the `bank`
@@ -482,7 +525,7 @@ it covers the bank tools. Tools: `retain` (asynchronous; returns an
 `operation_id`), `bank_recall`, `reflect`, `list_banks`, `create_bank`,
 `bank_profile`, `list_bank_memories`, `get_bank_memory`, `delete_bank_memory`,
 `list_entities`, `list_bank_documents`, `get_bank_document`,
-`delete_bank_document`, `consolidate`, `list_observations`, `update_observation`,
+`delete_bank_document`, `bank_index`, `bank_timeline`, `bank_get`, `consolidate`, `list_observations`, `update_observation`,
 `list_mental_models`, `get_mental_model`, `create_mental_model`,
 `update_mental_model`, `delete_mental_model`, `refresh_mental_model`,
 `list_directives`, `create_directive`, `delete_directive`, `list_operations`,
@@ -491,8 +534,10 @@ it covers the bank tools. Tools: `retain` (asynchronous; returns an
 
 ## Coding agents
 
-One bank per repository, MCP setup for Claude Code and Codex, seeding from git
-history and an optional session-transcript hook: see [CODING_AGENTS.md](CODING_AGENTS.md).
+One bank per repository, one-command install for Claude Code and Codex
+(`grimoire agent install`), seeding from git history, and the session hook that
+retains transcripts, writes digests and injects context: see
+[CODING_AGENTS.md](CODING_AGENTS.md).
 
 ## From the shell, the web app and code
 
