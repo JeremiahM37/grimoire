@@ -43,6 +43,21 @@ describe('bank client', () => {
     assert.equal(last.headers['X-Grimoire-Agent'], 'node-agent')
   })
 
+  it('speaks the coding-agent routes', async () => {
+    const at = () => calls.at(-1).path + calls.at(-1).search
+    await bank.index('cache', { types: ['fact'], limit: 5 })
+    assert.equal(at(), '/api/banks/support/index?q=cache&types=fact&limit=5')
+    await bank.timeline('#f3a9c1b2', { before: 2 })
+    assert.equal(at(), '/api/banks/support/timeline?anchor=%23f3a9c1b2&before=2')
+    await bank.get(['#f3a9c1b2', 'o77aa001'])
+    assert.equal(at(), '/api/banks/support/lookup?ids=%23f3a9c1b2%2Co77aa001')
+    await bank.context({ maxChars: 3000, source: 'resume' })
+    assert.equal(at(), '/api/banks/support/context?max_chars=3000&source=resume')
+    await bank.writeDigest('a:1', [{ speaker: 'user', text: 'hi' }], { useModel: true })
+    assert.equal(calls.at(-1).path, '/api/banks/support/sessions/a%3A1/digest')
+    assert.equal(calls.at(-1).body.use_model, true)
+  })
+
   it('escapes the bank id as one segment', async () => {
     await new Bank(g, 'coding-agent:grimoire').profile()
     assert.equal(calls.at(-1).path, '/api/banks/coding-agent%3Agrimoire')
