@@ -16,6 +16,8 @@ Everything is environment-driven (same variables bare-metal, systemd, Docker):
 | `GRIMOIRE_OLLAMA_URL` | *(empty)* | Reachable Ollama → generative ask/summarize |
 | `GRIMOIRE_LLM` / `GRIMOIRE_LLM_MODEL` | auto / `qwen3.5:4b` | Answer backend (`ollama` · `claude` · `openai`) + model |
 | `GRIMOIRE_LLM_BASE_URL` / `_API_KEY` | *(empty)* | Any OpenAI-compatible endpoint (OpenAI, OpenRouter, Together, Groq, vLLM, LM Studio, LiteLLM…); key can also live in the vault as `llm-api-key` |
+| `GRIMOIRE_LLM_REASONING_EFFORT` | *(empty)* | Reasoning effort for models that think: `low`/`medium`/`high`/`max` is sent as `reasoning_effort`; `off` sends `thinking: {"type": "disabled"}` (the documented switch on DeepSeek's OpenAI-compatible API). Structured calls such as memory-bank extraction are where this matters most |
+| `GRIMOIRE_LLM_EXTRA_BODY` | *(empty)* | A JSON object merged into every OpenAI-compatible request, for vendor fields no setting anticipates (e.g. `{"thinking":{"type":"disabled"}}`). A call's own fields win over it |
 | `GRIMOIRE_EMBED_MODEL` | `nomic-embed-text` | Embeddings (offline hashing fallback built in) |
 | `GRIMOIRE_LOCAL_EMBED` / `_MODEL` | `auto` / `potion-base-8M` | Local semantic embeddings — the ~30 MB model is fetched once on first start (`grimoire fetch-model` to pre-seed); `off` to stay on the hashing embedder |
 | `GRIMOIRE_WHISPER_URL` / `_MODEL` | *(empty)* | Audio-memo transcription |
