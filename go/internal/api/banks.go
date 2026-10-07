@@ -35,6 +35,9 @@ func (s *Server) bankRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/banks/{bank}/documents/{id}", s.deleteBankDocument)
 	mux.HandleFunc("GET /api/banks/{bank}/chunks/{id}", s.getBankChunk)
 	mux.HandleFunc("GET /api/banks/{bank}/context", s.bankContext)
+	mux.HandleFunc("GET /api/banks/{bank}/index", s.bankIndex)
+	mux.HandleFunc("GET /api/banks/{bank}/timeline", s.bankTimeline)
+	mux.HandleFunc("GET /api/banks/{bank}/lookup", s.bankLookup)
 	mux.HandleFunc("GET /api/banks/{bank}/sessions", s.listBankSessions)
 	mux.HandleFunc("POST /api/banks/{bank}/sessions/{session}/digest", s.writeSessionDigest)
 	s.bankReasoningRoutes(mux)
@@ -660,4 +663,65 @@ func (s *Server) listBankSessions(w http.ResponseWriter, r *http.Request) {
 		ds = []bank.DigestSummary{}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": ds, "total": len(ds)})
+}
+
+// bankIndex is the cheap first step of progressive disclosure: ids, one-line
+// titles and dates, ranked by q when given and newest first otherwise.
+func (s *Server) bankIndex(w http.ResponseWriter, r *http.Request) {
+	id, ok := s.bankReadable(w, r)
+	if !ok {
+		return
+	}
+	q := r.URL.Query()
+	limit, _ := strconv.Atoi(q.Get("limit"))
+	offset, _ := strconv.Atoi(q.Get("offset"))
+	items, total, err := s.Banks.BankIndex(r.Context(), id, bank.IndexQuery{Query: q.Get("q"),
+		Types: splitCSV(q.Get("types")), Since: q.Get("since"), Limit: limit, Offset: offset})
+	if err != nil {
+		writeBankErr(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": items, "total": total})
+}
+
+// bankTimeline returns the entries around an entry (anchor=#ref) or a day.
+func (s *Server) bankTimeline(w http.ResponseWriter, r *http.Request) {
+	id, ok := s.bankReadable(w, r)
+	if !ok {
+		return
+	}
+	q := r.URL.Query()
+	before, errB := strconv.Atoi(q.Get("before"))
+	after, errA := strconv.Atoi(q.Get("after"))
+	if errB != nil {
+		before = 5
+	}
+	if errA != nil {
+		after = 5
+	}
+	res, err := s.Banks.Timeline(id, q.Get("anchor"), before, after)
+	if err != nil {
+		writeBankErr(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
+}
+
+// bankLookup fetches entries in full by short reference or id (ids=a,b,c).
+func (s *Server) bankLookup(w http.ResponseWriter, r *http.Request) {
+	id, ok := s.bankReadable(w, r)
+	if !ok {
+		return
+	}
+	refs := splitCSV(r.URL.Query().Get("ids"))
+	if len(refs) == 0 || len(refs) > 50 {
+		writeErr(w, http.StatusBadRequest, "ids must hold 1..50 references")
+		return
+	}
+	items, missing, err := s.Banks.GetByIDs(id, refs)
+	if err != nil {
+		writeBankErr(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": items, "missing": missing})
 }

@@ -54,6 +54,41 @@ func bankTools() []tool {
 			}, "query"),
 		},
 		{
+			Name: "bank_index",
+			Description: "Skim a memory bank cheaply: one line per entry (a short #id, date, type and a title), " +
+				"newest first, or ranked by relevance when you give a query. Read this first, then fetch only " +
+				"the few entries you need with bank_get, or look around one with bank_timeline. Cite entries " +
+				"by their #id.",
+			InputSchema: obj(map[string]any{
+				"bank":   bankArg,
+				"query":  strProp("optional: rank by relevance to this instead of newest first"),
+				"types":  arrProp("optional: fact and/or observation"),
+				"since":  strProp("optional: only entries dated on or after this day (YYYY-MM-DD)"),
+				"limit":  intProp("max lines (default 50)"),
+				"offset": intProp("skip this many lines, to page"),
+			}),
+		},
+		{
+			Name: "bank_timeline",
+			Description: "The entries dated just before and after one entry (anchor: its #id) or a day " +
+				"(anchor: YYYY-MM-DD), oldest first, as index lines. Use it to see what else was going on.",
+			InputSchema: obj(map[string]any{
+				"bank":   bankArg,
+				"anchor": strProp("a #id from bank_index, or a day such as 2026-10-07"),
+				"before": intProp("entries before the anchor (default 5)"),
+				"after":  intProp("entries after the anchor (default 5)"),
+			}, "anchor"),
+		},
+		{
+			Name: "bank_get",
+			Description: "Read entries in full by #id (from bank_index, bank_timeline or a citation). " +
+				"Takes up to 50 ids; any that match nothing are listed back as missing.",
+			InputSchema: obj(map[string]any{
+				"bank": bankArg,
+				"ids":  arrProp("short #ids or full ids"),
+			}, "ids"),
+		},
+		{
 			Name:        "list_banks",
 			Description: "List the memory banks you can read, with how many facts and documents each holds.",
 			InputSchema: obj(map[string]any{}),
@@ -220,6 +255,36 @@ func (s *Server) dispatchBank(name string, args map[string]any) (result any, han
 		}
 		r, err := s.api("POST", base+"/memories/recall", body)
 		return r, true, err
+	case "bank_index":
+		q := url.Values{}
+		for _, k := range []string{"query", "since"} {
+			if v := str(args, k); v != "" {
+				q.Set(map[string]string{"query": "q", "since": "since"}[k], v)
+			}
+		}
+		if t := strList(args, "types"); len(t) > 0 {
+			q.Set("types", strings.Join(t, ","))
+		}
+		for _, k := range []string{"limit", "offset"} {
+			if n := num(args, k, 0); n > 0 {
+				q.Set(k, fmt.Sprint(n))
+			}
+		}
+		r, err := s.api("GET", base+"/index?"+q.Encode(), nil)
+		return compactIndex(r), true, err
+	case "bank_timeline":
+		q := url.Values{"anchor": {str(args, "anchor")}}
+		for _, k := range []string{"before", "after"} {
+			if _, ok := args[k]; ok {
+				q.Set(k, fmt.Sprint(num(args, k, 0)))
+			}
+		}
+		r, err := s.api("GET", base+"/timeline?"+q.Encode(), nil)
+		return compactIndex(r), true, err
+	case "bank_get":
+		ids := strList(args, "ids")
+		r, err := s.api("GET", base+"/lookup?"+url.Values{"ids": {strings.Join(ids, ",")}}.Encode(), nil)
+		return r, true, err
 	case "bank_profile":
 		r, err := s.api("GET", base, nil)
 		return r, true, err
@@ -274,4 +339,37 @@ func (s *Server) dispatchBank(name string, args map[string]any) (result any, han
 		return r, true, err
 	}
 	return nil, false, nil
+}
+
+// compactIndex turns an index or timeline answer into one short line per
+// entry: "#ref date type ~tokens title". Agents pay for every character.
+func compactIndex(r any) any {
+	m, ok := r.(map[string]any)
+	if !ok {
+		return r
+	}
+	list, _ := m["items"].([]any)
+	if list == nil {
+		list, _ = m["entries"].([]any)
+	}
+	lines := make([]string, 0, len(list))
+	for _, it := range list {
+		e, _ := it.(map[string]any)
+		date, _ := e["date"].(string)
+		if date == "" {
+			date = "undated   "
+		}
+		mark := ""
+		if h, _ := e["human"].(bool); h {
+			mark = " [person]"
+		}
+		lines = append(lines, fmt.Sprintf("%v %s %s ~%vt  %v%s", e["ref"], date, e["type"], e["tokens"], e["title"], mark))
+	}
+	out := map[string]any{"entries": lines}
+	for _, k := range []string{"total", "anchor_ref"} {
+		if v, ok := m[k]; ok {
+			out[k] = v
+		}
+	}
+	return out
 }
