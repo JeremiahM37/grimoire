@@ -79,6 +79,8 @@ var routeAccess = map[string]access{
 	"DELETE /api/banks/{bank}":                                   scoped,
 	"POST /api/banks/{bank}/memories":                            scoped,
 	"GET /api/banks/{bank}/memories":                             scoped,
+	"GET /api/banks/{bank}/sessions":                             scoped,
+	"POST /api/banks/{bank}/sessions/{session}/digest":           scoped,
 	"GET /api/banks/{bank}/context":                              scoped, // session-start injection, read-only
 	"POST /api/banks/{bank}/memories/recall":                     scoped, // a read that takes a body
 	"GET /api/banks/{bank}/memories/{id}":                        scoped,

@@ -35,6 +35,8 @@ func (s *Server) bankRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/banks/{bank}/documents/{id}", s.deleteBankDocument)
 	mux.HandleFunc("GET /api/banks/{bank}/chunks/{id}", s.getBankChunk)
 	mux.HandleFunc("GET /api/banks/{bank}/context", s.bankContext)
+	mux.HandleFunc("GET /api/banks/{bank}/sessions", s.listBankSessions)
+	mux.HandleFunc("POST /api/banks/{bank}/sessions/{session}/digest", s.writeSessionDigest)
 	s.bankReasoningRoutes(mux)
 }
 
@@ -617,4 +619,45 @@ func (s *Server) bankContext(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, res)
+}
+
+// writeSessionDigest writes a session's "where we left off" note into the bank.
+func (s *Server) writeSessionDigest(w http.ResponseWriter, r *http.Request) {
+	id, ok := s.bankWritable(w, r)
+	if !ok {
+		return
+	}
+	var in bank.DigestInput
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<20)).Decode(&in); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	in.SessionID = r.PathValue("session")
+	res, err := s.Banks.WriteDigest(r.Context(), id, in)
+	if err != nil {
+		writeBankErr(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
+}
+
+// listBankSessions lists a bank's session digests, newest first.
+func (s *Server) listBankSessions(w http.ResponseWriter, r *http.Request) {
+	id, ok := s.bankReadable(w, r)
+	if !ok {
+		return
+	}
+	n, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if n <= 0 || n > 200 {
+		n = 20
+	}
+	ds, err := s.Banks.ListDigests(id, n)
+	if err != nil {
+		writeBankErr(w, err)
+		return
+	}
+	if ds == nil {
+		ds = []bank.DigestSummary{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": ds, "total": len(ds)})
 }
