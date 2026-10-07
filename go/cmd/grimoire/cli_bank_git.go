@@ -200,16 +200,9 @@ func bankImportGit(c *bankClient, f *bankFlags) error {
 	if !exists {
 		// A new per-repo bank starts from the coding-agent template, so its
 		// retain mission asks for decisions and conventions, not chatter.
-		body := map[string]any{"bank_id": bank, "name": repoName}
-		if tpl, err := findTemplate(c, "coding-agent"); err == nil {
-			for k, v := range tpl.Manifest.Bank.fields() {
-				if k != "name" {
-					body[k] = v
-				}
-			}
-		}
+		tpl, _ := findTemplate(c, "coding-agent")
 		var ae *apiError
-		if err := c.do("POST", "/api/banks", body, nil); err != nil && !(errors.As(err, &ae) && ae.status == 409) {
+		if _, _, err := createBank(c, bank, tpl, map[string]string{"name": repoName}); err != nil && !(errors.As(err, &ae) && ae.status == 409) {
 			return err
 		}
 	}

@@ -18,6 +18,13 @@ import (
 
 func bankServer(t *testing.T) string {
 	t.Helper()
+	return bankServerWith(t, nil)
+}
+
+// bankServerWith is bankServer with the handler wrapped, to play an older
+// server.
+func bankServerWith(t *testing.T, wrap func(http.Handler) http.Handler) string {
+	t.Helper()
 	vaultDir(t)
 	for _, k := range []string{"GRIMOIRE_LLM", "GRIMOIRE_LLM_MODEL", "GRIMOIRE_OLLAMA_URL", "GRIMOIRE_AUTH_TOKEN", "GRIMOIRE_SESSION"} {
 		t.Setenv(k, "")
@@ -26,8 +33,16 @@ func bankServer(t *testing.T) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	srv := httptest.NewServer(e.handler)
-	t.Cleanup(func() { srv.Close(); e.close() })
+	h := e.handler
+	if wrap != nil {
+		h = wrap(h)
+	}
+	// Operations (async retain) run on the server's workers, as under serve.
+	if err := e.server.Banks.StartWorkers(2); err != nil {
+		t.Fatal(err)
+	}
+	srv := httptest.NewServer(h)
+	t.Cleanup(func() { srv.Close(); e.server.Banks.StopWorkers(); e.close() })
 	t.Setenv("GRIMOIRE_URL", srv.URL)
 	return srv.URL
 }
@@ -158,7 +173,7 @@ func TestBankLifecycleOverHTTP(t *testing.T) {
 	}
 }
 
-func TestBankRetainSourcesAndAsyncFallback(t *testing.T) {
+func TestBankRetainSourcesAsync(t *testing.T) {
 	base := bankServer(t)
 	mustBank(t, "create", "docs", "--template", "plain-retrieval")
 	dir := t.TempDir()
@@ -168,12 +183,12 @@ func TestBankRetainSourcesAndAsyncFallback(t *testing.T) {
 	os.WriteFile(filepath.Join(dir, "sub", "b.txt"), []byte("Beta needs a VPN."), 0o644)
 	os.WriteFile(filepath.Join(dir, "image.png"), []byte("\x89PNG"), 0o644)
 	os.WriteFile(filepath.Join(dir, ".git", "c.md"), []byte("hidden"), 0o644)
-	out, errOut, code := runBank(t, "retain", "docs", "--dir", dir, "--async", "--timestamp", "mtime")
+	out, errOut, code := runBank(t, "retain", "docs", "--dir", dir, "--async", "--wait", "--timestamp", "mtime")
 	if code != 0 {
 		t.Fatalf("retain --dir = %d: %s %s", code, out, errOut)
 	}
-	if !strings.Contains(errOut, "retaining in the foreground") {
-		t.Errorf("async fallback was silent: %q", errOut)
+	if !strings.Contains(out, "finished") || !strings.Contains(out, "a.md:") || strings.Contains(errOut, "foreground") {
+		t.Errorf("async retain was not queued and followed: %q %q", out, errOut)
 	}
 	var docs struct {
 		Items []struct {
@@ -203,18 +218,57 @@ func TestBankRetainSourcesAndAsyncFallback(t *testing.T) {
 	}
 }
 
-// The surfaces the server does not have yet must say so — and must not be
+// olderServer plays a server from before reflect, observations, mental
+// models, directives, operations and templates: those routes answer the mux's
+// plain-text 404, and an asynchronous retain is refused.
+func olderServer(h http.Handler) http.Handler {
+	newer := []string{"/reflect", "/observations", "/consolidate", "/mental-models", "/directives",
+		"/operations", "/webhooks", "/stats", "/export", "/import"}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p := r.URL.Path
+		if strings.HasPrefix(p, "/api/bank-templates") {
+			http.NotFound(w, r)
+			return
+		}
+		if strings.HasPrefix(p, "/api/banks/") {
+			for _, n := range newer {
+				if strings.Contains(p, n) {
+					http.NotFound(w, r)
+					return
+				}
+			}
+		}
+		if r.Method == "POST" && strings.HasSuffix(p, "/memories") {
+			raw, _ := io.ReadAll(r.Body)
+			if strings.Contains(string(raw), `"async":true`) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(400)
+				w.Write([]byte(`{"detail":"async retain is not supported yet"}`))
+				return
+			}
+			r.Body = io.NopCloser(strings.NewReader(string(raw)))
+		}
+		h.ServeHTTP(w, r)
+	})
+}
+
+// On an older server the newer surfaces must say so — and must not be
 // confused with a bank that does not exist.
-func TestBankNotYetSurfacesDegrade(t *testing.T) {
-	bankServer(t)
+func TestBankOlderServerDegrades(t *testing.T) {
+	base := bankServerWith(t, olderServer)
 	mustBank(t, "create", "b")
 	for _, args := range [][]string{
 		{"reflect", "b", "what happened"},
 		{"observations", "b"},
+		{"observations", "consolidate", "b"},
 		{"models", "ls", "b"},
+		{"models", "tree", "b"},
 		{"models", "refresh", "b", "project-context"},
+		{"directives", "ls", "b"},
 		{"ops", "ls", "b"},
 		{"ops", "cancel", "b", "op-1"},
+		{"stats", "b"},
+		{"import", "b", "--template", "support"},
 	} {
 		out, errOut, code := runBank(t, args...)
 		if code == 0 || !strings.Contains(errOut, "not available on this server") {
@@ -228,46 +282,152 @@ func TestBankNotYetSurfacesDegrade(t *testing.T) {
 	if !strings.Contains(out, "created bank coder") || !strings.Contains(errOut, "skipped") {
 		t.Errorf("template models on an older server: %q %q", out, errOut)
 	}
+	var p bankProfile
+	getJSON(t, base+"/api/banks/coder", &p)
+	if p.Disposition.Literalism != 5 || len(p.Directives) != 1 || p.Config["consolidation"] != "auto" || p.Config["observations_mission"] != "" {
+		t.Errorf("fallback template profile = %+v", p)
+	}
 	if out := mustBank(t, "templates"); !strings.Contains(out, "coding-agent") || !strings.Contains(out, "built in") {
+		t.Errorf("templates = %q", out)
+	}
+	out, errOut, code := runBank(t, "retain", "b", "Alpha ships on Fridays.", "--async")
+	if code != 0 || !strings.Contains(errOut, "retaining in the foreground") || !strings.Contains(out, "1 facts") {
+		t.Errorf("async fallback = %d %q %q", code, out, errOut)
+	}
+}
+
+// A template on a current server is imported: its mental models and
+// directives are made by the server, and the command's overrides win.
+func TestBankCreateImportsServerTemplate(t *testing.T) {
+	base := bankServer(t)
+	out := mustBank(t, "create", "coder", "--template", "coding-agent", "--mission", "my mission")
+	if !strings.Contains(out, "created bank coder with 3 mental model(s) and 1 directive(s)") || !strings.Contains(out, "no language model") {
+		t.Errorf("create = %q", out)
+	}
+	var p bankProfile
+	getJSON(t, base+"/api/banks/coder", &p)
+	if p.Mission != "my mission" || !strings.Contains(p.RetainMission, "technical decisions") || p.Config["observations_mission"] == "" {
+		t.Errorf("profile = %+v", p)
+	}
+	if _, errOut, code := runBank(t, "create", "coder", "--template", "coding-agent"); code == 0 || !strings.Contains(errOut, "409") {
+		t.Errorf("re-create = %d %q", code, errOut)
+	}
+	if _, errOut, code := runBank(t, "create", "x", "--template", "nope"); code == 0 || !strings.Contains(errOut, "have: assistant") {
+		t.Errorf("unknown template = %q", errOut)
+	}
+	if out := mustBank(t, "templates", "show", "research"); !strings.Contains(out, `"question"`) || !strings.Contains(out, "Attribute claims") {
+		t.Errorf("templates show = %q", out)
+	}
+	if out := mustBank(t, "templates"); strings.Contains(out, "built in") || !strings.Contains(out, "plain-retrieval") {
 		t.Errorf("templates = %q", out)
 	}
 }
 
-// When the server does have templates and mental models, they are used.
-func TestBankCreateUsesServerTemplates(t *testing.T) {
-	vaultDir(t)
-	var created []string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method + " " + r.URL.Path {
-		case "GET /api/bank-templates":
-			w.Write([]byte(`{"templates":[{"id":"t","name":"T","manifest":{"bank":{"mission":"server mission","config":{"enable_graph":"false"}},"mental_models":[{"id":"m1","name":"M","source_query":"q?"}]}}]}`))
-		case "POST /api/banks":
-			var body map[string]any
-			json.NewDecoder(r.Body).Decode(&body)
-			if body["mission"] != "server mission" {
-				http.Error(w, `{"detail":"template not applied"}`, 400)
-				return
-			}
-			w.Write([]byte(`{"bank_id":"x"}`))
-		case "POST /api/banks/x/mental-models":
-			var body map[string]any
-			json.NewDecoder(r.Body).Decode(&body)
-			created = append(created, body["id"].(string))
-			w.Write([]byte(`{"mental_model_id":"m1","operation_id":"op"}`))
-		default:
-			http.NotFound(w, r)
+// The reasoning surfaces against the real routes, with no language model.
+func TestBankReasoningSurfacesOverHTTP(t *testing.T) {
+	base := bankServer(t)
+	mustBank(t, "create", "kb", "--template", "plain-retrieval")
+	mustBank(t, "retain", "kb", "Dana moved the launch to June because the vendor was late.", "--document-id", "d1")
+
+	if out := mustBank(t, "reflect", "kb", "when is the launch", "--trace"); !strings.Contains(out, "no language model") ||
+		!strings.Contains(out, "June") || !strings.Contains(out, "based on:") {
+		t.Errorf("reflect = %q", out)
+	}
+	raw := mustBank(t, "reflect", "kb", "launch", "--json")
+	var rr reflectResult
+	if err := json.Unmarshal([]byte(raw), &rr); err != nil || rr.Mode != "extractive" || len(rr.BasedOn.Memories) == 0 || rr.Trace != nil {
+		t.Errorf("reflect --json = %q (%v)", raw, err)
+	}
+
+	// Mental models: no model to write them, so refresh is refused clearly.
+	if out := mustBank(t, "models", "create", "kb", "Launch", "--query", "When is the launch?", "--id", "launch"); !strings.Contains(out, "no language model") {
+		t.Errorf("models create = %q", out)
+	}
+	if _, errOut, code := runBank(t, "models", "refresh", "kb", "launch"); code == 0 || !strings.Contains(errOut, "needs a language model") {
+		t.Errorf("refresh without a model = %d %q", code, errOut)
+	}
+	mustBank(t, "models", "edit", "kb", "launch", "--body", "The launch is in June.")
+	if out := mustBank(t, "models", "move", "kb", "launch", "--folder", "plans"); !strings.Contains(out, "launch → plans/launch") {
+		t.Errorf("move = %q", out)
+	}
+	if out := mustBank(t, "models", "tree", "kb"); !strings.Contains(out, "plans/\n  Launch  (plans/launch)") {
+		t.Errorf("tree = %q", out)
+	}
+	if out := mustBank(t, "models", "show", "kb", "plans/launch"); !strings.Contains(out, "The launch is in June.") || !strings.Contains(out, "edited by a person") {
+		t.Errorf("show = %q", out)
+	}
+	if out := mustBank(t, "models", "ls", "kb"); !strings.Contains(out, "plans/launch") || !strings.Contains(out, "1 mental model") {
+		t.Errorf("ls = %q", out)
+	}
+	if out := mustBank(t, "models", "export", "kb", "--markdown"); !strings.Contains(out, "The launch is in June.") {
+		t.Errorf("export = %q", out)
+	}
+	mustBank(t, "models", "history", "kb", "plans/launch")
+	if _, errOut, code := runBank(t, "models", "accept", "kb", "plans/launch"); code == 0 || strings.Contains(errOut, "not available") {
+		t.Errorf("accept with no proposal = %d %q", code, errOut)
+	}
+	mustBank(t, "models", "rm", "kb", "plans/launch")
+
+	// Directives.
+	out := mustBank(t, "directives", "add", "kb", "Answer in one sentence.", "--name", "Short", "--priority", "2")
+	if !strings.Contains(out, "Short") {
+		t.Errorf("directive add = %q", out)
+	}
+	var dl struct {
+		Items []directive `json:"items"`
+	}
+	getJSON(t, base+"/api/banks/kb/directives", &dl)
+	if len(dl.Items) != 1 || dl.Items[0].Priority != 2 {
+		t.Fatalf("directives = %+v", dl.Items)
+	}
+	did := dl.Items[0].ID
+	mustBank(t, "directives", "set", "kb", did, "--inactive")
+	if out := mustBank(t, "directives", "ls", "kb"); !strings.Contains(out, "0 directive") {
+		t.Errorf("inactive still listed: %q", out)
+	}
+	if out := mustBank(t, "directives", "ls", "kb", "--all"); !strings.Contains(out, "inactive") {
+		t.Errorf("--all = %q", out)
+	}
+	mustBank(t, "directives", "rm", "kb", did)
+
+	// Observations, consolidation, operations, stats, export/import.
+	if out := mustBank(t, "observations", "kb", "--history"); !strings.Contains(out, "0 observation(s)") {
+		t.Errorf("observations = %q", out)
+	}
+	if _, errOut, code := runBank(t, "observations", "consolidate", "kb"); code == 0 || !strings.Contains(errOut, "language model") {
+		t.Errorf("consolidate without a model = %d %q", code, errOut)
+	}
+	out = mustBank(t, "retain", "kb", "Bo prefers tea.", "--async")
+	opID := ""
+	for _, w := range strings.Fields(out) {
+		if strings.HasPrefix(w, "op") && len(w) > 3 && opID == "" && w != "operation" {
+			opID = w
 		}
-	}))
-	defer srv.Close()
-	t.Setenv("GRIMOIRE_URL", srv.URL)
-	if out := mustBank(t, "create", "x", "--template", "t"); !strings.Contains(out, "1 mental model") {
-		t.Errorf("create = %q", out)
 	}
-	if strings.Join(created, ",") != "m1" {
-		t.Errorf("models created = %v", created)
+	if opID == "" {
+		t.Fatalf("no operation id in %q", out)
 	}
-	if _, errOut, code := runBank(t, "create", "x", "--template", "nope"); code == 0 || !strings.Contains(errOut, "have: t") {
-		t.Errorf("unknown template = %q", errOut)
+	if out := mustBank(t, "ops", "wait", "kb", opID, "--timeout", "30s"); !strings.Contains(out, `"status": "completed"`) {
+		t.Errorf("ops wait = %q", out)
+	}
+	if out := mustBank(t, "ops", "ls", "kb", "--type", "retain"); !strings.Contains(out, opID) || !strings.Contains(out, "completed") {
+		t.Errorf("ops ls = %q", out)
+	}
+	if _, errOut, code := runBank(t, "ops", "cancel", "kb", opID); code == 0 || !strings.Contains(errOut, "already finished") {
+		t.Errorf("cancel finished op = %d %q", code, errOut)
+	}
+	if out := mustBank(t, "stats", "kb"); !strings.Contains(out, "facts:          2") || !strings.Contains(out, "language model: false") {
+		t.Errorf("stats = %q", out)
+	}
+	if out := mustBank(t, "export", "kb"); !strings.Contains(out, `"retain_extraction_mode": "chunks"`) {
+		t.Errorf("export = %q", out)
+	}
+	if out := mustBank(t, "import", "kb", "--template", "support", "--dry-run"); !strings.Contains(out, "would import into kb") || !strings.Contains(out, "open-issues") {
+		t.Errorf("import dry run = %q", out)
+	}
+	getJSON(t, base+"/api/banks/kb/directives", &dl)
+	if len(dl.Items) != 0 {
+		t.Errorf("a dry run wrote directives: %+v", dl.Items)
 	}
 }
 

@@ -34,25 +34,36 @@ const bankUsage = `usage: grimoire bank COMMAND [args] [--url URL] [--token T] [
   list                                   banks you can read
   create BANK [--template T] [--name N] [--mission M] [--retain-mission M]
   show BANK                              profile: mission, disposition, directives, config
+  stats BANK                             counts: facts, observations, models, pending work
   update BANK [--name N] [--mission M] [--retain-mission M]
               [--disposition S,L,E] [--skepticism N] [--literalism N] [--empathy N]
               [--directive TEXT]... [--remove-directive ID] [--clear-directives]
               [--config KEY=VALUE]...
   delete BANK --yes
+  export BANK                            the bank's manifest (profile, settings, models, directives)
+  import BANK FILE | --template T [--dry-run]   apply a manifest; additive
   retain BANK [TEXT...] [--file F | --dir D] [--document-id ID] [--timestamp T|mtime]
               [--context C] [--tags a,b] [--mode concise|verbatim|chunks]
-              [--update-mode replace|append] [--async]      (stdin when no text/file/dir)
+              [--update-mode replace|append] [--async [--wait]]   (stdin when no text/file/dir)
   recall BANK QUERY [--budget low|mid|high] [--max-tokens N] [--types a,b]
               [--tags a,b] [--tags-match any|all|any_strict|all_strict] [--chunks] [--trace]
   reflect BANK QUERY [--budget B] [--max-tokens N] [--context C] [--schema FILE]
+              [--tags a,b] [--fact-types a,b] [--trace]
   memories ls BANK [--type T] [--document-id D] [--q TEXT] [--human] [--limit N] [--offset N]
   memories rm BANK ID [--force]
   entities BANK [NAME]                   entities, or one entity with its facts
   documents BANK [ID] [--rm] [--force]   documents, one document, or delete it
-  observations BANK [--q TEXT]
-  models ls BANK | show BANK ID | create BANK NAME --query Q [--id ID] | refresh BANK ID
-  ops ls BANK [--status S] | show BANK ID | cancel BANK ID
-  templates                              bank templates (server, else built-in)
+  observations BANK [--q TEXT] [--human] [--history]
+  observations show BANK ID | rm BANK ID [--force] | consolidate BANK
+  models ls BANK | tree BANK | show BANK ID | history BANK ID | export BANK [--markdown]
+  models create BANK NAME --query Q [--id ID] [--folder F] [--tags a,b] [--body TEXT|--body-file F]
+  models refresh BANK ID | accept BANK ID | reject BANK ID | rm BANK ID
+  models edit BANK ID --body TEXT|--body-file F | move BANK ID --folder F
+  directives ls BANK [--all] | add BANK TEXT [--name N] [--tags a,b] [--priority N]
+  directives set BANK ID [--text T] [--name N] [--tags a,b] [--priority N] [--active|--inactive]
+  directives rm BANK ID
+  ops ls BANK [--status S] [--type T] | show BANK ID | wait BANK ID [--timeout 2m] | cancel BANK ID
+  templates [show ID]                    bank templates (server, else built-in)
   import-git REPO [--bank B] [--limit 300] [--diffs] [--max-diff-bytes N]
               [--force] [--dry-run]      retain recent commits into coding-agent:<repo>
 
@@ -71,6 +82,8 @@ var bankValued = map[string]bool{
 	"--schema": true, "--type": true, "--q": true, "--limit": true, "--offset": true,
 	"--query": true, "--id": true, "--status": true, "--bank": true,
 	"--max-diff-bytes": true, "--max-files": true, "--batch": true,
+	"--fact-types": true, "--folder": true, "--body": true, "--body-file": true,
+	"--text": true, "--priority": true, "--timeout": true,
 }
 
 // bankFlags is a parsed command line: positional words, the last value of
@@ -180,6 +193,7 @@ func newBankClient(f *bankFlags) *bankClient {
 type apiError struct {
 	status int
 	detail string
+	code   string // machine-readable reason, e.g. "model_required"
 	json   bool
 }
 
@@ -198,19 +212,36 @@ func routeMissing(err error) bool {
 		ae.status == http.StatusNotFound && !ae.json)
 }
 
+// modelRequired reports whether err is the server saying the call needs a
+// language model and none is configured.
+func modelRequired(err error) bool {
+	var ae *apiError
+	return errors.As(err, &ae) && ae.status == http.StatusConflict &&
+		(ae.code == "model_required" || strings.HasPrefix(ae.detail, "model_required"))
+}
+
 // do sends one request and decodes a JSON reply into out (when non-nil).
 func (c *bankClient) do(method, path string, body, out any) error {
+	raw, err := c.doRaw(method, path, body)
+	if err != nil || out == nil || len(bytes.TrimSpace(raw)) == 0 {
+		return err
+	}
+	return json.Unmarshal(raw, out)
+}
+
+// doRaw sends one request and returns the reply body as it came.
+func (c *bankClient) doRaw(method, path string, body any) ([]byte, error) {
 	var rdr io.Reader
 	if body != nil {
 		raw, err := json.Marshal(body)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		rdr = bytes.NewReader(raw)
 	}
 	req, err := http.NewRequest(method, c.base+path, rdr)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	req.Header.Set("Accept", "application/json")
 	if body != nil {
@@ -227,27 +258,25 @@ func (c *bankClient) do(method, path string, body, out any) error {
 	}
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return fmt.Errorf("grimoire unreachable at %s: %w", c.base, err)
+		return nil, fmt.Errorf("grimoire unreachable at %s: %w", c.base, err)
 	}
 	defer resp.Body.Close()
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, 64<<20))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if resp.StatusCode >= 400 {
 		ae := &apiError{status: resp.StatusCode, detail: strings.TrimSpace(string(raw))}
 		var payload struct {
 			Detail string `json:"detail"`
+			Code   string `json:"code"`
 		}
 		if json.Unmarshal(raw, &payload) == nil && payload.Detail != "" {
-			ae.detail, ae.json = payload.Detail, true
+			ae.detail, ae.code, ae.json = payload.Detail, payload.Code, true
 		}
-		return ae
+		return nil, ae
 	}
-	if out == nil || len(bytes.TrimSpace(raw)) == 0 {
-		return nil
-	}
-	return json.Unmarshal(raw, out)
+	return raw, nil
 }
 
 func bankPath(id string, rest ...string) string {
@@ -274,6 +303,7 @@ func bankCommands() map[string]bankCmd {
 		"recall": bankRecall, "reflect": bankReflect, "memories": bankMemories,
 		"entities": bankEntities, "documents": bankDocuments,
 		"observations": bankObservations, "models": bankModels, "ops": bankOps,
+		"directives": bankDirectives, "stats": bankStats, "export": bankExport, "import": bankImport,
 		"templates": bankTemplates, "import-git": bankImportGit,
 	}
 }
@@ -328,9 +358,12 @@ type disposition struct {
 }
 
 type directive struct {
-	ID   string   `json:"id,omitempty"`
-	Text string   `json:"text"`
-	Tags []string `json:"tags,omitempty"`
+	ID       string   `json:"id,omitempty"`
+	Name     string   `json:"name,omitempty"`
+	Text     string   `json:"text"`
+	Tags     []string `json:"tags,omitempty"`
+	Priority int      `json:"priority,omitempty"`
+	Inactive bool     `json:"inactive,omitempty"`
 }
 
 type bankProfile struct {
@@ -376,48 +409,43 @@ func bankCreate(c *bankClient, f *bankFlags) error {
 	if err != nil {
 		return err
 	}
-	body := map[string]any{"bank_id": id}
-	var models []templateModel
-	if t, ok := f.get("--template"); ok {
-		tpl, err := findTemplate(c, t)
-		if err != nil {
-			return err
-		}
-		for k, v := range tpl.Manifest.Bank.fields() {
-			body[k] = v
-		}
-		models = tpl.Manifest.MentalModels
-	}
+	overrides := map[string]string{}
 	for flag, key := range map[string]string{"--name": "name", "--mission": "mission", "--retain-mission": "retain_mission"} {
 		if v, ok := f.get(flag); ok {
-			body[key] = v
+			overrides[key] = v
 		}
 	}
-	var p bankProfile
-	if err := c.do("POST", "/api/banks", body, &p); err != nil {
+	var tpl *bankTemplate
+	if t, ok := f.get("--template"); ok {
+		if tpl, err = findTemplate(c, t); err != nil {
+			return err
+		}
+	}
+	p, imp, err := createBank(c, id, tpl, overrides)
+	if err != nil {
 		return err
 	}
-	created := 0
-	for _, m := range models {
-		if err := createModel(c, id, m); err != nil {
-			if routeMissing(err) {
-				fmt.Fprintf(os.Stderr, "note: this server has no mental models yet; the template's %d model(s) were skipped\n", len(models))
-				break
-			}
-			fmt.Fprintf(os.Stderr, "note: mental model %s: %v\n", m.ID, err)
-			continue
-		}
-		created++
-	}
 	if f.on["--json"] {
-		printJSON(p)
+		printJSON(map[string]any{"bank": p, "import": imp})
 		return nil
 	}
 	fmt.Printf("created bank %s", p.ID)
-	if created > 0 {
-		fmt.Printf(" with %d mental model(s)", created)
+	if imp != nil {
+		var parts []string
+		if n := len(imp.ModelsCreated); n > 0 {
+			parts = append(parts, fmt.Sprintf("%d mental model(s)", n))
+		}
+		if n := len(imp.DirectivesCreated); n > 0 {
+			parts = append(parts, fmt.Sprintf("%d directive(s)", n))
+		}
+		if len(parts) > 0 {
+			fmt.Printf(" with %s", strings.Join(parts, " and "))
+		}
 	}
 	fmt.Println()
+	if imp != nil && len(imp.ModelsCreated) > 0 && len(imp.OperationIDs) == 0 {
+		fmt.Println("note: the server has no language model configured, so the mental models stay empty until one is and they are refreshed")
+	}
 	return nil
 }
 
@@ -460,7 +488,7 @@ func printProfile(p *bankProfile) {
 		fmt.Println("  —")
 	}
 	for _, d := range p.Directives {
-		fmt.Printf("  [%s] %s\n", d.ID, d.Text)
+		printDirective(d)
 	}
 	if len(p.Config) > 0 {
 		keys := make([]string, 0, len(p.Config))
@@ -637,14 +665,15 @@ type retainDoc struct {
 }
 
 type retainResult struct {
-	BankID      string      `json:"bank_id"`
-	ItemsCount  int         `json:"items_count"`
-	Async       bool        `json:"async"`
-	OperationID string      `json:"operation_id"`
-	Mode        string      `json:"mode"`
-	Documents   []retainDoc `json:"documents"`
-	BankCreated bool        `json:"bank_created"`
-	Usage       struct {
+	BankID       string      `json:"bank_id"`
+	ItemsCount   int         `json:"items_count"`
+	Async        bool        `json:"async"`
+	OperationID  string      `json:"operation_id"`
+	OperationIDs []string    `json:"operation_ids"`
+	Mode         string      `json:"mode"`
+	Documents    []retainDoc `json:"documents"`
+	BankCreated  bool        `json:"bank_created"`
+	Usage        struct {
 		Total int `json:"total_tokens"`
 	} `json:"usage"`
 }
@@ -777,16 +806,50 @@ func bankRetain(c *bankClient, f *bankFlags) error {
 		}
 		all = append(all, res.Documents...)
 		tokens += res.Usage.Total
-		if res.OperationID != "" {
+		switch {
+		case len(res.OperationIDs) > 0:
+			ops = append(ops, res.OperationIDs...)
+		case res.OperationID != "":
 			ops = append(ops, res.OperationID)
 		}
 	}
+	// --wait follows queued retains to the end and reports them like a
+	// foreground one.
+	var failed []string
+	if f.on["--wait"] && len(ops) > 0 {
+		timeout, err := waitTimeout(f)
+		if err != nil {
+			return err
+		}
+		for _, id := range ops {
+			op, err := waitOp(c, bank, id, timeout)
+			if err != nil {
+				return err
+			}
+			if op.Status != "completed" {
+				failed = append(failed, fmt.Sprintf("%s %s: %s", id, op.Status, orDash(op.Error)))
+				continue
+			}
+			var r retainResult
+			if json.Unmarshal(op.Result, &r) == nil {
+				all = append(all, r.Documents...)
+				tokens += r.Usage.Total
+			}
+		}
+	}
 	if f.on["--json"] {
-		printJSON(map[string]any{"bank_id": bank, "documents": all, "operation_ids": ops, "total_tokens": tokens})
+		printJSON(map[string]any{"bank_id": bank, "documents": all, "operation_ids": ops, "total_tokens": tokens, "failed": failed})
+		if len(failed) > 0 {
+			return fmt.Errorf("%d operation(s) did not complete", len(failed))
+		}
 		return nil
 	}
 	for _, op := range ops {
-		fmt.Printf("queued operation %s\n", op)
+		if f.on["--wait"] {
+			fmt.Printf("operation %s finished\n", op)
+		} else {
+			fmt.Printf("queued operation %s (follow it with `grimoire bank ops wait %s %s`)\n", op, bank, op)
+		}
 	}
 	for _, d := range all {
 		state := fmt.Sprintf("%d facts (%d new), %d/%d chunks extracted", d.Facts, d.FactsAdded, d.ChunksExtracted, d.Chunks)
@@ -800,6 +863,9 @@ func bankRetain(c *bankClient, f *bankFlags) error {
 	}
 	if tokens > 0 {
 		fmt.Printf("model tokens: %d\n", tokens)
+	}
+	if len(failed) > 0 {
+		return fmt.Errorf("retain did not complete: %s", strings.Join(failed, "; "))
 	}
 	return nil
 }
