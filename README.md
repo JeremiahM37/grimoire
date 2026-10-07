@@ -174,6 +174,7 @@ Agents without a grant can *ask*; asking grants nothing.
 |---|---|
 | **Credentials — use, never read** | **`use_credential`** · **`list_grants`** · **`request_credential`** · **`check_credential_request`** |
 | **Agent memory** | **`remember`** · **`recall`** · **`forget`** · **`memory_changes`** · **`memory_graph`** · **`memory_feedback`** · **`memory_scopes`** · **`consolidate_memory`** |
+| **Memory banks** | **`retain`** · **`bank_recall`** · `list_banks` · `create_bank` · `bank_profile` · `list_bank_memories` · `delete_bank_memory` · `list_entities` · `list_bank_documents` · `get_bank_document` · `delete_bank_document` |
 | Knowledge | `search_notes` · `ask_notes` · `read_note` · `list_notes` · `backlinks` · `list_tags` · `stale_notes` |
 | Knowledge expansion | `query_knowledge` · `knowledge_graph` · `read_source` · `extract_relationships` · `list_documents` · `refresh_document` · `import_document` |
 | The web | `search_web` · `open_urls` |

@@ -13,6 +13,7 @@ Everything is environment-driven (same variables bare-metal, systemd, Docker):
 | `GRIMOIRE_AUTH_TOKEN` | *(empty = open)* | Bearer token for the API/console |
 | `GRIMOIRE_AGENT_NAME` | `agent` | Memory attribution for an MCP client |
 | `GRIMOIRE_SESSION` | *(empty)* | Run id an MCP client stamps on every memory it writes. Set by whatever launches the agent, so "what did this run learn" (`/api/memory/changes?session=`) needs nothing from the model |
+| `GRIMOIRE_BANK` | *(empty)* | The memory bank an MCP client's bank tools (`retain`, `bank_recall`, …) use when a call names none. See [MEMORY_BANKS.md](MEMORY_BANKS.md) |
 | `GRIMOIRE_OLLAMA_URL` | *(empty)* | Reachable Ollama → generative ask/summarize |
 | `GRIMOIRE_LLM` / `GRIMOIRE_LLM_MODEL` | auto / `qwen3.5:4b` | Answer backend (`ollama` · `claude` · `openai`) + model |
 | `GRIMOIRE_LLM_BASE_URL` / `_API_KEY` | *(empty)* | Any OpenAI-compatible endpoint (OpenAI, OpenRouter, Together, Groq, vLLM, LM Studio, LiteLLM…); key can also live in the vault as `llm-api-key` |

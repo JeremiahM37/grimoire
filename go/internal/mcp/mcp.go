@@ -76,7 +76,10 @@ type Server struct {
 	// store share one key for "what did this run learn" without the model being
 	// involved — or able to file its writes under another run.
 	Session string
-	Client  *http.Client
+	// Bank is the memory bank the bank tools use when a call names none;
+	// read from GRIMOIRE_BANK.
+	Bank   string
+	Client *http.Client
 
 	// AuthToken is presented to the API when it is gated by
 	// GRIMOIRE_AUTH_TOKEN. This server is an HTTP client of that API, so
@@ -120,6 +123,7 @@ func New(baseURL, agent string) *Server {
 		BaseURL:   strings.TrimRight(baseURL, "/"),
 		Agent:     agent,
 		Session:   strings.TrimSpace(os.Getenv(EnvSession)),
+		Bank:      strings.TrimSpace(os.Getenv(EnvBank)),
 		AuthToken: os.Getenv("GRIMOIRE_AUTH_TOKEN"),
 		// The administrative surface can be gated separately, and some tools
 		// here are on it — list_grants reads the credential console's own
@@ -637,6 +641,9 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 		return s.api("GET", "/api/secrets/requests/"+url.PathEscape(str(args, "id"))+
 			"?"+q.Encode(), nil)
 	default:
+		if r, handled, err := s.dispatchBank(name, args); handled {
+			return r, err
+		}
 		return nil, fmt.Errorf("unknown tool: %s", name)
 	}
 }
