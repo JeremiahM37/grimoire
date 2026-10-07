@@ -86,7 +86,7 @@ func writeBankErr(w http.ResponseWriter, err error) {
 	case errors.Is(err, bank.ErrNotFound):
 		writeErr(w, http.StatusNotFound, "not found")
 	case errors.Is(err, bank.ErrExists):
-		writeErr(w, http.StatusConflict, "bank already exists")
+		writeErr(w, http.StatusConflict, "already exists") // a bank, a mental model or a directive name
 	case errors.Is(err, bank.ErrInvalid):
 		writeErr(w, http.StatusBadRequest, strings.TrimPrefix(err.Error(), bank.ErrInvalid.Error()+": "))
 	case errors.Is(err, bank.ErrHumanProtected):

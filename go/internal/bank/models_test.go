@@ -140,6 +140,11 @@ func TestModelTreeExportAndMove(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	if m, err := h.e.CreateModel("b", ModelSpec{ID: "carol", Folder: strPtr("people"), Question: strPtr("Who is Carol?")}); err != nil || m.ID != "people/carol" {
+		t.Errorf("id with a folder = %+v %v", m, err)
+	} else if err := h.e.DeleteModel("b", m.ID); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := h.e.CreateModel("b", ModelSpec{ID: "people/alice", Question: strPtr("again")}); err != ErrExists {
 		t.Errorf("duplicate id = %v", err)
 	}
