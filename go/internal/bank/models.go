@@ -86,19 +86,23 @@ func ProposalPath(bankID, id string) string { return Prefix(bankID) + "proposals
 
 // MentalModel is a model as the API shows it.
 type MentalModel struct {
-	ID        string   `json:"id"`
-	BankID    string   `json:"bank_id"`
-	Name      string   `json:"name"`
-	Question  string   `json:"question"`
-	Folder    string   `json:"folder"`
-	Path      string   `json:"path"`
-	Tags      []string `json:"tags"`
-	Refresh   string   `json:"refresh"` // auto | manual
-	MaxTokens int      `json:"max_tokens"`
-	Budget    string   `json:"budget"`
-	FactTypes []string `json:"fact_types,omitempty"`
-	Body      string   `json:"body,omitempty"`
-	Version   int      `json:"version"`
+	ID       string   `json:"id"`
+	BankID   string   `json:"bank_id"`
+	Name     string   `json:"name"`
+	Question string   `json:"question"`
+	Folder   string   `json:"folder"`
+	Path     string   `json:"path"`
+	Tags     []string `json:"tags"`
+	Refresh  string   `json:"refresh"` // auto | manual
+	// RefreshMode is how a refresh rewrites the answer: "full" reflects on
+	// the question again, "delta" edits only the sections the facts new since
+	// the last refresh bear on.
+	RefreshMode string   `json:"refresh_mode"`
+	MaxTokens   int      `json:"max_tokens"`
+	Budget      string   `json:"budget"`
+	FactTypes   []string `json:"fact_types,omitempty"`
+	Body        string   `json:"body,omitempty"`
+	Version     int      `json:"version"`
 	// LastRefreshed is when a refresh last wrote, confirmed or proposed an
 	// answer.
 	LastRefreshed string   `json:"last_refreshed,omitempty"`
@@ -114,6 +118,10 @@ type MentalModel struct {
 
 	scopeSig string
 	bodySum  string
+	// seen fingerprints the in-scope units the last refresh took into
+	// account; sectionSums records each section as the model last wrote it.
+	seen        []string
+	sectionSums []string
 }
 
 // Proposal is an answer a refresh could not write over a person's text.
@@ -123,19 +131,22 @@ type Proposal struct {
 	ProposedAt  string   `json:"created_at"`
 	BaseVersion int      `json:"base_version"`
 	scopeSig    string
+	seen        []string
 }
 
 // ModelSpec creates or patches a model. Nil pointers are "not sent".
 type ModelSpec struct {
-	ID        string    `json:"id"`
-	Name      *string   `json:"name"`
-	Question  *string   `json:"question"`
-	Folder    *string   `json:"folder"`
-	Tags      *[]string `json:"tags"`
-	Refresh   *string   `json:"refresh"`
-	MaxTokens *int      `json:"max_tokens"`
-	Budget    *string   `json:"budget"`
-	FactTypes *[]string `json:"fact_types"`
+	ID       string    `json:"id"`
+	Name     *string   `json:"name"`
+	Question *string   `json:"question"`
+	Folder   *string   `json:"folder"`
+	Tags     *[]string `json:"tags"`
+	Refresh  *string   `json:"refresh"`
+	// RefreshMode is "full" or "delta".
+	RefreshMode *string   `json:"refresh_mode"`
+	MaxTokens   *int      `json:"max_tokens"`
+	Budget      *string   `json:"budget"`
+	FactTypes   *[]string `json:"fact_types"`
 	// Body is a person's own answer. Sent on create it makes the model a
 	// person's from the start; sent on update it is an edit, and refresh
 	// will only propose over it.
@@ -177,7 +188,11 @@ func parseModel(bankID, rel string, fm *markdown.Frontmatter, body string) *Ment
 		MaxTokens: intOr(fm.StringVal("max_tokens"), DefaultModelMaxTokens), Version: intOr(fm.StringVal("version"), 0),
 		LastRefreshed: fm.StringVal("last_refreshed"), BasedOn: listOf(fm, "based_on"),
 		Body: strings.TrimSpace(body), Updated: fm.StringVal("updated"),
-		scopeSig: fm.StringVal("scope_sig"), bodySum: fm.StringVal("body_sum")}
+		scopeSig: fm.StringVal("scope_sig"), bodySum: fm.StringVal("body_sum"),
+		RefreshMode: fm.StringVal("refresh_mode"), seen: listOf(fm, "seen"), sectionSums: listOf(fm, "section_sums")}
+	if m.RefreshMode != "delta" {
+		m.RefreshMode = "full"
+	}
 	if v, ok := fm.Get("fact_types"); ok {
 		m.FactTypes = valueList(v)
 	}
@@ -219,6 +234,9 @@ func (m *MentalModel) frontmatter(base *markdown.Frontmatter) *markdown.Frontmat
 	fm.Set("refresh", m.Refresh)
 	fm.Set("max_tokens", strconv.Itoa(m.MaxTokens))
 	fm.Set("budget", m.Budget)
+	setOrDelete(fm, "refresh_mode", m.RefreshMode == "delta", "delta")
+	setListOrDelete(fm, "seen", m.seen)
+	setListOrDelete(fm, "section_sums", m.sectionSums)
 	if len(m.FactTypes) > 0 {
 		fm.Set("fact_types", listValue(m.FactTypes))
 	} else {
@@ -319,7 +337,30 @@ func (e *Engine) readProposal(bankID, id string) *Proposal {
 	}
 	return &Proposal{Body: strings.TrimSpace(n.Body), BasedOn: listOf(n.Frontmatter, "based_on"),
 		ProposedAt: n.Frontmatter.StringVal("proposed_at"), BaseVersion: intOr(n.Frontmatter.StringVal("base_version"), 0),
-		scopeSig: n.Frontmatter.StringVal("scope_sig")}
+		scopeSig: n.Frontmatter.StringVal("scope_sig"), seen: listOf(n.Frontmatter, "seen")}
+}
+
+// writeProposal files an answer that could not be written over a person's
+// text.
+func (e *Engine) writeProposal(bankID, id string, m *MentalModel, text string, based []string, sig string, seen []string, now string) error {
+	fm := markdown.NewFrontmatter()
+	fm.Set("title", "Proposal: "+oneLine(m.Name))
+	fm.Set("bank", bankID)
+	fm.Set("model_id", id)
+	fm.Set("proposed_at", now)
+	fm.Set("base_version", strconv.Itoa(m.Version))
+	fm.Set("based_on", listValue(based))
+	fm.Set("scope_sig", sig)
+	setListOrDelete(fm, "seen", seen)
+	rel := ProposalPath(bankID, id)
+	if old, err := e.Vault.Read(rel); err == nil && e.History != nil {
+		e.History.Snapshot(rel, old.Body)
+	}
+	if _, err := e.Vault.Write(rel, text, e.keepFrontmatter(rel, fm)); err != nil {
+		return err
+	}
+	_, err := e.Index.Upsert(rel)
+	return err
 }
 
 // indexModel caches one model note for listing and for reflect's search.
@@ -487,6 +528,12 @@ func (spec ModelSpec) apply(m *MentalModel) error {
 	}
 	if spec.Refresh != nil {
 		m.Refresh = *spec.Refresh
+	}
+	if spec.RefreshMode != nil {
+		if *spec.RefreshMode != "full" && *spec.RefreshMode != "delta" {
+			return invalid("refresh_mode must be full or delta")
+		}
+		m.RefreshMode = *spec.RefreshMode
 	}
 	if spec.MaxTokens != nil {
 		m.MaxTokens = *spec.MaxTokens
@@ -688,22 +735,53 @@ type RefreshOutcome struct {
 	Version int      `json:"version"`
 	BasedOn []string `json:"based_on"`
 	Usage   Usage    `json:"usage"`
+	// Mode is "delta" when the refresh edited sections instead of rewriting.
+	Mode string `json:"mode,omitempty"`
+	// Held counts delta edits aimed at a person's sections; they wait in a
+	// pending proposal.
+	Held int `json:"held_edits,omitempty"`
+}
+
+// RefreshOpts selects how a refresh rewrites: "full", "delta", or "" for the
+// model's own setting.
+type RefreshOpts struct {
+	Mode string
 }
 
 // RefreshModel rewrites a model's answer by reflecting on its question. A
 // body a person edited is never overwritten: the new answer becomes a
 // pending proposal instead.
 func (e *Engine) RefreshModel(ctx context.Context, bankID, id string) (*RefreshOutcome, error) {
-	if !e.AI.Available() {
-		return nil, ErrModelRequired
-	}
+	return e.RefreshModelWith(ctx, bankID, id, RefreshOpts{})
+}
+
+// RefreshModelWith is RefreshModel with an explicit mode. A delta refresh
+// needs no model: without one it lists the new facts under a section of its
+// own.
+func (e *Engine) RefreshModelWith(ctx context.Context, bankID, id string, opts RefreshOpts) (*RefreshOutcome, error) {
 	m, _, err := e.readModel(bankID, id)
 	if err != nil {
 		return nil, err
 	}
+	mode := opts.Mode
+	if mode == "" {
+		mode = m.RefreshMode
+	}
+	if mode != "delta" && !e.AI.Available() {
+		return nil, ErrModelRequired
+	}
 	c, err := e.cache(bankID)
 	if err != nil {
 		return nil, err
+	}
+	if mode == "delta" {
+		o := &RefreshOutcome{ModelID: id, Version: m.Version, BasedOn: []string{}}
+		if done, err := e.refreshDelta(ctx, bankID, id, m, c, o); done || err != nil {
+			return o, err
+		}
+		if !e.AI.Available() {
+			return nil, ErrModelRequired
+		}
 	}
 	sig := c.scopeSignature(m)
 	out := &RefreshOutcome{ModelID: id, Version: m.Version, BasedOn: []string{}}
@@ -752,22 +830,7 @@ func (e *Engine) RefreshModel(ctx context.Context, bankID, id string) (*RefreshO
 	}
 	now := e.now().Format(time.RFC3339)
 	if m.edited() {
-		fm := markdown.NewFrontmatter()
-		fm.Set("title", "Proposal: "+oneLine(m.Name))
-		fm.Set("bank", bankID)
-		fm.Set("model_id", id)
-		fm.Set("proposed_at", now)
-		fm.Set("base_version", strconv.Itoa(m.Version))
-		fm.Set("based_on", listValue(based))
-		fm.Set("scope_sig", sig)
-		rel := ProposalPath(bankID, id)
-		if old, err := e.Vault.Read(rel); err == nil && e.History != nil {
-			e.History.Snapshot(rel, old.Body)
-		}
-		if _, err := e.Vault.Write(rel, text, e.keepFrontmatter(rel, fm)); err != nil {
-			return nil, err
-		}
-		if _, err := e.Index.Upsert(rel); err != nil {
+		if err := e.writeProposal(bankID, id, m, text, based, sig, c.seenPrints(m), now); err != nil {
 			return nil, err
 		}
 		out.Outcome = "proposed"
@@ -786,6 +849,7 @@ func (e *Engine) RefreshModel(ctx context.Context, bankID, id string) (*RefreshO
 		out.Outcome = "written"
 	}
 	m.bodySum = bodySum(body)
+	m.seen, m.sectionSums = c.seenPrints(m), mdSectionSumList(parseMdSections(body), nil, nil)
 	if _, err := e.Vault.Write(n.Path, body, m.frontmatter(n.Frontmatter)); err != nil {
 		return nil, err
 	}
@@ -821,6 +885,7 @@ func (e *Engine) AcceptProposal(bankID, id string) (*MentalModel, error) {
 	m.Version++
 	m.LastRefreshed = e.now().Format(time.RFC3339)
 	m.BasedOn, m.scopeSig, m.bodySum = p.BasedOn, p.scopeSig, bodySum(p.Body)
+	m.seen, m.sectionSums = p.seen, mdSectionSumList(parseMdSections(p.Body), nil, nil)
 	if _, err := e.Vault.Write(n.Path, p.Body, m.frontmatter(n.Frontmatter)); err != nil {
 		return nil, err
 	}
