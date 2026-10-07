@@ -23,7 +23,8 @@ func bankTools() []tool {
 				"document, notes — and let it extract the durable facts, resolve who and what " +
 				"they are about, and date them. Use this at the end of a conversation or task " +
 				"instead of deciding fact by fact what to remember. Retaining the same " +
-				"document_id again updates that document and re-reads only what changed.",
+				"document_id again updates that document and re-reads only what changed. " +
+				"It runs in the background and returns an operation_id (see get_operation).",
 			InputSchema: obj(map[string]any{
 				"bank":        bankArg,
 				"content":     strProp("the content: plain text, or a JSON array of {speaker, text, timestamp} turns"),
@@ -164,10 +165,13 @@ func (s *Server) dispatchBank(name string, args map[string]any) (result any, han
 		}
 		r, err := s.api("POST", "/api/banks", body)
 		return r, true, err
-	case "retain", "bank_recall", "bank_profile", "list_bank_memories", "delete_bank_memory",
-		"list_entities", "list_bank_documents", "get_bank_document", "delete_bank_document":
+	case "list_bank_templates":
+		r, err := s.api("GET", "/api/bank-templates", nil)
+		return r, true, err
 	default:
-		return nil, false, nil
+		if !bankScoped[name] {
+			return nil, false, nil
+		}
 	}
 	b, err := s.bankOf(args)
 	if err != nil {
@@ -191,7 +195,10 @@ func (s *Server) dispatchBank(name string, args map[string]any) (result any, han
 			item["document_id"] = s.Session
 			item["update_mode"] = "append"
 		}
-		r, err := s.api("POST", base+"/memories", map[string]any{"items": []any{item}})
+		// Retaining runs in the background: extraction can take a while, and
+		// an agent should not hold its turn for it. The answer carries the
+		// operation id to poll with get_operation.
+		r, err := s.api("POST", base+"/memories", map[string]any{"items": []any{item}, "async": true})
 		return r, true, err
 	case "bank_recall":
 		body := map[string]any{"query": str(args, "query")}
@@ -261,6 +268,9 @@ func (s *Server) dispatchBank(name string, args map[string]any) (result any, han
 			path += "?force=true"
 		}
 		r, err := s.api("DELETE", path, nil)
+		return r, true, err
+	}
+	if r, handled, err := s.dispatchBankReasoning(name, base, args); handled {
 		return r, true, err
 	}
 	return nil, false, nil
