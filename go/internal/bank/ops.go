@@ -544,7 +544,7 @@ func (e *Engine) EnqueueRetain(bankID string, items []Item, opts RetainOptions) 
 		}
 	}
 	// Strip before queueing: the payload is stored, so private text must never reach it.
-	if items = sanitizeItems(items); len(items) == 0 {
+	if items, _ = sanitizeItemsPII(items, e.piiMode(bankID)); len(items) == 0 {
 		return "", invalid("nothing to retain after removing private text")
 	}
 	id, _, err := e.Enqueue(bankID, OpRetain, retainPayload{Items: items, Opts: opts}, "")

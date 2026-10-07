@@ -73,6 +73,9 @@ type RetainResult struct {
 	Documents  []DocResult  `json:"documents"`
 	Usage      usage.Tokens `json:"-"`
 	BankCreate bool         `json:"bank_created,omitempty"`
+	// PIIFindings counts the personal-data spans the bank's pii_screening
+	// redacted or flagged.
+	PIIFindings int `json:"pii_findings,omitempty"`
 }
 
 // Errors retain and the CRUD calls report. The API maps them to statuses.
@@ -120,7 +123,7 @@ func (e *Engine) Retain(ctx context.Context, bankID string, items []Item, opts R
 			return nil, invalid("item %d: update_mode must be replace or append", i)
 		}
 	}
-	items = sanitizeItems(items)
+	items, piiFound := sanitizeItemsPII(items, e.piiMode(bankID))
 	if len(items) == 0 {
 		// Everything was private: nothing is stored, and that is a success.
 		return &RetainResult{BankID: bankID, ItemsCount: 0, Mode: "private"}, nil
@@ -142,7 +145,7 @@ func (e *Engine) Retain(ctx context.Context, bankID string, items []Item, opts R
 	lock.Lock()
 	defer lock.Unlock()
 
-	res = &RetainResult{BankID: bankID, ItemsCount: len(items)}
+	res = &RetainResult{BankID: bankID, ItemsCount: len(items), PIIFindings: piiFound}
 	prof, err := e.Profile(bankID)
 	if errors.Is(err, ErrNotFound) {
 		// Banks are created on first use, like a folder you write a note into.

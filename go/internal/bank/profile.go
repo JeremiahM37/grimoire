@@ -66,6 +66,9 @@ var ConfigKeys = map[string]func(string) error{
 	"enable_graph":           oneOf("true", "false"),
 	"enable_temporal":        oneOf("true", "false"),
 	"enable_reranking":       oneOf("true", "false"),
+	// Personal-data screening on retain: off, redact (typed placeholders) or
+	// flag (kept, with the kinds noted in the item's metadata).
+	"pii_screening": oneOf("off", "redact", "flag"),
 	// When consolidation runs: after every retain (auto, the default when a
 	// model is configured), only when asked (manual), or never (off).
 	"consolidation": oneOf("auto", "manual", "off"),
