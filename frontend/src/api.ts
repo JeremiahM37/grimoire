@@ -1,7 +1,7 @@
 import type { APIKey, AuditEvent, Canvas, Connector, ConnectorKind, DocumentRecord, ExtractionResult, ExternalIdentity, Graph, Grant, GrantRequest, Health, Identity, JsonValue, KnowledgeGraph, KnowledgeQueryResult, KnowledgeSource, Note, NoteListItem, Plugin, ReviewQueue, SearchHit, Secret, SecretDetail, Space, TagCount, Task, Template, TrustOverview, UsageReport, User, VaultStatus } from './types';
 
 export class ApiError extends Error {
-  constructor(public readonly status: number, public readonly gate: string, message: string) {
+  constructor(public readonly status: number, public readonly gate: string, message: string, public readonly code = '') {
     super(message);
     this.name = 'ApiError';
   }
@@ -28,14 +28,17 @@ export function createClient(options: ClientOptions = {}) {
     if (!response.ok) {
       const gate = response.headers.get('X-Grimoire-Gate') ?? '';
       let message = response.statusText || `Request failed (${response.status})`;
+      let code = '';
       try {
         const payload: unknown = await response.json();
         if (typeof payload === 'object' && payload !== null && 'detail' in payload && typeof payload.detail === 'string') message = payload.detail;
+        // A machine-readable reason (e.g. "model_required") rides beside the text.
+        if (typeof payload === 'object' && payload !== null && 'code' in payload && typeof payload.code === 'string') code = payload.code;
       } catch { /* Preserve status when a proxy answers with HTML. */ }
       // Admin-token failures are separate from account sessions. Never reload
       // the editor or discard unsaved work for an admin gate refusal.
       if (response.status === 401 && gate !== 'admin') options.onSessionExpired?.();
-      throw new ApiError(response.status, gate, message);
+      throw new ApiError(response.status, gate, message, code);
     }
     return (response.status === 204 ? null : await response.json()) as T;
   };

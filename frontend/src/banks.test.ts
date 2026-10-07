@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ApiError, createClient } from './api';
-import { createBanksApi, createFromTemplate, isMissingRoute, UNAVAILABLE } from './banksApi';
-import { armNames, buildTree, builtinTemplates, chunkId, CONFIG_KEYS, filterFacts, progressText, radialLayout, rankRows, validBankId } from './banksModel';
+import { createBanksApi, createFromTemplate, isMissingRoute, isModelRequired, UNAVAILABLE, withOverrides } from './banksApi';
+import { armNames, builtinTemplates, chunkId, CONFIG_KEYS, CONFIG_TEXT_KEYS, filterFacts, opKindLabel, radialLayout, rankRows, staleText, validBankId } from './banksModel';
 
 test('chunk ids match the server encoding', () => {
   assert.equal(chunkId('t1', 'd1', 0), 't1_d1_0');
@@ -28,11 +28,16 @@ test('tag and date filters apply to the loaded page', () => {
   assert.deepEqual(filterFacts(facts, { to: '2024-05-31' }).map(f => f.id), ['a']);
 });
 
-test('mental models group into a folder tree by slash', () => {
-  const tree = buildTree([{ id: 'people/alice' }, { id: 'people/bob' }, { id: 'overview' }]);
-  assert.deepEqual(tree.map(n => n.name), ['people', 'overview']);
-  assert.deepEqual(tree[0]!.children.map(n => n.path), ['people/alice', 'people/bob']);
-  assert.equal(tree[1]!.item?.id, 'overview');
+test('mental model ids with folders are one path segment', async () => {
+  const seen: string[] = [];
+  const request = createClient({ fetch: async (url, init) => { seen.push(`${init?.method || 'GET'} ${url}`); return Response.json({}); } });
+  const api = createBanksApi(request);
+  await api.mentalModel('b', 'people/dana');
+  await api.refreshMentalModel('b', 'people/dana');
+  await api.updateMentalModel('b', 'people/dana', { folder: 'team' });
+  await api.modelTree('b');
+  assert.deepEqual(seen, ['GET /api/banks/b/mental-models/people%2Fdana', 'POST /api/banks/b/mental-models/people%2Fdana/refresh',
+    'PATCH /api/banks/b/mental-models/people%2Fdana', 'GET /api/banks/b/mental-models-tree']);
 });
 
 test('rank table rows and arm order', () => {
@@ -49,13 +54,24 @@ test('radial layout centres the chosen entity', () => {
   assert.ok(pts.every(p => p.x >= 0 && p.x <= 200 && p.y >= 0 && p.y <= 200));
 });
 
-test('progress text', () => {
-  assert.equal(progressText({ stage: 'extract', processed: 2, total: 5 }), 'extract · 2 of 5');
-  assert.equal(progressText(undefined), '');
+test('operation kinds and stale reasons read as words', () => {
+  assert.equal(opKindLabel('refresh_mental_model'), 'Refresh mental model');
+  assert.equal(opKindLabel('something_new'), 'something_new');
+  assert.equal(staleText('memories_changed'), 'memories changed since the last refresh');
+});
+
+test('model_required is told apart from other conflicts', async () => {
+  const request = createClient({ fetch: async () => Response.json({ detail: 'model_required: no model', code: 'model_required' }, { status: 409 }) });
+  const err = await createBanksApi(request).refreshMentalModel('b', 'm').catch(e => e);
+  assert.ok(err instanceof ApiError);
+  assert.equal(err.code, 'model_required');
+  assert.ok(isModelRequired(err));
+  assert.ok(!isModelRequired(new ApiError(409, '', 'a person wrote or edited this')));
 });
 
 test('built-in templates only use settings the server accepts', () => {
   const keys = new Set(CONFIG_KEYS.map(k => k.key).concat('retain_chunk_size'));
+  assert.ok(CONFIG_TEXT_KEYS.every(k => !keys.has(k.key)));
   for (const t of builtinTemplates) {
     for (const [key, value] of Object.entries(t.manifest.bank?.config || {})) {
       assert.ok(keys.has(key), `${t.id}: ${key}`);
@@ -76,42 +92,73 @@ test('a plain-text 404 means the route is missing; a missing bank does not', () 
   assert.ok(!isMissingRoute(new ApiError(500, '', 'boom')));
 });
 
-test('planned endpoints resolve to UNAVAILABLE on 404 and templates fall back to built-ins', async () => {
+test('an older server: optional routes resolve to UNAVAILABLE and a template applies as profile fields', async () => {
   const seen: string[] = [];
+  let sent: Record<string, unknown> = {};
   const request = createClient({ fetch: async (url, init) => {
     seen.push(`${init?.method || 'GET'} ${url}`);
-    if (String(url).startsWith('/api/banks') && init?.method === 'POST' && String(url) === '/api/banks') return Response.json({ bank_id: 'x' }, { status: 201 });
+    if (String(url) === '/api/banks' && init?.method === 'POST') { sent = JSON.parse(String(init.body)); return Response.json({ bank_id: 'x' }, { status: 201 }); }
     return new Response('404 page not found', { status: 404, statusText: 'Not Found' });
   } });
   const api = createBanksApi(request);
   assert.equal(await api.reflect('x', { query: 'q' }), UNAVAILABLE);
   assert.equal(await api.observations('x'), UNAVAILABLE);
   assert.equal(await api.operations('x'), UNAVAILABLE);
-  assert.equal(await api.mentalModels('x'), UNAVAILABLE);
+  assert.equal(await api.modelTree('x'), UNAVAILABLE);
+  assert.equal(await api.directives('x'), UNAVAILABLE);
+  assert.equal(await api.stats('x'), UNAVAILABLE);
   const templates = await api.templates();
-  assert.equal(templates, builtinTemplates);
+  assert.ok(templates.every(t => t.builtin));
   const coding = templates.find(t => t.id === 'coding-agent');
   const out = await createFromTemplate(api, 'coding-agent:repo', coding, { name: 'Repo' });
   assert.equal(out.models, 0);
-  assert.ok(seen.includes('POST /api/banks/coding-agent%3Arepo/mental-models'));
+  assert.ok(!seen.some(s => s.includes('/import')));
+  assert.equal(sent.name, 'Repo');
+  assert.deepEqual(sent.directives, [{ text: 'When an answer rests on a past decision, say when it was made and why.', name: 'Cite decisions' }]);
+  assert.equal((sent.disposition as { literalism: number }).literalism, 5);
 });
 
-test('create from template sends the profile fields', async () => {
+test('create from a server template: the bank first, then an import of the manifest with the overrides', async () => {
+  const calls: { url: string; body: Record<string, unknown> }[] = [];
+  const template = { id: 'support', name: 'Support', description: '', manifest: { version: '1', bank: { mission: 'serve', config: { consolidation: 'auto' } },
+    mental_models: [{ id: 'open-issues', name: 'Open issues', question: 'Which?' }], directives: [{ name: 'n', text: 't' }] } };
+  const request = createClient({ fetch: async (url, init) => {
+    calls.push({ url: `${init?.method} ${url}`, body: JSON.parse(String(init?.body)) });
+    if (String(url).endsWith('/import')) return Response.json({ bank_id: 's', bank_created: false, config_applied: ['consolidation'], mental_models_created: ['open-issues'], mental_models_updated: [], directives_created: ['n'], directives_updated: [], operation_ids: [], dry_run: false });
+    return Response.json({ bank_id: 's' }, { status: 201 });
+  } });
+  const out = await createFromTemplate(createBanksApi(request), 's', template, { mission: 'mine' });
+  assert.equal(out.models, 1);
+  assert.deepEqual(calls.map(c => c.url), ['POST /api/banks', 'POST /api/banks/s/import']);
+  assert.deepEqual(calls[0]!.body, { bank_id: 's' });
+  const manifest = (calls[1]!.body as { manifest: { bank: { mission: string }; mental_models: unknown[] } }).manifest;
+  assert.equal(manifest.bank.mission, 'mine');
+  assert.equal(manifest.mental_models.length, 1);
+  assert.deepEqual(withOverrides({}, { name: 'N' }), { version: '1', bank: { name: 'N' } });
+});
+
+test('create without a template sends the profile fields', async () => {
   let sent: Record<string, unknown> = {};
   const request = createClient({ fetch: async (url, init) => {
     if (url === '/api/banks') { sent = JSON.parse(String(init?.body)); return Response.json({ bank_id: 'p' }, { status: 201 }); }
     return new Response('404 page not found', { status: 404 });
   } });
-  await createFromTemplate(createBanksApi(request), 'p', builtinTemplates.find(t => t.id === 'plain-retrieval'), { mission: 'm' });
-  assert.deepEqual(sent, { bank_id: 'p', mission: 'm', config: { retain_extraction_mode: 'chunks', enable_graph: 'false', enable_temporal: 'false', enable_reranking: 'false' } });
+  await createFromTemplate(createBanksApi(request), 'p', undefined, { mission: 'm' });
+  assert.deepEqual(sent, { bank_id: 'p', mission: 'm' });
 });
 
-test('retain sends top-level mode and recall posts its params', async () => {
+test('retain, recall and reflect send the server\'s shapes', async () => {
   const bodies: Record<string, unknown>[] = [];
   const request = createClient({ fetch: async (url, init) => { bodies.push({ url, ...JSON.parse(String(init?.body)) }); return Response.json({ results: [], documents: [] }); } });
   const api = createBanksApi(request);
-  await api.retain('b', [{ content: 'hello', document_id: 'd' }], 'chunks');
+  await api.retain('b', [{ content: 'hello', document_id: 'd' }], { mode: 'chunks' });
+  await api.retain('b', [{ content: 'later' }], { async: true });
   await api.recall('b', { query: 'q', budget: 'low', trace: true });
+  await api.reflect('b', { query: 'q', fact_types: ['world'] });
+  await api.reflect('b', { query: 'q', trace: true });
   assert.deepEqual(bodies[0], { url: '/api/banks/b/memories', items: [{ content: 'hello', document_id: 'd' }], mode: 'chunks' });
-  assert.deepEqual(bodies[1], { url: '/api/banks/b/memories/recall', query: 'q', budget: 'low', trace: true });
+  assert.deepEqual(bodies[1], { url: '/api/banks/b/memories', items: [{ content: 'later' }], async: true });
+  assert.deepEqual(bodies[2], { url: '/api/banks/b/memories/recall', query: 'q', budget: 'low', trace: true });
+  assert.deepEqual(bodies[3], { url: '/api/banks/b/reflect', query: 'q', fact_types: ['world'], include: { facts: {} } });
+  assert.deepEqual(bodies[4], { url: '/api/banks/b/reflect', query: 'q', include: { facts: {}, tool_calls: {} } });
 });
