@@ -139,3 +139,24 @@ func TestDigestStaysInsideTheBankFolder(t *testing.T) {
 		t.Fatal("escaped the vault")
 	}
 }
+
+func TestDigestActivityIsScrubbedAndRetainedWithoutAModel(t *testing.T) {
+	h := newHarness(t, true)
+	key := "ghp_" + strings.Repeat("aB3dE5gH7j", 4)
+	exit := 3
+	res := writeDigest(t, h, DigestInput{Turns: sampleTurns(),
+		Activity: SessionActivity{Files: []string{"a.go"}, Commands: []CommandRun{{Command: "curl -H 'x: " + key + "' host <private>pw</private>", Exit: &exit}}}})
+	note := h.read(t, res.Path)
+	if strings.Contains(note, key) || strings.Contains(note, "pw") || !strings.Contains(note, "a.go") {
+		t.Fatalf("note:\n%s", note)
+	}
+	// The activity document, retained in chunks mode, never calls the model.
+	before := h.llm.calls.Load()
+	if _, err := h.e.Retain(context.Background(), "b", []Item{{Content: "Files edited or written:\n- a.go", DocumentID: "activity:s1"}},
+		RetainOptions{Mode: ModeChunks}); err != nil {
+		t.Fatal(err)
+	}
+	if h.llm.calls.Load() != before {
+		t.Fatal("chunks mode called the model")
+	}
+}

@@ -10,6 +10,10 @@ A Claude Code / Codex command hook, Python 3 standard library only.
   the server re-extracts only the chunks that changed.
 - ``UserPromptSubmit`` (only with ``GRIMOIRE_BANK_RECALL=1``): recall from the
   bank with the prompt and add what comes back as context.
+- ``PostToolUse`` (only with ``GRIMOIRE_BANK_TOOLS=1``): append one local record
+  per file edit or command (path, command, exit status; never output) to a
+  session buffer. At ``Stop`` the buffer is retained once with no model call
+  and handed to the digest, so a session costs at most one model call.
 - ``SessionStart`` (only with ``GRIMOIRE_BANK_CONTEXT=1``): add the bank's
   standing rules and knowledge as context. Every injection is measured and its
   lowest-value items dropped until it fits ``GRIMOIRE_HOOK_MAX_CHARS`` (default
@@ -27,6 +31,7 @@ import math
 import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -264,6 +269,189 @@ def fit_items(head, items, tail, limit):
     return "", 0, len(items)
 
 
+# ---- tool activity ----------------------------------------------------------
+#
+# PostToolUse appends one rule-extracted record per file edit or command to a
+# local buffer: no network, no model, and never a tool's output (so `cat .env`
+# stores only the command). The buffer is sent once, with the digest, when the
+# session stops.
+
+FILE_TOOLS = {"Edit": "edited", "MultiEdit": "edited", "Write": "wrote", "NotebookEdit": "edited",
+              "apply_patch": "edited"}
+COMMAND_TOOLS = {"Bash", "shell", "local_shell", "exec_command"}
+MAX_ACTIVITY_RECORDS = 2000
+MAX_ACTIVITY_BYTES = 400_000
+ACTIVITY_MAX_AGE = 7 * 86400
+
+
+def activity_path(environment, session):
+    return state_dir(environment) / (hashlib.sha256(("activity\0" + session).encode()).hexdigest()
+                                      + ".activity.jsonl")
+
+
+def exit_status(event):
+    """The command's exit code if the harness reported one, else None."""
+    response = event.get("tool_response")
+    candidates = []
+    if isinstance(response, dict):
+        candidates += [response.get(k) for k in ("exit_code", "exitCode", "returncode", "code")]
+        meta = response.get("metadata")
+        if isinstance(meta, dict):
+            candidates += [meta.get("exit_code")]
+        if response.get("is_error") or response.get("error") or response.get("interrupted"):
+            candidates.append(1)
+    if event.get("hook_event_name") == "PostToolUseFailure":
+        candidates.append(1)
+    for value in candidates:
+        if isinstance(value, bool):
+            continue
+        if isinstance(value, int):
+            return value
+    return 0 if isinstance(response, dict) and "exit_code" in response else None
+
+
+def relative_path(path, cwd):
+    try:
+        root = repo_root(cwd) or Path(cwd)
+        return str(Path(path).resolve().relative_to(root.resolve()))
+    except (OSError, ValueError, RuntimeError):
+        return path
+
+
+def tool_record(event):
+    name = event.get("tool_name", "")
+    tool_input = event.get("tool_input")
+    if not isinstance(name, str) or not isinstance(tool_input, dict):
+        return None
+    if name in FILE_TOOLS:
+        path = tool_input.get("file_path") or tool_input.get("notebook_path") or tool_input.get("path")
+        if isinstance(path, str) and path:
+            return {"kind": "file", "action": FILE_TOOLS[name],
+                    "path": relative_path(path, str(event.get("cwd", ".")))[:300]}
+    if name in COMMAND_TOOLS:
+        command = tool_input.get("command") or tool_input.get("cmd")
+        if isinstance(command, list):
+            command = " ".join(str(part) for part in command)
+        if isinstance(command, str) and command.strip():
+            record = {"kind": "command", "command": command.strip()[:400]}
+            code = exit_status(event)
+            if code is not None:
+                record["exit"] = code
+            return record
+    return None
+
+
+def record_tool(event, environment):
+    """PostToolUse: append a sanitized record to the session's buffer."""
+    session = event.get("session_id", "")
+    if not isinstance(session, str) or not re.fullmatch(r"[A-Za-z0-9._:-]{1,200}", session):
+        return None
+    record = tool_record(event)
+    if record is None:
+        return None
+    for key in ("path", "command"):
+        if key in record:
+            record[key] = sanitize(record[key]).strip()
+            if not record[key]:
+                return None  # it was entirely private
+    path = activity_path(environment, session)
+    try:
+        if path.stat().st_size > MAX_ACTIVITY_BYTES:
+            return None
+    except OSError:
+        pass
+    flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND
+    descriptor = os.open(path, flags, 0o600)
+    with os.fdopen(descriptor, "a") as output:
+        output.write(json.dumps(record) + "\n")
+    return None
+
+
+def tool_activity(environment, session):
+    """The buffered records as {files, commands}, deduplicated, in order."""
+    try:
+        raw = activity_path(environment, session).read_text()
+    except OSError:
+        return {}
+    files, commands = [], []
+    for line in raw.splitlines()[-MAX_ACTIVITY_RECORDS:]:
+        try:
+            record = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(record, dict):
+            continue
+        if record.get("kind") == "file" and isinstance(record.get("path"), str):
+            if record["path"] not in files:
+                files.append(record["path"])
+        elif record.get("kind") == "command" and isinstance(record.get("command"), str):
+            item = {"command": record["command"]}
+            if isinstance(record.get("exit"), int):
+                item["exit"] = record["exit"]
+            if not commands or commands[-1] != item:
+                commands.append(item)
+    out = {}
+    if files:
+        out["files"] = files[:200]
+    if commands:
+        out["commands"] = commands[-200:]
+    return out
+
+
+def activity_text(activity):
+    lines = ["Files edited or written:"] + ["- " + f for f in activity.get("files", [])] \
+        if activity.get("files") else []
+    if activity.get("commands"):
+        lines += ["Commands run:"]
+        for c in activity["commands"]:
+            status = "" if "exit" not in c else " (exit %d)" % c["exit"]
+            lines.append("- `%s`%s" % (c["command"].replace("`", "'"), status))
+    return "\n".join(lines)
+
+
+def retain_activity(event, environment, base, bank, send, session, activity):
+    """Keep the session's activity once, without a model call (chunks mode)."""
+    text = activity_text(activity)
+    if not text:
+        return None
+    stamp = hashlib.sha256(text.encode()).hexdigest()
+    marker = state_dir(environment) / (hashlib.sha256(
+        (base + "\0" + bank + "\0" + session + "\0activity").encode()).hexdigest() + ".sent")
+    try:
+        if marker.read_text() == stamp:
+            return None
+    except OSError:
+        pass
+    item = {"content": text, "document_id": "activity:" + session,
+            "context": "coding-agent tool activity", "tags": ["source:activity"],
+            "metadata": {"session_id": session, "source": "tool-hook"},
+            "update_mode": "replace", "scan_secrets": True}
+    send(base, environment.get("GRIMOIRE_AUTH_TOKEN", ""),
+         "/api/banks/" + urllib.parse.quote(bank, safe="") + "/memories",
+         {"items": [item], "async": True, "mode": "chunks"},
+         max(1.0, min(60.0, float(environment.get("GRIMOIRE_BANK_TIMEOUT", "10")))))
+    marker.write_text(stamp)
+    return None
+
+
+def forget_activity(environment, session):
+    try:
+        activity_path(environment, session).unlink()
+    except OSError:
+        pass
+
+
+def sweep_activity(environment, now=None):
+    """Drop buffers of sessions that never ended (no SessionEnd on some harnesses)."""
+    now = time.time() if now is None else now
+    try:
+        for path in state_dir(environment).glob("*.activity.jsonl"):
+            if now - path.stat().st_mtime > ACTIVITY_MAX_AGE:
+                path.unlink()
+    except OSError:
+        pass
+
+
 def request_get(base, token, path, timeout):
     headers = {"Accept": "application/json", "X-Grimoire-Agent": "coding-agent-hook"}
     if token:
@@ -328,7 +516,7 @@ def digest(event, environment, base, bank, send, session, turns):
     use_model = use_model and environment.get("GRIMOIRE_BANK_DIGEST_MODEL", "1") != "0"
     recent = [{"speaker": t["speaker"], "text": t["text"][:1500]} | (
         {"timestamp": t["timestamp"]} if t.get("timestamp") else {}) for t in turns[-80:]]
-    activity = {}
+    activity = tool_activity(environment, session) if environment.get("GRIMOIRE_BANK_TOOLS") == "1" else {}
     body = {"turns": recent, "use_model": use_model, "activity": activity}
     stamp = hashlib.sha256((bank + "\0" + json.dumps(body, sort_keys=True)).encode()).hexdigest()
     marker = state_dir(environment) / (hashlib.sha256(
@@ -463,6 +651,10 @@ def run(event, environment=None, send=request_json, get=request_get):
     elif name == "SessionStart":
         if environment.get("GRIMOIRE_BANK_CONTEXT") != "1":
             return None
+    elif name in {"PostToolUse", "PostToolUseFailure"}:
+        if environment.get("GRIMOIRE_BANK_TOOLS") != "1":
+            return None
+        return record_tool(event, environment)
     else:
         return None
     base = safe_base(environment)
@@ -484,11 +676,17 @@ def run(event, environment=None, send=request_json, get=request_get):
     failure = None
     try:
         retain(event, environment, base, bank, send, session, turns)
+        if environment.get("GRIMOIRE_BANK_TOOLS") == "1":
+            retain_activity(event, environment, base, bank, send, session,
+                            tool_activity(environment, session))
     except (OSError, ValueError) as error:  # still try the digest, then report
         failure = error
     digest(event, environment, base, bank, send, session, turns)
     if failure:
         raise failure
+    if name == "SessionEnd" and environment.get("GRIMOIRE_BANK_TOOLS") == "1":
+        forget_activity(environment, session)
+        sweep_activity(environment)
     return None
 
 
