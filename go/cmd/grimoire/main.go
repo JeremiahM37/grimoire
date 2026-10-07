@@ -347,6 +347,18 @@ func run(args []string) error {
 		}
 	}
 
+	// Memory-bank operations (async retain, consolidation, refreshes) and
+	// webhook deliveries. Interrupted ones are re-queued on start.
+	if b := e.server.Banks; b != nil {
+		if n := atoiOr(e.settings.Get("bank_workers"), 2); n > 0 {
+			if err := b.StartWorkers(n); err != nil {
+				log.Printf("memory-bank workers: %v", err)
+			} else {
+				defer b.StopWorkers()
+			}
+		}
+	}
+
 	// Connectors on their schedules. One goroutine, one connector at a time:
 	// these are network-bound, and a self-hosted instance would rather be
 	// polite to the systems it pulls from than fast.

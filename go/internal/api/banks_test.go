@@ -96,8 +96,8 @@ func TestBankLifecycleOverHTTP(t *testing.T) {
 	if u := rr["usage"].(map[string]any); u["total_tokens"] != float64(60) {
 		t.Errorf("usage = %v", u)
 	}
-	if w := do(t, h, "POST", "/api/banks/family/memories", map[string]any{"items": []map[string]any{{"content": "x"}}, "async": true}); w.Code != http.StatusBadRequest {
-		t.Errorf("async = %d", w.Code)
+	if w := do(t, h, "POST", "/api/banks/family/memories", map[string]any{"items": []map[string]any{{"content": "x"}}, "async": true}); w.Code != http.StatusAccepted || !strings.Contains(w.Body.String(), "operation_id") {
+		t.Errorf("async = %d %s", w.Code, w.Body)
 	}
 	if w := do(t, h, "POST", "/api/banks/family/memories", map[string]any{"items": []map[string]any{{"content": "x", "timestamp": "yesterday-ish"}}}); w.Code != http.StatusBadRequest {
 		t.Errorf("bad timestamp = %d", w.Code)

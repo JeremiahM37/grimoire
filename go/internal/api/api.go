@@ -103,6 +103,21 @@ func (s *Server) Routes() http.Handler {
 		}
 		s.Banks = bank.New(s.Index, s.Vault, s.AI, hist)
 	}
+	if s.Banks != nil && s.Banks.Reranker == nil && s.Vault != nil {
+		s.Banks.Reranker = newSettingsReranker(s, filepath.Join(s.Vault.Root, ".grimoire"))
+	}
+	if s.Banks != nil && s.Banks.AllowPrivateWebhooks == nil {
+		s.Banks.AllowPrivateWebhooks = func() bool {
+			if s.Settings == nil {
+				return false
+			}
+			switch strings.ToLower(strings.TrimSpace(s.Settings.Get("webhook_allow_private"))) {
+			case "1", "true", "yes", "on":
+				return true
+			}
+			return false
+		}
+	}
 	// The index keeps the bank caches in step with banks/ on every write,
 	// watcher event and rebuild.
 	if s.Banks != nil && s.Index != nil {

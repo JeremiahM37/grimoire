@@ -72,55 +72,95 @@ var routeAccess = map[string]access{
 	// --- content: space + reader list ---
 	// Memory banks: a bank is the folder banks/<bank>/, read and written
 	// under that path's space and reader list. See banks.go.
-	"GET /api/banks":                          scoped, // only banks the caller can read
-	"POST /api/banks":                         scoped,
-	"GET /api/banks/{bank}":                   scoped,
-	"PATCH /api/banks/{bank}":                 scoped,
-	"DELETE /api/banks/{bank}":                scoped,
-	"POST /api/banks/{bank}/memories":         scoped,
-	"GET /api/banks/{bank}/memories":          scoped,
-	"POST /api/banks/{bank}/memories/recall":  scoped, // a read that takes a body
-	"GET /api/banks/{bank}/memories/{id}":     scoped,
-	"DELETE /api/banks/{bank}/memories/{id}":  scoped,
-	"GET /api/banks/{bank}/entities":          scoped,
-	"GET /api/banks/{bank}/entities/{id}":     scoped,
-	"GET /api/banks/{bank}/documents":         scoped,
-	"GET /api/banks/{bank}/documents/{id}":    scoped,
-	"DELETE /api/banks/{bank}/documents/{id}": scoped,
-	"GET /api/banks/{bank}/chunks/{id}":       scoped,
-	"GET /api/notes":                          scoped,
-	"GET /api/notes/random":                   scoped,
-	"GET /api/notes/{path...}":                scoped,
-	"PUT /api/notes/{path...}":                scoped,
-	"POST /api/notes/{path...}":               scoped,
-	"DELETE /api/notes/{path...}":             scoped,
-	"POST /api/notes":                         scoped,
-	"GET /api/search":                         scoped,
-	"GET /api/retrieve":                       scoped,
-	"GET /api/context":                        scoped,
-	"GET /api/knowledge/graph":                scoped,
-	"POST /api/knowledge/query":               scoped,
-	"POST /api/knowledge/extract":             scoped,
-	"GET /api/knowledge/source":               scoped,
-	"POST /api/documents/import":              scoped,
-	"GET /api/documents":                      scoped,
-	"POST /api/documents/refresh":             scoped,
-	"GET /api/documents/original":             scoped,
-	"POST /api/ask":                           scoped,
-	"GET /api/graph":                          scoped,
-	"GET /api/tags":                           scoped,
-	"GET /api/tasks":                          scoped,
-	"GET /api/blocks":                         scoped, // the lines inside notes
-	"GET /api/bookmarks":                      scoped, // resolves to notes the caller may read
-	"GET /api/facts":                          scoped,
-	"GET /api/complete":                       scoped,
-	"GET /api/memory":                         scoped,
-	"GET /api/memory/context":                 scoped,
-	"GET /api/memory/export":                  scoped, // every fact the caller may read
-	"GET /api/memory/changes":                 scoped, // fact text, so the same filter as recall
-	"GET /api/memory/facets":                  scoped, // scope names are drawn from facts
-	"GET /api/memory/graph":                   scoped, // entities and the facts behind them
-	"POST /api/memory/search":                 scoped, // recall, ranked by a supplied vector
+	"GET /api/banks":                                             scoped, // only banks the caller can read
+	"POST /api/banks":                                            scoped,
+	"GET /api/banks/{bank}":                                      scoped,
+	"PATCH /api/banks/{bank}":                                    scoped,
+	"DELETE /api/banks/{bank}":                                   scoped,
+	"POST /api/banks/{bank}/memories":                            scoped,
+	"GET /api/banks/{bank}/memories":                             scoped,
+	"POST /api/banks/{bank}/memories/recall":                     scoped, // a read that takes a body
+	"GET /api/banks/{bank}/memories/{id}":                        scoped,
+	"DELETE /api/banks/{bank}/memories/{id}":                     scoped,
+	"GET /api/banks/{bank}/entities":                             scoped,
+	"GET /api/banks/{bank}/entities/{id}":                        scoped,
+	"GET /api/banks/{bank}/documents":                            scoped,
+	"GET /api/banks/{bank}/documents/{id}":                       scoped,
+	"DELETE /api/banks/{bank}/documents/{id}":                    scoped,
+	"GET /api/banks/{bank}/chunks/{id}":                          scoped,
+	"GET /api/banks/{bank}/stats":                                scoped,
+	"POST /api/banks/{bank}/reflect":                             scoped,
+	"GET /api/banks/{bank}/observations":                         scoped,
+	"DELETE /api/banks/{bank}/observations":                      scoped,
+	"GET /api/banks/{bank}/observations/{id}":                    scoped,
+	"DELETE /api/banks/{bank}/observations/{id}":                 scoped,
+	"POST /api/banks/{bank}/consolidate":                         scoped,
+	"GET /api/banks/{bank}/mental-models":                        scoped,
+	"POST /api/banks/{bank}/mental-models":                       scoped,
+	"GET /api/banks/{bank}/mental-models-tree":                   scoped,
+	"GET /api/banks/{bank}/mental-models-export":                 scoped,
+	"GET /api/banks/{bank}/mental-models/{id}":                   scoped,
+	"PATCH /api/banks/{bank}/mental-models/{id}":                 scoped,
+	"DELETE /api/banks/{bank}/mental-models/{id}":                scoped,
+	"POST /api/banks/{bank}/mental-models/{id}/refresh":          scoped,
+	"POST /api/banks/{bank}/mental-models/{id}/proposal/accept":  scoped,
+	"POST /api/banks/{bank}/mental-models/{id}/proposal/reject":  scoped,
+	"GET /api/banks/{bank}/mental-models/{id}/history":           scoped,
+	"GET /api/banks/{bank}/mental-models/{id}/history/{version}": scoped,
+	"GET /api/banks/{bank}/directives":                           scoped,
+	"POST /api/banks/{bank}/directives":                          scoped,
+	"PATCH /api/banks/{bank}/directives/{id}":                    scoped,
+	"DELETE /api/banks/{bank}/directives/{id}":                   scoped,
+	"GET /api/banks/{bank}/operations":                           scoped,
+	"GET /api/banks/{bank}/operations/{id}":                      scoped,
+	"DELETE /api/banks/{bank}/operations/{id}":                   scoped,
+	"GET /api/banks/{bank}/webhooks":                             scoped,
+	"POST /api/banks/{bank}/webhooks":                            scoped,
+	"PATCH /api/banks/{bank}/webhooks/{id}":                      scoped,
+	"DELETE /api/banks/{bank}/webhooks/{id}":                     scoped,
+	"GET /api/banks/{bank}/webhooks/{id}/deliveries":             scoped,
+	"GET /api/banks/{bank}/export":                               scoped,
+	"POST /api/banks/{bank}/import":                              scoped,
+	"GET /api/webhooks":                                          admin,
+	"POST /api/webhooks":                                         admin,
+	"PATCH /api/webhooks/{id}":                                   admin,
+	"DELETE /api/webhooks/{id}":                                  admin,
+	"GET /api/webhooks/{id}/deliveries":                          admin,
+	"GET /api/bank-templates":                                    authed,
+	"GET /api/bank-templates/{id}":                               authed,
+	"GET /api/notes":                                             scoped,
+	"GET /api/notes/random":                                      scoped,
+	"GET /api/notes/{path...}":                                   scoped,
+	"PUT /api/notes/{path...}":                                   scoped,
+	"POST /api/notes/{path...}":                                  scoped,
+	"DELETE /api/notes/{path...}":                                scoped,
+	"POST /api/notes":                                            scoped,
+	"GET /api/search":                                            scoped,
+	"GET /api/retrieve":                                          scoped,
+	"GET /api/context":                                           scoped,
+	"GET /api/knowledge/graph":                                   scoped,
+	"POST /api/knowledge/query":                                  scoped,
+	"POST /api/knowledge/extract":                                scoped,
+	"GET /api/knowledge/source":                                  scoped,
+	"POST /api/documents/import":                                 scoped,
+	"GET /api/documents":                                         scoped,
+	"POST /api/documents/refresh":                                scoped,
+	"GET /api/documents/original":                                scoped,
+	"POST /api/ask":                                              scoped,
+	"GET /api/graph":                                             scoped,
+	"GET /api/tags":                                              scoped,
+	"GET /api/tasks":                                             scoped,
+	"GET /api/blocks":                                            scoped, // the lines inside notes
+	"GET /api/bookmarks":                                         scoped, // resolves to notes the caller may read
+	"GET /api/facts":                                             scoped,
+	"GET /api/complete":                                          scoped,
+	"GET /api/memory":                                            scoped,
+	"GET /api/memory/context":                                    scoped,
+	"GET /api/memory/export":                                     scoped, // every fact the caller may read
+	"GET /api/memory/changes":                                    scoped, // fact text, so the same filter as recall
+	"GET /api/memory/facets":                                     scoped, // scope names are drawn from facts
+	"GET /api/memory/graph":                                      scoped, // entities and the facts behind them
+	"POST /api/memory/search":                                    scoped, // recall, ranked by a supplied vector
 	// Counts and configuration names, no note text — but it does describe the
 	// deployment, so it is gated with the rest rather than public.
 	"GET /api/doctor": scoped,
@@ -416,7 +456,7 @@ func TestNonPublicRoutesRefuseAnonymousCallers(t *testing.T) {
 // body, so they are named here rather than guessed at.
 func writesContent(method, route string) bool {
 	switch route {
-	case "POST /api/ask", "POST /api/query", "POST /api/banks/{bank}/memories/recall":
+	case "POST /api/ask", "POST /api/query", "POST /api/banks/{bank}/memories/recall", "POST /api/banks/{bank}/reflect":
 		return false
 	}
 	return method == "PUT" || method == "POST" || method == "DELETE" || method == "PATCH"
