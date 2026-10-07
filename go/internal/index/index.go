@@ -41,12 +41,30 @@ type Spaces interface {
 	SpaceOf(path string) string
 }
 
+// BankIndexer keeps the memory-bank caches in step with the files under
+// banks/. Defined here, implemented in internal/bank: the index owns WHEN a
+// file is (re)read — on write, on a watcher event, on a full rebuild — and the
+// bank engine owns what its rows mean. Nil means banks are not served, and
+// their files are indexed as plain notes only.
+type BankIndexer interface {
+	IndexBankFile(note *vault.Note) error
+	RemoveBankFile(rel string) error
+	ResetBanks() error
+}
+
+// BankPrefix is the vault folder memory banks live under.
+const BankPrefix = "banks/"
+
+// IsBankPath reports whether a note belongs to a memory bank.
+func IsBankPath(rel string) bool { return strings.HasPrefix(rel, BankPrefix) }
+
 // Index owns the reconciliation between a vault and its SQLite cache.
 type Index struct {
 	DB     *db.DB
 	Vault  *vault.Vault
 	Emb    Embedder
 	Spaces Spaces
+	Banks  BankIndexer
 
 	// writeMu serializes whole logical writes. See db.DB for why a
 	// per-statement lock is not enough.
@@ -98,6 +116,11 @@ func (ix *Index) Reindex() (int, error) {
 
 	for _, tbl := range []string{"notes", "links", "tags", "fts", "fts_map", "facts", "vectors"} {
 		if err := ix.DB.Exec("DELETE FROM " + tbl); err != nil {
+			return 0, err
+		}
+	}
+	if ix.Banks != nil {
+		if err := ix.Banks.ResetBanks(); err != nil {
 			return 0, err
 		}
 	}
@@ -237,6 +260,11 @@ func (ix *Index) removeRows(rel string) error {
 	if err := ix.DB.Exec("DELETE FROM blocks WHERE note=?", rel); err != nil {
 		return err
 	}
+	if ix.Banks != nil && IsBankPath(rel) {
+		if err := ix.Banks.RemoveBankFile(rel); err != nil {
+			return err
+		}
+	}
 	ix.patchNote(rel)
 	return nil
 }
@@ -258,7 +286,11 @@ func (ix *Index) writeNoteRows(note *vault.Note) error {
 	if err := ix.dropFTS(rel); err != nil {
 		return err
 	}
-	if !note.Encrypted {
+	// Bank files are searchable notes but stay out of the note vector table:
+	// their facts are embedded one by one in the bank's own cache, and
+	// chunk-embedding the same text again would both double the cost of a
+	// retain and flood ordinary retrieval with machine-extracted fragments.
+	if !note.Encrypted && !(ix.Banks != nil && IsBankPath(rel)) {
 		if err := ix.embedNote(note); err != nil {
 			return err
 		}
@@ -325,6 +357,12 @@ func (ix *Index) writeNoteRows(note *vault.Note) error {
 	// Agent memory is indexed a second time, bullet by bullet; see memory.go.
 	if err := ix.writeMemoryRows(note); err != nil {
 		return err
+	}
+	// Memory banks keep their own fact-level rows; see internal/bank.
+	if ix.Banks != nil && IsBankPath(rel) {
+		if err := ix.Banks.IndexBankFile(note); err != nil {
+			return err
+		}
 	}
 	// The retrieval cache is patched with this note's rows rather than thrown
 	// away. Discarding it makes the next query rebuild the whole corpus —

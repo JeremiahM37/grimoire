@@ -26,17 +26,17 @@ type Field struct {
 // embed_model is deliberately present but NOT editable through the API:
 // changing it would invalidate every stored vector.
 var Fields = map[string]Field{
-	"llm":               {"GRIMOIRE_LLM", ""}, // '', 'ollama', 'claude', 'openai' ('' = auto)
-	"llm_model":         {"GRIMOIRE_LLM_MODEL", "qwen3.5:4b"},
-	"llm_base_url":      {"GRIMOIRE_LLM_BASE_URL", ""},
-	"llm_api_key":       {"GRIMOIRE_LLM_API_KEY", ""},
+	"llm":          {"GRIMOIRE_LLM", ""}, // '', 'ollama', 'claude', 'openai' ('' = auto)
+	"llm_model":    {"GRIMOIRE_LLM_MODEL", "qwen3.5:4b"},
+	"llm_base_url": {"GRIMOIRE_LLM_BASE_URL", ""},
+	"llm_api_key":  {"GRIMOIRE_LLM_API_KEY", ""},
 	// Reasoning effort for structured calls (memory-bank extraction and the
 	// like): low|medium|high|max is passed through as reasoning_effort, and
 	// "off" turns thinking off on servers that document a switch for it.
 	"llm_reasoning_effort": {"GRIMOIRE_LLM_REASONING_EFFORT", ""},
 	// A JSON object merged into every OpenAI-compatible request body, for the
 	// vendor-specific fields no generic setting can anticipate.
-	"llm_extra_body": {"GRIMOIRE_LLM_EXTRA_BODY", ""},
+	"llm_extra_body":    {"GRIMOIRE_LLM_EXTRA_BODY", ""},
 	"ollama_url":        {"GRIMOIRE_OLLAMA_URL", ""},
 	"embed_model":       {"GRIMOIRE_EMBED_MODEL", "nomic-embed-text"},
 	"embed_base_url":    {"GRIMOIRE_EMBED_BASE_URL", ""},
