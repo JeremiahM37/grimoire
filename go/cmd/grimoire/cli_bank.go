@@ -57,8 +57,10 @@ const bankUsage = `usage: grimoire bank COMMAND [args] [--url URL] [--token T] [
   observations show BANK ID | edit BANK ID TEXT | rm BANK ID [--force] | consolidate BANK
   models ls BANK | tree BANK | show BANK ID | history BANK ID | export BANK [--markdown]
   models create BANK NAME --query Q [--id ID] [--folder F] [--tags a,b] [--body TEXT|--body-file F]
-  models refresh BANK ID | accept BANK ID | reject BANK ID | rm BANK ID
+  models refresh BANK ID [--delta|--full] | accept BANK ID | reject BANK ID | rm BANK ID
   models edit BANK ID --body TEXT|--body-file F | move BANK ID --folder F
+  duplicates BANK [--min-score 0.6] [--type fact|observation] [--limit N]   near-duplicate candidates
+  duplicates merge BANK KEEP_ID MERGE_ID   strike MERGE through into KEEP (text is kept, never deleted)
   directives ls BANK [--all] | add BANK TEXT [--name N] [--tags a,b] [--priority N]
   directives set BANK ID [--text T] [--name N] [--tags a,b] [--priority N] [--active|--inactive]
   directives rm BANK ID
@@ -83,7 +85,7 @@ var bankValued = map[string]bool{
 	"--query": true, "--id": true, "--status": true, "--bank": true,
 	"--max-diff-bytes": true, "--max-files": true, "--batch": true,
 	"--fact-types": true, "--folder": true, "--body": true, "--body-file": true,
-	"--text": true, "--priority": true, "--timeout": true,
+	"--text": true, "--priority": true, "--min-score": true, "--timeout": true,
 }
 
 // bankFlags is a parsed command line: positional words, the last value of
@@ -304,7 +306,7 @@ func bankCommands() map[string]bankCmd {
 		"entities": bankEntities, "documents": bankDocuments,
 		"observations": bankObservations, "models": bankModels, "ops": bankOps,
 		"directives": bankDirectives, "stats": bankStats, "export": bankExport, "import": bankImport,
-		"templates": bankTemplates, "import-git": bankImportGit,
+		"templates": bankTemplates, "import-git": bankImportGit, "duplicates": bankDuplicates,
 	}
 }
 

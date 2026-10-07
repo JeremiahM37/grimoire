@@ -429,3 +429,28 @@ func TestProgressiveDisclosureRoutes(t *testing.T) {
 		t.Errorf("lookup without ids = %d", w.Code)
 	}
 }
+
+func TestFileMemoryAndDuplicateRoutes(t *testing.T) {
+	_, h := testServer(t)
+	for i, text := range []string{"The retry loop in src/queue/worker.go was rewritten.", "Retries in src/queue/worker.go were rewritten again."} {
+		do(t, h, "POST", "/api/banks/fm/memories", map[string]any{"items": []map[string]any{
+			{"content": text, "document_id": "d" + string(rune('a'+i))}}})
+	}
+	w := do(t, h, "GET", "/api/banks/fm/file-memory?path="+url.QueryEscape("src/queue/worker.go"), nil)
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "retry loop") {
+		t.Errorf("file-memory = %d %s", w.Code, w.Body)
+	}
+	if w := do(t, h, "GET", "/api/banks/fm/file-memory", nil); w.Code != http.StatusBadRequest {
+		t.Errorf("file-memory without path = %d", w.Code)
+	}
+	w = do(t, h, "GET", "/api/banks/fm/duplicates?min_score=0.3", nil)
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"candidates"`) {
+		t.Errorf("duplicates = %d %s", w.Code, w.Body)
+	}
+	if w := do(t, h, "POST", "/api/banks/fm/duplicates/merge", map[string]any{"keep": "x", "merge": "x"}); w.Code != http.StatusBadRequest {
+		t.Errorf("merge same id = %d", w.Code)
+	}
+	if w := do(t, h, "POST", "/api/banks/fm/duplicates/merge", map[string]any{"keep": "nope", "merge": "nada"}); w.Code != http.StatusNotFound {
+		t.Errorf("merge unknown = %d", w.Code)
+	}
+}
