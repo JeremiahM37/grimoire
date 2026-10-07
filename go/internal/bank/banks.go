@@ -125,6 +125,22 @@ func (e *Engine) DeleteBank(id string) error {
 			return err
 		}
 	}
+	// Operational state goes with the bank: queued work would only fail,
+	// and a webhook for a bank that no longer exists has nothing to report.
+	now := e.now().UnixMilli()
+	for _, q := range []struct {
+		sql  string
+		args []any
+	}{
+		{"UPDATE bank_operations SET status=?, finished=?, updated=? WHERE bank=? AND status=?", []any{OpCancelled, now, now, id, OpQueued}},
+		{"DELETE FROM bank_consolidated WHERE bank=?", []any{id}},
+		{"DELETE FROM bank_webhook_deliveries WHERE bank=?", []any{id}},
+		{"DELETE FROM bank_webhooks WHERE bank=?", []any{id}},
+	} {
+		if err := e.Index.DB.Exec(q.sql, q.args...); err != nil {
+			return err
+		}
+	}
 	e.bump(id)
 	return nil
 }
@@ -171,7 +187,7 @@ func (e *Engine) ListBanks() ([]BankSummary, error) {
 		}
 		return m
 	}
-	facts := counts("SELECT bank, COUNT(*) FROM bank_units GROUP BY bank")
+	facts := counts("SELECT bank, COUNT(*) FROM bank_units WHERE type<>'observation' GROUP BY bank")
 	docs := counts("SELECT bank, COUNT(*) FROM bank_documents GROUP BY bank")
 	for i := range out {
 		out[i].Facts, out[i].Documents = facts[out[i].ID], docs[out[i].ID]

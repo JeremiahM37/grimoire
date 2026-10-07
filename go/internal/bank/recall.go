@@ -30,15 +30,39 @@ type RecallRequest struct {
 	// dates in the query and for recency.
 	QueryTimestamp *time.Time
 	Tags           []string
-	TagsMatch      string // any (default), all, any_strict, all_strict
+	TagsMatch      string // any (default), all, any_strict, all_strict, exact
+	// TagGroups is a boolean tag filter (leaves, and/or/not), AND-ed with
+	// Tags and with each other.
+	TagGroups []TagGroup
+	// Window, when set, is the time window recall ranks against instead of
+	// one read from the query text.
+	Window *Window
+	// MinScores drops results below a reranker or final score.
+	MinScores *MinScores
+	// PreferObservations drops a fact from the results when an observation
+	// built from it already made the cut, so the slot goes to something new.
+	PreferObservations bool
 	// Entities lists the entities of the returned facts (default on).
 	Entities *bool
 	// Chunks returns the source chunks of the top facts, within their own
 	// budget; 0 means off.
 	ChunkTokens int
-	// SourceFacts returns the facts an observation was built from.
-	SourceFacts bool
-	Trace       bool
+	// SourceFacts returns the facts an observation was built from, within
+	// SourceFactsMaxTokens (0 means 4096, -1 unlimited) and, when
+	// SourceFactsPerObs is positive, at most that many tokens per observation.
+	SourceFacts          bool
+	SourceFactsMaxTokens int
+	SourceFactsPerObs    int
+	// NoRerank skips the reranker for internal callers that want the fused
+	// order (consolidation's related-observation lookup).
+	NoRerank bool
+	Trace    bool
+}
+
+// MinScores are post-ranking floors. A nil field is no floor.
+type MinScores struct {
+	Reranker *float64 `json:"reranker,omitempty"`
+	Final    *float64 `json:"final,omitempty"`
 }
 
 // DefaultMaxTokens is the recall budget for fact text.
@@ -79,7 +103,11 @@ type RecallFact struct {
 	// the human fact it disagrees with.
 	DisputedBy string `json:"disputed_by,omitempty"`
 	DocRemoved bool   `json:"doc_removed,omitempty"`
-	Scores     Scores `json:"scores"`
+	// SourceFactIDs and ProofCount are set on observations: the facts the
+	// observation was built from, and how many there are.
+	SourceFactIDs []string `json:"source_fact_ids,omitempty"`
+	ProofCount    int      `json:"proof_count,omitempty"`
+	Scores        Scores   `json:"scores"`
 }
 
 // EntityOut is one entity in a recall response.
@@ -117,6 +145,12 @@ type Trace struct {
 	TimingsMS    map[string]float64        `json:"timings_ms"`
 	BankFacts    int                       `json:"bank_facts"`
 	KeywordTerms []string                  `json:"keyword_terms,omitempty"`
+	// Reranker names the reranker that scored the candidates, RerankError
+	// says why none did when one was configured, and Rerank lists each
+	// candidate's normalised reranker score in fused order.
+	Reranker    string   `json:"reranker,omitempty"`
+	RerankError string   `json:"rerank_error,omitempty"`
+	Rerank      []ArmHit `json:"rerank,omitempty"`
 }
 
 // RecallResponse is the result of a recall.
@@ -125,7 +159,10 @@ type RecallResponse struct {
 	Entities    map[string]EntityOut  `json:"entities,omitempty"`
 	Chunks      map[string]ChunkOut   `json:"chunks,omitempty"`
 	SourceFacts map[string]RecallFact `json:"source_facts,omitempty"`
-	Trace       *Trace                `json:"trace,omitempty"`
+	// SourceFactsTruncated reports that some observation's sources did not
+	// fit the source-facts budget.
+	SourceFactsTruncated bool   `json:"source_facts_truncated,omitempty"`
+	Trace                *Trace `json:"trace,omitempty"`
 }
 
 // ThinkingBudget is how many candidates each arm may return.
@@ -225,9 +262,17 @@ func (e *Engine) Recall(ctx context.Context, bankID string, req RecallRequest) (
 	switch match {
 	case "":
 		match = "any"
-	case "any", "all", "any_strict", "all_strict":
+	case "any", "all", "any_strict", "all_strict", "exact":
 	default:
-		return nil, invalid("tags_match must be any, all, any_strict or all_strict")
+		return nil, invalid("tags_match must be any, all, any_strict, all_strict or exact")
+	}
+	for i := range req.TagGroups {
+		if err := req.TagGroups[i].validate(0); err != nil {
+			return nil, invalid("tag_groups[%d]: %v", i, err)
+		}
+	}
+	if req.Window != nil && (req.Window.Start.IsZero() || req.Window.End.IsZero() || req.Window.End.Before(req.Window.Start)) {
+		return nil, invalid("temporal_window needs a start before its end")
 	}
 	now := time.Now().UTC()
 	if req.QueryTimestamp != nil {
@@ -252,7 +297,7 @@ func (e *Engine) Recall(ctx context.Context, bankID string, req RecallRequest) (
 	}
 	visible := func(i int32) bool {
 		u := &c.units[i]
-		return types[u.Type] && tagsAllow(u.Tags, req.Tags, match)
+		return types[u.Type] && tagsAllow(u.Tags, req.Tags, match) && groupsAllow(req.TagGroups, u.Tags)
 	}
 
 	// --- semantic arm (and the graph arm's seeds)
@@ -306,7 +351,11 @@ func (e *Engine) Recall(ctx context.Context, bankID string, req RecallRequest) (
 	var tempList []int32
 	tempScore, proximity := map[int32]float64{}, map[int32]float64{}
 	if prof.Setting("enable_temporal", "true") == "true" {
-		if w, ok := ParseWindow(q, now); ok {
+		w, ok := ParseWindow(q, now)
+		if req.Window != nil {
+			w, ok = Window{Start: req.Window.Start.UTC(), End: req.Window.End.UTC()}, true
+		}
+		if ok {
 			if tr != nil {
 				tr.Window = &w
 			}
@@ -360,18 +409,37 @@ func (e *Engine) Recall(ctx context.Context, bankID string, req RecallRequest) (
 	// --- rerank
 	tr2 := time.Now()
 	reranked := false
-	if e.Reranker != nil && prof.Setting("enable_reranking", "true") == "true" && len(cands) > 0 {
+	if e.Reranker != nil && !req.NoRerank && prof.Setting("enable_reranking", "true") == "true" && len(cands) > 0 {
 		docs := make([]string, len(cands))
 		for i, cd := range cands {
 			docs[i] = rerankDoc(&c.units[cd.pos])
 		}
 		scores, err := e.Reranker.Score(ctx, q, docs)
-		if err == nil && len(scores) == len(cands) {
+		switch {
+		case err != nil:
+			// A reranker that fails (model missing, service down) costs the
+			// query its reordering, never its answer.
+			if tr != nil {
+				tr.RerankError = err.Error()
+			}
+		case scores == nil:
+			// No reranker behind the interface: nothing to report.
+		case len(scores) != len(cands):
+			if tr != nil {
+				tr.RerankError = fmt.Sprintf("reranker returned %d scores for %d candidates", len(scores), len(cands))
+			}
+		default:
 			norm := normaliseScores(scores)
 			for i, cd := range cands {
 				cd.reranker = fptr(norm[i])
 			}
 			reranked = true
+			if tr != nil {
+				tr.Reranker = rerankerName(e.Reranker)
+				for i, cd := range cands {
+					tr.Rerank = append(tr.Rerank, ArmHit{ID: c.units[cd.pos].ID, Rank: i + 1, Score: norm[i]})
+				}
+			}
 		}
 	}
 	if !reranked {
@@ -409,8 +477,45 @@ func (e *Engine) Recall(ctx context.Context, bankID string, req RecallRequest) (
 	// --- what a person wrote outranks what a model inferred
 	cands = c.applyAuthority(cands, visible, tr)
 
+	if req.MinScores != nil {
+		kept := cands[:0]
+		for _, cd := range cands {
+			if f := req.MinScores.Reranker; f != nil && reranked && *cd.reranker < *f {
+				continue
+			}
+			if f := req.MinScores.Final; f != nil && cd.weight < *f {
+				continue
+			}
+			kept = append(kept, cd)
+		}
+		cands = kept
+	}
+
 	if len(cands) > 2*tb {
 		cands = cands[:2*tb]
+	}
+
+	// --- an observation that made the cut stands in for the facts it was
+	// built from, so their slots go to something it does not already say.
+	if req.PreferObservations && types["observation"] && (types["world"] || types["experience"]) {
+		covered := map[string]bool{}
+		for _, cd := range cands {
+			if u := &c.units[cd.pos]; u.Type == "observation" {
+				for _, s := range u.Sources {
+					covered[s] = true
+				}
+			}
+		}
+		if len(covered) > 0 {
+			kept := cands[:0]
+			for _, cd := range cands {
+				if u := &c.units[cd.pos]; u.Type != "observation" && covered[u.ID] {
+					continue
+				}
+				kept = append(kept, cd)
+			}
+			cands = kept
+		}
 	}
 
 	// --- chunks, from the ranked list before packing
@@ -461,8 +566,55 @@ func (e *Engine) Recall(ctx context.Context, bankID string, req RecallRequest) (
 			}
 		}
 	}
+	if req.SourceFacts {
+		resp.SourceFacts, resp.SourceFactsTruncated = c.sourceFacts(bankID, picked, req.SourceFactsMaxTokens, req.SourceFactsPerObs)
+	}
 	mark("total", t0)
 	return resp, nil
+}
+
+// sourceFacts collects the facts behind the observations in a result list,
+// in observation-rank order, skipping (not stopping at) one that does not fit
+// the budget.
+func (c *bankCache) sourceFacts(bankID string, picked []*candidate, budget, perObs int) (map[string]RecallFact, bool) {
+	if budget == 0 {
+		budget = 4096
+	}
+	out := map[string]RecallFact{}
+	used, truncated := 0, false
+	for _, cd := range picked {
+		u := &c.units[cd.pos]
+		if u.Type != "observation" {
+			continue
+		}
+		mine := 0
+		for _, sid := range u.Sources {
+			if _, done := out[sid]; done {
+				continue
+			}
+			p, ok := c.byID[sid]
+			if !ok {
+				continue
+			}
+			t := CountTokens(c.units[p].Text)
+			if (budget > 0 && used+t > budget) || (perObs > 0 && mine+t > perObs) {
+				truncated = true
+				continue
+			}
+			used += t
+			mine += t
+			out[sid] = c.factOut(bankID, p)
+		}
+	}
+	return out, truncated
+}
+
+// rerankerName is a reranker's self-reported name, when it has one.
+func rerankerName(r Reranker) string {
+	if n, ok := r.(interface{ Name() string }); ok {
+		return n.Name()
+	}
+	return fmt.Sprintf("%T", r)
 }
 
 // fuseRRF merges ranked lists by reciprocal rank: each list adds 1/(k+rank)
@@ -544,6 +696,10 @@ func (c *bankCache) factOut(bankID string, pos int32) RecallFact {
 	if u.Human {
 		rf.Authority = "human"
 	}
+	if u.Type == "observation" {
+		rf.SourceFactIDs = u.Sources
+		rf.ProofCount = u.Proof
+	}
 	if u.Chunk >= 0 && u.Doc != "" {
 		rf.ChunkID = ChunkID(bankID, u.Doc, u.Chunk)
 	}
@@ -571,6 +727,9 @@ func (c *bankCache) factOut(bankID string, pos int32) RecallFact {
 // so a tag filter narrows a bank without hiding the facts nobody tagged; the
 // strict variants do not.
 func tagsAllow(have, want []string, mode string) bool {
+	if mode == "exact" {
+		return sameTagSet(have, want)
+	}
 	if len(want) == 0 {
 		return true
 	}

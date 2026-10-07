@@ -220,3 +220,8 @@ func allowPrivateFromEnv() bool {
 	}
 	return false
 }
+
+// CheckIP reports why an outbound connection to ip must be refused, or nil.
+// It is the same table the broker's dial guard applies, for callers that
+// validate an address before connecting — a webhook at registration time.
+func CheckIP(ip net.IP, allowPrivate bool) error { return blockedIP(ip, allowPrivate) }
