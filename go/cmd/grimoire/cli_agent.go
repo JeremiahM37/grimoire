@@ -106,14 +106,6 @@ func agentTargets(home string) map[string]*agentTarget {
 	}
 }
 
-// agentPlan is what one run intends for one file.
-type agentPlan struct {
-	path    string
-	content []byte // the new content; nil means remove nothing / no write
-	changed bool
-	notes   []string
-}
-
 func cmdAgent(args []string) int {
 	if len(args) == 0 || args[0] == "-h" || args[0] == "--help" || args[0] == "help" {
 		fmt.Println(agentUsage)

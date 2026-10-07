@@ -27,16 +27,10 @@ func StripPrivate(text string) (string, bool) {
 	return out, out != text
 }
 
-// sanitizeItems applies the privacy rules to a retain request: private spans
+// sanitizeItemsPII applies the privacy rules to a retain request: private spans
 // are stripped from every free-text field, secrets are redacted from items
-// that ask for it, and an item with nothing left is dropped.
-func sanitizeItems(items []Item) []Item {
-	out, _ := sanitizeItemsPII(items, "off")
-	return out
-}
-
-// sanitizeItemsPII is sanitizeItems plus the bank's PII screening mode; it
-// also reports how many personal-data spans were found.
+// that ask for it, and an item with nothing left is dropped. It applies the
+// bank's PII screening mode and reports how many personal-data spans were found.
 func sanitizeItemsPII(items []Item, piiMode string) ([]Item, int) {
 	out := make([]Item, 0, len(items))
 	for _, it := range items {
