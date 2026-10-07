@@ -49,7 +49,7 @@ describe('bank client', () => {
     assert.equal(at(), '/api/banks/support/index?q=cache&types=fact&limit=5')
     await bank.timeline('#f3a9c1b2', { before: 2 })
     assert.equal(at(), '/api/banks/support/timeline?anchor=%23f3a9c1b2&before=2')
-    await bank.get(['#f3a9c1b2', 'o77aa001'])
+    await bank.getEntries(['#f3a9c1b2', 'o77aa001'])
     assert.equal(at(), '/api/banks/support/lookup?ids=%23f3a9c1b2%2Co77aa001')
     await bank.context({ maxChars: 3000, source: 'resume' })
     assert.equal(at(), '/api/banks/support/context?max_chars=3000&source=resume')

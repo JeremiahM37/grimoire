@@ -261,7 +261,7 @@ def fit_items(head, items, tail, limit):
     kept = list(items)
     while kept:
         dropped = len(items) - len(kept)
-        note = ("\n(%d lower-value items left out.)" % dropped) if dropped else ""
+        note = f"\n({dropped} lower-value items left out.)" if dropped else ""
         text = head + "\n".join(kept) + note + tail
         if len(text) <= limit:
             return text, len(kept), dropped
@@ -404,8 +404,9 @@ def activity_text(activity):
     if activity.get("commands"):
         lines += ["Commands run:"]
         for c in activity["commands"]:
-            status = "" if "exit" not in c else " (exit %d)" % c["exit"]
-            lines.append("- `%s`%s" % (c["command"].replace("`", "'"), status))
+            status = "" if "exit" not in c else f" (exit {c['exit']})"
+            quoted = c["command"].replace("`", "'")
+            lines.append(f"- `{quoted}`{status}")
     return "\n".join(lines)
 
 

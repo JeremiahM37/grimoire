@@ -296,7 +296,7 @@ export declare class Bank {
   context(options?: { maxChars?: number; source?: 'startup' | 'resume' | 'clear' | 'compact' }): Promise<{ context: string; chars: number; limit: number; included: number; dropped: number }>
   index(query?: string, options?: { types?: string[]; since?: string; limit?: number; offset?: number }): Promise<{ items: Json[]; total: number }>
   timeline(anchor: string, options?: { before?: number; after?: number }): Promise<{ entries: Json[]; anchor_ref?: string }>
-  get(ids: string[]): Promise<{ items: Json[]; missing: string[] }>
+  getEntries(ids: string[]): Promise<{ items: Json[]; missing: string[] }>
   writeDigest(sessionId: string, turns: { speaker: string; text: string; timestamp?: string }[], options?: { activity?: Json; useModel?: boolean }): Promise<Json>
   sessions(options?: { limit?: number }): Promise<{ items: Json[]; total: number }>
   // Reasoning endpoints: reject with NotAvailable on a server without them,

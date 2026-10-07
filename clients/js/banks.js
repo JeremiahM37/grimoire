@@ -256,7 +256,7 @@ export class Bank {
     return this.#req('GET', '/timeline' + qs({ anchor, before: options.before, after: options.after }))
   }
   /** Entries in full by `#ref` or id. */
-  get(ids) { return this.#req('GET', '/lookup' + qs({ ids: ids.join(',') })) }
+  getEntries(ids) { return this.#req('GET', '/lookup' + qs({ ids: ids.join(',') })) }
   /** Write a session's "where we left off" note. */
   writeDigest(sessionId, turns, options = {}) {
     return this.#req('POST', `/sessions/${seg(sessionId)}/digest`, {
