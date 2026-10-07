@@ -292,6 +292,13 @@ export declare class Bank {
   document(id: string): Promise<Json>
   deleteDocument(id: string, options?: { force?: boolean }): Promise<Json>
   chunk(id: string): Promise<Json>
+  // Coding-agent surfaces.
+  context(options?: { maxChars?: number; source?: 'startup' | 'resume' | 'clear' | 'compact' }): Promise<{ context: string; chars: number; limit: number; included: number; dropped: number }>
+  index(query?: string, options?: { types?: string[]; since?: string; limit?: number; offset?: number }): Promise<{ items: Json[]; total: number }>
+  timeline(anchor: string, options?: { before?: number; after?: number }): Promise<{ entries: Json[]; anchor_ref?: string }>
+  get(ids: string[]): Promise<{ items: Json[]; missing: string[] }>
+  writeDigest(sessionId: string, turns: { speaker: string; text: string; timestamp?: string }[], options?: { activity?: Json; useModel?: boolean }): Promise<Json>
+  sessions(options?: { limit?: number }): Promise<{ items: Json[]; total: number }>
   // Reasoning endpoints: reject with NotAvailable on a server without them,
   // and with ModelRequired where a model is needed and none is configured.
   stats(): Promise<Json & { model_available: boolean }>

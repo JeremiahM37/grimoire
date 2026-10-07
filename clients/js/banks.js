@@ -239,6 +239,32 @@ export class Bank {
   deleteDocument(id, options = {}) { return this.#req('DELETE', `/documents/${seg(id)}${qs({ force: options.force })}`) }
   chunk(id) { return this.#req('GET', `/chunks/${seg(id)}`) }
 
+  // ---- coding-agent surfaces -----------------------------------------------
+
+  /** What a coding agent is shown at session start, rendered under `maxChars` (default 9000). */
+  context(options = {}) {
+    return this.#req('GET', '/context' + qs({ max_chars: options.maxChars, source: options.source }))
+  }
+  /** A compact, citable index, newest first or ranked by `query`. */
+  index(query, options = {}) {
+    return this.#req('GET', '/index' + qs({
+      q: query, types: options.types?.join(','), since: options.since, limit: options.limit, offset: options.offset,
+    }))
+  }
+  /** Entries dated around `anchor` (a `#ref` or `YYYY-MM-DD`), oldest first. */
+  timeline(anchor, options = {}) {
+    return this.#req('GET', '/timeline' + qs({ anchor, before: options.before, after: options.after }))
+  }
+  /** Entries in full by `#ref` or id. */
+  get(ids) { return this.#req('GET', '/lookup' + qs({ ids: ids.join(',') })) }
+  /** Write a session's "where we left off" note. */
+  writeDigest(sessionId, turns, options = {}) {
+    return this.#req('POST', `/sessions/${seg(sessionId)}/digest`, {
+      turns, activity: options.activity ?? {}, use_model: !!options.useModel,
+    })
+  }
+  sessions(options = {}) { return this.#req('GET', '/sessions' + qs({ limit: options.limit })) }
+
   // ---- reasoning endpoints ----------------------------------------------
   // Reflect, observations, mental models, directives, operations, webhooks
   // and templates. A server from before these routes throws NotAvailable;

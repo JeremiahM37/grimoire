@@ -321,6 +321,26 @@ def test_async_bank(stub, g):
     assert out["results"][0]["id"] == "f"
 
 
+def test_coding_agent_surfaces(stub, g):
+    stub.on("GET", "/api/banks/s/index", {"items": [], "total": 0})
+    stub.on("GET", "/api/banks/s/timeline", {"entries": []})
+    stub.on("GET", "/api/banks/s/lookup", {"items": [], "missing": []})
+    stub.on("GET", "/api/banks/s/context", {"context": "x", "chars": 1})
+    stub.on("POST", "/api/banks/s/sessions/a%3A1/digest", {"written": True})
+    bank = g.bank("s")
+    bank.index("cache", types=["fact"], limit=5)
+    bank.timeline("#f3a9c1b2", before=2)
+    bank.get(["#f3a9c1b2", "o77aa001"])
+    bank.context(max_chars=3000, source="resume")
+    bank.write_digest("a:1", [{"speaker": "user", "text": "hi"}], use_model=True)
+    assert stub.find("GET", "/api/banks/s/index")[0]["path"] == "/api/banks/s/index?q=cache&types=fact&limit=5"
+    assert stub.find("GET", "/api/banks/s/timeline")[0]["path"] == "/api/banks/s/timeline?anchor=%23f3a9c1b2&before=2"
+    assert stub.find("GET", "/api/banks/s/lookup")[0]["path"] == "/api/banks/s/lookup?ids=%23f3a9c1b2%2Co77aa001"
+    assert stub.find("GET", "/api/banks/s/context")[0]["path"] == "/api/banks/s/context?max_chars=3000&source=resume"
+    body = stub.find("POST", "/api/banks/s/sessions/a%3A1/digest")[0]["body"]
+    assert body["use_model"] is True and body["turns"][0]["text"] == "hi"
+
+
 # ---- memory wrapper ------------------------------------------------------
 
 

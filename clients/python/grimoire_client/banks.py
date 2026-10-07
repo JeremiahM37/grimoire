@@ -283,6 +283,54 @@ class Bank:
     def chunk(self, chunk_id: str) -> dict[str, Any]:
         return self._req("GET", "/chunks/" + _seg(chunk_id))
 
+    # ---- coding-agent surfaces ----------------------------------------
+
+    def context(self, *, max_chars: int | None = None, source: str | None = None) -> dict[str, Any]:
+        """What a coding agent is shown at session start, rendered under
+        ``max_chars`` (default 9000): ``{"context", "chars", "limit", "included", "dropped"}``."""
+        return self._req("GET", "/context" + _q({"max_chars": max_chars, "source": source}))
+
+    def index(
+        self,
+        query: str | None = None,
+        *,
+        types: list[str] | None = None,
+        since: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> dict[str, Any]:
+        """A compact, citable index: ``{"items": [{ref, id, type, title, date, tokens}], "total"}``,
+        newest first, or ranked by ``query``. Fetch the few you need with :meth:`get`."""
+        return self._req("GET", "/index" + _q({
+            "q": query, "types": ",".join(types) if types else None, "since": since,
+            "limit": limit, "offset": offset,
+        }))
+
+    def timeline(self, anchor: str, *, before: int | None = None, after: int | None = None) -> dict[str, Any]:
+        """The entries dated around ``anchor`` (a ``#ref`` or ``YYYY-MM-DD``), oldest first."""
+        return self._req("GET", "/timeline" + _q({"anchor": anchor, "before": before, "after": after}))
+
+    def get(self, ids: list[str]) -> dict[str, Any]:
+        """Entries in full by ``#ref`` or id: ``{"items": [...], "missing": [...]}``."""
+        return self._req("GET", "/lookup" + _q({"ids": ",".join(ids)}))
+
+    def write_digest(
+        self,
+        session_id: str,
+        turns: list[dict[str, Any]],
+        *,
+        activity: dict[str, Any] | None = None,
+        use_model: bool = False,
+    ) -> dict[str, Any]:
+        """Write a session's "where we left off" note. A person's edit to the
+        generated text pins it: the reply then has ``pinned: true``."""
+        return self._req("POST", "/sessions/" + _seg(session_id) + "/digest", {
+            "turns": turns, "activity": activity or {}, "use_model": use_model})
+
+    def sessions(self, *, limit: int | None = None) -> dict[str, Any]:
+        """Session digests, newest first."""
+        return self._req("GET", "/sessions" + _q({"limit": limit}))
+
     # ---- reasoning endpoints ------------------------------------------
     #
     # Reflect, observations, mental models, directives, operations, webhooks
