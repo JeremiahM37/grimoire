@@ -147,7 +147,13 @@
 .banks-badge.proposal { border-color: var(--link); color: var(--link); }
 tr.banks-disputed td { opacity: .78; }
 .banks-chip { font-size: 11px; padding: 1px 8px; border-radius: 9px; background: var(--paper2); border: 1px solid var(--line); }
-.banks-chip.completed { color: #2e7d32; } .banks-chip.failed { color: #c0392b; } .banks-chip.processing, .banks-chip.pending { color: var(--accent); }
+.banks-chip.completed { color: #2e7d32; } .banks-chip.failed { color: #c0392b; } .banks-chip.running, .banks-chip.queued { color: var(--accent); } .banks-chip.cancelled { color: var(--ink-soft); }
+.banks-stats { margin: 0; padding: 0 16px 4px; font-size: 12px; }
+.banks-history s { color: var(--ink-soft); }
+.banks-template { border-left: 2px solid var(--line); padding-left: 10px; }
+.banks-evidence summary { cursor: pointer; font-size: 12px; color: var(--ink-soft); }
+.banks-move { margin-top: 10px; }
+#banks-directives input[aria-label='Directive text'] { width: 100%; }
 .banks-pre { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--mono); font-size: 12px; margin: 6px 0; max-height: 320px; overflow-y: auto; }
 .banks-facts { margin: 6px 0 0; padding-left: 18px; font-size: 13px; }
 .banks-h3 { font-size: 15px; margin: 8px 0 4px; overflow-wrap: anywhere; }

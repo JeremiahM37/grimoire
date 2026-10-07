@@ -1,38 +1,52 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ApiError } from './api';
 import {
-  createBanksApi, createFromTemplate, UNAVAILABLE, type BankProfile, type BanksApi, type BankSummary, type DocumentDetail,
-  type DocumentSummary, type EntityDetail, type EntitySummary, type Fact, type Maybe, type MentalModel, type Observation,
-  type Operation, type RecallResponse, type ReflectResponse, type Request,
+  createBanksApi, createFromTemplate, isModelRequired, UNAVAILABLE, type BankProfile, type BanksApi, type BankStats, type BankSummary,
+  type Directive, type DocumentDetail, type DocumentSummary, type EntityDetail, type EntitySummary, type Fact, type Maybe, type MentalModel,
+  type ModelNode, type Observation, type Operation, type RecallResponse, type ReflectResponse, type Request,
 } from './banksApi';
 import {
-  armNames, buildTree, chunkId, CONFIG_KEYS, factDate, filterFacts, fmtScore, isTerminal, parseTags, progressText,
-  radialLayout, rankRows, validBankId, type BankTemplate, type TreeNode,
+  armNames, chunkId, CONFIG_KEYS, CONFIG_TEXT_KEYS, factDate, filterFacts, fmtScore, isTerminal, OP_STATUSES, opKindLabel, parseTags,
+  radialLayout, rankRows, staleText, validBankId, type BankTemplate,
 } from './banksModel';
 
 // Memory banks: list, profile, memories, sources, entities, observations,
-// mental models, operations, and a recall/reflect playground. Every server
-// call is in banksApi.ts; features the server does not have yet show as such.
+// mental models, directives, operations, and a recall/reflect playground.
+// Every server call is in banksApi.ts. A server from before a feature existed
+// is told apart from an error, and the tab says the feature is not there.
 
-type Tab = 'profile' | 'memories' | 'documents' | 'entities' | 'observations' | 'models' | 'operations' | 'playground';
+type Tab = 'profile' | 'memories' | 'documents' | 'entities' | 'observations' | 'models' | 'directives' | 'operations' | 'playground';
 const TABS: [Tab, string][] = [
   ['playground', 'Playground'], ['memories', 'Memories'], ['documents', 'Documents'], ['entities', 'Entities'],
-  ['observations', 'Observations'], ['models', 'Models'], ['operations', 'Operations'], ['profile', 'Profile'],
+  ['observations', 'Observations'], ['models', 'Models'], ['directives', 'Directives'], ['operations', 'Operations'], ['profile', 'Profile'],
 ];
 
-const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
+const NO_MODEL = 'This needs a language model, and none is configured on the server.';
+const message = (e: unknown) => (isModelRequired(e) ? NO_MODEL : e instanceof Error ? e.message : String(e));
 function ErrorText({ error }: { error: unknown }) {
-  return error ? <p className="vault-note banks-error" role="alert">{message(error)}</p> : null;
+  return error ? <p className={'vault-note banks-error' + (isModelRequired(error) ? ' banks-model-required' : '')} role="alert" data-code={error instanceof ApiError ? error.code : undefined}>{message(error)}</p> : null;
 }
 function Unavailable({ what }: { what: string }) {
-  return <p className="vault-note banks-unavailable" data-testid="unavailable">{what} — not available on this server yet.</p>;
+  return <p className="vault-note banks-unavailable" data-testid="unavailable">{what} — not available on this server (it predates them).</p>;
 }
-function Badges({ f }: { f: { authority?: string; disputed_by?: string; doc_removed?: boolean } }) {
+function Badges({ f }: { f: { authority?: string; disputed_by?: string; doc_removed?: boolean; challenges?: string } }) {
   return <>
     {f.authority === 'human' && <span className="banks-badge human" title="A person wrote or corrected this">human</span>}
     {f.disputed_by && <span className="banks-badge disputed" title={`Contradicts ${f.disputed_by}`}>disputed</span>}
+    {f.challenges && <span className="banks-badge disputed" title={`A model's revision of ${f.challenges}, filed for review`}>challenges {f.challenges}</span>}
     {f.doc_removed && <span className="banks-badge removed" title="Its source text no longer exists">source removed</span>}
   </>;
+}
+const when = (s?: string) => (s || '').slice(0, 16).replace('T', ' ');
+
+/** Poll an operation until it finishes (or give up after `limitMs`, returning its last state). */
+async function waitOperation(api: BanksApi, bank: string, id: string, limitMs = 180000): Promise<Operation> {
+  const until = Date.now() + limitMs;
+  for (let delay = 300; ; delay = Math.min(delay * 1.5, 2000)) {
+    const op = await api.operation(bank, id);
+    if (isTerminal(op.status) || Date.now() > until) return op;
+    await new Promise(r => setTimeout(r, delay));
+  }
 }
 
 export function BanksPanel({ request, close }: { request: Request; close: () => void }) {
@@ -57,6 +71,7 @@ export function BanksPanel({ request, close }: { request: Request; close: () => 
           <button id="banks-back" className="btn" onClick={() => { setBank(undefined); void load(); }}>← Banks</button>
           <h2 id="banks-title" className="banks-name">{bank}</h2>
         </div>
+        <StatsLine api={api} bank={bank} tab={tab} />
         <nav className="banks-tabs" role="tablist">
           {TABS.map(([key, label]) => <button key={key} role="tab" aria-selected={tab === key} data-tab={key}
             className={'banks-tab' + (tab === key ? ' on' : '')} onClick={() => setTab(key)}>{label}</button>)}
@@ -68,12 +83,27 @@ export function BanksPanel({ request, close }: { request: Request; close: () => 
           {tab === 'entities' && <EntitiesTab api={api} bank={bank} />}
           {tab === 'observations' && <ObservationsTab api={api} bank={bank} />}
           {tab === 'models' && <ModelsTab api={api} bank={bank} />}
+          {tab === 'directives' && <DirectivesTab api={api} bank={bank} />}
           {tab === 'operations' && <OperationsTab api={api} bank={bank} />}
           {tab === 'playground' && <PlaygroundTab api={api} bank={bank} />}
         </div>
       </>}
     </div>
   </div>;
+}
+
+/** One line of counts under the bank name, refreshed when the tab changes. */
+function StatsLine({ api, bank, tab }: { api: BanksApi; bank: string; tab: Tab }) {
+  const [s, setS] = useState<Maybe<BankStats>>();
+  useEffect(() => { void api.stats(bank).then(setS).catch(() => setS(undefined)); }, [api, bank, tab]);
+  if (!s || s === UNAVAILABLE) return null;
+  const running = (s.operations_by_status?.queued || 0) + (s.operations_by_status?.running || 0);
+  return <p className="vault-note banks-stats" id="banks-stats">
+    {s.facts} facts · {s.observations} observations · {s.mental_models} models · {s.documents} documents
+    {s.pending_consolidation > 0 && <> · {s.pending_consolidation} awaiting consolidation</>}
+    {running > 0 && <> · {running} operation(s) in progress</>}
+    {!s.model_available && <> · <span className="banks-badge" title="Retain stores sentences or chunks, reflect quotes what recall finds, and consolidation and model refreshes are off">no language model</span></>}
+  </p>;
 }
 
 // ---- bank list and creation ------------------------------------------------
@@ -89,8 +119,22 @@ function BankList({ banks, select }: { banks?: BankSummary[]; select: (id: strin
   </div>;
 }
 
+function TemplatePreview({ t }: { t: BankTemplate & { builtin?: boolean } }) {
+  const m = t.manifest;
+  const config = Object.entries(m.bank?.config || {});
+  return <div className="banks-template" data-testid="template-preview">
+    <p className="vault-note">{t.description}</p>
+    {m.mental_models?.length ? <><div className="pr-clabel">Mental models</div>
+      <ul className="banks-facts">{m.mental_models.map(x => <li key={x.id}><b>{x.name}</b> — {x.question}</li>)}</ul></> : null}
+    {m.directives?.length ? <><div className="pr-clabel">Directives</div>
+      <ul className="banks-facts">{m.directives.map(d => <li key={d.name || d.text}>{d.name ? <b>{d.name}: </b> : null}{d.text}</li>)}</ul></> : null}
+    {config.length ? <p className="vault-note">Settings: {config.map(([k, v]) => `${k}=${v}`).join(', ')}</p> : null}
+    {t.builtin && <p className="vault-note">This server has no template catalogue; only the profile settings apply.</p>}
+  </div>;
+}
+
 function CreateBank({ api, created }: { api: BanksApi; created: (id: string) => void }) {
-  const [templates, setTemplates] = useState<BankTemplate[]>([]);
+  const [templates, setTemplates] = useState<(BankTemplate & { builtin?: boolean })[]>([]);
   const [id, setId] = useState(''), [name, setName] = useState(''), [mission, setMission] = useState(''), [template, setTemplate] = useState('');
   const [error, setError] = useState<unknown>(), [busy, setBusy] = useState(false);
   useEffect(() => { void api.templates().then(setTemplates).catch(() => setTemplates([])); }, [api]);
@@ -108,7 +152,7 @@ function CreateBank({ api, created }: { api: BanksApi; created: (id: string) => 
       <option value="">None</option>
       {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
     </select></label>
-    {chosen && <p className="vault-note">{chosen.description}</p>}
+    {chosen && <TemplatePreview t={chosen} />}
     <label>Mission <textarea name="mission" rows={2} value={mission} onChange={e => setMission(e.target.value)} placeholder={chosen?.manifest.bank?.mission || 'What this bank is for'} /></label>
     <ErrorText error={error} />
     <button type="submit" className="btn" disabled={busy}>Create bank</button>
@@ -119,14 +163,14 @@ function CreateBank({ api, created }: { api: BanksApi; created: (id: string) => 
 
 function ProfileTab({ api, bank, deleted }: { api: BanksApi; bank: string; deleted: () => void }) {
   const [p, setP] = useState<BankProfile>(), [error, setError] = useState<unknown>(), [saved, setSaved] = useState('');
-  const [draft, setDraft] = useState('');
   useEffect(() => { void api.profile(bank).then(setP).catch(setError); }, [api, bank]);
   if (!p) return <><ErrorText error={error} /><p className="vault-note">Loading…</p></>;
   const edit = (patch: Partial<BankProfile>) => { setP({ ...p, ...patch }); setSaved(''); };
   const save = async () => {
     setError(undefined);
     try {
-      setP(await api.update(bank, { name: p.name, mission: p.mission, retain_mission: p.retain_mission, disposition: p.disposition, directives: p.directives, config: p.config }));
+      // Directives have their own tab and routes; the profile leaves them be.
+      setP(await api.update(bank, { name: p.name, mission: p.mission, retain_mission: p.retain_mission, disposition: p.disposition, config: p.config }));
       setSaved('Saved');
     } catch (e) { setError(e); }
   };
@@ -148,23 +192,14 @@ function ProfileTab({ api, bank, deleted }: { api: BanksApi; bank: string; delet
     {trait('skepticism', 'Skepticism', 'trusting', 'doubting')}
     {trait('literalism', 'Literalism', 'reads between lines', 'literal')}
     {trait('empathy', 'Empathy', 'facts only', 'feelings matter')}
-    <div className="pr-clabel">Directives</div>
-    <div className="banks-directives">
-      {p.directives.map((d, i) => <div className="banks-directive" key={d.id || i}>
-        <input aria-label={`Directive ${i + 1}`} value={d.text} onChange={e => edit({ directives: p.directives.map((x, j) => j === i ? { ...x, text: e.target.value } : x) })} />
-        <button type="button" className="btn" onClick={() => edit({ directives: p.directives.filter((_, j) => j !== i) })}>Remove</button>
-      </div>)}
-      <div className="banks-directive">
-        <input id="banks-new-directive" placeholder="Add a standing rule, e.g. Never reveal account numbers" value={draft} onChange={e => setDraft(e.target.value)} />
-        <button type="button" className="btn" disabled={!draft.trim()} onClick={() => { edit({ directives: [...p.directives, { text: draft.trim() }] }); setDraft(''); }}>Add</button>
-      </div>
-    </div>
     <div className="pr-clabel">Settings</div>
     <div className="banks-config">
       {CONFIG_KEYS.map(k => <label key={k.key}>{k.label}
         <select name={k.key} value={p.config[k.key] || ''} onChange={e => setConfig(k.key, e.target.value)}>
           <option value="">default</option>{k.values.map(v => <option key={v} value={v}>{v}</option>)}
         </select></label>)}
+      {CONFIG_TEXT_KEYS.map(k => <label key={k.key}>{k.label}
+        <input name={k.key} value={p.config[k.key] || ''} placeholder={k.placeholder} onChange={e => setConfig(k.key, e.target.value)} /></label>)}
     </div>
     <ErrorText error={error} />
     <div className="banks-actions">
@@ -295,12 +330,14 @@ function DocumentView({ api, bank, id, back }: { api: BanksApi; bank: string; id
 
 function RetainForm({ api, bank, done }: { api: BanksApi; bank: string; done: () => void }) {
   const [content, setContent] = useState(''), [doc, setDoc] = useState(''), [context, setContext] = useState(''), [tags, setTags] = useState(''), [mode, setMode] = useState('');
+  const [background, setBackground] = useState(false);
   const [status, setStatus] = useState(''), [error, setError] = useState<unknown>(), [busy, setBusy] = useState(false);
   const submit = async () => {
     setBusy(true); setError(undefined); setStatus('');
     try {
-      const r = await api.retain(bank, [{ content, document_id: doc || undefined, context: context || undefined, tags: tags ? parseTags(tags) : undefined }], mode);
-      setStatus(`Retained: ${(r.documents || []).map(d => `${d.document_id} (${d.facts} facts)`).join(', ')}`);
+      const r = await api.retain(bank, [{ content, document_id: doc || undefined, context: context || undefined, tags: tags ? parseTags(tags) : undefined }], { mode, async: background });
+      setStatus(r.async ? `Queued: operation ${r.operation_id}. See Operations.`
+        : `Retained: ${(r.documents || []).map(d => `${d.document_id} (${d.facts} facts${d.unchanged ? ', unchanged' : ''})`).join(', ')}`);
       setContent(''); done();
     } catch (e) { setError(e); } finally { setBusy(false); }
   };
@@ -314,8 +351,9 @@ function RetainForm({ api, bank, done }: { api: BanksApi; bank: string; done: ()
       <select name="mode" aria-label="Extraction mode" value={mode} onChange={e => setMode(e.target.value)}>
         <option value="">bank default</option><option value="concise">concise</option><option value="verbatim">verbatim</option><option value="chunks">chunks (no model)</option>
       </select>
+      <label className="chk"><input type="checkbox" name="async" checked={background} onChange={e => setBackground(e.target.checked)} />in the background</label>
     </div>
-    <ErrorText error={error} /><p className="vault-note">{status}</p>
+    <ErrorText error={error} /><p className="vault-note" id="banks-retain-status">{status}</p>
     <button type="submit" className="btn" disabled={busy || !content.trim()}>{busy ? 'Retaining…' : 'Retain'}</button>
   </form>;
 }
@@ -365,119 +403,273 @@ function EntitiesTab({ api, bank }: { api: BanksApi; bank: string }) {
       </div>}
   </>;
 }
-
 // ---- observations ------------------------------------------------------------------------
 
+function ObservationCard({ o, children }: { o: Observation; children?: ReactNode }) {
+  const quotes = (o.evidence || []).filter(e => e.quote);
+  return <div className={'inspect-chunk' + (o.challenges ? ' banks-disputed' : '')} data-observation={o.id}>
+    <div className="ic-head"><span>{o.proof_count} supporting fact(s) <Badges f={o} /></span><span className="ic-score">{when(o.updated_at || o.superseded_at)}</span></div>
+    <div className="ic-text">{o.text}</div>
+    <div className="banks-sub">{o.id}{o.tags?.length ? ` · tags: ${o.tags.join(', ')}` : ''}</div>
+    {(quotes.length > 0 || o.source_fact_ids.length > 0) && <details className="banks-evidence"><summary>Evidence</summary>
+      <ul className="banks-facts">{quotes.length ? quotes.map(e => <li key={e.fact_id + e.quote}><code>{e.fact_id}</code> “{e.quote}”</li>)
+        : o.source_fact_ids.map(id => <li key={id}><code>{id}</code></li>)}</ul></details>}
+    {children}
+  </div>;
+}
+
 function ObservationsTab({ api, bank }: { api: BanksApi; bank: string }) {
-  const [data, setData] = useState<Maybe<{ items: Observation[]; total: number }>>(), [q, setQ] = useState(''), [error, setError] = useState<unknown>(), [note, setNote] = useState('');
-  const load = useCallback(() => api.observations(bank, { q, limit: 100 }).then(setData).catch(setError), [api, bank, q]);
+  const [data, setData] = useState<Maybe<{ items: Observation[]; total: number; history?: Observation[] }>>();
+  const [q, setQ] = useState(''), [authority, setAuthority] = useState(''), [history, setHistory] = useState(false);
+  const [error, setError] = useState<unknown>(), [note, setNote] = useState('');
+  const load = useCallback(() => api.observations(bank, { q, authority, include_history: history, limit: 200 }).then(setData).catch(setError), [api, bank, q, authority, history]);
   useEffect(() => { void load(); }, [load]);
   if (data === UNAVAILABLE) return <Unavailable what="Observations (consolidated knowledge)" />;
   const consolidate = async () => {
-    const r = await api.consolidate(bank).catch(e => { setError(e); return undefined; });
-    if (r === UNAVAILABLE) setNote('Consolidation is not available on this server yet.');
-    else if (r) setNote(`Consolidation queued (operation ${r.operation_id}).`);
+    setError(undefined); setNote('');
+    try {
+      const r = await api.consolidate(bank);
+      if (r !== UNAVAILABLE) setNote(r.deduplicated ? `A consolidation is already queued (operation ${r.operation_id}).` : `Consolidation queued (operation ${r.operation_id}). See Operations.`);
+    } catch (e) { setError(e); }
+  };
+  const retire = async (o: Observation) => {
+    const human = o.authority === 'human';
+    if (!confirm(human ? 'A person wrote this observation. Retire it anyway? It moves to the history.' : 'Retire this observation? It moves to the history.')) return;
+    try { await api.deleteObservation(bank, o.id, human); void load(); } catch (e) { setError(e); }
   };
   return <>
     <div className="banks-filters"><input aria-label="Search observations" placeholder="Search" value={q} onChange={e => setQ(e.target.value)} />
-      <button className="btn" onClick={() => void consolidate()}>Consolidate now</button></div>
-    <ErrorText error={error} /><p className="vault-note">{note}</p>
-    {!data ? <p className="vault-note">Loading…</p> : !data.items.length ? <p className="vault-note">No observations yet.</p> :
-      data.items.map(o => <div className="inspect-chunk" key={o.id} data-observation={o.id}>
-        <div className="ic-head"><span>{o.proof_count ?? o.evidence?.length ?? 0} supporting fact(s) <Badges f={o} /></span><span className="ic-score">{(o.updated || '').slice(0, 10)}</span></div>
-        <div className="ic-text">{o.text}</div>
-        {o.tags?.length ? <div className="banks-sub">tags: {o.tags.join(', ')}</div> : null}
-      </div>)}
+      <select aria-label="Author" value={authority} onChange={e => setAuthority(e.target.value)}>
+        <option value="">Anyone</option><option value="human">Written by a person</option></select>
+      <label className="banks-date"><input type="checkbox" checked={history} onChange={e => setHistory(e.target.checked)} /> history</label>
+      <button className="btn" id="banks-consolidate" onClick={() => void consolidate()}>Consolidate now</button></div>
+    <ErrorText error={error} /><p className="vault-note" id="banks-observations-note">{note}</p>
+    {!data ? <p className="vault-note">Loading…</p> : <div id="banks-observations">
+      {!data.items.length ? <p className="vault-note">No observations yet. They are written by consolidation, which needs a language model.</p> :
+        <p className="vault-note">{data.total} observation(s). Edit observations.md in the vault to correct one: a person's text is never overwritten by a model.</p>}
+      {data.items.map(o => <ObservationCard key={o.id} o={o}>
+        <div className="banks-actions"><button className="btn banks-small" onClick={() => void retire(o)}>Retire</button></div>
+      </ObservationCard>)}
+      {history && data.history?.length ? <><div className="pr-clabel">History</div>
+        {data.history.map((o, i) => <div className="inspect-chunk banks-history" key={o.id + i}>
+          <div className="ic-head"><span>{o.deleted ? 'retired' : 'replaced'} · was {o.of}</span><span className="ic-score">{when(o.superseded_at)}</span></div>
+          <div className="ic-text"><s>{o.text}</s></div></div>)}</> : null}
+    </div>}
   </>;
 }
 
 // ---- mental models ------------------------------------------------------------------------
 
-function ModelTree({ nodes, selected, select }: { nodes: TreeNode<MentalModel>[]; selected?: string; select: (id: string) => void }) {
-  return <ul className="banks-tree">{nodes.map(n => <li key={n.path}>
-    {n.item ? <a className={'wikilink' + (selected === n.item.id ? ' on' : '')} onClick={() => select(n.item!.id)}>
-      {n.item.name || n.name}{n.item.pending_proposal && <span className="banks-badge proposal">proposal</span>}{n.item.is_stale && <span className="banks-badge stale">stale</span>}</a>
+function ModelTree({ nodes, selected, select }: { nodes: ModelNode[]; selected?: string; select: (id: string) => void }) {
+  return <ul className="banks-tree">{nodes.map(n => <li key={n.kind + n.path}>
+    {n.kind === 'page' && n.model ? <a className={'wikilink' + (selected === n.model.id ? ' on' : '')} data-model={n.model.id} onClick={() => select(n.model!.id)}>
+      {n.model.name || n.name}{n.model.pending_proposal && <span className="banks-badge proposal">proposal</span>}
+      {n.model.is_stale && <span className="banks-badge stale" title={staleText(n.model.stale_reason)}>stale</span>}</a>
       : <span className="banks-folder">{n.name}/</span>}
-    {n.children.length > 0 && <ModelTree nodes={n.children} selected={selected} select={select} />}
+    {n.children?.length ? <ModelTree nodes={n.children} selected={selected} select={select} /> : null}
   </li>)}</ul>;
 }
 
-function ModelsTab({ api, bank }: { api: BanksApi; bank: string }) {
-  const [data, setData] = useState<Maybe<{ items: MentalModel[]; total: number }>>(), [error, setError] = useState<unknown>();
-  const [selected, setSelected] = useState<string>(), [model, setModel] = useState<MentalModel>(), [note, setNote] = useState('');
-  const [name, setName] = useState(''), [mid, setMid] = useState(''), [query, setQuery] = useState('');
-  const load = useCallback(() => api.mentalModels(bank).then(setData).catch(setError), [api, bank]);
-  useEffect(() => { void load(); }, [load]);
-  useEffect(() => {
-    if (!selected) return setModel(undefined);
-    void api.mentalModel(bank, selected).then(m => setModel(m === UNAVAILABLE ? undefined : m)).catch(setError);
-  }, [api, bank, selected]);
-  if (data === UNAVAILABLE) return <Unavailable what="Mental models" />;
+function ModelView({ api, bank, model, changed, moved, deleted }: {
+  api: BanksApi; bank: string; model: MentalModel; changed: (m?: MentalModel) => void; moved: (id: string) => void; deleted: () => void;
+}) {
+  const [editing, setEditing] = useState(false), [draft, setDraft] = useState(model.body || ''), [folder, setFolder] = useState(model.folder);
+  const [error, setError] = useState<unknown>(), [note, setNote] = useState('');
+  useEffect(() => { setDraft(model.body || ''); setFolder(model.folder); setEditing(false); }, [model.id, model.version, model.body, model.folder]);
+  // fn may return the note to show in place of `done`.
   const act = async (fn: () => Promise<unknown>, done: string) => {
-    setError(undefined);
-    try { const r = await fn(); setNote(r === UNAVAILABLE ? 'Not available on this server yet.' : done); void load(); if (selected) setModel((await api.mentalModel(bank, selected)) as MentalModel); } catch (e) { setError(e); }
+    setError(undefined); setNote('');
+    try { const r = await fn(); setNote(typeof r === 'string' ? r : done); changed(); } catch (e) { setError(e); }
   };
+  const p = model.pending_proposal;
+  return <div id="banks-model" data-model={model.id}>
+    <h3 className="banks-h3">{model.name} <Badges f={model} />{model.is_stale && <span className="banks-badge stale">stale</span>}</h3>
+    <p className="vault-note">{model.question}</p>
+    <p className="vault-note banks-sub" data-testid="model-meta">
+      {model.id} · version {model.version} · refresh {model.refresh} · budget {model.budget}
+      {model.last_refreshed ? ` · refreshed ${when(model.last_refreshed)}` : ''}{model.is_stale ? ` · ${staleText(model.stale_reason)}` : ''}
+      {model.based_on?.length ? ` · based on ${model.based_on.length} memories` : ''}{model.tags?.length ? ` · tags ${model.tags.join(', ')}` : ''}
+    </p>
+    <div className="banks-actions">
+      <button className="btn" id="banks-model-refresh" onClick={() => void act(async () => {
+        const r = await api.refreshMentalModel(bank, model.id);
+        setNote(r.deduplicated ? `A refresh is already queued (operation ${r.operation_id}).` : `Refresh queued (operation ${r.operation_id}).`);
+        // Follow the operation so the answer (or proposal) shows when it lands.
+        const op = await waitOperation(api, bank, r.operation_id);
+        const outcome = (op.result as { outcome?: string } | undefined)?.outcome;
+        return op.status !== 'completed' ? `Refresh ${op.status}${op.error ? `: ${op.error}` : ''}.`
+          : outcome === 'proposed' ? 'Refreshed: the new answer is filed as a proposal, because a person edited this one.'
+          : outcome === 'no_sources' ? 'Refreshed: nothing in the bank answers this yet.'
+          : `Refreshed (${outcome || 'done'}).`;
+      }, '')}>Refresh</button>
+      {!editing && <button className="btn" id="banks-model-edit" onClick={() => setEditing(true)}>Edit answer</button>}
+      <button className="btn banks-danger" onClick={() => { if (confirm(`Delete ${model.name}?`)) void act(() => api.deleteMentalModel(bank, model.id), 'Deleted.').then(deleted); }}>Delete</button>
+    </div>
+    <ErrorText error={error} /><p className="vault-note" id="banks-model-note">{note}</p>
+    {p ? <div className="banks-proposal" data-testid="proposal">
+      <p className="vault-note">A refresh wrote a new answer, but a person has edited this one since the model last wrote it. Your text stays until you accept.</p>
+      <div className="banks-compare"><div><div className="pr-clabel">Current</div><pre className="banks-pre" data-testid="proposal-current">{model.body}</pre></div>
+        <div><div className="pr-clabel">Proposed {when(p.created_at)}</div><pre className="banks-pre" data-testid="proposal-content">{p.content}</pre></div></div>
+      <div className="banks-actions">
+        <button className="btn" id="banks-proposal-accept" onClick={() => void act(() => api.acceptProposal(bank, model.id), 'Proposal accepted; the model writes this answer again.')}>Accept proposal</button>
+        <button className="btn" id="banks-proposal-reject" onClick={() => void act(() => api.rejectProposal(bank, model.id), 'Proposal rejected; your text stays.')}>Keep mine</button>
+      </div>
+    </div> : null}
+    {editing ? <form className="banks-form" id="banks-model-editor" onSubmit={e => { e.preventDefault(); void act(() => api.updateMentalModel(bank, model.id, { body: draft }), 'Saved. Your text is now kept over model refreshes; a refresh files a proposal instead.'); }}>
+      <textarea name="body" rows={10} value={draft} onChange={e => setDraft(e.target.value)} />
+      <div className="banks-actions"><button type="submit" className="btn">Save answer</button><button type="button" className="btn" onClick={() => setEditing(false)}>Cancel</button></div>
+    </form> : !p && <pre className="banks-pre" data-testid="model-body">{model.body || '(empty — refresh to write it, or edit it yourself)'}</pre>}
+    <form className="banks-row-fields banks-move" onSubmit={e => { e.preventDefault(); void (async () => {
+      setError(undefined);
+      try { const m = await api.updateMentalModel(bank, model.id, { folder }); setNote(`Moved to ${m.id}.`); moved(m.id); } catch (err) { setError(err); }
+    })(); }}>
+      <input name="folder" aria-label="Folder" placeholder="folder (e.g. people)" value={folder} onChange={e => setFolder(e.target.value)} />
+      <button type="submit" className="btn" disabled={folder === model.folder}>Move</button>
+    </form>
+  </div>;
+}
+
+function ModelsTab({ api, bank }: { api: BanksApi; bank: string }) {
+  const [tree, setTree] = useState<Maybe<{ roots: ModelNode[] }>>(), [error, setError] = useState<unknown>();
+  const [selected, setSelected] = useState<string>(), [model, setModel] = useState<MentalModel>(), [note, setNote] = useState('');
+  const [rev, setRev] = useState(0);
+  const [name, setName] = useState(''), [mid, setMid] = useState(''), [folder, setFolder] = useState(''), [query, setQuery] = useState(''), [refresh, setRefresh] = useState('auto');
+  const load = useCallback(() => api.modelTree(bank).then(setTree).catch(setError), [api, bank]);
+  const loadModel = useCallback(() => {
+    if (!selected) return setModel(undefined);
+    void api.mentalModel(bank, selected).then(setModel).catch(e => { setModel(undefined); setError(e); });
+  }, [api, bank, selected, rev]);
+  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { loadModel(); }, [loadModel]);
+  if (tree === UNAVAILABLE) return <Unavailable what="Mental models" />;
+  const create = async () => {
+    setError(undefined); setNote('');
+    try {
+      const r = await api.createMentalModel(bank, { id: mid || undefined, name, question: query, folder: folder || undefined, refresh });
+      if (r === UNAVAILABLE) return;
+      setNote(r.operation_id ? `Created ${r.mental_model_id}; its first answer is being written (operation ${r.operation_id}).`
+        : `Created ${r.mental_model_id}. No language model is configured, so its answer stays empty until you write one.`);
+      setName(''); setMid(''); setQuery(''); setFolder('');
+      setSelected(r.mental_model_id); void load();
+      if (r.operation_id) {
+        const op = await waitOperation(api, bank, r.operation_id);
+        setNote(op.status === 'completed' ? `Created ${r.mental_model_id}; its first answer is written.` : `Created ${r.mental_model_id}; writing its answer ${op.status}${op.error ? `: ${op.error}` : ''}.`);
+        setRev(n => n + 1); void load();
+      }
+    } catch (e) { setError(e); }
+  };
+  const roots = tree?.roots || [];
   return <>
-    <ErrorText error={error} /><p className="vault-note">{note}</p>
-    {!data ? <p className="vault-note">Loading…</p> : <div className="banks-split">
-      <div className="banks-tree-wrap">{data.items.length ? <ModelTree nodes={buildTree(data.items)} selected={selected} select={setSelected} /> : <p className="vault-note">No mental models yet.</p>}
-        <form className="banks-form" onSubmit={e => { e.preventDefault(); void act(() => api.createMentalModel(bank, { id: mid || undefined, name, source_query: query, trigger: { refresh_after_consolidation: true } }), 'Created; its first refresh is queued.').then(() => { setName(''); setMid(''); setQuery(''); }); }}>
+    <ErrorText error={error} /><p className="vault-note" id="banks-models-note">{note}</p>
+    {!tree ? <p className="vault-note">Loading…</p> : <div className="banks-split">
+      <div className="banks-tree-wrap" id="banks-model-tree">{roots.length ? <ModelTree nodes={roots} selected={selected} select={setSelected} /> : <p className="vault-note">No mental models yet.</p>}
+        <form className="banks-form" id="banks-model-create" onSubmit={e => { e.preventDefault(); void create(); }}>
           <div className="pr-clabel">New mental model</div>
-          <input placeholder="Name" value={name} onChange={e => setName(e.target.value)} required />
-          <input placeholder="id (optional; folders with /)" value={mid} onChange={e => setMid(e.target.value)} />
-          <textarea rows={2} placeholder="The question it answers" value={query} onChange={e => setQuery(e.target.value)} required />
+          <input name="name" placeholder="Name" value={name} onChange={e => setName(e.target.value)} required />
+          <textarea name="question" rows={2} placeholder="The question it answers" value={query} onChange={e => setQuery(e.target.value)} required />
+          <div className="banks-row-fields">
+            <input name="id" placeholder="id (optional)" value={mid} onChange={e => setMid(e.target.value)} />
+            <input name="folder" placeholder="folder (optional)" value={folder} onChange={e => setFolder(e.target.value)} />
+            <select name="refresh" aria-label="Refresh" value={refresh} onChange={e => setRefresh(e.target.value)}>
+              <option value="auto">refresh after consolidation</option><option value="manual">refresh by hand</option></select>
+          </div>
           <button type="submit" className="btn">Create</button>
         </form>
       </div>
-      <div className="banks-model">{model ? <>
-        <h3 className="banks-h3">{model.name} <Badges f={model} /></h3>
-        <p className="vault-note">{model.source_query}{model.last_refreshed_at ? ` · refreshed ${model.last_refreshed_at.slice(0, 16).replace('T', ' ')}` : ''}</p>
-        <div className="banks-actions">
-          <button className="btn" onClick={() => void act(() => api.refreshMentalModel(bank, model.id), 'Refresh queued.')}>Refresh</button>
-          <button className="btn banks-danger" onClick={() => { if (confirm(`Delete ${model.name}?`)) void act(() => api.deleteMentalModel(bank, model.id), 'Deleted.').then(() => setSelected(undefined)); }}>Delete</button>
-        </div>
-        {model.pending_proposal ? <div className="banks-proposal" data-testid="proposal">
-          <p className="vault-note">A refresh proposed new text, but a person has edited this model since it was last refreshed. Your text stays until you accept.</p>
-          <div className="banks-compare"><div><div className="pr-clabel">Current</div><pre className="banks-pre">{model.content}</pre></div>
-            <div><div className="pr-clabel">Proposed</div><pre className="banks-pre">{model.pending_proposal.content}</pre></div></div>
-          <div className="banks-actions">
-            <button className="btn" onClick={() => void act(() => api.acceptProposal(bank, model.id), 'Proposal accepted.')}>Accept proposal</button>
-            <button className="btn" onClick={() => void act(() => api.rejectProposal(bank, model.id), 'Proposal rejected.')}>Keep mine</button>
-          </div>
-        </div> : <pre className="banks-pre">{model.content || '(empty — refresh to generate)'}</pre>}
-      </> : <p className="vault-note">Choose a model to view it.</p>}</div>
+      <div className="banks-model">{model ? <ModelView api={api} bank={bank} model={model}
+        changed={() => { loadModel(); void load(); }}
+        moved={id => { setSelected(id); void load(); }}
+        deleted={() => { setSelected(undefined); void load(); }} />
+        : <p className="vault-note">Choose a model to view it.</p>}</div>
     </div>}
+  </>;
+}
+
+// ---- directives ------------------------------------------------------------------------------
+
+function DirectivesTab({ api, bank }: { api: BanksApi; bank: string }) {
+  const [data, setData] = useState<Maybe<{ items: Directive[]; total: number }>>(), [error, setError] = useState<unknown>();
+  const [text, setText] = useState(''), [name, setName] = useState(''), [tags, setTags] = useState(''), [priority, setPriority] = useState('');
+  const [editing, setEditing] = useState<string>(), [draft, setDraft] = useState('');
+  const load = useCallback(() => api.directives(bank).then(setData).catch(setError), [api, bank]);
+  useEffect(() => { void load(); }, [load]);
+  if (data === UNAVAILABLE) return <Unavailable what="Directive routes" />;
+  const act = async (fn: () => Promise<unknown>) => { setError(undefined); try { await fn(); void load(); } catch (e) { setError(e); } };
+  return <>
+    <p className="vault-note">Standing rules every reflect answer is checked against. Tagged directives apply only to reflects with matching tags.</p>
+    <ErrorText error={error} />
+    {!data ? <p className="vault-note">Loading…</p> : !data.items.length ? <p className="vault-note">No directives.</p> :
+      <div className="banks-scroll"><table className="usage-table banks-table" id="banks-directives">
+        <thead><tr><th>directive</th><th>tags</th><th className="num">priority</th><th>active</th><th /></tr></thead>
+        <tbody>{data.items.map(d => <tr key={d.id} data-directive={d.id} className={d.inactive ? 'banks-disputed' : ''}>
+          <td className="banks-fact-text">{editing === d.id
+            ? <input aria-label="Directive text" value={draft} onChange={e => setDraft(e.target.value)} />
+            : <>{d.name && <b>{d.name}: </b>}{d.text}</>}<div className="banks-sub">{d.id}</div></td>
+          <td>{(d.tags || []).join(', ')}</td><td className="num">{d.priority ?? 0}</td>
+          <td><input type="checkbox" aria-label="Active" checked={!d.inactive} onChange={e => void act(() => api.updateDirective(bank, d.id, { is_active: e.target.checked }))} /></td>
+          <td className="banks-actions">{editing === d.id
+            ? <><button className="btn banks-small" onClick={() => void act(() => api.updateDirective(bank, d.id, { text: draft })).then(() => setEditing(undefined))}>Save</button>
+              <button className="btn banks-small" onClick={() => setEditing(undefined)}>Cancel</button></>
+            : <button className="btn banks-small" onClick={() => { setEditing(d.id); setDraft(d.text); }}>Edit</button>}
+            <button className="btn banks-small banks-danger" onClick={() => { if (confirm('Delete this directive?')) void act(() => api.deleteDirective(bank, d.id)); }}>Delete</button></td>
+        </tr>)}</tbody>
+      </table></div>}
+    <form className="banks-form" id="banks-directive-create" onSubmit={e => { e.preventDefault(); void act(async () => {
+      await api.createDirective(bank, { text: text.trim(), name: name.trim() || undefined, tags: tags ? parseTags(tags) : undefined, priority: priority ? Number(priority) : undefined });
+      setText(''); setName(''); setTags(''); setPriority('');
+    }); }}>
+      <div className="pr-clabel">New directive</div>
+      <input id="banks-new-directive" name="text" placeholder="A standing rule, e.g. Never reveal account numbers" value={text} onChange={e => setText(e.target.value)} required />
+      <div className="banks-row-fields">
+        <input name="name" placeholder="name (optional, unique)" value={name} onChange={e => setName(e.target.value)} />
+        <input name="tags" placeholder="tags, comma separated" value={tags} onChange={e => setTags(e.target.value)} />
+        <input name="priority" type="number" placeholder="priority" value={priority} onChange={e => setPriority(e.target.value)} />
+      </div>
+      <button type="submit" className="btn" disabled={!text.trim()}>Add directive</button>
+    </form>
   </>;
 }
 
 // ---- operations ------------------------------------------------------------------------------
 
 function OperationsTab({ api, bank }: { api: BanksApi; bank: string }) {
-  const [data, setData] = useState<Maybe<{ operations: Operation[]; total: number }>>(), [status, setStatus] = useState(''), [error, setError] = useState<unknown>();
-  const load = useCallback(() => api.operations(bank, { status, limit: 50 }).then(setData).catch(setError), [api, bank, status]);
+  const [data, setData] = useState<Maybe<{ operations: Operation[]; total: number }>>(), [status, setStatus] = useState(''), [type, setType] = useState('');
+  const [error, setError] = useState<unknown>(), [open, setOpen] = useState<Operation>();
+  const load = useCallback(() => api.operations(bank, { status, type, limit: 50 }).then(setData).catch(setError), [api, bank, status, type]);
   useEffect(() => { void load(); }, [load]);
   useEffect(() => {
     if (!data || data === UNAVAILABLE || data.operations.every(o => isTerminal(o.status))) return;
-    const timer = setInterval(() => void load(), 3000);
+    const timer = setInterval(() => void load(), 2000);
     return () => clearInterval(timer);
   }, [data, load]);
   if (data === UNAVAILABLE) return <Unavailable what="Background operations" />;
+  const show = (o: Operation) => void api.operation(bank, o.id).then(setOpen).catch(setError);
   return <>
-    <div className="banks-filters"><select aria-label="Status" value={status} onChange={e => setStatus(e.target.value)}>
-      <option value="">All</option>{['pending', 'processing', 'completed', 'failed', 'cancelled'].map(s => <option key={s}>{s}</option>)}
-    </select><button className="btn" onClick={() => void load()}>Refresh</button></div>
+    <div className="banks-filters">
+      <select aria-label="Status" value={status} onChange={e => setStatus(e.target.value)}>
+        <option value="">All statuses</option>{OP_STATUSES.map(s => <option key={s}>{s}</option>)}</select>
+      <select aria-label="Kind" value={type} onChange={e => setType(e.target.value)}>
+        <option value="">All kinds</option>{['retain', 'consolidation', 'refresh_mental_model'].map(k => <option key={k} value={k}>{opKindLabel(k)}</option>)}</select>
+      <button className="btn" onClick={() => void load()}>Reload</button></div>
     <ErrorText error={error} />
-    {!data ? <p className="vault-note">Loading…</p> : !data.operations.length ? <p className="vault-note">No operations.</p> :
+    {!data ? <p className="vault-note">Loading…</p> : !data.operations.length ? <p className="vault-note">No operations.</p> : <>
+      <p className="vault-note">{data.total} operation(s), newest first.</p>
       <div className="banks-scroll"><table className="usage-table banks-table" id="banks-operations">
-        <thead><tr><th>operation</th><th>status</th><th>progress</th><th>created</th><th /></tr></thead>
-        <tbody>{data.operations.map(o => <tr key={o.id}>
-          <td>{o.operation_type}<div className="banks-sub">{o.id}</div>{o.error_message && <div className="banks-sub banks-error">{o.error_message}</div>}</td>
-          <td><span className={`banks-chip ${o.status}`}>{o.status}</span></td>
-          <td>{progressText(o.progress)}</td>
-          <td>{(o.created_at || '').slice(0, 16).replace('T', ' ')}</td>
+        <thead><tr><th>operation</th><th>status</th><th>progress</th><th>created</th><th>finished</th><th /></tr></thead>
+        <tbody>{data.operations.map(o => <tr key={o.id} data-operation={o.id} data-kind={o.kind} data-status={o.status}>
+          <td><a className="wikilink" onClick={() => show(o)}>{opKindLabel(o.kind || o.type)}</a><div className="banks-sub">{o.id}{o.attempts > 1 ? ` · attempt ${o.attempts}` : ''}</div>
+            {o.error && <div className="banks-sub banks-error">{o.error}</div>}</td>
+          <td><span className={`banks-chip ${o.status}`}>{o.status}{o.cancel_requested && !isTerminal(o.status) ? ' (cancelling)' : ''}</span></td>
+          <td>{o.progress || ''}</td>
+          <td>{when(o.created_at)}</td><td>{when(o.finished_at)}</td>
           <td>{!isTerminal(o.status) && <button className="btn banks-small" onClick={() => void api.cancelOperation(bank, o.id).then(load).catch(setError)}>Cancel</button>}</td>
         </tr>)}</tbody>
-      </table></div>}
+      </table></div></>}
+    {open && <div className="inspect-chunk" id="banks-operation">
+      <div className="ic-head"><span>{opKindLabel(open.kind)} · {open.status}</span><button className="btn banks-small" onClick={() => setOpen(undefined)}>Close</button></div>
+      {open.result !== undefined && <><div className="pr-clabel">Result</div><pre className="banks-pre">{JSON.stringify(open.result, null, 2)}</pre></>}
+      {open.error && <p className="banks-error">{open.error}</p>}
+    </div>}
   </>;
 }
 
@@ -485,15 +677,16 @@ function OperationsTab({ api, bank }: { api: BanksApi; bank: string }) {
 
 function PlaygroundTab({ api, bank }: { api: BanksApi; bank: string }) {
   const [query, setQuery] = useState(''), [budget, setBudget] = useState('mid'), [maxTokens, setMaxTokens] = useState(4096);
-  const [types, setTypes] = useState<string[]>(['world', 'experience', 'observation']), [tags, setTags] = useState('');
+  const [types, setTypes] = useState<string[]>(['world', 'experience', 'observation']), [tags, setTags] = useState(''), [showTools, setShowTools] = useState(false);
   const [recall, setRecall] = useState<RecallResponse>(), [reflect, setReflect] = useState<Maybe<ReflectResponse>>();
   const [error, setError] = useState<unknown>(), [busy, setBusy] = useState('');
-  const params = () => ({ query, budget, max_tokens: maxTokens, types, tags: tags ? parseTags(tags) : undefined });
   const run = async (kind: 'recall' | 'reflect') => {
     setBusy(kind); setError(undefined);
+    const tagList = tags ? parseTags(tags) : undefined;
     try {
-      if (kind === 'recall') { setReflect(undefined); setRecall(await api.recall(bank, { ...params(), trace: true })); }
-      else { setRecall(undefined); setReflect(await api.reflect(bank, params())); }
+      if (kind === 'recall') { setReflect(undefined); setRecall(await api.recall(bank, { query, budget, max_tokens: maxTokens, types, tags: tagList, trace: true })); }
+      // Reflect's budget is turns of the loop; its max_tokens is the answer's length target.
+      else { setRecall(undefined); setReflect(await api.reflect(bank, { query, budget, fact_types: types, tags: tagList, trace: showTools })); }
     } catch (e) { setError(e); } finally { setBusy(''); }
   };
   return <>
@@ -501,11 +694,12 @@ function PlaygroundTab({ api, bank }: { api: BanksApi; bank: string }) {
       <textarea id="banks-query" name="query" rows={2} value={query} onChange={e => setQuery(e.target.value)} placeholder="Ask the bank something…" required />
       <div className="banks-row-fields">
         <label>Budget <select name="budget" value={budget} onChange={e => setBudget(e.target.value)}><option>low</option><option>mid</option><option>high</option></select></label>
-        <label>Max tokens <input name="max_tokens" type="number" min={0} max={65536} value={maxTokens} onChange={e => setMaxTokens(Number(e.target.value))} /></label>
+        <label>Max tokens (recall) <input name="max_tokens" type="number" min={0} max={65536} value={maxTokens} onChange={e => setMaxTokens(Number(e.target.value))} /></label>
         <input name="tags" placeholder="tags" value={tags} onChange={e => setTags(e.target.value)} />
       </div>
       <div className="banks-row-fields">{['world', 'experience', 'observation'].map(t => <label key={t} className="chk">
-        <input type="checkbox" checked={types.includes(t)} onChange={e => setTypes(e.target.checked ? [...types, t] : types.filter(x => x !== t))} />{t}</label>)}</div>
+        <input type="checkbox" checked={types.includes(t)} onChange={e => setTypes(e.target.checked ? [...types, t] : types.filter(x => x !== t))} />{t}</label>)}
+        <label className="chk"><input type="checkbox" name="tool_calls" checked={showTools} onChange={e => setShowTools(e.target.checked)} />reflect tool calls</label></div>
       <div className="banks-actions">
         <button type="submit" id="banks-recall" className="btn" disabled={!!busy || !query.trim()}>{busy === 'recall' ? 'Recalling…' : 'Recall'}</button>
         <button type="button" id="banks-reflect" className="btn" disabled={!!busy || !query.trim()} onClick={() => void run('reflect')}>{busy === 'reflect' ? 'Reflecting…' : 'Reflect'}</button>
@@ -558,18 +752,27 @@ function RecallView({ r }: { r: RecallResponse }) {
 }
 
 function ReflectView({ r }: { r: ReflectResponse }) {
-  const b = r.based_on || {};
-  return <div id="banks-reflect-results">
-    <div className="pr-clabel">Answer</div>
-    <div className="banks-answer">{r.text}</div>
-    {r.usage && <p className="vault-note">{r.usage.input_tokens ?? 0} tokens in · {r.usage.output_tokens ?? 0} out</p>}
-    <div className="pr-clabel">Based on</div>
-    {(b.memories || []).map(f => <div className="inspect-chunk" key={f.id}><div className="ic-head"><span>fact {f.id} <Badges f={f} /></span></div><div className="ic-text">{f.text}</div></div>)}
-    {(b.observations || []).map(o => <div className="inspect-chunk" key={o.id}><div className="ic-head"><span>observation {o.id}</span></div><div className="ic-text">{o.text}</div></div>)}
-    {(b.mental_models || []).map(m => <div className="inspect-chunk" key={m.id}><div className="ic-head"><span>mental model {m.id}</span></div><div className="ic-text">{m.text}</div></div>)}
-    {(b.directives || []).map(d => <div className="inspect-chunk" key={d.id}><div className="ic-head"><span>directive</span></div><div className="ic-text">{d.text || d.content || d.name}</div></div>)}
-    {r.trace?.tool_calls?.length ? <details className="banks-trace"><summary>Tool calls ({r.trace.tool_calls.length})</summary>
-      <ol>{r.trace.tool_calls.map((c, i) => <li key={i}><b>{c.tool}</b>{c.iteration !== undefined ? ` (step ${c.iteration})` : ''}{c.duration_ms !== undefined ? ` · ${c.duration_ms} ms` : ''}
+  const b = r.based_on || { memories: [], observations: [], mental_models: [], directives: [] };
+  const cited = (b.memories?.length || 0) + (b.observations?.length || 0) + (b.mental_models?.length || 0);
+  return <div id="banks-reflect-results" data-mode={r.mode}>
+    <div className="pr-clabel">Answer {r.mode === 'extractive' && <span className="banks-badge" title="No language model is configured: the answer quotes what recall found">extractive</span>}</div>
+    <div className="banks-answer" data-testid="reflect-answer">{r.text}</div>
+    <p className="vault-note">{[r.usage?.total_tokens ? `${r.usage.input_tokens ?? 0} tokens in · ${r.usage.output_tokens ?? 0} out` : '',
+      r.iterations ? `${r.iterations} step(s)` : '', r.directives_checked ? 'checked against directives' : ''].filter(Boolean).join(' · ')}</p>
+    <div className="pr-clabel">Based on ({cited})</div>
+    <div id="banks-citations">
+      {(b.mental_models || []).map(m => <div className="inspect-chunk" key={'m' + m.id} data-cite={m.id} data-kind="mental_model"><div className="ic-head"><span>mental model <code>{m.id}</code> {m.name}</span></div><div className="ic-text">{m.text}</div></div>)}
+      {(b.observations || []).map(o => <div className="inspect-chunk" key={'o' + o.id} data-cite={o.id} data-kind="observation"><div className="ic-head"><span>observation <code>{o.id}</code> <Badges f={o} /></span><span className="ic-score">{o.proof_count ? `${o.proof_count} fact(s)` : ''}</span></div><div className="ic-text">{o.text}</div></div>)}
+      {(b.memories || []).map(f => <div className="inspect-chunk" key={'f' + f.id} data-cite={f.id} data-kind="memory"><div className="ic-head"><span>{f.type || 'fact'} <code>{f.id}</code> <Badges f={f} /></span><span className="ic-score">{factDate(f)}</span></div><div className="ic-text">{f.text}</div></div>)}
+    </div>
+    {b.directives?.length ? <><div className="pr-clabel">Directives applied</div>
+      <ul className="banks-facts" id="banks-reflect-directives">{b.directives.map(d => <li key={d.id}>{d.name ? <b>{d.name}: </b> : null}{d.text}</li>)}</ul></> : null}
+    {r.structured_output !== undefined && r.structured_output !== null && <><div className="pr-clabel">Structured output</div><pre className="banks-pre">{JSON.stringify(r.structured_output, null, 2)}</pre></>}
+    {r.structured_output_error && <p className="vault-note banks-error">{r.structured_output_error}</p>}
+    {r.trace?.rejected_citations?.length ? <p className="vault-note">Dropped citations nothing had retrieved: {r.trace.rejected_citations.join(', ')}</p> : null}
+    {r.trace?.tool_calls?.length ? <details className="banks-trace" id="banks-reflect-trace"><summary>Tool calls ({r.trace.tool_calls.length}){r.trace.levels?.length ? ` · levels ${r.trace.levels.join(' → ')}` : ''}</summary>
+      <ol>{r.trace.tool_calls.map((c, i) => <li key={i}><b>{c.tool}</b>{c.iteration !== undefined ? ` (step ${c.iteration + 1})` : ''}{c.forced ? ' · run by the engine' : ''}{c.duration_ms !== undefined ? ` · ${c.duration_ms.toFixed(1)} ms` : ''}
+        {c.error && <span className="banks-error"> · {c.error}</span>}
         <pre className="banks-pre">{JSON.stringify(c.input)}</pre></li>)}</ol></details> : null}
   </div>;
 }

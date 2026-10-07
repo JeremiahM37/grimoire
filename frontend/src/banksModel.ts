@@ -1,7 +1,7 @@
 // Pure helpers for the Banks panel: no React, no network, so they are unit
 // tested directly (banks.test.ts).
 
-export { builtinTemplates, type BankTemplate, type TemplateMentalModel } from './bankTemplates';
+export { builtinTemplates, type BankTemplate, type Manifest, type TemplateMentalModel } from './bankTemplates';
 
 /** The per-bank settings the server accepts, with their allowed values. */
 export const CONFIG_KEYS: { key: string; values: string[]; label: string }[] = [
@@ -13,6 +13,21 @@ export const CONFIG_KEYS: { key: string; values: string[]; label: string }[] = [
   { key: 'enable_reranking', values: ['true', 'false'], label: 'Reranking' },
   { key: 'consolidation', values: ['auto', 'manual', 'off'], label: 'Consolidation' },
 ];
+
+/** Free-form per-bank settings (text inputs rather than choices). */
+export const CONFIG_TEXT_KEYS: { key: string; label: string; placeholder: string }[] = [
+  { key: 'observations_mission', label: 'Observations mission', placeholder: 'What consolidation should track' },
+  { key: 'consolidation_batch_size', label: 'Facts per consolidation call', placeholder: '8' },
+  { key: 'reflect_max_tokens', label: 'Reflect answer length (tokens)', placeholder: 'e.g. 1024' },
+  { key: 'mcp_tools', label: 'MCP tools allowed', placeholder: 'e.g. bank_recall,reflect (empty = all)' },
+];
+
+/** Why a mental model is stale, in words. */
+export function staleText(reason?: string): string {
+  if (reason === 'never_refreshed') return 'never refreshed';
+  if (reason === 'memories_changed') return 'memories changed since the last refresh';
+  return reason || '';
+}
 
 /** Bank ids the server accepts. */
 export const validBankId = (id: string) => /^[a-z0-9][a-z0-9._:-]{0,63}$/.test(id);
@@ -38,27 +53,6 @@ export function filterFacts<T extends FactLike>(facts: T[], opts: { tag?: string
     if (opts.to && (!day || day > opts.to)) return false;
     return true;
   });
-}
-
-export interface TreeNode<T> { name: string; path: string; item?: T; children: TreeNode<T>[] }
-
-/** Group items into a folder tree by `/` in their id. */
-export function buildTree<T extends { id: string }>(items: T[]): TreeNode<T>[] {
-  const root: TreeNode<T> = { name: '', path: '', children: [] };
-  for (const item of items) {
-    const parts = item.id.split('/').filter(Boolean);
-    let node = root;
-    parts.forEach((part, i) => {
-      const path = parts.slice(0, i + 1).join('/');
-      let child = node.children.find(c => c.name === part);
-      if (!child) { child = { name: part, path, children: [] }; node.children.push(child); }
-      if (i === parts.length - 1) child.item = item;
-      node = child;
-    });
-  }
-  const sort = (nodes: TreeNode<T>[]) => { nodes.sort((a, b) => Number(!!a.item && !a.children.length) - Number(!!b.item && !b.children.length) || a.name.localeCompare(b.name)); nodes.forEach(n => sort(n.children)); };
-  sort(root.children);
-  return root.children;
 }
 
 /** Rows for the per-arm rank table: one per result, one column per arm. */
@@ -94,12 +88,13 @@ export function radialLayout(nodes: { id: string; label: string; weight: number 
   return points;
 }
 
-/** "3 of 7" style progress for an operation. */
-export function progressText(p?: { stage?: string; processed?: number; total?: number }): string {
-  if (!p) return '';
-  const count = p.total ? `${p.processed ?? 0} of ${p.total}` : '';
-  return [p.stage, count].filter(Boolean).join(' · ');
+/** A person-readable name for an operation kind. */
+export function opKindLabel(kind: string): string {
+  return ({ retain: 'Retain', consolidation: 'Consolidation', refresh_mental_model: 'Refresh mental model' } as Record<string, string>)[kind] || kind;
 }
+
+/** Operation statuses, in the order the server moves through them. */
+export const OP_STATUSES = ['queued', 'running', 'completed', 'failed', 'cancelled'];
 
 export const isTerminal = (status: string) => ['completed', 'failed', 'cancelled'].includes(status);
 
