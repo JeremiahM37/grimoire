@@ -255,6 +255,14 @@ export class Bank {
   timeline(anchor, options = {}) {
     return this.#req('GET', '/timeline' + qs({ anchor, before: options.before, after: options.after }))
   }
+  /** What the bank remembers about one file. */
+  fileMemory(path, options = {}) { return this.#req('GET', '/file-memory' + qs({ path, limit: options.limit })) }
+  /** Near-duplicate candidates for review. */
+  duplicates(options = {}) {
+    return this.#req('GET', '/duplicates' + qs({ min_score: options.minScore, type: options.type, limit: options.limit }))
+  }
+  /** Strike `merge` through into `keep`; its text is kept, never deleted. */
+  mergeDuplicates(keep, merge) { return this.#req('POST', '/duplicates/merge', { keep, merge }) }
   /** Entries in full by `#ref` or id. */
   getEntries(ids) { return this.#req('GET', '/lookup' + qs({ ids: ids.join(',') })) }
   /** Write a session's "where we left off" note. */
@@ -358,7 +366,9 @@ export class Bank {
   moveMentalModel(id, folder) { return this.updateMentalModel(id, { folder }) }
   deleteMentalModel(id) { return this.#feature('DELETE', `/mental-models/${seg(id)}`) }
   /** Queue a refresh: `{operation_id, status, deduplicated}`. */
-  refreshMentalModel(id) { return this.#feature('POST', `/mental-models/${seg(id)}/refresh`, {}) }
+  refreshMentalModel(id, options = {}) {
+    return this.#feature('POST', `/mental-models/${seg(id)}/refresh`, options.mode ? { mode: options.mode } : {})
+  }
   acceptProposal(id) { return this.#feature('POST', `/mental-models/${seg(id)}/proposal/accept`, {}) }
   rejectProposal(id) { return this.#feature('POST', `/mental-models/${seg(id)}/proposal/reject`, {}) }
   /** The model's versions, or one version's `content`. */

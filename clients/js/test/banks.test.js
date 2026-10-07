@@ -56,6 +56,14 @@ describe('bank client', () => {
     await bank.writeDigest('a:1', [{ speaker: 'user', text: 'hi' }], { useModel: true })
     assert.equal(calls.at(-1).path, '/api/banks/support/sessions/a%3A1/digest')
     assert.equal(calls.at(-1).body.use_model, true)
+    await bank.fileMemory('src/a.go', { limit: 3 })
+    assert.equal(at(), '/api/banks/support/file-memory?path=src%2Fa.go&limit=3')
+    await bank.duplicates({ minScore: 0.7, type: 'fact' })
+    assert.equal(at(), '/api/banks/support/duplicates?min_score=0.7&type=fact')
+    await bank.mergeDuplicates('a', 'b')
+    assert.deepEqual(calls.at(-1).body, { keep: 'a', merge: 'b' })
+    await bank.refreshMentalModel('m', { mode: 'delta' })
+    assert.deepEqual(calls.at(-1).body, { mode: 'delta' })
   })
 
   it('escapes the bank id as one segment', async () => {

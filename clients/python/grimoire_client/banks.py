@@ -310,6 +310,19 @@ class Bank:
         """The entries dated around ``anchor`` (a ``#ref`` or ``YYYY-MM-DD``), oldest first."""
         return self._req("GET", "/timeline" + _q({"anchor": anchor, "before": before, "after": after}))
 
+    def file_memory(self, path: str, *, limit: int | None = None) -> dict[str, Any]:
+        """What the bank remembers about one file: ``{"path", "items": [{kind, text, date, human}]}``."""
+        return self._req("GET", "/file-memory" + _q({"path": path, "limit": limit}))
+
+    def duplicates(self, *, min_score: float | None = None, type: str | None = None,
+                   limit: int | None = None) -> dict[str, Any]:
+        """Near-duplicate candidates: ``{"candidates": [{type, score, keep, merge, shared}]}``."""
+        return self._req("GET", "/duplicates" + _q({"min_score": min_score, "type": type, "limit": limit}))
+
+    def merge_duplicates(self, keep: str, merge: str) -> dict[str, Any]:
+        """Strike ``merge`` through into ``keep``; its text is kept, never deleted."""
+        return self._req("POST", "/duplicates/merge", {"keep": keep, "merge": merge})
+
     def get_entries(self, ids: list[str]) -> dict[str, Any]:
         """Entries in full by ``#ref`` or id: ``{"items": [...], "missing": [...]}``."""
         return self._req("GET", "/lookup" + _q({"ids": ",".join(ids)}))
@@ -509,10 +522,13 @@ class Bank:
     def delete_mental_model(self, model_id: str) -> dict[str, Any]:
         return self._feature("DELETE", "/mental-models/" + _seg(model_id))
 
-    def refresh_mental_model(self, model_id: str) -> dict[str, Any]:
+    def refresh_mental_model(self, model_id: str, *, mode: str | None = None) -> dict[str, Any]:
         """Queue a refresh: ``{"operation_id", "status", "deduplicated"}``.
-        Raises ModelRequired when the server has no model."""
-        return self._feature("POST", "/mental-models/" + _seg(model_id) + "/refresh", {})
+        ``mode="delta"`` edits only the sections new facts touch (a person's
+        sections are never changed); ``"full"`` rewrites. Default: the model's
+        own setting. Raises ModelRequired when a full refresh has no server model."""
+        return self._feature("POST", "/mental-models/" + _seg(model_id) + "/refresh",
+                             {"mode": mode} if mode else {})
 
     def accept_proposal(self, model_id: str) -> dict[str, Any]:
         """Make the pending proposal the answer; returns the model."""

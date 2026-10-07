@@ -296,6 +296,9 @@ export declare class Bank {
   context(options?: { maxChars?: number; source?: 'startup' | 'resume' | 'clear' | 'compact' }): Promise<{ context: string; chars: number; limit: number; included: number; dropped: number }>
   index(query?: string, options?: { types?: string[]; since?: string; limit?: number; offset?: number }): Promise<{ items: Json[]; total: number }>
   timeline(anchor: string, options?: { before?: number; after?: number }): Promise<{ entries: Json[]; anchor_ref?: string }>
+  fileMemory(path: string, options?: { limit?: number }): Promise<{ path: string; items: Json[] }>
+  duplicates(options?: { minScore?: number; type?: 'fact' | 'observation'; limit?: number }): Promise<{ candidates: Json[] }>
+  mergeDuplicates(keep: string, merge: string): Promise<Json>
   getEntries(ids: string[]): Promise<{ items: Json[]; missing: string[] }>
   writeDigest(sessionId: string, turns: { speaker: string; text: string; timestamp?: string }[], options?: { activity?: Json; useModel?: boolean }): Promise<Json>
   sessions(options?: { limit?: number }): Promise<{ items: Json[]; total: number }>
@@ -314,7 +317,7 @@ export declare class Bank {
   updateMentalModel(id: string, fields: MentalModelSpec): Promise<MentalModel>
   moveMentalModel(id: string, folder: string): Promise<MentalModel>
   deleteMentalModel(id: string): Promise<Json>
-  refreshMentalModel(id: string): Promise<{ operation_id: string; status: 'queued'; deduplicated: boolean }>
+  refreshMentalModel(id: string, options?: { mode?: 'full' | 'delta' }): Promise<{ operation_id: string; status: 'queued'; deduplicated: boolean }>
   acceptProposal(id: string): Promise<MentalModel>
   rejectProposal(id: string): Promise<{ rejected: string }>
   mentalModelHistory(id: string, version?: string | number): Promise<Json>
