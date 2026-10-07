@@ -22,6 +22,7 @@ import json
 import os
 import re
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -218,10 +219,27 @@ def retain(event, environment, base, bank, send):
     if first:
         item["timestamp"] = first
     timeout = max(1.0, min(60.0, float(environment.get("GRIMOIRE_BANK_TIMEOUT", "10"))))
-    send(base, environment.get("GRIMOIRE_AUTH_TOKEN", ""),
-         "/api/banks/" + urllib.parse.quote(bank, safe="") + "/memories", {"items": [item]}, timeout)
+    token = environment.get("GRIMOIRE_AUTH_TOKEN", "")
+    path = "/api/banks/" + urllib.parse.quote(bank, safe="") + "/memories"
+    # Queued: the server answers 202 with an operation id at once and extracts
+    # in the background, so a long transcript never outlasts the timeout. A
+    # server without the operations queue refuses async with a 400 that says
+    # so; retain in the foreground there.
+    try:
+        send(base, token, path, {"items": [item], "async": True}, timeout)
+    except urllib.error.HTTPError as error:
+        if error.code != 400 or not async_refused(error):
+            raise
+        send(base, token, path, {"items": [item]}, timeout)
     marker.write_text(digest)
     return None
+
+
+def async_refused(error):
+    try:
+        return "async" in error.read(4096).decode("utf-8", "replace").lower()
+    except (OSError, ValueError):
+        return False
 
 
 def recall(event, environment, base, bank, send):

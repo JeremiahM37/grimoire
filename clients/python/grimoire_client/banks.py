@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -30,16 +31,36 @@ from . import GrimoireError, NotFound, _error_for, _message_of
 if TYPE_CHECKING:  # pragma: no cover
     from . import Grimoire
 
-__all__ = ["AsyncBank", "Bank", "NotAvailable"]
+__all__ = ["TERMINAL_STATUSES", "AsyncBank", "Bank", "ModelRequired", "NotAvailable"]
+
+#: Operation statuses after which nothing more happens.
+TERMINAL_STATUSES = frozenset({"completed", "failed", "cancelled"})
 
 
 class NotAvailable(NotFound):
-    """The server does not have this bank feature (yet).
+    """The server does not have this bank feature.
 
-    Raised for the newer bank endpoints — reflect, observations, mental
-    models, operations, webhooks, templates — when the server answers 404 for
-    the route itself. A 404 for a missing bank is still :class:`NotFound`.
+    Raised for the reasoning endpoints — reflect, observations, mental
+    models, directives, operations, webhooks, templates — by a server from
+    before them, which answers 404 for the route itself. A 404 for a missing
+    bank is still :class:`NotFound`.
     """
+
+
+class ModelRequired(GrimoireError):
+    """The call needs a language model and the server has none configured
+    (409 ``{"code": "model_required"}``): consolidation, a mental-model
+    refresh. Reflect does not raise it; it answers extractively instead."""
+
+    code = "model_required"
+
+
+def _code_of(payload: bytes) -> str:
+    try:
+        parsed = json.loads(payload)
+    except (json.JSONDecodeError, ValueError):
+        return ""
+    return str(parsed.get("code", "")) if isinstance(parsed, dict) else ""
 
 
 def _q(params: Mapping[str, Any]) -> str:
@@ -118,10 +139,12 @@ class Bank:
         re-extracted). ``mode="chunks"`` stores each chunk as a fact with no
         model call.
 
-        ``async_=True`` asks the server to queue the work and return an
-        ``operation_id``. A server without the operations queue refuses that;
-        the retain is then run synchronously and the response carries
-        ``"async_fallback": True`` so the caller can tell.
+        ``async_=True`` queues the work: the server answers at once with
+        ``{"async": True, "operation_id", "operation_ids", "items_count"}``
+        (one operation per 500 items); :meth:`wait_operation` follows it. A
+        server without the operations queue refuses that; the retain is then
+        run synchronously and the response carries ``"async_fallback": True``
+        so the caller can tell.
         """
         if items is None:
             if content is None:
@@ -260,12 +283,19 @@ class Bank:
     def chunk(self, chunk_id: str) -> dict[str, Any]:
         return self._req("GET", "/chunks/" + _seg(chunk_id))
 
-    # ---- newer endpoints ----------------------------------------------
+    # ---- reasoning endpoints ------------------------------------------
     #
-    # Everything below targets routes a server may not have yet. Each call
-    # raises NotAvailable when the route is missing, so a caller can hide the
-    # feature instead of failing. Keep them together: this block is the one
-    # place to align when those routes land.
+    # Reflect, observations, mental models, directives, operations, webhooks
+    # and templates. A server from before these routes answers them with the
+    # router's plain 404; each call turns that into NotAvailable, so a caller
+    # can hide the feature instead of failing. A call that needs a language
+    # model the server does not have raises ModelRequired.
+
+    def stats(self) -> dict[str, Any]:
+        """Counts: facts by type, observations, documents, entities, mental
+        models, pending consolidation, operations by status, and whether a
+        model is configured (``model_available``)."""
+        return self._feature("GET", "/stats")
 
     def reflect(
         self,
@@ -275,18 +305,39 @@ class Bank:
         max_tokens: int | None = None,
         context: str | None = None,
         response_schema: Mapping[str, Any] | None = None,
+        fact_types: list[str] | None = None,
         types: list[str] | None = None,
         tags: list[str] | None = None,
         tags_match: str | None = None,
+        tag_groups: list[Mapping[str, Any]] | None = None,
+        apply_all_directives: bool | None = None,
+        exclude_mental_models: bool | None = None,
+        exclude_mental_model_ids: list[str] | None = None,
+        query_timestamp: Any = None,
         include_facts: bool = True,
         include_tool_calls: bool = False,
+        trace: bool = False,
     ) -> dict[str, Any]:
-        """Answer ``query`` from the bank, citing the facts it used."""
+        """Answer ``query`` by reasoning over the bank.
+
+        The response always carries ``text``, ``mode`` (``llm``, or
+        ``extractive`` when the server has no model) and ``based_on``
+        (``memories``, ``observations``, ``mental_models``, ``directives``).
+        ``trace`` (the tool calls) is returned only with
+        ``include_tool_calls=True`` or ``trace=True``. ``types`` is accepted as
+        an alias of ``fact_types``.
+        """
         body: dict[str, Any] = {"query": query}
         for key, value in (
             ("budget", budget), ("max_tokens", max_tokens), ("context", context),
             ("response_schema", dict(response_schema) if response_schema else None),
-            ("types", types), ("tags", tags), ("tags_match", tags_match),
+            ("fact_types", fact_types if fact_types is not None else types),
+            ("tags", tags), ("tags_match", tags_match),
+            ("tag_groups", [dict(g) for g in tag_groups] if tag_groups else None),
+            ("apply_all_directives", apply_all_directives),
+            ("exclude_mental_models", exclude_mental_models),
+            ("exclude_mental_model_ids", exclude_mental_model_ids),
+            ("query_timestamp", _iso(query_timestamp)),
         ):
             if value is not None:
                 body[key] = value
@@ -297,53 +348,183 @@ class Bank:
             include["tool_calls"] = {}
         if include:
             body["include"] = include
+        if trace:
+            body["trace"] = True
         return self._feature("POST", "/reflect", body)
 
+    # observations and consolidation
+
     def observations(
-        self, *, q: str | None = None, limit: int | None = None, offset: int | None = None
+        self,
+        *,
+        q: str | None = None,
+        authority: str | None = None,
+        tags: list[str] | None = None,
+        tags_match: str | None = None,
+        include_history: bool = False,
+        limit: int | None = None,
+        offset: int | None = None,
     ) -> dict[str, Any]:
-        return self._feature("GET", "/observations" + _q({"q": q, "limit": limit, "offset": offset}))
+        """``{"items": [...], "total": n}``, plus ``history`` with
+        ``include_history=True``."""
+        return self._feature("GET", "/observations" + _q({
+            "q": q, "authority": authority, "tags": ",".join(tags) if tags else None,
+            "tags_match": tags_match, "include_history": include_history or None,
+            "limit": limit, "offset": offset}))
+
+    def observation(self, observation_id: str) -> dict[str, Any]:
+        """``{"observation": {...}, "history": [...]}``."""
+        return self._feature("GET", "/observations/" + _seg(observation_id))
+
+    def delete_observation(self, observation_id: str, *, force: bool = False) -> dict[str, Any]:
+        """Retire one observation into history. A person's needs ``force=True``."""
+        return self._feature("DELETE", "/observations/" + _seg(observation_id) + _q({"force": force or None}))
+
+    def clear_observations(self) -> dict[str, Any]:
+        """Retire every model observation (a person's stay): ``{"retired": n}``."""
+        return self._feature("DELETE", "/observations")
 
     def consolidate(self) -> dict[str, Any]:
+        """Queue a consolidation: ``{"operation_id", "deduplicated"}``.
+        Raises ModelRequired when the server has no model."""
         return self._feature("POST", "/consolidate", {})
 
-    def mental_models(self) -> dict[str, Any]:
-        return self._feature("GET", "/mental-models")
+    # mental models
+
+    def mental_models(
+        self,
+        *,
+        tags: list[str] | None = None,
+        tags_match: str | None = None,
+        folder: str | None = None,
+        detail: bool = False,
+    ) -> dict[str, Any]:
+        """``{"items": [...], "total": n}``; bodies only with ``detail=True``."""
+        return self._feature("GET", "/mental-models" + _q({
+            "tags": ",".join(tags) if tags else None, "tags_match": tags_match,
+            "folder": folder, "detail": "full" if detail else None}))
 
     def mental_model(self, model_id: str) -> dict[str, Any]:
+        """One model with its ``body``, ``authority``, ``is_stale`` and any
+        ``pending_proposal``."""
         return self._feature("GET", "/mental-models/" + _seg(model_id))
 
     def create_mental_model(
         self,
         name: str,
-        source_query: str,
+        question: str | None = None,
         *,
         id: str | None = None,
+        folder: str | None = None,
         tags: list[str] | None = None,
+        refresh: str | None = None,
         max_tokens: int | None = None,
+        budget: str | None = None,
+        fact_types: list[str] | None = None,
+        body: str | None = None,
+        source_query: str | None = None,
         refresh_after_consolidation: bool | None = None,
     ) -> dict[str, Any]:
-        body: dict[str, Any] = {"name": name, "source_query": source_query, "tags": tags or []}
-        if id:
-            body["id"] = id
-        if max_tokens is not None:
-            body["max_tokens"] = max_tokens
-        if refresh_after_consolidation is not None:
-            body["trigger"] = {"refresh_after_consolidation": refresh_after_consolidation}
-        return self._feature("POST", "/mental-models", body)
+        """Create a standing question; returns ``{"mental_model",
+        "mental_model_id", "operation_id"}``. ``operation_id`` is the first
+        refresh, or ``None`` when ``body`` was given or the server has no model.
+        ``id`` is the whole path (``"people/dana"``); without one the id is
+        ``folder`` plus a slug of ``name``.
+        ``source_query`` and ``refresh_after_consolidation`` are accepted for
+        older callers (``refresh="auto"``/``"manual"``)."""
+        question = question if question is not None else source_query
+        if not question:
+            raise ValueError("create_mental_model needs a question")
+        if refresh is None and refresh_after_consolidation is not None:
+            refresh = "auto" if refresh_after_consolidation else "manual"
+        out: dict[str, Any] = {"name": name, "question": question}
+        for key, value in (
+            ("id", id), ("folder", folder), ("tags", tags), ("refresh", refresh),
+            ("max_tokens", max_tokens), ("budget", budget), ("fact_types", fact_types),
+            ("body", body),
+        ):
+            if value is not None:
+                out[key] = value
+        return self._feature("POST", "/mental-models", out)
 
-    def refresh_mental_model(self, model_id: str) -> dict[str, Any]:
-        return self._feature("POST", "/mental-models/" + _seg(model_id) + "/refresh", {})
+    def update_mental_model(self, model_id: str, **fields: Any) -> dict[str, Any]:
+        """Patch any create field. ``body`` is a person's edit (later refreshes
+        file a proposal instead of overwriting it); ``folder`` moves the model,
+        which changes its id — use the returned model's ``id``."""
+        return self._feature("PATCH", "/mental-models/" + _seg(model_id), fields)
 
-    def accept_proposal(self, model_id: str) -> dict[str, Any]:
-        """Accept a refresh the server held back because a person edited the page."""
-        return self._feature("POST", "/mental-models/" + _seg(model_id) + "/proposal/accept", {})
-
-    def reject_proposal(self, model_id: str) -> dict[str, Any]:
-        return self._feature("POST", "/mental-models/" + _seg(model_id) + "/proposal/reject", {})
+    def move_mental_model(self, model_id: str, folder: str) -> dict[str, Any]:
+        """Move a model to ``folder`` (``""`` for the top). Returns the model
+        under its new id."""
+        return self.update_mental_model(model_id, folder=folder)
 
     def delete_mental_model(self, model_id: str) -> dict[str, Any]:
         return self._feature("DELETE", "/mental-models/" + _seg(model_id))
+
+    def refresh_mental_model(self, model_id: str) -> dict[str, Any]:
+        """Queue a refresh: ``{"operation_id", "status", "deduplicated"}``.
+        Raises ModelRequired when the server has no model."""
+        return self._feature("POST", "/mental-models/" + _seg(model_id) + "/refresh", {})
+
+    def accept_proposal(self, model_id: str) -> dict[str, Any]:
+        """Make the pending proposal the answer; returns the model."""
+        return self._feature("POST", "/mental-models/" + _seg(model_id) + "/proposal/accept", {})
+
+    def reject_proposal(self, model_id: str) -> dict[str, Any]:
+        """Discard the pending proposal, keeping the person's text."""
+        return self._feature("POST", "/mental-models/" + _seg(model_id) + "/proposal/reject", {})
+
+    def mental_model_history(self, model_id: str, version: str | None = None) -> dict[str, Any]:
+        """The model's versions, or one version's ``content``."""
+        path = "/mental-models/" + _seg(model_id) + "/history"
+        if version is not None:
+            path += "/" + _seg(str(version))
+        return self._feature("GET", path)
+
+    def mental_model_tree(self, *, folder: str | None = None) -> list[dict[str, Any]]:
+        """The knowledge-page tree: nodes ``{kind: folder|page, name, path,
+        model?, children?}``."""
+        out = self._feature("GET", "/mental-models-tree" + _q({"folder": folder}))
+        return (out or {}).get("roots", [])
+
+    def export_mental_models(self, *, markdown: bool = False) -> Any:
+        """``[{path, content}]`` (an ``index.md`` plus one file per page), or
+        with ``markdown=True`` one markdown document as a string."""
+        if markdown:
+            return self._feature("GET", "/mental-models-export?format=markdown", raw=True)
+        out = self._feature("GET", "/mental-models-export")
+        return (out or {}).get("files", [])
+
+    # directives
+
+    def directives(self, *, tags: list[str] | None = None, active_only: bool = False) -> dict[str, Any]:
+        """``{"items": [...], "total": n}``."""
+        return self._feature("GET", "/directives" + _q({
+            "tags": ",".join(tags) if tags else None, "active_only": active_only}))
+
+    def create_directive(
+        self,
+        text: str,
+        *,
+        name: str | None = None,
+        tags: list[str] | None = None,
+        priority: int | None = None,
+        is_active: bool | None = None,
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {"text": text}
+        for key, value in (("name", name), ("tags", tags), ("priority", priority), ("is_active", is_active)):
+            if value is not None:
+                body[key] = value
+        return self._feature("POST", "/directives", body)
+
+    def update_directive(self, directive_id: str, **fields: Any) -> dict[str, Any]:
+        """Patch ``text``, ``name``, ``tags``, ``priority`` or ``is_active``."""
+        return self._feature("PATCH", "/directives/" + _seg(directive_id), fields)
+
+    def delete_directive(self, directive_id: str) -> dict[str, Any]:
+        return self._feature("DELETE", "/directives/" + _seg(directive_id))
+
+    # operations
 
     def operations(
         self,
@@ -353,16 +534,39 @@ class Bank:
         limit: int | None = None,
         offset: int | None = None,
     ) -> dict[str, Any]:
+        """``{"bank_id", "operations": [...], "total"}``, newest first. Each
+        operation has ``kind`` (= ``type``: retain, consolidation,
+        refresh_mental_model) and ``status`` (queued, running, completed,
+        failed, cancelled)."""
         return self._feature("GET", "/operations" + _q(
             {"status": status, "type": type, "limit": limit, "offset": offset}))
 
     def operation(self, operation_id: str) -> dict[str, Any]:
+        """One operation with its ``payload`` and ``result``."""
         return self._feature("GET", "/operations/" + _seg(operation_id))
 
     def cancel_operation(self, operation_id: str) -> dict[str, Any]:
         return self._feature("DELETE", "/operations/" + _seg(operation_id))
 
+    def wait_operation(
+        self, operation_id: str, *, timeout: float = 120.0, interval: float = 0.5
+    ) -> dict[str, Any]:
+        """Poll an operation until it is completed, failed or cancelled, and
+        return it. Raises TimeoutError if it is still going after ``timeout``
+        seconds. A failed operation is returned, not raised: read ``error``."""
+        deadline = time.monotonic() + timeout
+        while True:
+            op = self.operation(operation_id)
+            if op.get("status") in TERMINAL_STATUSES:
+                return op
+            if time.monotonic() >= deadline:
+                raise TimeoutError(f"operation {operation_id} is still {op.get('status')}")
+            time.sleep(interval)
+
+    # webhooks
+
     def webhooks(self) -> dict[str, Any]:
+        """``{"items": [...], "total": n}``."""
         return self._feature("GET", "/webhooks")
 
     def create_webhook(
@@ -370,14 +574,17 @@ class Bank:
         url: str,
         *,
         secret: str | None = None,
+        events: list[str] | None = None,
         event_types: list[str] | None = None,
         enabled: bool = True,
     ) -> dict[str, Any]:
+        """Register a webhook. The secret (generated when not given) is in the
+        response this once."""
         body: dict[str, Any] = {"url": url, "enabled": enabled}
         if secret:
             body["secret"] = secret
-        if event_types:
-            body["event_types"] = event_types
+        if events or event_types:
+            body["events"] = events or event_types
         return self._feature("POST", "/webhooks", body)
 
     def update_webhook(self, webhook_id: str, **fields: Any) -> dict[str, Any]:
@@ -386,16 +593,40 @@ class Bank:
     def delete_webhook(self, webhook_id: str) -> dict[str, Any]:
         return self._feature("DELETE", "/webhooks/" + _seg(webhook_id))
 
+    def webhook_deliveries(self, webhook_id: str, *, limit: int | None = None) -> list[dict[str, Any]]:
+        out = self._feature("GET", "/webhooks/" + _seg(webhook_id) + "/deliveries" + _q({"limit": limit}))
+        return (out or {}).get("items", [])
+
+    # templates
+
+    def export(self) -> dict[str, Any]:
+        """The bank's configuration as a template manifest."""
+        return self._feature("GET", "/export")
+
+    def import_template(
+        self,
+        manifest: Mapping[str, Any] | None = None,
+        *,
+        template: str | None = None,
+        dry_run: bool = False,
+    ) -> dict[str, Any]:
+        """Apply a manifest, or a built-in template by id, creating the bank
+        if needed. Additive: nothing is removed."""
+        if (manifest is None) == (template is None):
+            raise ValueError("pass a manifest or a template id")
+        body = {"template": template} if template is not None else {"manifest": dict(manifest or {})}
+        return self._feature("POST", "/import" + _q({"dry_run": dry_run or None}), body)
+
     # ---- transport -----------------------------------------------------
 
     def _req(self, method: str, path: str, body: Any = None) -> Any:
         return bank_request(self.client, method, f"/api/banks/{_seg(self.id)}{path}", body)
 
-    def _feature(self, method: str, path: str, body: Any = None) -> Any:
-        return feature_request(self.client, method, f"/api/banks/{_seg(self.id)}{path}", body)
+    def _feature(self, method: str, path: str, body: Any = None, *, raw: bool = False) -> Any:
+        return feature_request(self.client, method, f"/api/banks/{_seg(self.id)}{path}", body, raw=raw)
 
 
-def feature_request(client: Grimoire, method: str, path: str, body: Any = None) -> Any:
+def feature_request(client: Grimoire, method: str, path: str, body: Any = None, *, raw: bool = False) -> Any:
     """A call to a route the server may not have; 404 becomes NotAvailable.
 
     The message tells the two 404s apart: the router answers an unknown route
@@ -404,7 +635,7 @@ def feature_request(client: Grimoire, method: str, path: str, body: Any = None) 
     A 405 (the path exists for another method only) is also "not available".
     """
     try:
-        return bank_request(client, method, path, body)
+        return bank_request(client, method, path, body, raw=raw)
     except GrimoireError as exc:
         missing_route = isinstance(exc, NotFound) and "page not found" in exc.message.lower()
         if missing_route or exc.status == 405:
@@ -412,8 +643,10 @@ def feature_request(client: Grimoire, method: str, path: str, body: Any = None) 
         raise
 
 
-def bank_request(client: Grimoire, method: str, path: str, body: Any = None) -> Any:
-    """The client's transport, plus the agent header bank writes are stamped with."""
+def bank_request(client: Grimoire, method: str, path: str, body: Any = None, *, raw: bool = False) -> Any:
+    """The client's transport, plus the agent header bank writes are stamped with.
+
+    ``raw=True`` returns the body as text instead of parsing JSON."""
     url = client.url + path
     data = None
     headers = {"Accept": "application/json"}
@@ -427,15 +660,21 @@ def bank_request(client: Grimoire, method: str, path: str, body: Any = None) -> 
     req = urllib.request.Request(url, data=data, headers=headers, method=method)
     try:
         with urllib.request.urlopen(req, timeout=client.timeout) as resp:
-            raw = resp.read()
+            payload = resp.read()
     except urllib.error.HTTPError as exc:
-        raise _error_for(exc.code, _message_of(exc.read()), url) from None
+        err = exc.read()
+        message = _message_of(err)
+        if exc.code == 409 and _code_of(err) == "model_required":
+            raise ModelRequired(exc.code, message, url) from None
+        raise _error_for(exc.code, message, url) from None
     except urllib.error.URLError as exc:
         raise GrimoireError(0, f"cannot reach grimoire: {exc.reason}", url) from None
-    if not raw:
+    if raw:
+        return payload.decode("utf-8", "replace")
+    if not payload:
         return None
     try:
-        return json.loads(raw)
+        return json.loads(payload)
     except json.JSONDecodeError:
         raise GrimoireError(0, "response was not json", url) from None
 
@@ -460,9 +699,14 @@ class Banks:
         return bank_request(self.client, "POST", "/api/banks", {"bank_id": bank_id, **fields})
 
     def templates(self) -> list[dict[str, Any]]:
-        """Bank templates the server offers (raises NotAvailable if none)."""
+        """Built-in bank templates, ``[{id, name, description, manifest}]``
+        (raises NotAvailable on a server without them). On a server with
+        accounts this needs a signed-in user."""
         out = feature_request(self.client, "GET", "/api/bank-templates")
         return (out or {}).get("templates", [])
+
+    def template(self, template_id: str) -> dict[str, Any]:
+        return feature_request(self.client, "GET", "/api/bank-templates/" + _seg(template_id))
 
 
 class AsyncBank:

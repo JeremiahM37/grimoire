@@ -133,11 +133,34 @@ bank.list_memories(authority="human"); bank.entities(); bank.documents()
 await g.async_bank("support").recall("...")    # same calls, awaitable
 ```
 
-`reflect`, `observations`, `mental_models`, `operations` and `webhooks` target
-newer server routes; on a server without them they raise `NotAvailable` (a
-`NotFound` subclass), so a caller can hide the feature. `retain(..., async_=True)`
-falls back to a synchronous retain on a server without the operations queue and
-says so with `"async_fallback": True`.
+Reasoning over a bank:
+
+```python
+answer = bank.reflect("what does Dana think of the migration?")
+answer["text"], answer["mode"], answer["based_on"]["memories"]   # mode: llm | extractive
+
+op = bank.retain(transcript, document_id="s-1", async_=True)      # 202: queued
+bank.wait_operation(op["operation_id"])                           # completed | failed | cancelled
+
+bank.consolidate()                                  # facts -> observations
+bank.observations(include_history=True)["items"]
+m = bank.create_mental_model("Dana", "Who is Dana?", folder="people")
+bank.refresh_mental_model(m["mental_model_id"])     # "people/dana"
+bank.update_mental_model("people/dana", body="My own words.")   # a person's edit wins
+bank.mental_model("people/dana").get("pending_proposal")        # a later refresh waits here
+bank.accept_proposal("people/dana")                 # or reject_proposal
+bank.mental_model_tree(); bank.export_mental_models(markdown=True)
+bank.create_directive("Answer in one sentence.", name="Brief")
+bank.import_template(template="coding-agent"); g.banks.templates()
+```
+
+Consolidation and mental-model refreshes need a language model on the server;
+without one they raise `ModelRequired` (409, `code: model_required`), while
+reflect answers extractively. Moving a mental model to another folder changes
+its id. On a server from before these routes they raise `NotAvailable` (a
+`NotFound` subclass), so a caller can hide the feature; `retain(...,
+async_=True)` there falls back to a synchronous retain and says so with
+`"async_fallback": True`.
 
 ### Memory for any OpenAI-compatible chat client
 
