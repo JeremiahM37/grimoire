@@ -108,6 +108,7 @@ var behaviour = map[string]annotations{
 	"list_mental_models":   {Title: "List mental models", ReadOnlyHint: true, IdempotentHint: true},
 	"get_mental_model":     {Title: "Read a mental model", ReadOnlyHint: true, IdempotentHint: true},
 	"create_mental_model":  {Title: "Create a mental model"},
+	"update_observation":   {Title: "Edit an observation", DestructiveHint: true, IdempotentHint: true},
 	"update_mental_model":  {Title: "Update a mental model", DestructiveHint: true, IdempotentHint: true},
 	"delete_mental_model":  {Title: "Delete a mental model", DestructiveHint: true, IdempotentHint: true},
 	"refresh_mental_model": {Title: "Refresh a mental model", IdempotentHint: true},

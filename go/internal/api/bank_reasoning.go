@@ -24,6 +24,7 @@ func (s *Server) bankReasoningRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/banks/{bank}/observations", s.listObservations)
 	mux.HandleFunc("DELETE /api/banks/{bank}/observations", s.clearObservations)
 	mux.HandleFunc("GET /api/banks/{bank}/observations/{id}", s.getObservation)
+	mux.HandleFunc("PATCH /api/banks/{bank}/observations/{id}", s.updateObservation)
 	mux.HandleFunc("DELETE /api/banks/{bank}/observations/{id}", s.deleteObservation)
 	mux.HandleFunc("POST /api/banks/{bank}/consolidate", s.consolidateBank)
 
@@ -215,6 +216,26 @@ func (s *Server) getObservation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"observation": o, "history": hist})
+}
+
+// updateObservation edits an observation's text; the edit makes it a person's.
+func (s *Server) updateObservation(w http.ResponseWriter, r *http.Request) {
+	id, ok := s.bankWritable(w, r)
+	if !ok {
+		return
+	}
+	var in struct {
+		Text string `json:"text"`
+	}
+	if !decodeJSON(w, r, &in) {
+		return
+	}
+	o, err := s.Banks.UpdateObservation(id, r.PathValue("id"), in.Text)
+	if err != nil {
+		writeBankErr(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"observation": o})
 }
 
 func (s *Server) deleteObservation(w http.ResponseWriter, r *http.Request) {

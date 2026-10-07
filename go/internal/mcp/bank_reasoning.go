@@ -55,6 +55,13 @@ func bankReasoningTools() []tool {
 			}),
 		},
 		{
+			Name: "update_observation",
+			Description: "Edit the text of a memory bank's observation. The edit makes it a person's: " +
+				"consolidation will never revise or retire it afterwards, only file a challenge beside it.",
+			InputSchema: obj(map[string]any{"bank": bankArg, "id": strProp("observation id"),
+				"text": strProp("the new wording")}, "id", "text"),
+		},
+		{
 			Name:        "get_bank_memory",
 			Description: "Read one fact or observation of a memory bank by id.",
 			InputSchema: obj(map[string]any{"bank": bankArg, "id": strProp("memory id")}, "id"),
@@ -156,7 +163,7 @@ func bankReasoningTools() []tool {
 var bankScoped = map[string]bool{
 	"retain": true, "bank_recall": true, "bank_profile": true, "list_bank_memories": true,
 	"delete_bank_memory": true, "list_entities": true, "list_bank_documents": true, "get_bank_document": true,
-	"delete_bank_document": true, "reflect": true, "consolidate": true, "list_observations": true,
+	"delete_bank_document": true, "reflect": true, "consolidate": true, "list_observations": true, "update_observation": true,
 	"get_bank_memory": true, "list_mental_models": true, "get_mental_model": true, "create_mental_model": true,
 	"update_mental_model": true, "delete_mental_model": true, "refresh_mental_model": true,
 	"list_directives": true, "create_directive": true, "delete_directive": true, "list_operations": true,
@@ -210,6 +217,9 @@ func (s *Server) dispatchBankReasoning(name, base string, args map[string]any) (
 			q.Set("include_history", "1")
 		}
 		r, err := s.api("GET", base+"/observations?"+q.Encode(), nil)
+		return r, true, err
+	case "update_observation":
+		r, err := s.api("PATCH", base+"/observations/"+url.PathEscape(str(args, "id")), map[string]any{"text": str(args, "text")})
 		return r, true, err
 	case "get_bank_memory":
 		r, err := s.api("GET", base+"/memories/"+url.PathEscape(str(args, "id")), nil)

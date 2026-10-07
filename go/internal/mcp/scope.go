@@ -74,6 +74,7 @@ var toolScope = map[string]string{
 	"list_mental_models":   oauth.ScopeMemory,
 	"get_mental_model":     oauth.ScopeMemory,
 	"create_mental_model":  oauth.ScopeMemory,
+	"update_observation":   oauth.ScopeMemory,
 	"update_mental_model":  oauth.ScopeMemory,
 	"delete_mental_model":  oauth.ScopeMemory,
 	"refresh_mental_model": oauth.ScopeMemory,

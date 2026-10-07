@@ -499,6 +499,44 @@ func (e *Engine) GetObservation(bankID, id string) (*ObservationOut, []Observati
 	return nil, nil, ErrNotFound
 }
 
+// UpdateObservation replaces an observation's text by an explicit call from a
+// person. The previous wording moves to history and the observation is marked
+// by=human, so no model revises, retires or ranks over it from then on —
+// consolidation files a challenge beside it instead.
+func (e *Engine) UpdateObservation(bankID, id, text string) (*ObservationOut, error) {
+	text = normFactText(oneLine(text))
+	if text == "" {
+		return nil, invalid("text must not be empty")
+	}
+	lock := e.bankLock(bankID)
+	lock.Lock()
+	defer lock.Unlock()
+	of, old, err := e.readObservations(bankID)
+	if err != nil {
+		return nil, err
+	}
+	for i := range of.Current {
+		o := &of.Current[i]
+		if o.ID != id {
+			continue
+		}
+		if o.Text != text {
+			h := *o
+			h.Of, h.At = o.ID, e.now()
+			of.History = append(of.History, h)
+			o.Text = text
+			o.Updated = e.now()
+		}
+		o.Human = true
+		out := o.out()
+		if err := e.writeObservations(bankID, of, old); err != nil {
+			return nil, err
+		}
+		return &out, nil
+	}
+	return nil, ErrNotFound
+}
+
 // DeleteObservation retires an observation by an explicit call. A person's
 // observation needs force, as a person's fact does.
 func (e *Engine) DeleteObservation(bankID, id string, force bool) error {

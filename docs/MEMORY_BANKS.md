@@ -333,6 +333,7 @@ request; `off` never.
 | `POST /api/banks/{bank}/consolidate` | queue a consolidation: `202 {operation_id, deduplicated}`; `409 {"code": "model_required"}` with no model |
 | `GET /api/banks/{bank}/observations?q=&authority=human&tags=&tags_match=&include_history=1&limit=&offset=` | `{items: [Observation], total, history?}` |
 | `GET /api/banks/{bank}/observations/{id}` | `{observation, history}` |
+| `PATCH /api/banks/{bank}/observations/{id}` | `{text}` — edit the wording; the observation becomes `by=human`, the old text goes to history, and consolidation only challenges it from then on |
 | `DELETE /api/banks/{bank}/observations/{id}` | retire one into history; a person's needs `force=true` |
 | `DELETE /api/banks/{bank}/observations` | retire every model observation and start consolidation over; a person's stay |
 
@@ -481,7 +482,7 @@ it covers the bank tools. Tools: `retain` (asynchronous; returns an
 `operation_id`), `bank_recall`, `reflect`, `list_banks`, `create_bank`,
 `bank_profile`, `list_bank_memories`, `get_bank_memory`, `delete_bank_memory`,
 `list_entities`, `list_bank_documents`, `get_bank_document`,
-`delete_bank_document`, `consolidate`, `list_observations`,
+`delete_bank_document`, `consolidate`, `list_observations`, `update_observation`,
 `list_mental_models`, `get_mental_model`, `create_mental_model`,
 `update_mental_model`, `delete_mental_model`, `refresh_mental_model`,
 `list_directives`, `create_directive`, `delete_directive`, `list_operations`,
