@@ -2,12 +2,12 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { ApiError } from './api';
 import {
   createBanksApi, createFromTemplate, isModelRequired, UNAVAILABLE, type BankProfile, type BanksApi, type BankStats, type BankSummary,
-  type Directive, type DocumentDetail, type DocumentSummary, type EntityDetail, type EntitySummary, type Fact, type Maybe, type MentalModel,
-  type ModelNode, type Observation, type Operation, type RecallResponse, type ReflectResponse, type Request,
+  type Delivery, type Directive, type DocumentDetail, type DocumentSummary, type EntityDetail, type EntitySummary, type Fact, type Maybe, type MentalModel,
+  type ModelNode, type Observation, type Operation, type RecallResponse, type ReflectResponse, type Request, type Webhook,
 } from './banksApi';
 import {
-  armNames, chunkId, CONFIG_KEYS, CONFIG_TEXT_KEYS, factDate, filterFacts, fmtScore, isTerminal, OP_STATUSES, opKindLabel, parseTags,
-  radialLayout, rankRows, staleText, validBankId, type BankTemplate,
+  armNames, chunkId, CONFIG_KEYS, CONFIG_TEXT_KEYS, deliveryText, eventsLabel, factDate, filterFacts, fmtScore, isTerminal, OP_STATUSES, opKindLabel, parseTags,
+  radialLayout, rankRows, staleText, validBankId, validWebhookUrl, WEBHOOK_EVENTS, type BankTemplate,
 } from './banksModel';
 
 // Memory banks: list, profile, memories, sources, entities, observations,
@@ -15,10 +15,10 @@ import {
 // Every server call is in banksApi.ts. A server from before a feature existed
 // is told apart from an error, and the tab says the feature is not there.
 
-type Tab = 'profile' | 'memories' | 'documents' | 'entities' | 'observations' | 'models' | 'directives' | 'operations' | 'playground';
+type Tab = 'profile' | 'memories' | 'documents' | 'entities' | 'observations' | 'models' | 'directives' | 'operations' | 'webhooks' | 'playground';
 const TABS: [Tab, string][] = [
   ['playground', 'Playground'], ['memories', 'Memories'], ['documents', 'Documents'], ['entities', 'Entities'],
-  ['observations', 'Observations'], ['models', 'Models'], ['directives', 'Directives'], ['operations', 'Operations'], ['profile', 'Profile'],
+  ['observations', 'Observations'], ['models', 'Models'], ['directives', 'Directives'], ['operations', 'Operations'], ['webhooks', 'Webhooks'], ['profile', 'Profile'],
 ];
 
 const NO_MODEL = 'This needs a language model, and none is configured on the server.';
@@ -85,6 +85,7 @@ export function BanksPanel({ request, close }: { request: Request; close: () => 
           {tab === 'models' && <ModelsTab api={api} bank={bank} />}
           {tab === 'directives' && <DirectivesTab api={api} bank={bank} />}
           {tab === 'operations' && <OperationsTab api={api} bank={bank} />}
+          {tab === 'webhooks' && <WebhooksTab api={api} bank={bank} />}
           {tab === 'playground' && <PlaygroundTab api={api} bank={bank} />}
         </div>
       </>}
@@ -670,6 +671,60 @@ function OperationsTab({ api, bank }: { api: BanksApi; bank: string }) {
       {open.result !== undefined && <><div className="pr-clabel">Result</div><pre className="banks-pre">{JSON.stringify(open.result, null, 2)}</pre></>}
       {open.error && <p className="banks-error">{open.error}</p>}
     </div>}
+  </>;
+}
+
+// ---- webhooks -----------------------------------------------------------------------------------
+
+function WebhooksTab({ api, bank }: { api: BanksApi; bank: string }) {
+  const [data, setData] = useState<Maybe<{ items: Webhook[]; total: number }>>(), [error, setError] = useState<unknown>();
+  const [url, setUrl] = useState(''), [secret, setSecret] = useState(''), [events, setEvents] = useState<string[]>([]);
+  const [made, setMade] = useState<Webhook>(), [open, setOpen] = useState<string>(), [deliveries, setDeliveries] = useState<Delivery[]>();
+  const load = useCallback(() => api.webhooks(bank).then(setData).catch(setError), [api, bank]);
+  useEffect(() => { void load(); }, [load]);
+  const showDeliveries = useCallback((id: string) => {
+    setOpen(id); setDeliveries(undefined);
+    api.deliveries(bank, id).then(r => setDeliveries(r.items)).catch(setError);
+  }, [api, bank]);
+  if (data === UNAVAILABLE) return <Unavailable what="Webhook routes" />;
+  const act = async (fn: () => Promise<unknown>) => { setError(undefined); try { await fn(); void load(); } catch (e) { setError(e); } };
+  return <>
+    <p className="vault-note">Post a signed JSON event to a URL when this bank finishes a retain, a consolidation or a reflect. Failed deliveries are retried.</p>
+    <ErrorText error={error} />
+    {!data ? <p className="vault-note">Loading…</p> : !data.items.length ? <p className="vault-note">No webhooks.</p> :
+      <div className="banks-scroll"><table className="usage-table banks-table" id="banks-webhooks">
+        <thead><tr><th>webhook</th><th>events</th><th>on</th><th /></tr></thead>
+        <tbody>{data.items.map(w => <tr key={w.id} data-webhook={w.id} className={w.enabled ? '' : 'banks-disputed'}>
+          <td className="banks-fact-text">{w.url}<div className="banks-sub">{w.id}{w.has_secret ? ' · signed' : ''}{w.bank_id ? '' : ' · every bank'}</div></td>
+          <td>{eventsLabel(w.events)}</td>
+          <td><input type="checkbox" aria-label="Enabled" checked={w.enabled} onChange={e => void act(() => api.updateWebhook(bank, w.id, { enabled: e.target.checked }))} /></td>
+          <td className="banks-actions">
+            <button className="btn banks-small" onClick={() => (open === w.id ? setOpen(undefined) : showDeliveries(w.id))}>{open === w.id ? 'Hide deliveries' : 'Deliveries'}</button>
+            <button className="btn banks-small banks-danger" onClick={() => { if (confirm('Delete this webhook?')) void act(() => api.deleteWebhook(bank, w.id)); }}>Delete</button></td>
+        </tr>)}</tbody>
+      </table></div>}
+    {open && <div className="inspect-chunk" id="banks-deliveries">
+      <div className="ic-head"><span>Recent deliveries · {open}</span><button className="btn banks-small" onClick={() => showDeliveries(open)}>Reload</button></div>
+      {!deliveries ? <p className="vault-note">Loading…</p> : !deliveries.length ? <p className="vault-note">Nothing has been sent yet.</p> :
+        <table className="usage-table banks-table"><thead><tr><th>event</th><th>result</th><th>when</th></tr></thead>
+          <tbody>{deliveries.map(d => <tr key={d.id} data-delivery={d.id} data-status={d.status}>
+            <td>{d.event}</td><td><span className={`banks-chip ${d.status === 'delivered' ? 'completed' : d.status === 'failed' ? 'failed' : 'running'}`}>{deliveryText(d)}</span></td>
+            <td>{when(d.updated_at || d.created_at)}</td></tr>)}</tbody></table>}
+    </div>}
+    {made?.secret && <p className="vault-note" id="banks-webhook-secret">Signing secret for {made.url}, shown once: <code>{made.secret}</code></p>}
+    <form className="banks-form" id="banks-webhook-create" onSubmit={e => { e.preventDefault(); void act(async () => {
+      const w = await api.createWebhook(bank, { url: url.trim(), events: events.length ? events : undefined, secret: secret.trim() || undefined });
+      setMade(w); setUrl(''); setSecret(''); setEvents([]);
+    }); }}>
+      <div className="pr-clabel">New webhook</div>
+      <input id="banks-new-webhook" name="url" type="url" placeholder="https://example.com/hook" value={url} onChange={e => setUrl(e.target.value)} required />
+      <div className="banks-row-fields">
+        {WEBHOOK_EVENTS.map(ev => <label key={ev}><input type="checkbox" checked={events.includes(ev)}
+          onChange={e => setEvents(e.target.checked ? [...events, ev] : events.filter(x => x !== ev))} /> {ev}</label>)}
+      </div>
+      <input name="secret" placeholder="signing secret (optional)" value={secret} onChange={e => setSecret(e.target.value)} />
+      <button type="submit" className="btn" disabled={!validWebhookUrl(url)}>Add webhook</button>
+    </form>
   </>;
 }
 

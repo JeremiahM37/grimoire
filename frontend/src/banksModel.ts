@@ -101,3 +101,21 @@ export const isTerminal = (status: string) => ['completed', 'failed', 'cancelled
 export const fmtScore = (v: number | null | undefined) => (v === null || v === undefined ? '—' : v.toFixed(3));
 
 export const parseTags = (s: string) => s.split(',').map(t => t.trim()).filter(Boolean);
+
+/** The events a webhook can listen to; "*" is all of them. */
+export const WEBHOOK_EVENTS = ['retain.completed', 'consolidation.completed', 'reflect.completed', '*'];
+
+/** A webhook address must be http(s); the server decides whether a private one is allowed. */
+export function validWebhookUrl(s: string): boolean {
+  try { const u = new URL(s.trim()); return u.protocol === 'http:' || u.protocol === 'https:'; } catch { return false; }
+}
+
+/** Events as a short label: none sent means the server's defaults. */
+export const eventsLabel = (events: string[] | undefined) => (events && events.length ? events.join(', ') : 'default events');
+
+/** One delivery as a short status line: "delivered (200)", "failed after 3 attempts: timeout". */
+export function deliveryText(d: { status: string; attempts: number; last_response_status?: number; last_error?: string }): string {
+  if (d.status === 'delivered') return d.last_response_status ? `delivered (${d.last_response_status})` : 'delivered';
+  if (d.status === 'failed') return `failed after ${d.attempts} attempt${d.attempts === 1 ? '' : 's'}${d.last_error ? ': ' + d.last_error : ''}`;
+  return d.attempts ? `retrying, attempt ${d.attempts}${d.last_error ? ': ' + d.last_error : ''}` : 'pending';
+}

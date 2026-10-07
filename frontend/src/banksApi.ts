@@ -78,6 +78,12 @@ export interface MentalModel {
 }
 export interface ModelInput { id?: string; name?: string; question?: string; folder?: string; tags?: string[]; refresh?: string; max_tokens?: number; budget?: string; fact_types?: string[]; body?: string }
 export interface ModelNode { kind: 'folder' | 'page'; name: string; path: string; model?: MentalModel; children?: ModelNode[] }
+export interface Webhook { id: string; bank_id: string; url: string; events: string[]; has_secret: boolean; enabled: boolean; created_at: string; updated_at?: string; secret?: string }
+export interface WebhookInput { url: string; events?: string[]; secret?: string; enabled?: boolean }
+export interface Delivery {
+  id: string; webhook_id: string; bank_id: string; event: string; status: 'pending' | 'delivered' | 'failed' | string; attempts: number;
+  next_attempt_at?: string; last_error?: string; last_response_status?: number; created_at: string; updated_at?: string;
+}
 export interface Operation {
   id: string; bank_id: string; kind: string; type: string; status: string; payload?: JsonValue; result?: JsonValue; error?: string;
   attempts: number; cancel_requested?: boolean; progress?: string; created_at: string; started_at?: string; finished_at?: string; updated_at?: string;
@@ -179,6 +185,13 @@ export function createBanksApi(request: Request) {
     createDirective: (bank: string, d: DirectiveInput & { text: string }) => request<Directive>(`${b(bank)}/directives`, { method: 'POST', body: body(d) }),
     updateDirective: (bank: string, id: string, d: DirectiveInput) => request<Directive>(`${b(bank)}/directives/${enc(id)}`, { method: 'PATCH', body: body(d) }),
     deleteDirective: (bank: string, id: string) => request(`${b(bank)}/directives/${enc(id)}`, { method: 'DELETE' }),
+
+    // ---- webhooks ----
+    webhooks: (bank: string) => optional(request<{ items: Webhook[]; total: number }>(`${b(bank)}/webhooks`)),
+    createWebhook: (bank: string, w: WebhookInput) => request<Webhook>(`${b(bank)}/webhooks`, { method: 'POST', body: body(w) }),
+    updateWebhook: (bank: string, id: string, w: Partial<WebhookInput>) => request<Webhook>(`${b(bank)}/webhooks/${enc(id)}`, { method: 'PATCH', body: body(w) }),
+    deleteWebhook: (bank: string, id: string) => request(`${b(bank)}/webhooks/${enc(id)}`, { method: 'DELETE' }),
+    deliveries: (bank: string, id: string, limit = 20) => request<{ items: Delivery[] }>(`${b(bank)}/webhooks/${enc(id)}/deliveries${qs({ limit })}`),
 
     // ---- operations ----
     operations: (bank: string, params: { status?: string; type?: string; limit?: number; offset?: number } = {}) =>
