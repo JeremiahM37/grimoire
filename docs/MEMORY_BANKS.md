@@ -353,7 +353,9 @@ A mental model is a standing question whose answer the bank keeps written
 down: `banks/<bank>/models/<id>.md`, with the question and settings in the
 frontmatter and the answer as the body. An id may contain folders —
 `people/dana` is the page `dana` in the folder `people` — and the folders are
-the knowledge-page tree. URL-encode it in a path (`people%2Fdana`).
+the knowledge-page tree. URL-encode it in a path (`people%2Fdana`). On create,
+a bare `id` with a `folder` names the page in that folder (`id: dana, folder:
+people` is `people/dana`); with no `id` one is made from the name.
 
 Answers are written by reflect (budget `mid` by default), on create (when no
 body is given and a model is configured), after a consolidation for models
@@ -495,14 +497,25 @@ history and an optional session-transcript hook: see [CODING_AGENTS.md](CODING_A
 
 - **CLI**: `grimoire bank help`. The commands are an HTTP client of a running
   server (`GRIMOIRE_URL`, `GRIMOIRE_AUTH_TOKEN`, or `--url`/`--token`):
-  `list`, `create --template`, `show`, `update`, `delete --yes`,
-  `retain` (text, `--file`, `--dir` or stdin), `recall --trace`, `memories ls|rm`,
-  `entities`, `documents`, `import-git`, `reflect`, `observations`, `models`,
-  `ops` and `templates`. Against an older server that lacks a route, a command
-  prints "not available on this server".
-- **Web app**: *Memory banks* in the sidebar or the command palette — profile
-  editor, memories, documents and chunks, entities, and a recall playground
-  that shows each arm's ranks and the trace.
+  `list`, `create --template`, `show`, `stats`, `update`, `delete --yes`,
+  `export`, `import`, `retain` (text, `--file`, `--dir` or stdin; `--async
+  --wait`), `recall --trace`, `reflect --trace`, `memories ls|rm`, `entities`,
+  `documents`, `import-git`, `observations [show|rm|consolidate]`, `models
+  ls|tree|show|create|edit|move|refresh|accept|reject|history|export|rm`,
+  `directives ls|add|set|rm`, `ops ls|show|wait|cancel` and `templates [show]`.
+  `create --template` creates the bank and then imports the template, so its
+  mental models and directives come with it. Against an older server that
+  lacks a route, a command prints "not available on this server"; a
+  `model_required` answer is reported as needing a language model.
+- **Web app**: *Memory banks* in the sidebar or the command palette. Per bank:
+  a recall and reflect playground (each arm's ranks and the trace; the
+  reflect answer with the memories, observations and models it cites, and
+  optionally its tool calls), memories, documents and chunks, entities,
+  observations (evidence, history, consolidate), mental models (the folder
+  tree, refresh that follows its operation, editing the answer, moving it,
+  and accepting or rejecting a pending proposal), directives, background
+  operations, and the profile. New banks can start from a template, whose
+  models and directives are listed before it is applied.
 - **Python / JavaScript**: `Grimoire(...).bank("name")` in `clients/python`, and
   `@jeremiahm37/grimoire/banks` in `clients/js`, each with a wrapper that adds
   recalled memories to an OpenAI-compatible chat call and retains the exchange.
