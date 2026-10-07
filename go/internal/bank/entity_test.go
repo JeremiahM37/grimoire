@@ -1,6 +1,7 @@
 package bank
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -118,5 +119,49 @@ func TestRuleEntities(t *testing.T) {
 		if !found {
 			t.Errorf("missing %q in %v", w, got)
 		}
+	}
+}
+
+func TestEntityAliasesFoldUnambiguousFirstNames(t *testing.T) {
+	got := entityAliases([]string{"Dana", "Dana Kim", "Bob", "Dana Kim"})
+	if got["dana"] != "Dana Kim" || len(got) != 1 {
+		t.Fatalf("aliases = %v", got)
+	}
+	// Two people sharing a first word leave the lone name alone.
+	if got := entityAliases([]string{"Dana", "Dana Kim", "Dana Lee"}); len(got) != 0 {
+		t.Fatalf("ambiguous first name merged: %v", got)
+	}
+	// Order does not matter: the fold is a function of the set of names.
+	if got := entityAliases([]string{"Dana Kim", "Dana"}); got["dana"] != "Dana Kim" {
+		t.Fatalf("order changed the fold: %v", got)
+	}
+}
+
+func TestFirstNameMentionJoinsTheFullNameEntity(t *testing.T) {
+	h := newHarness(t, false)
+	h.retain(t, "b", Item{Content: "Dana Kim joined Mercy Hospital as a nurse.", DocumentID: "d1"})
+	h.retain(t, "b", Item{Content: "Dana plays chess on Fridays.", DocumentID: "d2"})
+	ents, err := h.e.ListEntities("b", "", 50)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var dana []EntitySummary
+	for _, en := range ents {
+		if strings.HasPrefix(en.Name, "Dana") {
+			dana = append(dana, en)
+		}
+	}
+	if len(dana) != 1 || dana[0].Name != "Dana Kim" || dana[0].Mentions != 2 {
+		t.Fatalf("entities = %+v", ents)
+	}
+	// A second Dana un-merges on rebuild: the files still say "Dana".
+	h.retain(t, "b", Item{Content: "Dana Lee runs the bakery.", DocumentID: "d3"})
+	ents, _ = h.e.ListEntities("b", "Dana", 50)
+	names := map[string]bool{}
+	for _, en := range ents {
+		names[en.Name] = true
+	}
+	if !names["Dana"] || !names["Dana Kim"] || !names["Dana Lee"] {
+		t.Fatalf("ambiguous case merged: %v", names)
 	}
 }
