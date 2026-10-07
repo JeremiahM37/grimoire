@@ -55,6 +55,8 @@ const usage = `grimoire — local-first AI-native notes
   grimoire forget PATH ID [--hard]    retract one fact (ids come from recall)
   grimoire challenges [--note P --uphold ID | --concede ID]
                                       facts your agents dispute, and how to settle them
+  grimoire bank COMMAND [args]        list, create, retain, recall, reflect, import-git, …
+                                      memory banks on a running server (see: grimoire bank help)
   grimoire ls [--tag TAG]             list notes
   grimoire open PATH                  print a note
   grimoire doctor                     diagnose why an agent cannot see your notes
@@ -121,8 +123,8 @@ func commands() map[string]func([]string) int {
 		"knowledge": cmdKnowledge,
 		"documents": cmdDocuments, "document-import": cmdDocumentImport,
 		"remember": cmdRemember, "recall": cmdRecall, "forget": cmdForget,
-		"challenges": cmdChallenges,
-		"doctor":     cmdDoctor, "reindex": cmdReindex, "import": cmdImport, "ingest": cmdIngest, "seed-demo": cmdSeedDemo,
+		"challenges": cmdChallenges, "bank": cmdBank,
+		"doctor": cmdDoctor, "reindex": cmdReindex, "import": cmdImport, "ingest": cmdIngest, "seed-demo": cmdSeedDemo,
 		"export": cmdExport, "sync": cmdSync, "agent-setup": cmdAgentSetup,
 		"fetch-model": cmdFetchModel,
 		"user":        cmdUser, "space": cmdSpace,
