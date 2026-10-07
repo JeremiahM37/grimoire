@@ -70,39 +70,57 @@ var routeAccess = map[string]access{
 	"GET /plugins/{name}/{rel...}": public, // static plugin assets, no note content
 
 	// --- content: space + reader list ---
-	"GET /api/notes":              scoped,
-	"GET /api/notes/random":       scoped,
-	"GET /api/notes/{path...}":    scoped,
-	"PUT /api/notes/{path...}":    scoped,
-	"POST /api/notes/{path...}":   scoped,
-	"DELETE /api/notes/{path...}": scoped,
-	"POST /api/notes":             scoped,
-	"GET /api/search":             scoped,
-	"GET /api/retrieve":           scoped,
-	"GET /api/context":            scoped,
-	"GET /api/knowledge/graph":    scoped,
-	"POST /api/knowledge/query":   scoped,
-	"POST /api/knowledge/extract": scoped,
-	"GET /api/knowledge/source":   scoped,
-	"POST /api/documents/import":  scoped,
-	"GET /api/documents":          scoped,
-	"POST /api/documents/refresh": scoped,
-	"GET /api/documents/original": scoped,
-	"POST /api/ask":               scoped,
-	"GET /api/graph":              scoped,
-	"GET /api/tags":               scoped,
-	"GET /api/tasks":              scoped,
-	"GET /api/blocks":             scoped, // the lines inside notes
-	"GET /api/bookmarks":          scoped, // resolves to notes the caller may read
-	"GET /api/facts":              scoped,
-	"GET /api/complete":           scoped,
-	"GET /api/memory":             scoped,
-	"GET /api/memory/context":     scoped,
-	"GET /api/memory/export":      scoped, // every fact the caller may read
-	"GET /api/memory/changes":     scoped, // fact text, so the same filter as recall
-	"GET /api/memory/facets":      scoped, // scope names are drawn from facts
-	"GET /api/memory/graph":       scoped, // entities and the facts behind them
-	"POST /api/memory/search":     scoped, // recall, ranked by a supplied vector
+	// Memory banks: a bank is the folder banks/<bank>/, read and written
+	// under that path's space and reader list. See banks.go.
+	"GET /api/banks":                          scoped, // only banks the caller can read
+	"POST /api/banks":                         scoped,
+	"GET /api/banks/{bank}":                   scoped,
+	"PATCH /api/banks/{bank}":                 scoped,
+	"DELETE /api/banks/{bank}":                scoped,
+	"POST /api/banks/{bank}/memories":         scoped,
+	"GET /api/banks/{bank}/memories":          scoped,
+	"POST /api/banks/{bank}/memories/recall":  scoped, // a read that takes a body
+	"GET /api/banks/{bank}/memories/{id}":     scoped,
+	"DELETE /api/banks/{bank}/memories/{id}":  scoped,
+	"GET /api/banks/{bank}/entities":          scoped,
+	"GET /api/banks/{bank}/entities/{id}":     scoped,
+	"GET /api/banks/{bank}/documents":         scoped,
+	"GET /api/banks/{bank}/documents/{id}":    scoped,
+	"DELETE /api/banks/{bank}/documents/{id}": scoped,
+	"GET /api/banks/{bank}/chunks/{id}":       scoped,
+	"GET /api/notes":                          scoped,
+	"GET /api/notes/random":                   scoped,
+	"GET /api/notes/{path...}":                scoped,
+	"PUT /api/notes/{path...}":                scoped,
+	"POST /api/notes/{path...}":               scoped,
+	"DELETE /api/notes/{path...}":             scoped,
+	"POST /api/notes":                         scoped,
+	"GET /api/search":                         scoped,
+	"GET /api/retrieve":                       scoped,
+	"GET /api/context":                        scoped,
+	"GET /api/knowledge/graph":                scoped,
+	"POST /api/knowledge/query":               scoped,
+	"POST /api/knowledge/extract":             scoped,
+	"GET /api/knowledge/source":               scoped,
+	"POST /api/documents/import":              scoped,
+	"GET /api/documents":                      scoped,
+	"POST /api/documents/refresh":             scoped,
+	"GET /api/documents/original":             scoped,
+	"POST /api/ask":                           scoped,
+	"GET /api/graph":                          scoped,
+	"GET /api/tags":                           scoped,
+	"GET /api/tasks":                          scoped,
+	"GET /api/blocks":                         scoped, // the lines inside notes
+	"GET /api/bookmarks":                      scoped, // resolves to notes the caller may read
+	"GET /api/facts":                          scoped,
+	"GET /api/complete":                       scoped,
+	"GET /api/memory":                         scoped,
+	"GET /api/memory/context":                 scoped,
+	"GET /api/memory/export":                  scoped, // every fact the caller may read
+	"GET /api/memory/changes":                 scoped, // fact text, so the same filter as recall
+	"GET /api/memory/facets":                  scoped, // scope names are drawn from facts
+	"GET /api/memory/graph":                   scoped, // entities and the facts behind them
+	"POST /api/memory/search":                 scoped, // recall, ranked by a supplied vector
 	// Counts and configuration names, no note text — but it does describe the
 	// deployment, so it is gated with the rest rather than public.
 	"GET /api/doctor": scoped,
@@ -398,7 +416,7 @@ func TestNonPublicRoutesRefuseAnonymousCallers(t *testing.T) {
 // body, so they are named here rather than guessed at.
 func writesContent(method, route string) bool {
 	switch route {
-	case "POST /api/ask", "POST /api/query":
+	case "POST /api/ask", "POST /api/query", "POST /api/banks/{bank}/memories/recall":
 		return false
 	}
 	return method == "PUT" || method == "POST" || method == "DELETE" || method == "PATCH"
@@ -423,6 +441,7 @@ func fillWildcards(pattern string) string {
 		"{path...}", "probe/note.md",
 		"{rel...}", "probe.js",
 		"{name}", "probe",
+		"{bank}", "probe",
 		"{id}", "probe",
 		"{tid}", "probe",
 		"{version}", "1",
@@ -456,6 +475,10 @@ func bodyFor(route string) string {
 		return `{"block":"tag: probe"}`
 	case "POST /api/ask":
 		return `{"q":"probe"}`
+	case "POST /api/banks":
+		return `{"bank_id":"probe"}`
+	case "POST /api/banks/{bank}/memories":
+		return `{"items":[{"content":"probe content for a bank"}]}`
 	case "POST /api/vault/change-passphrase":
 		return `{"old":"probe-old","new":"probe-new"}`
 	}
