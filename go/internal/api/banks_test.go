@@ -357,3 +357,25 @@ func TestRetainOverHTTPDropsPrivateSpansAndRedactsOnRequest(t *testing.T) {
 		t.Errorf("an all-private retain must be a quiet success: %d %s", w.Code, w.Body)
 	}
 }
+
+func TestBankContextEndpointHonoursMaxChars(t *testing.T) {
+	_, h := testServer(t)
+	for i := 0; i < 40; i++ {
+		do(t, h, "POST", "/api/banks/ctx/memories", map[string]any{"items": []map[string]any{
+			{"content": "Service number " + strings.Repeat("n", i+1) + " listens on a port.", "document_id": "d" + strings.Repeat("x", i+1)}}})
+	}
+	w := do(t, h, "GET", "/api/banks/ctx/context?max_chars=600&source=resume", nil)
+	var out struct {
+		Context string `json:"context"`
+		Chars   int    `json:"chars"`
+		Limit   int    `json:"limit"`
+		Dropped int    `json:"dropped"`
+	}
+	decode(t, w, &out)
+	if w.Code != http.StatusOK || out.Chars > 600 || out.Limit != 600 || out.Dropped == 0 || !strings.Contains(out.Context, "grimoire_bank_context") {
+		t.Fatalf("%d %+v", w.Code, out)
+	}
+	if w := do(t, h, "GET", "/api/banks/missing/context", nil); w.Code != http.StatusNotFound {
+		t.Errorf("missing bank = %d", w.Code)
+	}
+}
