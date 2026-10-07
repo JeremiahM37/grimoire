@@ -411,7 +411,7 @@ func TestProgressiveDisclosureRoutes(t *testing.T) {
 	}
 	var idx struct {
 		Items []struct{ Ref, ID, Title string } `json:"items"`
-		Total int                                `json:"total"`
+		Total int                               `json:"total"`
 	}
 	decode(t, do(t, h, "GET", "/api/banks/pd/index", nil), &idx)
 	if idx.Total != 2 || len(idx.Items) != 2 || !strings.HasPrefix(idx.Items[0].Ref, "#") {

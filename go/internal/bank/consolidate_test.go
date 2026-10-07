@@ -2,8 +2,8 @@ package bank
 
 import (
 	"context"
-	"errors"
 	"encoding/json"
+	"errors"
 	"regexp"
 	"strings"
 	"sync"
