@@ -55,6 +55,15 @@ var Fields = map[string]Field{
 	"web_search_url":      {"GRIMOIRE_WEB_SEARCH_URL", ""},      // searxng only
 	"web_search_key":      {"GRIMOIRE_WEB_SEARCH_KEY", ""},
 	"web_search_cx":       {"GRIMOIRE_WEB_SEARCH_CX", ""}, // google programmable search id
+	// Reranking retrieved passages before they are used; see
+	// internal/rerank. rerank_model is a hub repo id or a local directory
+	// for the local cross-encoder, or the model name a remote service
+	// expects.
+	"rerank":         {"GRIMOIRE_RERANK", "auto"}, // auto|local|remote|off
+	"rerank_model":   {"GRIMOIRE_RERANK_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2"},
+	"rerank_url":     {"GRIMOIRE_RERANK_URL", ""},
+	"rerank_api_key": {"GRIMOIRE_RERANK_API_KEY", ""},
+	"rerank_max_len": {"GRIMOIRE_RERANK_MAX_LEN", "256"},
 }
 
 // InternalFields are persisted in the same file and resolved the same way, but
