@@ -445,9 +445,14 @@ func (r *reflectRun) systemPrompt() string {
 			b.WriteString("- " + toolDocs[t] + "\n")
 		}
 	}
-	b.WriteString("\nThe answer in done is complete, well-formatted markdown for a reader who cannot see the tool " +
-		"results: carry over every relevant fact, date and number. Never put ids in the answer text — list them in the " +
-		"id arrays. Never ask follow-up questions or offer further help; the reader cannot reply.\n\n")
+	b.WriteString("\nThe answer in done is markdown for a reader who cannot see the tool results. Be concise: " +
+		"the first sentence answers the question directly, then add only the facts, dates and numbers that matter to it. " +
+		"No preamble, no restating the question, no account of how you searched. Never put ids in the answer text.\n")
+	if r.req.MaxTokens != nil && *r.req.MaxTokens > 0 {
+		fmt.Fprintf(&b, "Keep the answer within about %d tokens.\n", r.maxTok)
+	}
+	b.WriteString("In the id arrays list only the memories, observations and models whose content you actually used in the " +
+		"answer — not everything you retrieved. Never ask follow-up questions or offer further help; the reader cannot reply.\n\n")
 	fmt.Fprintf(&b, "## Now\nThe current time is %s UTC.\nMemory bank: %s\n", r.now.Format("2006-01-02 15:04"), r.prof.Name)
 	if len(r.dirs) > 0 {
 		b.WriteString("\n## Before you answer\nCheck that your answer obeys every rule:\n")
@@ -619,11 +624,12 @@ func (r *reflectRun) loop(ctx context.Context, iters int) (*ReflectResponse, err
 	consecutiveErr := 0
 	var done *call
 	iter := 0
+	toolRuns, capped := 0, false
 	for ; iter < iters && done == nil; iter++ {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		last := iter == iters-1
+		last := iter == iters-1 || capped
 		var next string
 		required := ""
 		switch {
@@ -681,6 +687,14 @@ func (r *reflectRun) loop(ctx context.Context, iters int) (*ReflectResponse, err
 			forced++
 		}
 		for _, c := range calls {
+			if c.tool != toolDone && toolRuns >= iters {
+				// The budget bounds tool calls as well as turns: a reply
+				// that fans out many searches at once cannot outrun it.
+				r.history = append(r.history, step{tool: c.tool, args: c.args,
+					result: `{"error":"search budget used up; call done now with your answer"}`})
+				capped = true
+				continue
+			}
 			if c.tool == toolDone {
 				if !r.hasEvidence() && !last {
 					r.history = append(r.history, step{tool: toolDone, args: map[string]any{},
@@ -696,6 +710,7 @@ func (r *reflectRun) loop(ctx context.Context, iters int) (*ReflectResponse, err
 					result: fmt.Sprintf(`{"error":"tool %q is not available; use only the tools listed"}`, c.tool)})
 				continue
 			}
+			toolRuns++
 			result, fresh := r.run(ctx, c, iter)
 			r.history = append(r.history, step{tool: c.tool, args: c.args, result: result})
 			if c.tool == toolSearchModels && fresh && r.req.Budget != "high" {
@@ -799,7 +814,7 @@ func (r *reflectRun) finish(ctx context.Context, iters int, answer string, cited
 		answer = r.rewriteToLength(ctx, answer)
 	}
 	resp.Text = answer
-	resp.BasedOn = r.basedOn(cited)
+	resp.BasedOn = r.basedOn(cited, answer)
 	if r.req.ResponseSchema != nil {
 		resp.StructuredOutput, resp.StructuredOutputError = r.structured(ctx, answer)
 	}
@@ -808,8 +823,9 @@ func (r *reflectRun) finish(ctx context.Context, iters int, answer string, cited
 }
 
 // basedOn keeps the cited ids that were really retrieved. A model that cited
-// nothing is taken to rest on everything it saw.
-func (r *reflectRun) basedOn(cited citedIDs) BasedOn {
+// nothing is taken to rest on what it retrieved and the answer actually draws
+// on, not on everything it saw. A person's memories come first.
+func (r *reflectRun) basedOn(cited citedIDs, answer string) BasedOn {
 	b := BasedOn{Memories: []RecallFact{}, Observations: []RecallFact{}, MentalModels: []ModelRef{}, Directives: r.dirs}
 	if b.Directives == nil {
 		b.Directives = []Directive{}
@@ -829,7 +845,7 @@ func (r *reflectRun) basedOn(cited citedIDs) BasedOn {
 		return keep
 	}
 	none := len(cited.mem)+len(cited.obs)+len(cited.models) == 0
-	memIDs, obsIDs, modelIDs := r.memOrder, r.obsOrder, r.modelOrder
+	memIDs, obsIDs, modelIDs := r.usedBy(answer, r.memOrder), r.usedBy(answer, r.obsOrder), r.modelOrder
 	if !none {
 		memIDs = pick(cited.mem, r.seenMem, nil)
 		// An observation id cited as a memory id (or the reverse) still
@@ -853,6 +869,9 @@ func (r *reflectRun) basedOn(cited citedIDs) BasedOn {
 			b.Memories = append(b.Memories, r.cache.factOut(r.bankID, p))
 		}
 	}
+	sort.SliceStable(b.Memories, func(i, j int) bool {
+		return b.Memories[i].Authority == "human" && b.Memories[j].Authority != "human"
+	})
 	for _, id := range obsIDs {
 		if p, ok := r.cache.byID[id]; ok {
 			b.Observations = append(b.Observations, r.cache.factOut(r.bankID, p))
@@ -1488,4 +1507,35 @@ func (r *reflectRun) expand(args map[string]any) (any, error) {
 		items = append(items, item)
 	}
 	return map[string]any{"items": items}, nil
+}
+
+// usedBy keeps the retrieved ids whose text the answer draws on: at least half
+// of a memory's distinctive words (four letters or more) appear in it. It is
+// what stands in for a citation list the model did not give.
+func (r *reflectRun) usedBy(answer string, ids []string) []string {
+	have := map[string]bool{}
+	for _, w := range words(answer) {
+		have[w] = true
+	}
+	var out []string
+	for _, id := range ids {
+		p, ok := r.cache.byID[id]
+		if !ok {
+			continue
+		}
+		total, hit := 0, 0
+		for _, w := range words(r.cache.units[p].Text) {
+			if len([]rune(w)) < 4 {
+				continue
+			}
+			total++
+			if have[w] {
+				hit++
+			}
+		}
+		if total > 0 && hit*2 >= total {
+			out = append(out, id)
+		}
+	}
+	return out
 }

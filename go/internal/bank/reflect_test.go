@@ -207,3 +207,66 @@ func TestParseCallsIsLenient(t *testing.T) {
 		t.Error("prose is not a call")
 	}
 }
+
+func TestReflectBudgetCapsToolCallsNotJustTurns(t *testing.T) {
+	h := newHarness(t, true)
+	h.llm.route = extractOnly(livesIn("Lyon"))
+	humanBank(t, h)
+	var calls []any
+	for i := 0; i < 12; i++ {
+		calls = append(calls, map[string]any{"tool": "recall", "args": map[string]any{"query": "Alice"}})
+	}
+	sc := &scripted{turns: []string{
+		js(map[string]any{"calls": calls}),
+		js(map[string]any{"tool": "done", "args": map[string]any{"answer": "Alice lives in Paris."}}),
+	}}
+	h.llm.route = sc.route(extractOnly(livesIn("Lyon")))
+	res, err := h.e.Reflect(context.Background(), "b", ReflectRequest{Query: "Where does Alice live?"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ran := 0
+	for _, tc := range res.Trace.ToolCalls {
+		if tc.Tool == "recall" || tc.Tool == "search_observations" {
+			ran++
+		}
+	}
+	if ran > 5 {
+		t.Errorf("low budget ran %d tool calls, cap is 5", ran)
+	}
+	for _, b := range []struct {
+		name string
+		want int
+	}{{"low", 5}, {"mid", 10}, {"high", 20}} {
+		if n, _ := reflectIterations(b.name); n != b.want {
+			t.Errorf("%s = %d", b.name, n)
+		}
+	}
+}
+
+func TestReflectAnswersConciselyAndCitesOnlyWhatItUsed(t *testing.T) {
+	h := newHarness(t, true)
+	h.llm.route = extractOnly(livesIn("Lyon"))
+	humanID := humanBank(t, h)
+	sc := &scripted{turns: []string{
+		js(map[string]any{"tool": "recall", "args": map[string]any{"query": "Alice lives"}}),
+		js(map[string]any{"tool": "recall", "args": map[string]any{"query": "Alice chess"}}),
+		// No ids cited: the answer draws on the human fact only.
+		js(map[string]any{"tool": "done", "args": map[string]any{"answer": "Alice lives in Paris."}}),
+	}}
+	h.llm.route = sc.route(extractOnly(livesIn("Lyon")))
+	mt := 200
+	res, err := h.e.Reflect(context.Background(), "b", ReflectRequest{Query: "Where does Alice live?", MaxTokens: &mt})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sys := sc.systems[0]
+	for _, want := range []string{"Be concise", "first sentence answers", "within about 200 tokens", "actually used"} {
+		if !strings.Contains(sys, want) {
+			t.Errorf("system prompt lacks %q", want)
+		}
+	}
+	if len(res.BasedOn.Memories) != 1 || res.BasedOn.Memories[0].ID != humanID || res.BasedOn.Memories[0].Authority != "human" {
+		t.Errorf("based_on = %+v", res.BasedOn.Memories)
+	}
+}
