@@ -485,3 +485,24 @@ it covers the bank tools. Tools: `retain` (asynchronous; returns an
 `list_directives`, `create_directive`, `delete_directive`, `list_operations`,
 `get_operation`, `cancel_operation`, `list_bank_templates`,
 `import_bank_template`.
+
+## Coding agents
+
+One bank per repository, MCP setup for Claude Code and Codex, seeding from git
+history and an optional session-transcript hook: see [CODING_AGENTS.md](CODING_AGENTS.md).
+
+## From the shell, the web app and code
+
+- **CLI**: `grimoire bank help`. The commands are an HTTP client of a running
+  server (`GRIMOIRE_URL`, `GRIMOIRE_AUTH_TOKEN`, or `--url`/`--token`):
+  `list`, `create --template`, `show`, `update`, `delete --yes`,
+  `retain` (text, `--file`, `--dir` or stdin), `recall --trace`, `memories ls|rm`,
+  `entities`, `documents`, `import-git`, `reflect`, `observations`, `models`,
+  `ops` and `templates`. Against an older server that lacks a route, a command
+  prints "not available on this server".
+- **Web app**: *Memory banks* in the sidebar or the command palette — profile
+  editor, memories, documents and chunks, entities, and a recall playground
+  that shows each arm's ranks and the trace.
+- **Python / JavaScript**: `Grimoire(...).bank("name")` in `clients/python`, and
+  `@jeremiahm37/grimoire/banks` in `clients/js`, each with a wrapper that adds
+  recalled memories to an OpenAI-compatible chat call and retains the exchange.
