@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -38,6 +39,8 @@ func (s *Server) bankRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/banks/{bank}/index", s.bankIndex)
 	mux.HandleFunc("GET /api/banks/{bank}/timeline", s.bankTimeline)
 	mux.HandleFunc("GET /api/banks/{bank}/file-memory", s.bankFileMemory)
+	mux.HandleFunc("GET /api/banks/{bank}/duplicates", s.bankDuplicates)
+	mux.HandleFunc("POST /api/banks/{bank}/duplicates/merge", s.bankMergeDuplicates)
 	mux.HandleFunc("GET /api/banks/{bank}/lookup", s.bankLookup)
 	mux.HandleFunc("GET /api/banks/{bank}/sessions", s.listBankSessions)
 	mux.HandleFunc("POST /api/banks/{bank}/sessions/{session}/digest", s.writeSessionDigest)
@@ -746,4 +749,44 @@ func (s *Server) bankFileMemory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"path": file, "items": items})
+}
+
+// bankDuplicates lists near-duplicate facts and observations for review.
+func (s *Server) bankDuplicates(w http.ResponseWriter, r *http.Request) {
+	id, ok := s.bankReadable(w, r)
+	if !ok {
+		return
+	}
+	q := r.URL.Query()
+	limit, _ := strconv.Atoi(q.Get("limit"))
+	min, _ := strconv.ParseFloat(q.Get("min_score"), 64)
+	items, err := s.Banks.DuplicateCandidates(id, bank.DuplicateQuery{MinScore: min, Limit: limit, Types: q.Get("type")})
+	if err != nil {
+		writeBankErr(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"candidates": items})
+}
+
+// bankMergeDuplicates folds one entry into another; the merged text is struck
+// through and kept.
+func (s *Server) bankMergeDuplicates(w http.ResponseWriter, r *http.Request) {
+	id, ok := s.bankWritable(w, r)
+	if !ok {
+		return
+	}
+	var req struct {
+		Keep  string `json:"keep"`
+		Merge string `json:"merge"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 4096)).Decode(&req); err != nil {
+		writeErr(w, http.StatusBadRequest, "body must be {\"keep\": id, \"merge\": id}")
+		return
+	}
+	res, err := s.Banks.MergeDuplicates(id, req.Keep, req.Merge)
+	if err != nil {
+		writeBankErr(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
 }

@@ -82,13 +82,14 @@ func bankReasoningTools() []tool {
 			Description: "Create a mental model: a question the bank should keep a written answer to " +
 				"(e.g. 'what are Dana's working preferences?'). Its first answer is written in the background.",
 			InputSchema: obj(map[string]any{
-				"bank":       bankArg,
-				"name":       strProp("display name"),
-				"question":   strProp("the standing question"),
-				"id":         strProp("optional id; a/b/c puts it in folders"),
-				"tags":       arrProp("optional tags scoping which memories it draws on"),
-				"refresh":    strProp("auto (default: refreshed after consolidation) or manual"),
-				"max_tokens": intProp("answer length target (default 2048)"),
+				"bank":         bankArg,
+				"name":         strProp("display name"),
+				"question":     strProp("the standing question"),
+				"id":           strProp("optional id; a/b/c puts it in folders"),
+				"tags":         arrProp("optional tags scoping which memories it draws on"),
+				"refresh":      strProp("auto (default: refreshed after consolidation) or manual"),
+				"refresh_mode": strProp("full (default: rewrite the answer) or delta (edit only the sections new facts touch)"),
+				"max_tokens":   intProp("answer length target (default 2048)"),
 			}, "question"),
 		},
 		{
@@ -108,7 +109,8 @@ func bankReasoningTools() []tool {
 			Name: "refresh_mental_model",
 			Description: "Rewrite a mental model's answer from what the bank knows now. Runs in the background. " +
 				"If a person edited the answer, the new one waits as a proposal instead of replacing theirs.",
-			InputSchema: obj(map[string]any{"bank": bankArg, "id": strProp("model id")}, "id"),
+			InputSchema: obj(map[string]any{"bank": bankArg, "id": strProp("model id"),
+				"mode": strProp("optional: delta edits only the sections new facts touch (a person's sections are never changed); full rewrites. Default is the model's own setting.")}, "id"),
 		},
 		{
 			Name:        "list_directives",
@@ -161,7 +163,7 @@ func bankReasoningTools() []tool {
 
 // bankScoped are the tools that act on one bank and take the bank argument.
 var bankScoped = map[string]bool{
-	"retain": true, "bank_recall": true, "bank_index": true, "bank_timeline": true, "bank_get": true, "bank_profile": true, "list_bank_memories": true,
+	"retain": true, "bank_recall": true, "bank_index": true, "bank_duplicates": true, "bank_merge_duplicates": true, "bank_timeline": true, "bank_get": true, "bank_profile": true, "list_bank_memories": true,
 	"delete_bank_memory": true, "list_entities": true, "list_bank_documents": true, "get_bank_document": true,
 	"delete_bank_document": true, "reflect": true, "consolidate": true, "list_observations": true, "update_observation": true,
 	"get_bank_memory": true, "list_mental_models": true, "get_mental_model": true, "create_mental_model": true,
@@ -236,7 +238,7 @@ func (s *Server) dispatchBankReasoning(name, base string, args map[string]any) (
 		return r, true, err
 	case "create_mental_model", "update_mental_model":
 		body := map[string]any{}
-		for _, k := range []string{"name", "question", "refresh", "id"} {
+		for _, k := range []string{"name", "question", "refresh", "refresh_mode", "id"} {
 			if v := str(args, k); v != "" {
 				body[k] = v
 			}
@@ -258,7 +260,11 @@ func (s *Server) dispatchBankReasoning(name, base string, args map[string]any) (
 		r, err := s.api("DELETE", modelPath(base, str(args, "id")), nil)
 		return r, true, err
 	case "refresh_mental_model":
-		r, err := s.api("POST", modelPath(base, str(args, "id"))+"/refresh", map[string]any{})
+		body := map[string]any{}
+		if v := str(args, "mode"); v != "" {
+			body["mode"] = v
+		}
+		r, err := s.api("POST", modelPath(base, str(args, "id"))+"/refresh", body)
 		return r, true, err
 	case "list_directives":
 		r, err := s.api("GET", base+"/directives", nil)

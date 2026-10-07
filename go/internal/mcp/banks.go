@@ -69,6 +69,28 @@ func bankTools() []tool {
 			}),
 		},
 		{
+			Name: "bank_duplicates",
+			Description: "List pairs of facts or observations in a bank that probably say the same thing, most " +
+				"similar first, with the one a merge would keep. Review only: nothing changes. Merge one pair with " +
+				"bank_merge_duplicates after checking with the user.",
+			InputSchema: obj(map[string]any{
+				"bank":      bankArg,
+				"min_score": map[string]any{"type": "number", "description": "similarity floor, 0 to 1 (default 0.6)"},
+				"type":      strProp("optional: fact or observation"),
+				"limit":     intProp("max pairs (default 20)"),
+			}),
+		},
+		{
+			Name: "bank_merge_duplicates",
+			Description: "Fold one entry of a bank into another on request. The merged-away text is struck through " +
+				"and kept (never deleted), and a person's entry can never be merged into a model's.",
+			InputSchema: obj(map[string]any{
+				"bank":  bankArg,
+				"keep":  strProp("id of the entry to keep"),
+				"merge": strProp("id of the entry to strike through into it"),
+			}, "keep", "merge"),
+		},
+		{
 			Name: "bank_timeline",
 			Description: "The entries dated just before and after one entry (anchor: its #id) or a day " +
 				"(anchor: YYYY-MM-DD), oldest first, as index lines. Use it to see what else was going on.",
@@ -272,6 +294,22 @@ func (s *Server) dispatchBank(name string, args map[string]any) (result any, han
 		}
 		r, err := s.api("GET", base+"/index?"+q.Encode(), nil)
 		return compactIndex(r), true, err
+	case "bank_duplicates":
+		q := url.Values{}
+		if v, ok := args["min_score"].(float64); ok && v > 0 {
+			q.Set("min_score", fmt.Sprint(v))
+		}
+		if v := str(args, "type"); v != "" {
+			q.Set("type", v)
+		}
+		if n := num(args, "limit", 0); n > 0 {
+			q.Set("limit", fmt.Sprint(n))
+		}
+		r, err := s.api("GET", base+"/duplicates?"+q.Encode(), nil)
+		return r, true, err
+	case "bank_merge_duplicates":
+		r, err := s.api("POST", base+"/duplicates/merge", map[string]any{"keep": str(args, "keep"), "merge": str(args, "merge")})
+		return r, true, err
 	case "bank_timeline":
 		q := url.Values{"anchor": {str(args, "anchor")}}
 		for _, k := range []string{"before", "after"} {

@@ -637,7 +637,13 @@ func bankModels(c *bankClient, f *bankFlags) error {
 			Status      string `json:"status"`
 			Dedup       bool   `json:"deduplicated"`
 		}
-		if err := c.do("POST", modelPath(bank, id, "refresh"), map[string]any{}, &out); err != nil {
+		body := map[string]any{}
+		if f.on["--delta"] {
+			body["mode"] = "delta"
+		} else if f.on["--full"] {
+			body["mode"] = "full"
+		}
+		if err := c.do("POST", modelPath(bank, id, "refresh"), body, &out); err != nil {
 			if modelRequired(err) {
 				return fmt.Errorf("refresh needs a language model and none is configured on the server")
 			}
@@ -1444,4 +1450,83 @@ func bankTemplates(c *bankClient, f *bankFlags) error {
 		fmt.Printf("%-16s %s — %s%s%s\n", t.ID, t.Name, t.Description, extra, src)
 	}
 	return nil
+}
+
+// bankDuplicates lists near-duplicate facts and observations, or merges one
+// into another on request. The merged text is struck through and kept.
+func bankDuplicates(c *bankClient, f *bankFlags) error {
+	first, err := f.need(0, "BANK or merge")
+	if err != nil {
+		return err
+	}
+	if first == "merge" {
+		bank, err := f.need(1, "BANK")
+		if err != nil {
+			return err
+		}
+		keep, err := f.need(2, "KEEP id")
+		if err != nil {
+			return err
+		}
+		drop, err := f.need(3, "MERGE id")
+		if err != nil {
+			return err
+		}
+		var out map[string]any
+		if err := c.do("POST", bankPath(bank, "duplicates", "merge"), map[string]any{"keep": keep, "merge": drop}, &out); err != nil {
+			return err
+		}
+		fmt.Printf("merged %s into %s (struck through in %v, text kept)\n", drop, keep, out["struck"])
+		return nil
+	}
+	q := url.Values{}
+	for flag, key := range map[string]string{"--min-score": "min_score", "--type": "type", "--limit": "limit"} {
+		if v, ok := f.get(flag); ok {
+			q.Set(key, v)
+		}
+	}
+	path := bankPath(first, "duplicates")
+	if len(q) > 0 {
+		path += "?" + q.Encode()
+	}
+	var out struct {
+		Candidates []struct {
+			Type  string  `json:"type"`
+			Score float64 `json:"score"`
+			Keep  struct {
+				ID    string `json:"id"`
+				Text  string `json:"text"`
+				Human bool   `json:"human"`
+			} `json:"keep"`
+			Merge struct {
+				ID    string `json:"id"`
+				Text  string `json:"text"`
+				Human bool   `json:"human"`
+			} `json:"merge"`
+			Shared []string `json:"shared"`
+		} `json:"candidates"`
+	}
+	if err := c.do("GET", path, nil, &out); err != nil {
+		return err
+	}
+	if f.on["--json"] {
+		printJSON(out)
+		return nil
+	}
+	if len(out.Candidates) == 0 {
+		fmt.Println("no near-duplicates")
+		return nil
+	}
+	for _, d := range out.Candidates {
+		fmt.Printf("%.2f %s  keep  %s  %s\n          merge %s  %s\n          grimoire bank duplicates merge %s %s %s\n",
+			d.Score, d.Type, dupRef(d.Keep.ID), d.Keep.Text, dupRef(d.Merge.ID), d.Merge.Text, first, d.Keep.ID, d.Merge.ID)
+	}
+	return nil
+}
+
+func dupRef(id string) string {
+	if len(id) > 8 {
+		id = id[:8]
+	}
+	return "#" + id
 }

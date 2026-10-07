@@ -525,7 +525,7 @@ it covers the bank tools. Tools: `retain` (asynchronous; returns an
 `operation_id`), `bank_recall`, `reflect`, `list_banks`, `create_bank`,
 `bank_profile`, `list_bank_memories`, `get_bank_memory`, `delete_bank_memory`,
 `list_entities`, `list_bank_documents`, `get_bank_document`,
-`delete_bank_document`, `bank_index`, `bank_timeline`, `bank_get`, `consolidate`, `list_observations`, `update_observation`,
+`delete_bank_document`, `bank_index`, `bank_timeline`, `bank_duplicates`, `bank_merge_duplicates`, `bank_get`, `consolidate`, `list_observations`, `update_observation`,
 `list_mental_models`, `get_mental_model`, `create_mental_model`,
 `update_mental_model`, `delete_mental_model`, `refresh_mental_model`,
 `list_directives`, `create_directive`, `delete_directive`, `list_operations`,
@@ -565,3 +565,17 @@ retains transcripts, writes digests and injects context: see
 - **Python / JavaScript**: `Grimoire(...).bank("name")` in `clients/python`, and
   `@jeremiahm37/grimoire/banks` in `clients/js`, each with a wrapper that adds
   recalled memories to an OpenAI-compatible chat call and retains the exchange.
+
+### Reviewing near-duplicates
+
+`GET /api/banks/{bank}/duplicates` (MCP `bank_duplicates`, CLI
+`grimoire bank duplicates BANK`) lists pairs of facts or observations that
+probably say the same thing. Pairs are scored by IDF-weighted word overlap, so
+words the bank uses everywhere do not count, and a pair must share at least two
+informative words. Updates (a changed value), denials and recorded challenges
+are not duplicates and are never listed. Nothing merges by itself:
+`POST .../duplicates/merge` (`bank_merge_duplicates`,
+`grimoire bank duplicates merge BANK KEEP MERGE`) folds one entry into the
+other. The merged text is struck through and kept (a prose line in the facts
+file; the observations file's History section), a person's entry is never
+merged into a model's, and a person's text is never deleted.
