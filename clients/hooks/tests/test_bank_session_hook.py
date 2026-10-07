@@ -307,3 +307,74 @@ def test_a_failed_retain_still_writes_the_digest(environment, repo, tmp_path):
     with pytest.raises(urllib.error.URLError):
         hook.run(event(transcript, repo), env, send)
     assert any(p.endswith("/digest") for p in seen)
+
+
+def tool_event(repo, name, tool_input, response=None, session="abc-123", event_name="PostToolUse"):
+    out = {"hook_event_name": event_name, "session_id": session, "cwd": str(repo),
+           "tool_name": name, "tool_input": tool_input}
+    if response is not None:
+        out["tool_response"] = response
+    return out
+
+
+def test_tool_capture_is_opt_in_local_and_rule_based(environment, repo):
+    no_network = lambda *a, **k: pytest.fail("PostToolUse must not touch the network")  # noqa: E731
+    edit = tool_event(repo, "Edit", {"file_path": str(repo / "src" / "app.py")})
+    assert hook.run(edit, environment, no_network) is None
+    assert not list(Path(environment["GRIMOIRE_BANK_STATE_DIR"]).glob("*.activity.jsonl")) \
+        if Path(environment["GRIMOIRE_BANK_STATE_DIR"]).exists() else True
+    on = {**environment, "GRIMOIRE_BANK_TOOLS": "1"}
+    key = "ghp_" + "aB3dE5gH7j" * 4
+    exit_code = {"exit_code": 2, "stdout": "PRINTED-OUTPUT-MUST-NOT-BE-KEPT"}
+    for event_ in (
+        edit,
+        tool_event(repo, "Write", {"file_path": str(repo / "new.txt")}),
+        tool_event(repo, "Edit", {"file_path": str(repo / "src" / "app.py")}),  # same file twice
+        tool_event(repo, "Bash", {"command": "pytest -q"}, exit_code),
+        tool_event(repo, "Bash", {"command": "curl -H 'Authorization: " + key + "' x <private>hush</private>"}, {}),
+        tool_event(repo, "Read", {"file_path": str(repo / "README.md")}),  # reads are not recorded
+        tool_event(repo, "Bash", {"command": "make"}, {}, event_name="PostToolUseFailure"),
+    ):
+        assert hook.run(event_, on, no_network) is None
+    buffer = next(Path(environment["GRIMOIRE_BANK_STATE_DIR"]).glob("*.activity.jsonl"))
+    raw = buffer.read_text()
+    assert oct(buffer.stat().st_mode & 0o777) == "0o600"
+    for leak in (key, "hush", "PRINTED-OUTPUT"):
+        assert leak not in raw
+    activity = hook.tool_activity(on, "abc-123")
+    assert activity["files"] == [str(Path("src") / "app.py"), "new.txt"]
+    commands = {c["command"].split()[0]: c.get("exit") for c in activity["commands"]}
+    assert commands["pytest"] == 2 and commands["make"] == 1 and "[REDACTED:GitHub token]" in raw
+
+
+def test_stop_sends_the_buffer_once_without_a_model_and_session_end_clears_it(environment, repo, tmp_path):
+    env = {**environment, "GRIMOIRE_BANK_TOOLS": "1", "GRIMOIRE_BANK_DIGEST": "1"}
+    exit_code = {"exit_code": 1}
+    hook.run(tool_event(repo, "Edit", {"file_path": str(repo / "a.py")}), env)
+    hook.run(tool_event(repo, "Bash", {"command": "make test"}, exit_code), env)
+    transcript = claude_transcript(tmp_path / "t.jsonl")
+    calls = []
+    send = lambda base, token, path, body, timeout: calls.append((path, body)) or {}  # noqa: E731
+    hook.run(event(transcript, repo, "Stop"), env, send)
+    activity_calls = [c for c in calls if c[1].get("items", [{}])[0].get("document_id") == "activity:abc-123"]
+    assert len(activity_calls) == 1
+    body = activity_calls[0][1]
+    assert body["mode"] == "chunks" and body["async"] is True  # chunks mode: no extraction model
+    assert "- a.py" in body["items"][0]["content"] and "`make test` (exit 1)" in body["items"][0]["content"]
+    digest_body = [c[1] for c in calls if c[0].endswith("/digest")][0]
+    assert digest_body["activity"]["files"] == ["a.py"]
+    assert digest_body["activity"]["commands"] == [{"command": "make test", "exit": 1}]
+    hook.run(event(transcript, repo, "Stop"), env, send)  # nothing new
+    assert len([c for c in calls if c[1].get("items", [{}])[0].get("document_id") == "activity:abc-123"]) == 1
+    hook.run(event(transcript, repo, "SessionEnd"), env, send)
+    assert not list(Path(env["GRIMOIRE_BANK_STATE_DIR"]).glob("*.activity.jsonl"))
+
+
+def test_stale_buffers_of_sessions_that_never_ended_are_swept(environment, repo):
+    env = {**environment, "GRIMOIRE_BANK_TOOLS": "1"}
+    hook.run(tool_event(repo, "Edit", {"file_path": str(repo / "a.py")}), env)
+    buffer = next(Path(env["GRIMOIRE_BANK_STATE_DIR"]).glob("*.activity.jsonl"))
+    hook.sweep_activity(env, now=buffer.stat().st_mtime + 60)
+    assert buffer.exists()
+    hook.sweep_activity(env, now=buffer.stat().st_mtime + hook.ACTIVITY_MAX_AGE + 60)
+    assert not buffer.exists()
