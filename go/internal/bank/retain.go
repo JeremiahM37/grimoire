@@ -40,6 +40,8 @@ type Item struct {
 	ResolveEntities *bool
 	Tags            []string
 	UpdateMode      string // "replace" (default) or "append"
+	// ScanSecrets redacts credentials from the content before it is stored.
+	ScanSecrets bool
 }
 
 // RetainOptions apply to a whole retain call.
@@ -117,6 +119,11 @@ func (e *Engine) Retain(ctx context.Context, bankID string, items []Item, opts R
 		default:
 			return nil, invalid("item %d: update_mode must be replace or append", i)
 		}
+	}
+	items = sanitizeItems(items)
+	if len(items) == 0 {
+		// Everything was private: nothing is stored, and that is a success.
+		return &RetainResult{BankID: bankID, ItemsCount: 0, Mode: "private"}, nil
 	}
 	// Runs after the lock below is released: new facts queue a
 	// consolidation when the bank consolidates automatically.

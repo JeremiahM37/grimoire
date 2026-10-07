@@ -196,3 +196,28 @@ def test_recall_injection_is_opt_in_and_bounded(environment, repo):
     assert hook.clean("before " + context + " after") == "before  after"
     assert hook.run({**prompt, "prompt": "thanks"}, {**environment, "GRIMOIRE_BANK_RECALL": "1"},
                     send) is None
+
+
+def test_private_spans_and_secrets_never_leave_the_machine(environment, repo, tmp_path):
+    key = "ghp_" + "aB3dE5gH7j" * 4
+    lines = [
+        {"type": "user", "message": {"role": "user", "content":
+            "Deploy it. <private>my pin is 4411</private> then use " + key}},
+        {"type": "assistant", "message": {"role": "assistant", "content": [
+            {"type": "text", "text": "Ok.\n<private>unclosed: hush"}]}},
+        {"type": "user", "message": {"role": "user", "content": "password: Zx9Qm2Lp7Rt4Vw8Yc1Bn5 stays out"}},
+    ]
+    transcript = tmp_path / "t.jsonl"
+    transcript.write_text("\n".join(json.dumps(x) for x in lines))
+    sent = []
+    hook.run(event(transcript, repo), environment, lambda b, t, p, body, to: sent.append(body) or {})
+    wire = json.dumps(sent[0])
+    for leak in ("4411", key, "hush", "Zx9Qm2Lp7Rt4Vw8Yc1Bn5"):
+        assert leak not in wire
+    assert "[REDACTED:GitHub token]" in wire
+    assert sent[0]["items"][0]["scan_secrets"] is True
+
+
+def test_sanitize_leaves_placeholders_and_prose_alone():
+    text = 'api_key = "TODO"  and ordinary words about tokens'
+    assert hook.sanitize(text) == text

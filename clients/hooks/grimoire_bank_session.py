@@ -19,6 +19,7 @@ See docs/CODING_AGENTS.md.
 
 import hashlib
 import json
+import math
 import os
 import re
 import sys
@@ -38,6 +39,69 @@ INJECTED = re.compile(
     re.DOTALL,
 )
 CONTEXT = "coding-agent session transcript"
+
+# Text a person wrapped in <private>...</private> is never retained. An
+# opening tag with no closing one hides the rest: failing closed.
+PRIVATE_SPAN = re.compile(r"<private\b[^>]*>.*?</private\s*>", re.DOTALL | re.IGNORECASE)
+PRIVATE_OPEN = re.compile(r"<private\b[^>]*>.*$", re.DOTALL | re.IGNORECASE)
+
+# Credential shapes, mirroring the server's secret scanner: issuer-defined
+# prefixes, plus a secret-named assignment that must clear an entropy bar.
+SECRET_SHAPES = [
+    ("AWS access key", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
+    ("GitHub token", re.compile(r"\bgh[pousr]_[A-Za-z0-9]{36,}\b")),
+    ("GitHub fine-grained token", re.compile(r"\bgithub_pat_[A-Za-z0-9_]{50,}\b")),
+    ("Slack token", re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{10,}\b")),
+    ("Slack webhook", re.compile(r"https://hooks\.slack\.com/services/[A-Za-z0-9/+]{20,}")),
+    ("Stripe key", re.compile(r"\b[sr]k_live_[A-Za-z0-9]{20,}\b")),
+    ("Anthropic key", re.compile(r"\bsk-ant-[A-Za-z0-9_-]{32,}\b")),
+    ("OpenAI key", re.compile(r"\bsk-(?:proj-)?[A-Za-z0-9_-]{32,}\b")),
+    ("Google API key", re.compile(r"\bAIza[0-9A-Za-z_-]{35}\b")),
+    ("SendGrid key", re.compile(r"\bSG\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\b")),
+    ("npm token", re.compile(r"\bnpm_[A-Za-z0-9]{36}\b")),
+    ("PyPI token", re.compile(r"\bpypi-[A-Za-z0-9_-]{50,}\b")),
+    ("private key", re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH |PGP )?PRIVATE KEY-----")),
+    ("JSON Web Token", re.compile(r"\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b")),
+]
+SECRET_ASSIGNMENT = re.compile(
+    r"\b(api[_-]?key|secret|token|password|passwd|access[_-]?key|auth)\b\s*[:=]\s*[\"']?"
+    r"([A-Za-z0-9_\-./+=]{16,})[\"']?", re.IGNORECASE)
+PLACEHOLDERS = {"changeme", "your_api_key_here", "todo", "xxx", "placeholder", "example",
+                "redacted", "none", "null", "undefined", "test", "secret", "password"}
+
+
+def entropy(value):
+    counts = {c: value.count(c) for c in set(value)}
+    return -sum(n / len(value) * math.log2(n / len(value)) for n in counts.values())
+
+
+def looks_random(value):
+    return len(value) >= 16 and entropy(value) >= 3.2
+
+
+def strip_private(text):
+    if "<private" not in text.lower():
+        return text
+    return PRIVATE_OPEN.sub("", PRIVATE_SPAN.sub("", text))
+
+
+def redact_secrets(text):
+    """Replace credentials with a marker naming their kind."""
+    for kind, shape in SECRET_SHAPES:
+        text = shape.sub("[REDACTED:" + kind + "]", text)
+
+    def assigned(match):
+        value = match.group(2)
+        if value.lower() in PLACEHOLDERS or not looks_random(value):
+            return match.group(0)
+        return match.group(0).replace(value, "[REDACTED:possible " + match.group(1).lower() + "]")
+
+    return SECRET_ASSIGNMENT.sub(assigned, text)
+
+
+def sanitize(text):
+    """What may be stored: no private spans, no credentials."""
+    return redact_secrets(strip_private(text))
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -89,7 +153,7 @@ def derive_bank(environment, cwd):
 
 
 def clean(text):
-    text = INJECTED.sub("", text)
+    text = sanitize(INJECTED.sub("", text))
     return text.strip()[:MAX_TURN_CHARS]
 
 
@@ -214,6 +278,7 @@ def retain(event, environment, base, bank, send):
         "metadata": {"session_id": session, "source": "session-hook",
                      "harness": environment.get("GRIMOIRE_BANK_HARNESS", "")},
         "update_mode": "replace",
+        "scan_secrets": True,   # the server scans again: a second net
     }
     first = next((t["timestamp"] for t in turns if t.get("timestamp")), None)
     if first:

@@ -185,3 +185,18 @@ func TestEntropyRanksRandomAboveProse(t *testing.T) {
 		t.Error("lowercase prose was treated as random")
 	}
 }
+
+func TestRedactTextReplacesWhatAScanReports(t *testing.T) {
+	key := "ghp_" + strings.Repeat("aB3dE5gH7j", 4)
+	in := "token " + key + " ok\napi_key = \"TODO\"\npassword: Zx9Qm2Lp7Rt4Vw8Yc1Bn5\nplain prose stays"
+	out, n := RedactText(in)
+	if n != 2 || strings.Contains(out, key) || strings.Contains(out, "Zx9Qm2Lp7Rt4Vw8Yc1Bn5") {
+		t.Fatalf("n=%d out=%q", n, out)
+	}
+	if !strings.Contains(out, "[REDACTED:GitHub token]") || !strings.Contains(out, "TODO") || !strings.Contains(out, "plain prose stays") {
+		t.Fatalf("out=%q", out)
+	}
+	if len(ScanText("x", out)) != 0 {
+		t.Fatalf("a scan still finds something in %q", out)
+	}
+}
