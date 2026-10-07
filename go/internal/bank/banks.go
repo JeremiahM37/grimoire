@@ -31,7 +31,7 @@ func (e *Engine) writeProfile(p *Profile, snapshot bool) error {
 			e.History.Snapshot(rel, n.Body)
 		}
 	}
-	if _, err := e.Vault.Write(rel, p.Body(), p.Frontmatter()); err != nil {
+	if _, err := e.Vault.Write(rel, p.Body(), e.keepFrontmatter(rel, p.Frontmatter())); err != nil {
 		return err
 	}
 	_, err := e.Index.Upsert(rel)

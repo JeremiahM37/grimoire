@@ -117,7 +117,7 @@ func (e *Engine) rewriteFacts(bankID, doc, rel, oldBody string, ff FactsFile) er
 	if e.History != nil {
 		e.History.Snapshot(rel, oldBody)
 	}
-	if _, err := e.Vault.Write(rel, FormatFacts(doc, ff), factsFrontmatter(bankID, doc)); err != nil {
+	if _, err := e.Vault.Write(rel, FormatFacts(doc, ff), e.keepFrontmatter(rel, factsFrontmatter(bankID, doc))); err != nil {
 		return err
 	}
 	_, err := e.Index.Upsert(rel)

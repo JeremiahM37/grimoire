@@ -213,3 +213,20 @@ func TestUsageIsBookedAgainstTheRetainSurface(t *testing.T) {
 		t.Errorf("usage = %+v", res.Usage)
 	}
 }
+
+// A rewrite keeps frontmatter a person added: here a reader list, which is
+// an access control, so losing it on the next profile edit would widen who
+// can open the bank.
+func TestRewritesKeepAPersonsFrontmatter(t *testing.T) {
+	h := newHarness(t, false)
+	if err := h.e.CreateBank(NewProfile("b")); err != nil {
+		t.Fatal(err)
+	}
+	h.editFile(t, ProfilePath("b"), "bank: b\n", "bank: b\nreaders: [u1]\n")
+	if _, err := h.e.UpdateProfile("b", func(p *Profile) error { p.Mission = "new"; return nil }); err != nil {
+		t.Fatal(err)
+	}
+	if got := h.read(t, ProfilePath("b")); !strings.Contains(got, "readers: [u1]") || !strings.Contains(got, "new") {
+		t.Errorf("bank.md after update:\n%s", got)
+	}
+}

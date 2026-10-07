@@ -542,7 +542,7 @@ func (e *Engine) retainDocument(ctx context.Context, prof *Profile, docID string
 				e.History.Snapshot(docRel, n.Body)
 			}
 		}
-		if _, err := e.Vault.Write(docRel, doc.Content, doc.Frontmatter()); err != nil {
+		if _, err := e.Vault.Write(docRel, doc.Content, e.keepFrontmatter(docRel, doc.Frontmatter())); err != nil {
 			return nil, spent, err
 		}
 		if _, err := e.Index.Upsert(docRel); err != nil {
@@ -553,7 +553,7 @@ func (e *Engine) retainDocument(ctx context.Context, prof *Profile, docID string
 		if e.History != nil && oldFactsBody != "" {
 			e.History.Snapshot(factsRel, oldFactsBody)
 		}
-		if _, err := e.Vault.Write(factsRel, factsBody, factsFrontmatter(bankID, docID)); err != nil {
+		if _, err := e.Vault.Write(factsRel, factsBody, e.keepFrontmatter(factsRel, factsFrontmatter(bankID, docID))); err != nil {
 			return nil, spent, err
 		}
 		if _, err := e.Index.Upsert(factsRel); err != nil {
