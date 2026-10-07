@@ -97,7 +97,7 @@ func newDocID() string {
 // It is also the unit of work an asynchronous operation runs: an operations
 // queue calls exactly this with the stored request, so nothing here may
 // depend on an HTTP request still being open beyond ctx.
-func (e *Engine) Retain(ctx context.Context, bankID string, items []Item, opts RetainOptions) (*RetainResult, error) {
+func (e *Engine) Retain(ctx context.Context, bankID string, items []Item, opts RetainOptions) (res *RetainResult, err error) {
 	if !ValidID(bankID) {
 		return nil, invalid("invalid bank id")
 	}
@@ -118,11 +118,24 @@ func (e *Engine) Retain(ctx context.Context, bankID string, items []Item, opts R
 			return nil, invalid("item %d: update_mode must be replace or append", i)
 		}
 	}
+	// Runs after the lock below is released: new facts queue a
+	// consolidation when the bank consolidates automatically.
+	defer func() {
+		if err != nil || res == nil {
+			return
+		}
+		for _, d := range res.Documents {
+			if !d.Unchanged {
+				e.autoConsolidate(bankID)
+				return
+			}
+		}
+	}()
 	lock := e.bankLock(bankID)
 	lock.Lock()
 	defer lock.Unlock()
 
-	res := &RetainResult{BankID: bankID, ItemsCount: len(items)}
+	res = &RetainResult{BankID: bankID, ItemsCount: len(items)}
 	prof, err := e.Profile(bankID)
 	if errors.Is(err, ErrNotFound) {
 		// Banks are created on first use, like a folder you write a note into.

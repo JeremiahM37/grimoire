@@ -9,6 +9,7 @@ import (
 	"hash/fnv"
 	"log"
 	"math"
+	"net/http"
 	"path"
 	"sort"
 	"strings"
@@ -39,6 +40,16 @@ type Engine struct {
 	Now func() time.Time
 	// ExtractConcurrency bounds parallel extraction calls per retain.
 	ExtractConcurrency int
+	// AllowPrivateWebhooks lets webhooks reach loopback and private
+	// networks; read on every registration and delivery.
+	AllowPrivateWebhooks func() bool
+	// WebhookClient overrides the guarded client deliveries use (tests).
+	WebhookClient *http.Client
+	// WebhookDelays overrides the retry schedule (tests).
+	WebhookDelays []time.Duration
+
+	q           *ops
+	deliverWake chan struct{}
 
 	mu     sync.Mutex
 	rev    map[string]int64
@@ -130,7 +141,7 @@ func bkToken(id string) string {
 // embedding cache is kept: it is keyed by content, so it stays correct.
 func (e *Engine) ResetBanks() error {
 	for _, tbl := range []string{"bank_banks", "bank_documents", "bank_chunks", "bank_units",
-		"bank_units_fts", "bank_entities", "bank_unit_entities", "bank_links"} {
+		"bank_units_fts", "bank_entities", "bank_unit_entities", "bank_links", "bank_models"} {
 		if err := e.Index.DB.Exec("DELETE FROM " + tbl); err != nil {
 			return err
 		}
@@ -154,12 +165,16 @@ func (e *Engine) RemoveBankFile(rel string) error {
 		if err := e.Index.DB.Exec("DELETE FROM bank_chunks WHERE path=?", rel); err != nil {
 			return err
 		}
-	case FactsKind:
+	case FactsKind, ObservationsKind:
 		db := e.Index.DB
 		db.Lock()
 		err := withTx(db.Conn(), func(tx *sql.Tx) error { return deleteUnitsByPath(tx, rel) })
 		db.Unlock()
 		if err != nil {
+			return err
+		}
+	case ModelKind:
+		if err := e.Index.DB.Exec("DELETE FROM bank_models WHERE path=?", rel); err != nil {
 			return err
 		}
 	default:
@@ -184,6 +199,10 @@ func (e *Engine) IndexBankFile(note *vault.Note) error {
 		err = e.indexDocument(id, note)
 	case FactsKind:
 		err = e.indexFacts(id, note)
+	case ObservationsKind:
+		err = e.indexObservations(id, note)
+	case ModelKind:
+		err = e.indexModel(id, note)
 	default:
 		return nil
 	}
@@ -472,6 +491,61 @@ func (e *Engine) indexFacts(bankID string, note *vault.Note) error {
 	})
 }
 
+// indexObservations caches the current observations as recall units of type
+// "observation". History entries are not recalled: they are what the bank no
+// longer believes.
+func (e *Engine) indexObservations(bankID string, note *vault.Note) error {
+	of := ParseObservations(note.Body, bankID)
+	texts := make([]string, len(of.Current))
+	for i, o := range of.Current {
+		texts[i] = Fact{Text: o.Text, OccStart: o.OccStart, OccEnd: o.OccEnd, Mentioned: o.Mentioned}.EmbedText()
+	}
+	vecs, err := e.embedTexts(texts)
+	if err != nil {
+		return err
+	}
+	bk := bkToken(bankID)
+	db := e.Index.DB
+	db.Lock()
+	defer db.Unlock()
+	return withTx(db.Conn(), func(tx *sql.Tx) error {
+		if err := deleteUnitsByPath(tx, note.Path); err != nil {
+			return err
+		}
+		for i, o := range of.Current {
+			human := 0
+			if o.IsHuman() {
+				human = 1
+			}
+			var blob []byte
+			if len(vecs[i]) > 0 {
+				blob = index.Pack(vecs[i])
+			}
+			res, err := tx.Exec("INSERT OR IGNORE INTO bank_units(bank,id,doc,chunk,type,kind,text,context,"+
+				"occ_start,occ_end,mentioned,tags,entities,causes,proof,human,doc_removed,challenges,metadata,path,line,embedding,sources)"+
+				" VALUES(?,?,'',-1,'observation','',?,'',?,?,?,?,'','',?,?,0,?,'',?,?,?,?)",
+				bankID, o.ID, o.Text, ms(o.OccStart), ms(o.OccEnd), ms(o.Mentioned), joinList(o.Tags),
+				len(o.Sources), human, o.Challenges, note.Path, o.Line, blob, joinList(o.Sources))
+			if err != nil {
+				return err
+			}
+			if n, _ := res.RowsAffected(); n == 0 {
+				log.Printf("bank %s: observation id %s collides with another unit; skipped", bankID, o.ID)
+				continue
+			}
+			rid, err := res.LastInsertId()
+			if err != nil {
+				return err
+			}
+			body := strings.Join([]string{o.Text, dateSignals(Fact{OccStart: o.OccStart, OccEnd: o.OccEnd})}, " ")
+			if _, err := tx.Exec("INSERT INTO bank_units_fts(rowid, bk, body) VALUES(?,?,?)", rid, bk, body); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
 // ------------------------------------------------------------ the cache
 
 // unit is one fact as recall sees it.
@@ -495,6 +569,8 @@ type unit struct {
 	Challenges string
 	Metadata   string
 	Path       string
+	// Sources are an observation's evidence facts.
+	Sources []string
 }
 
 func (u *unit) eventMS() int64 {
@@ -580,7 +656,7 @@ func (e *Engine) cache(bankID string) (*bankCache, error) {
 
 func (e *Engine) loadCache(bankID string, rev int64) (*bankCache, error) {
 	rows, err := e.Index.DB.Query("SELECT rid,id,doc,chunk,type,kind,text,context,occ_start,occ_end,mentioned,"+
-		"tags,entities,causes,proof,human,doc_removed,challenges,metadata,path,embedding"+
+		"tags,entities,causes,proof,human,doc_removed,challenges,metadata,path,embedding,sources"+
 		" FROM bank_units WHERE bank=? ORDER BY path, line, rid", bankID)
 	if err != nil {
 		return nil, err
@@ -591,16 +667,16 @@ func (e *Engine) loadCache(bankID string, rev int64) (*bankCache, error) {
 	var causes [][]string
 	for rows.Next() {
 		var u unit
-		var tags, ents, cs string
+		var tags, ents, cs, srcs string
 		var human, removed int
 		var blob []byte
 		if err := rows.Scan(&u.rid, &u.ID, &u.Doc, &u.Chunk, &u.Type, &u.Kind, &u.Text, &u.Context,
 			&u.OccStart, &u.OccEnd, &u.Mentioned, &tags, &ents, &cs, &u.Proof, &human, &removed,
-			&u.Challenges, &u.Metadata, &u.Path, &blob); err != nil {
+			&u.Challenges, &u.Metadata, &u.Path, &blob, &srcs); err != nil {
 			rows.Close()
 			return nil, err
 		}
-		u.Tags, u.Entities = splitList(tags), splitList(ents)
+		u.Tags, u.Entities, u.Sources = splitList(tags), splitList(ents), splitList(srcs)
 		u.Human, u.DocRemoved = human == 1, removed == 1
 		c.byID[u.ID] = int32(len(c.units))
 		c.byRID[u.rid] = int32(len(c.units))
@@ -618,6 +694,25 @@ func (e *Engine) loadCache(bankID string, rev int64) (*bankCache, error) {
 		if len(b) > 0 {
 			c.dim = len(b) / 4
 			break
+		}
+	}
+	// An observation is about whatever its evidence is about: it inherits the
+	// entities of its source facts, which is what lets the graph arm reach it.
+	for i := range c.units {
+		u := &c.units[i]
+		if u.Type != "observation" || len(u.Entities) > 0 {
+			continue
+		}
+		seen := map[string]bool{}
+		for _, sid := range u.Sources {
+			if p, ok := c.byID[sid]; ok {
+				for _, n := range c.units[p].Entities {
+					if !seen[strings.ToLower(n)] {
+						seen[strings.ToLower(n)] = true
+						u.Entities = append(u.Entities, n)
+					}
+				}
+			}
 		}
 	}
 	c.vecs = make([]float32, len(c.units)*c.dim)

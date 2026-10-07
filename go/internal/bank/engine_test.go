@@ -31,6 +31,8 @@ type stubLLM struct {
 	seen   []string
 	system []string
 	reply  func(user string) (content, finish string)
+	// route, when set, answers instead of reply and sees the system prompt.
+	route func(system, user string) (content, finish string)
 }
 
 func (s *stubLLM) handler(w http.ResponseWriter, r *http.Request) {
@@ -52,7 +54,9 @@ func (s *stubLLM) handler(w http.ResponseWriter, r *http.Request) {
 	s.system = append(s.system, sys)
 	s.mu.Unlock()
 	content, finish := `{"facts":[]}`, "stop"
-	if s.reply != nil {
+	if s.route != nil {
+		content, finish = s.route(sys, user)
+	} else if s.reply != nil {
 		content, finish = s.reply(user)
 	}
 	_ = json.NewEncoder(w).Encode(map[string]any{

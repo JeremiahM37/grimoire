@@ -102,6 +102,9 @@ const (
 	ProfileKind
 	DocumentKind
 	FactsKind
+	ObservationsKind
+	ModelKind
+	ProposalKind
 	OtherKind
 )
 
@@ -127,6 +130,12 @@ func ParsePath(rel string) (bankID string, kind PathKind) {
 		return id, DocumentKind
 	case strings.HasPrefix(tail, "facts/") && !strings.Contains(tail[len("facts/"):], "/"):
 		return id, FactsKind
+	case tail == "observations.md":
+		return id, ObservationsKind
+	case strings.HasPrefix(tail, "models/") && strings.HasSuffix(tail, ".md"):
+		return id, ModelKind
+	case strings.HasPrefix(tail, "proposals/") && strings.HasSuffix(tail, ".md"):
+		return id, ProposalKind
 	}
 	return id, OtherKind
 }

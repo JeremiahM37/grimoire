@@ -22,8 +22,13 @@ type Disposition struct {
 // Directive is a standing rule the bank's answers must respect.
 type Directive struct {
 	ID   string   `json:"id"`
+	Name string   `json:"name,omitempty"`
 	Text string   `json:"text"`
 	Tags []string `json:"tags,omitempty"`
+	// Priority orders directives in a reflect prompt, highest first.
+	Priority int `json:"priority,omitempty"`
+	// Inactive keeps a directive on file without applying it.
+	Inactive bool `json:"inactive,omitempty"`
 }
 
 // Profile is a bank's identity and configuration, read from bank.md.
@@ -61,9 +66,35 @@ var ConfigKeys = map[string]func(string) error{
 	"enable_graph":           oneOf("true", "false"),
 	"enable_temporal":        oneOf("true", "false"),
 	"enable_reranking":       oneOf("true", "false"),
-	// Reserved for the consolidation worker: accepted now so a bank can be
-	// configured ahead of it.
+	// When consolidation runs: after every retain (auto, the default when a
+	// model is configured), only when asked (manual), or never (off).
 	"consolidation": oneOf("auto", "manual", "off"),
+	// What consolidation should track, in the bank's own words.
+	"observations_mission": anyText,
+	// Facts per consolidation model call.
+	"consolidation_batch_size": intRange(1, 32),
+	// The MCP tools an agent may use on this bank, comma separated; empty
+	// means all.
+	"mcp_tools": toolList,
+	// The answer length target of reflect when a call names none.
+	"reflect_max_tokens": intRange(256, 16000),
+}
+
+func anyText(string) error { return nil }
+
+func toolList(v string) error {
+	for _, t := range strings.Split(v, ",") {
+		t = strings.TrimSpace(t)
+		if t == "" {
+			continue
+		}
+		for _, r := range t {
+			if !(r >= 'a' && r <= 'z' || r == '_') {
+				return fmt.Errorf("must be a comma-separated list of tool names")
+			}
+		}
+	}
+	return nil
 }
 
 func oneOf(vals ...string) func(string) error {
@@ -250,6 +281,12 @@ func parseDirectives(text string) []Directive {
 					d.ID = v
 				case "tags":
 					d.Tags = splitComma(v)
+				case "name":
+					d.Name = unescapeField(v)
+				case "prio":
+					d.Priority, _ = atoi(v)
+				case "off":
+					d.Inactive = true
 				}
 			}
 		}
@@ -318,6 +355,15 @@ func (p *Profile) Body() string {
 	b.WriteString("## " + secDirectives + "\n\n")
 	for _, d := range p.Directives {
 		b.WriteString("- " + oneLine(d.Text) + " <!--d id=" + escapeField(d.ID))
+		if d.Name != "" {
+			b.WriteString(" name=" + escapeField(oneLine(d.Name)))
+		}
+		if d.Priority != 0 {
+			b.WriteString(" prio=" + itoa(d.Priority))
+		}
+		if d.Inactive {
+			b.WriteString(" off")
+		}
 		if len(d.Tags) > 0 {
 			b.WriteString(" tags=" + joinComma(d.Tags))
 		}
