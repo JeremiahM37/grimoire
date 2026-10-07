@@ -86,6 +86,9 @@ References: [Claude Code hooks](https://code.claude.com/docs/en/hooks),
   `GRIMOIRE_CONTEXT_DEBUG=1` for a content-free stderr warning.
 - No Stop hook is needed, and no forced extra model turn is introduced.
 
+This hook only reads. To retain session transcripts into a per-repository
+memory bank, see the separate, also opt-in hook in [CODING_AGENTS.md](CODING_AGENTS.md).
+
 This is conservative selection, not semantic omniscience. Paraphrases without
 lexical overlap may be missed. Broad natural-language prompts may exceed the
 relevance threshold or input bound. Explicit `search_notes`, `recall`, and
