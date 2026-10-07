@@ -88,6 +88,20 @@ var behaviour = map[string]annotations{
 	// The credential broker. Not read-only — it SPENDS a secret by making a
 	// call the operator is billed and audited for — and open-world by
 	// definition, since the whole point is reaching another service.
+	// Memory banks. Retain extends a bank (and with a known document id
+	// replaces that document's model-extracted facts); deletes remove.
+	"retain":               {Title: "Retain content into a memory bank", DestructiveHint: true},
+	"bank_recall":          {Title: "Recall from a memory bank", ReadOnlyHint: true, IdempotentHint: true},
+	"list_banks":           {Title: "List memory banks", ReadOnlyHint: true, IdempotentHint: true},
+	"create_bank":          {Title: "Create a memory bank"},
+	"bank_profile":         {Title: "Read a bank profile", ReadOnlyHint: true, IdempotentHint: true},
+	"list_bank_memories":   {Title: "List bank facts", ReadOnlyHint: true, IdempotentHint: true},
+	"delete_bank_memory":   {Title: "Delete a bank fact", DestructiveHint: true, IdempotentHint: true},
+	"list_entities":        {Title: "List bank entities", ReadOnlyHint: true, IdempotentHint: true},
+	"list_bank_documents":  {Title: "List bank documents", ReadOnlyHint: true, IdempotentHint: true},
+	"get_bank_document":    {Title: "Read a bank document", ReadOnlyHint: true, IdempotentHint: true},
+	"delete_bank_document": {Title: "Delete a bank document", DestructiveHint: true, IdempotentHint: true},
+
 	"use_credential":           {Title: "Use a credential", OpenWorldHint: true},
 	"request_credential":       {Title: "Ask for a credential"},
 	"check_credential_request": {Title: "Check a credential request", ReadOnlyHint: true, IdempotentHint: true},
@@ -137,7 +151,7 @@ func annotate(ts []tool) []tool {
 
 // Tools returns the advertised tool list.
 func Tools() []tool {
-	return annotate([]tool{
+	return annotate(append([]tool{
 		{
 			Name: "knowledge_graph",
 			Description: "Explore bounded, access-checked knowledge relationships. Use a seed, " +
@@ -547,5 +561,5 @@ func Tools() []tool {
 				"id": strProp("the request id returned by request_credential"),
 			}, "id"),
 		},
-	})
+	}, bankTools()...))
 }

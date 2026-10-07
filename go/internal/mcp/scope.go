@@ -55,6 +55,19 @@ var toolScope = map[string]string{
 	"forget":             oauth.ScopeMemory,
 	"consolidate_memory": oauth.ScopeMemory,
 
+	// Memory banks are agent memory too.
+	"retain":               oauth.ScopeMemory,
+	"bank_recall":          oauth.ScopeMemory,
+	"list_banks":           oauth.ScopeMemory,
+	"create_bank":          oauth.ScopeMemory,
+	"bank_profile":         oauth.ScopeMemory,
+	"list_bank_memories":   oauth.ScopeMemory,
+	"delete_bank_memory":   oauth.ScopeMemory,
+	"list_entities":        oauth.ScopeMemory,
+	"list_bank_documents":  oauth.ScopeMemory,
+	"get_bank_document":    oauth.ScopeMemory,
+	"delete_bank_document": oauth.ScopeMemory,
+
 	// The credential broker. Kept apart from everything else — see
 	// oauth.DefaultScopes — because this is the one scope that can spend a
 	// credential against a third party on the owner's behalf.
