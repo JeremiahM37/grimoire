@@ -92,6 +92,9 @@ var behaviour = map[string]annotations{
 	// replaces that document's model-extracted facts); deletes remove.
 	"retain":               {Title: "Retain content into a memory bank", DestructiveHint: true},
 	"bank_recall":          {Title: "Recall from a memory bank", ReadOnlyHint: true, IdempotentHint: true},
+	"bank_index":           {Title: "Skim a bank's entries", ReadOnlyHint: true, IdempotentHint: true},
+	"bank_timeline":        {Title: "See what surrounds a bank entry", ReadOnlyHint: true, IdempotentHint: true},
+	"bank_get":             {Title: "Read bank entries by id", ReadOnlyHint: true, IdempotentHint: true},
 	"list_banks":           {Title: "List memory banks", ReadOnlyHint: true, IdempotentHint: true},
 	"create_bank":          {Title: "Create a memory bank"},
 	"bank_profile":         {Title: "Read a bank profile", ReadOnlyHint: true, IdempotentHint: true},

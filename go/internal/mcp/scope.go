@@ -58,6 +58,9 @@ var toolScope = map[string]string{
 	// Memory banks are agent memory too.
 	"retain":               oauth.ScopeMemory,
 	"bank_recall":          oauth.ScopeMemory,
+	"bank_index":           oauth.ScopeMemory,
+	"bank_timeline":        oauth.ScopeMemory,
+	"bank_get":             oauth.ScopeMemory,
 	"list_banks":           oauth.ScopeMemory,
 	"create_bank":          oauth.ScopeMemory,
 	"bank_profile":         oauth.ScopeMemory,

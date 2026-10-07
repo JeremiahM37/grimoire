@@ -402,3 +402,30 @@ func TestSessionDigestOverHTTPLeadsTheContext(t *testing.T) {
 		t.Errorf("context = %s", body)
 	}
 }
+
+func TestProgressiveDisclosureRoutes(t *testing.T) {
+	_, h := testServer(t)
+	for i, text := range []string{"Alpha service owns billing.", "Beta service owns search."} {
+		do(t, h, "POST", "/api/banks/pd/memories", map[string]any{"items": []map[string]any{
+			{"content": text, "document_id": "d" + string(rune('a'+i)), "timestamp": "2026-10-0" + string(rune('1'+i)) + "T09:00:00Z"}}})
+	}
+	var idx struct {
+		Items []struct{ Ref, ID, Title string } `json:"items"`
+		Total int                                `json:"total"`
+	}
+	decode(t, do(t, h, "GET", "/api/banks/pd/index", nil), &idx)
+	if idx.Total != 2 || len(idx.Items) != 2 || !strings.HasPrefix(idx.Items[0].Ref, "#") {
+		t.Fatalf("index = %+v", idx)
+	}
+	w := do(t, h, "GET", "/api/banks/pd/lookup?ids="+url.QueryEscape(idx.Items[0].Ref+",#zzzzzz"), nil)
+	if !strings.Contains(w.Body.String(), "owns") || !strings.Contains(w.Body.String(), "zzzzzz") {
+		t.Errorf("lookup = %s", w.Body)
+	}
+	w = do(t, h, "GET", "/api/banks/pd/timeline?anchor="+url.QueryEscape(idx.Items[0].Ref)+"&before=1&after=1", nil)
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "anchor_ref") {
+		t.Errorf("timeline = %d %s", w.Code, w.Body)
+	}
+	if w := do(t, h, "GET", "/api/banks/pd/lookup", nil); w.Code != http.StatusBadRequest {
+		t.Errorf("lookup without ids = %d", w.Code)
+	}
+}

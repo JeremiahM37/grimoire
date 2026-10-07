@@ -75,3 +75,41 @@ func TestBankDeletesPassForceOnlyWhenAsked(t *testing.T) {
 		t.Errorf("paths = %s, %s", (*seen)[0].path, (*seen)[1].path)
 	}
 }
+
+func TestProgressiveDisclosureToolsUseTheIndexTimelineAndLookupRoutes(t *testing.T) {
+	var seen []string
+	s := stubAPI(t, func(w http.ResponseWriter, r *http.Request) {
+		seen = append(seen, r.URL.RequestURI())
+		switch {
+		case strings.Contains(r.URL.Path, "/index"), strings.Contains(r.URL.Path, "/timeline"):
+			_, _ = w.Write([]byte(`{"total":2,"items":[{"ref":"#f3a9c1b2","type":"fact","title":"Cache is keyed by commit","date":"2026-10-01","tokens":9,"human":true},` +
+				`{"ref":"#o77aa001","type":"observation","title":"Releases are tagged from main","tokens":7}]}`))
+		default:
+			_, _ = w.Write([]byte(`{"items":[],"missing":["zzzz"]}`))
+		}
+	})
+	s.Session, s.Bank = "", "b"
+	r, err := s.dispatch("bank_index", map[string]any{"query": "cache", "types": []any{"fact"}, "limit": 5.0})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if seen[0] != "/api/banks/b/index?limit=5&q=cache&types=fact" {
+		t.Errorf("index request %q", seen[0])
+	}
+	lines := r.(map[string]any)["entries"].([]string)
+	if lines[0] != "#f3a9c1b2 2026-10-01 fact ~9t  Cache is keyed by commit [person]" || !strings.Contains(lines[1], "undated") {
+		t.Errorf("lines = %q", lines)
+	}
+	if _, err := s.dispatch("bank_timeline", map[string]any{"anchor": "#f3a9c1b2", "before": 2.0}); err != nil {
+		t.Fatal(err)
+	}
+	if seen[1] != "/api/banks/b/timeline?anchor=%23f3a9c1b2&before=2" {
+		t.Errorf("timeline request %q", seen[1])
+	}
+	if _, err := s.dispatch("bank_get", map[string]any{"ids": []any{"#f3a9c1b2", "o77aa001"}}); err != nil {
+		t.Fatal(err)
+	}
+	if seen[2] != "/api/banks/b/lookup?ids=%23f3a9c1b2%2Co77aa001" {
+		t.Errorf("lookup request %q", seen[2])
+	}
+}

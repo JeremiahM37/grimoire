@@ -85,7 +85,7 @@ func renderContext(bankID string, items []ContextItem, dropped int) string {
 		}
 	}
 	if dropped > 0 {
-		fmt.Fprintf(&b, "\n(%d lower-value items left out; ask with bank_recall for more.)\n", dropped)
+		fmt.Fprintf(&b, "\n(%d lower-value items left out; ask with bank_index or bank_recall for more.)\n", dropped)
 	}
 	b.WriteString("</grimoire_bank_context>")
 	return b.String()
@@ -182,7 +182,7 @@ func (e *Engine) contextItems(bankID string, o ContextOptions) ([]ContextItem, e
 		return obs[i].ProofCount > obs[j].ProofCount
 	})
 	for _, ob := range obs {
-		items = append(items, ContextItem{Kind: KindObserve, ID: ob.ID, Text: "- " + oneLineText(ob.Text)})
+		items = append(items, ContextItem{Kind: KindObserve, ID: ob.ID, Text: "- " + oneLineText(ob.Text) + " " + ShortRef(ob.ID)})
 	}
 	facts, _, err := e.ListFacts(bankID, FactQuery{Type: "", Limit: 500})
 	if err != nil {
@@ -206,7 +206,7 @@ func (e *Engine) contextItems(bankID string, o ContextOptions) ([]ContextItem, e
 		if w := factWhen(f); len(w) >= 10 {
 			line += " (" + w[:10] + ")"
 		}
-		items = append(items, ContextItem{Kind: KindFact, ID: f.ID, Text: line})
+		items = append(items, ContextItem{Kind: KindFact, ID: f.ID, Text: line + " " + ShortRef(f.ID)})
 	}
 	return items, nil
 }

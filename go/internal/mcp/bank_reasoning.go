@@ -161,7 +161,7 @@ func bankReasoningTools() []tool {
 
 // bankScoped are the tools that act on one bank and take the bank argument.
 var bankScoped = map[string]bool{
-	"retain": true, "bank_recall": true, "bank_profile": true, "list_bank_memories": true,
+	"retain": true, "bank_recall": true, "bank_index": true, "bank_timeline": true, "bank_get": true, "bank_profile": true, "list_bank_memories": true,
 	"delete_bank_memory": true, "list_entities": true, "list_bank_documents": true, "get_bank_document": true,
 	"delete_bank_document": true, "reflect": true, "consolidate": true, "list_observations": true, "update_observation": true,
 	"get_bank_memory": true, "list_mental_models": true, "get_mental_model": true, "create_mental_model": true,
