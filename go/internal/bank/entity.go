@@ -440,3 +440,42 @@ func ruleEntities(text string) []string {
 	}
 	return out
 }
+
+// entityAliases folds a lone first name into a full name: when a bank knows
+// "Dana" and exactly one longer name that starts with that word ("Dana Kim"),
+// the two are one person and "Dana" is an alias. Two full names sharing the
+// first word ("Dana Kim", "Dana Lee") leave "Dana" alone — guessing which one
+// is meant would weld two people together.
+//
+// It is a pure function of the set of names (in first-seen order, which is
+// file order), so a rebuild from the files folds exactly the same names and
+// nothing about the fold is stored. The result maps the lowercase alias to the
+// full name as first spelled.
+func entityAliases(names []string) map[string]string {
+	full := map[string]string{} // lowercase full name → first spelling
+	byFirst := map[string][]string{}
+	single := map[string]bool{}
+	for _, n := range names {
+		low := strings.ToLower(n)
+		ws := words(n)
+		switch {
+		case len(ws) == 1:
+			if len([]rune(ws[0])) >= 2 && !strings.ContainsAny(ws[0], "0123456789") && ws[0] == strings.TrimSpace(low) {
+				single[low] = true
+			}
+		case len(ws) >= 2 && len(ws) <= 4:
+			if _, ok := full[low]; ok {
+				continue
+			}
+			full[low] = n
+			byFirst[ws[0]] = append(byFirst[ws[0]], low)
+		}
+	}
+	out := map[string]string{}
+	for s := range single {
+		if cands := byFirst[s]; len(cands) == 1 {
+			out[s] = full[cands[0]]
+		}
+	}
+	return out
+}

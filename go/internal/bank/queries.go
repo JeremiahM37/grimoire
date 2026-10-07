@@ -126,16 +126,17 @@ func (e *Engine) rewriteFacts(bankID, doc, rel, oldBody string, ff FactsFile) er
 
 // EntitySummary is one entity in a listing.
 type EntitySummary struct {
-	ID        string `json:"entity_id"`
-	Name      string `json:"canonical_name"`
-	Mentions  int    `json:"mention_count"`
-	FirstSeen string `json:"first_seen,omitempty"`
-	LastSeen  string `json:"last_seen,omitempty"`
+	ID        string   `json:"entity_id"`
+	Name      string   `json:"canonical_name"`
+	Mentions  int      `json:"mention_count"`
+	Aliases   []string `json:"aliases,omitempty"`
+	FirstSeen string   `json:"first_seen,omitempty"`
+	LastSeen  string   `json:"last_seen,omitempty"`
 }
 
 func (c *bankCache) entitySummary(ei int32) EntitySummary {
 	en := c.entities[ei]
-	s := EntitySummary{ID: en.ID, Name: en.Name, Mentions: len(en.units)}
+	s := EntitySummary{ID: en.ID, Name: en.Name, Mentions: len(en.units), Aliases: en.Aliases}
 	if en.first != 0 {
 		s.FirstSeen = fromMS(en.first).Format("2006-01-02T15:04:05Z")
 	}

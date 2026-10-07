@@ -11,6 +11,7 @@ import (
 	"math"
 	"net/http"
 	"path"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -582,9 +583,12 @@ func (u *unit) eventMS() int64 {
 
 type entityInfo struct {
 	ID, Name string
-	units    []int32
-	first    int64
-	last     int64
+	// Aliases are the other spellings folded into this entity (a lone first
+	// name standing for the bank's one full name that starts with it).
+	Aliases []string
+	units   []int32
+	first   int64
+	last    int64
 }
 
 // bankCache is one bank held in memory for recall: every fact, its unit
@@ -726,6 +730,11 @@ func (e *Engine) loadCache(bankID string, rev int64) (*bankCache, error) {
 	}
 	c.timePos = make([]int32, len(c.units))
 	c.bodyLen = make([]int32, len(c.units))
+	var allNames []string
+	for i := range c.units {
+		allNames = append(allNames, c.units[i].Entities...)
+	}
+	aliases := entityAliases(allNames)
 	for i := range c.units {
 		u := &c.units[i]
 		c.timePos[i] = -1
@@ -740,6 +749,10 @@ func (e *Engine) loadCache(bankID string, rev int64) (*bankCache, error) {
 		}
 		for _, name := range u.Entities {
 			low := strings.ToLower(name)
+			spelled := ""
+			if full, ok := aliases[low]; ok {
+				spelled, name, low = name, full, strings.ToLower(full)
+			}
 			ei, ok := c.entByLow[low]
 			if !ok {
 				ei = int32(len(c.entities))
@@ -747,6 +760,15 @@ func (e *Engine) loadCache(bankID string, rev int64) (*bankCache, error) {
 				c.entities = append(c.entities, entityInfo{ID: EntityID(bankID, name), Name: name})
 			}
 			en := &c.entities[ei]
+			if spelled != "" {
+				if _, seen := c.entByLow[strings.ToLower(spelled)]; !seen {
+					c.entByLow[strings.ToLower(spelled)] = ei
+					en.Aliases = append(en.Aliases, spelled)
+				}
+			}
+			if slices.Contains(u.ents, ei) {
+				continue // "Dana" and "Dana Kim" on one fact are one mention
+			}
 			en.units = append(en.units, int32(i))
 			if t := u.eventMS(); t != 0 {
 				if en.first == 0 || t < en.first {
@@ -834,6 +856,15 @@ func (c *bankCache) knownEntities() []knownEntity {
 			}
 		}
 		out[i] = knownEntity{Name: en.Name, LastSeen: fromMS(en.last), Cooc: cooc, Mentions: len(en.units)}
+	}
+	// An alias stays a name of its own to resolution, so a new "Dana" is
+	// written as "Dana" and the files keep what was said; the fold into the
+	// full name happens when the cache is built, where it can be undone if a
+	// second "Dana …" arrives.
+	for _, en := range c.entities {
+		for _, a := range en.Aliases {
+			out = append(out, knownEntity{Name: a, LastSeen: fromMS(en.last), Mentions: len(en.units)})
+		}
 	}
 	return out
 }
