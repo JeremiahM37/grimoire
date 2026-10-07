@@ -1,6 +1,8 @@
 package embed
 
 import (
+	"encoding/json"
+	"fmt"
 	"strings"
 	"unicode"
 
@@ -23,7 +25,7 @@ import (
 // lowercase — so accents ARE stripped here. Getting that backwards silently
 // changes the ids for every accented word rather than failing.
 
-type wordPiece struct {
+type WordPiece struct {
 	vocab                map[string]int32
 	unkToken             string
 	continuingPrefix     string
@@ -32,10 +34,102 @@ type wordPiece struct {
 	stripAccents         bool
 	cleanText            bool
 	handleChineseChars   bool
+
+	// special holds the added tokens matched verbatim in the raw text before
+	// normalization, as HF tokenizers does; nil disables the split (see
+	// SplitSpecialTokens).
+	special []specialToken
+	added   []specialToken
 }
 
+type specialToken struct {
+	text string
+	id   int32
+}
+
+// tokenizerJSON is the subset of tokenizer.json this needs.
+type tokenizerJSON struct {
+	Normalizer *struct {
+		Type               string `json:"type"`
+		CleanText          *bool  `json:"clean_text"`
+		HandleChineseChars *bool  `json:"handle_chinese_chars"`
+		StripAccents       *bool  `json:"strip_accents"`
+		Lowercase          *bool  `json:"lowercase"`
+	} `json:"normalizer"`
+	AddedTokens []struct {
+		ID         int32  `json:"id"`
+		Content    string `json:"content"`
+		Special    bool   `json:"special"`
+		Normalized bool   `json:"normalized"`
+	} `json:"added_tokens"`
+	Model struct {
+		Type                 string           `json:"type"`
+		UnkToken             string           `json:"unk_token"`
+		ContinuingPrefix     string           `json:"continuing_subword_prefix"`
+		MaxInputCharsPerWord int              `json:"max_input_chars_per_word"`
+		Vocab                map[string]int32 `json:"vocab"`
+	} `json:"model"`
+}
+
+// ParseWordPiece builds a tokenizer from a HuggingFace tokenizer.json whose
+// model is WordPiece behind a BertNormalizer. Added tokens are recorded but
+// not split out of the text until SplitSpecialTokens is called, which keeps
+// the model2vec path byte-for-byte what it was validated as.
+func ParseWordPiece(raw []byte) (*WordPiece, error) {
+	var tj tokenizerJSON
+	if err := json.Unmarshal(raw, &tj); err != nil {
+		return nil, fmt.Errorf("parsing tokenizer: %w", err)
+	}
+	if tj.Model.Type != "WordPiece" {
+		return nil, fmt.Errorf("unsupported tokenizer model %q (only WordPiece)", tj.Model.Type)
+	}
+
+	lower := true
+	if tj.Normalizer != nil && tj.Normalizer.Lowercase != nil {
+		lower = *tj.Normalizer.Lowercase
+	}
+	// strip_accents is null in this config; HuggingFace resolves that to the
+	// value of lowercase, so it must not default to false.
+	strip := lower
+	if tj.Normalizer != nil && tj.Normalizer.StripAccents != nil {
+		strip = *tj.Normalizer.StripAccents
+	}
+	prefix := tj.Model.ContinuingPrefix
+	if prefix == "" {
+		prefix = "##"
+	}
+	maxChars := tj.Model.MaxInputCharsPerWord
+	if maxChars == 0 {
+		maxChars = 100
+	}
+	w := &WordPiece{
+		vocab:                tj.Model.Vocab,
+		unkToken:             tj.Model.UnkToken,
+		continuingPrefix:     prefix,
+		maxInputCharsPerWord: maxChars,
+		lowercase:            lower,
+		stripAccents:         strip,
+		cleanText:            tj.Normalizer == nil || tj.Normalizer.CleanText == nil || *tj.Normalizer.CleanText,
+		handleChineseChars:   tj.Normalizer == nil || tj.Normalizer.HandleChineseChars == nil || *tj.Normalizer.HandleChineseChars,
+	}
+	for _, at := range tj.AddedTokens {
+		// a special, un-normalized added token is matched verbatim in the
+		// raw input; the BERT tokenizers this targets have no other kind
+		if at.Special && !at.Normalized && at.Content != "" {
+			w.added = append(w.added, specialToken{text: at.Content, id: at.ID})
+		}
+	}
+	return w, nil
+}
+
+// SplitSpecialTokens makes Encode treat added special tokens ("[SEP]",
+// "[CLS]", …) appearing in the text as those tokens, as HF tokenizers does by
+// default. Without it "[SEP]" in a document is tokenized as punctuation and
+// letters.
+func (w *WordPiece) SplitSpecialTokens() { w.special = w.added }
+
 // normalize applies the BertNormalizer stages in order.
-func (w *wordPiece) normalize(s string) string {
+func (w *WordPiece) normalize(s string) string {
 	if w.cleanText {
 		s = cleanText(s)
 	}
@@ -165,18 +259,53 @@ func isPunctuation(r rune) bool {
 }
 
 // Encode returns the token ids for a string, with no special tokens added.
-func (w *wordPiece) Encode(text string) []int32 {
+func (w *WordPiece) Encode(text string) []int32 {
+	if len(w.special) == 0 {
+		return w.encodeSegment(nil, text)
+	}
 	var ids []int32
+	start := 0
+	for i := 0; i < len(text); {
+		if tok, ok := w.specialAt(text[i:]); ok {
+			ids = w.encodeSegment(ids, text[start:i])
+			ids = append(ids, tok.id)
+			i += len(tok.text)
+			start = i
+			continue
+		}
+		i++
+	}
+	return w.encodeSegment(ids, text[start:])
+}
+
+func (w *WordPiece) encodeSegment(ids []int32, text string) []int32 {
 	for _, word := range preTokenize(w.normalize(text)) {
 		ids = append(ids, w.encodeWord(word)...)
 	}
 	return ids
 }
 
+// specialAt returns the longest special token that s starts with.
+func (w *WordPiece) specialAt(s string) (specialToken, bool) {
+	best, found := specialToken{}, false
+	for _, t := range w.special {
+		if len(t.text) > len(best.text) && strings.HasPrefix(s, t.text) {
+			best, found = t, true
+		}
+	}
+	return best, found
+}
+
+// TokenID looks a token up in the vocabulary.
+func (w *WordPiece) TokenID(tok string) (int32, bool) {
+	id, ok := w.vocab[tok]
+	return id, ok
+}
+
 // encodeWord is greedy longest-match-first WordPiece. A word that cannot be
 // fully segmented yields a single unk token for the WHOLE word — not per
 // character.
-func (w *wordPiece) encodeWord(word string) []int32 {
+func (w *WordPiece) encodeWord(word string) []int32 {
 	chars := []rune(word)
 	if len(chars) > w.maxInputCharsPerWord {
 		return []int32{w.vocab[w.unkToken]}

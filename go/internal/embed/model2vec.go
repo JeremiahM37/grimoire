@@ -24,7 +24,7 @@ import (
 // the sentence vector is the mean of its token vectors, L2-normalized.
 type Model2Vec struct {
 	Name      string
-	tokenizer *wordPiece
+	tokenizer *WordPiece
 	embedding []float32 // row-major, rows*dim
 	rows      int
 	dim       int
@@ -35,24 +35,6 @@ type Model2Vec struct {
 	maxLength         int
 }
 
-// tokenizerJSON is the subset of tokenizer.json this needs.
-type tokenizerJSON struct {
-	Normalizer *struct {
-		Type               string `json:"type"`
-		CleanText          *bool  `json:"clean_text"`
-		HandleChineseChars *bool  `json:"handle_chinese_chars"`
-		StripAccents       *bool  `json:"strip_accents"`
-		Lowercase          *bool  `json:"lowercase"`
-	} `json:"normalizer"`
-	Model struct {
-		Type                 string           `json:"type"`
-		UnkToken             string           `json:"unk_token"`
-		ContinuingPrefix     string           `json:"continuing_subword_prefix"`
-		MaxInputCharsPerWord int              `json:"max_input_chars_per_word"`
-		Vocab                map[string]int32 `json:"vocab"`
-	} `json:"model"`
-}
-
 // LoadModel2Vec reads a model2vec directory (tokenizer.json + model.safetensors),
 // as produced by a HuggingFace snapshot download.
 func LoadModel2Vec(dir, name string) (*Model2Vec, error) {
@@ -60,49 +42,16 @@ func LoadModel2Vec(dir, name string) (*Model2Vec, error) {
 	if err != nil {
 		return nil, fmt.Errorf("reading tokenizer: %w", err)
 	}
-	var tj tokenizerJSON
-	if err := json.Unmarshal(tkRaw, &tj); err != nil {
-		return nil, fmt.Errorf("parsing tokenizer: %w", err)
-	}
-	if tj.Model.Type != "WordPiece" {
-		return nil, fmt.Errorf("unsupported tokenizer model %q (only WordPiece)", tj.Model.Type)
-	}
-
-	lower := true
-	if tj.Normalizer != nil && tj.Normalizer.Lowercase != nil {
-		lower = *tj.Normalizer.Lowercase
-	}
-	// strip_accents is null in this config; HuggingFace resolves that to the
-	// value of lowercase, so it must not default to false.
-	strip := lower
-	if tj.Normalizer != nil && tj.Normalizer.StripAccents != nil {
-		strip = *tj.Normalizer.StripAccents
-	}
-	prefix := tj.Model.ContinuingPrefix
-	if prefix == "" {
-		prefix = "##"
-	}
-	maxChars := tj.Model.MaxInputCharsPerWord
-	if maxChars == 0 {
-		maxChars = 100
-	}
-
-	tk := &wordPiece{
-		vocab:                tj.Model.Vocab,
-		unkToken:             tj.Model.UnkToken,
-		continuingPrefix:     prefix,
-		maxInputCharsPerWord: maxChars,
-		lowercase:            lower,
-		stripAccents:         strip,
-		cleanText:            tj.Normalizer == nil || tj.Normalizer.CleanText == nil || *tj.Normalizer.CleanText,
-		handleChineseChars:   tj.Normalizer == nil || tj.Normalizer.HandleChineseChars == nil || *tj.Normalizer.HandleChineseChars,
+	tk, err := ParseWordPiece(tkRaw)
+	if err != nil {
+		return nil, err
 	}
 
 	emb, rows, dim, err := loadSafetensors(filepath.Join(dir, "model.safetensors"))
 	if err != nil {
 		return nil, err
 	}
-	unk, ok := tj.Model.Vocab[tj.Model.UnkToken]
+	unk, ok := tk.TokenID(tk.unkToken)
 	if !ok {
 		unk = -1
 	}
