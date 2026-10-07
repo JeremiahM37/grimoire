@@ -288,9 +288,9 @@ type obsActions struct {
 
 const consolidationSystem = `You keep a memory bank's observations: durable statements of what is known, each backed by the facts that support it. You are given new facts and the existing observations they may bear on, and you decide how the observations should change.
 
-1. Prefer revising an existing observation over adding a near-copy. When a new fact repeats, confirms or extends what an observation says about the same thing, update that observation and add the fact as a source. One observation with many sources beats many with one each.
-2. Keep one observation per distinct thing: a person's role, a relationship, a decision, a count, an event. Never fold different things into one.
-3. Match on the same entity and aspect, not merely the same topic.
+1. Prefer revising an existing observation over adding a near-copy. When a new fact repeats, confirms or extends what an observation says about the same subject, update that observation and add the fact as a source. One observation with many sources beats many with one each.
+2. Related new facts belong together. When several of the new facts are about the same subject (one person's garden, one project, one trip), write ONE observation that covers them and cite every one of those facts, even when there are no existing observations yet. Do not write one observation per fact. Keep separate only what is genuinely a different subject: another person, another project, an unrelated event.
+3. Match on the same entity and subject, not merely the same loose topic. Two facts about one person's hobby are one subject; a fact about their job is another.
 4. When something changed, revise the observation to say what holds now and what held before, with dates ("Dana led billing until March 2024, then moved to search"). Say only what the facts support.
 5. Never compute, extrapolate or adjust numbers. Change a count only when a fact states the new count.
 6. Retire an observation only when it is restated elsewhere or says nothing. Keep history by revising instead.
@@ -303,7 +303,7 @@ Reply with one JSON object and nothing else:
 {"creates": [{"text": "...", "source_fact_ids": ["..."], "evidence": [{"fact_id": "...", "quote": "..."}], "reason": "..."}],
  "updates": [{"observation_id": "...", "text": "...", "source_fact_ids": ["..."], "evidence": [{"fact_id": "...", "quote": "..."}], "reason": "..."}],
  "deletes": [{"observation_id": "...", "reason": "..."}]}
-Copy ids exactly. At most one update per observation. Every create and update cites at least one of the new facts. A quote is a short exact excerpt of the fact it cites. Use empty arrays when nothing should change.`
+Copy ids exactly. At most one update per observation. Every create and update cites every one of the new facts it draws on, and at least one. A quote is a short exact excerpt of the fact it cites. Use empty arrays when nothing should change.`
 
 const defaultObservationsMission = "Track anything durable in the new facts: people and their relationships, roles and preferences; names, numbers and dates; places; decisions, plans and their reasons; events; and patterns that recur."
 

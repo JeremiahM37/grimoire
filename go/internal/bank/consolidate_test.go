@@ -310,3 +310,52 @@ func TestObservationFileRoundTrips(t *testing.T) {
 		t.Errorf("hand-typed observation = %+v", hand)
 	}
 }
+
+// In a fresh bank the first batch has nothing to revise, so related facts must
+// still end up in one observation: within a batch through one create citing
+// every fact, across batches through an update of what an earlier batch made.
+func TestFreshBankMergesRelatedFactsAcrossBatches(t *testing.T) {
+	h := newHarness(t, true)
+	var sawSystem string
+	cons := &consolidator{plan: func(ids, texts []string, existing []map[string]any) map[string]any {
+		var src []any
+		for _, id := range ids {
+			src = append(src, id)
+		}
+		if len(existing) > 0 {
+			return map[string]any{"updates": []any{map[string]any{"observation_id": existing[0]["id"],
+				"text": "Alice keeps a vegetable garden", "source_fact_ids": src}}}
+		}
+		return map[string]any{"creates": []any{map[string]any{"text": "Alice keeps a vegetable garden", "source_fact_ids": src}}}
+	}}
+	h.llm.route = func(sys, user string) (string, string) {
+		if strings.HasPrefix(sys, consolidationMarker) {
+			sawSystem = sys
+			return cons.route(nil)(sys, user)
+		}
+		return extractionReply(
+			map[string]any{"what": "Alice grows tomatoes in her garden", "fact_type": "world", "fact_kind": "conversation", "entities": []any{"Alice"}},
+			map[string]any{"what": "Alice grows carrots in her garden", "fact_type": "world", "fact_kind": "conversation", "entities": []any{"Alice"}},
+			map[string]any{"what": "Alice waters her garden every morning", "fact_type": "world", "fact_kind": "conversation", "entities": []any{"Alice"}},
+			map[string]any{"what": "Alice built raised beds in her garden", "fact_type": "world", "fact_kind": "conversation", "entities": []any{"Alice"}},
+		), "stop"
+	}
+	h.retain(t, "b", Item{Content: "Alice talks about her garden.", DocumentID: "d1"})
+	h.e.UpdateProfile("b", func(p *Profile) error { p.Config["consolidation_batch_size"] = "2"; return nil })
+	res, err := h.e.Consolidate(context.Background(), "b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Batches != 2 || res.Created != 1 || res.Updated != 1 || res.ObservationTotal != 1 {
+		t.Fatalf("res = %+v", res)
+	}
+	of, _, _ := h.e.readObservations("b")
+	if len(of.Current) != 1 || len(of.Current[0].Sources) != 4 {
+		t.Fatalf("observations = %+v", of.Current)
+	}
+	for _, want := range []string{"Related new facts belong together", "ONE observation"} {
+		if !strings.Contains(sawSystem, want) {
+			t.Errorf("consolidation prompt lacks %q", want)
+		}
+	}
+}
