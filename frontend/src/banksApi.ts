@@ -70,10 +70,12 @@ export interface Observation {
   occurred_start?: string; occurred_end?: string; mentioned_at?: string; updated_at?: string; challenges?: string;
   of?: string; superseded_at?: string; deleted?: boolean;
 }
+export interface DuplicateSide { id: string; text: string; human?: boolean }
+export interface DuplicateCandidate { type: string; score: number; keep: DuplicateSide; merge: DuplicateSide; shared: string[] }
 export interface Proposal { content: string; based_on: string[]; created_at: string; base_version: number }
 export interface MentalModel {
   id: string; bank_id: string; name: string; question: string; folder: string; path: string; tags: string[]; refresh: string;
-  max_tokens: number; budget: string; fact_types?: string[]; body?: string; version: number; last_refreshed?: string; based_on: string[];
+  refresh_mode?: string; max_tokens: number; budget: string; fact_types?: string[]; body?: string; version: number; last_refreshed?: string; based_on: string[];
   authority: string; is_stale: boolean; stale_reason?: string; pending_proposal?: Proposal; updated?: string;
 }
 export interface ModelInput { id?: string; name?: string; question?: string; folder?: string; tags?: string[]; refresh?: string; max_tokens?: number; budget?: string; fact_types?: string[]; body?: string }
@@ -162,6 +164,14 @@ export function createBanksApi(request: Request) {
     observations: (bank: string, params: { q?: string; authority?: string; include_history?: boolean; limit?: number; offset?: number } = {}) =>
       optional(request<{ items: Observation[]; total: number; history?: Observation[] }>(`${b(bank)}/observations${qs({ ...params, include_history: params.include_history ? 1 : undefined })}`)),
     observation: (bank: string, id: string) => request<{ observation: Observation; history: Observation[] }>(`${b(bank)}/observations/${enc(id)}`),
+    /** A person's edit of an observation's text; the server marks it human so consolidation keeps it. */
+    updateObservation: (bank: string, id: string, text: string) => request<{ observation: Observation }>(`${b(bank)}/observations/${enc(id)}`, { method: 'PATCH', body: body({ text }) }),
+    /** Near-duplicate pairs, most similar first. */
+    duplicates: (bank: string, params: { type?: string; min_score?: number; limit?: number } = {}) =>
+      optional(request<{ candidates: DuplicateCandidate[] }>(`${b(bank)}/duplicates${qs(params)}`)),
+    /** Fold `merge` into `keep`; the merged text is struck through and kept. */
+    mergeDuplicates: (bank: string, keep: string, merge: string) =>
+      request<{ type: string; kept: string; merged: string; struck: string }>(`${b(bank)}/duplicates/merge`, { method: 'POST', body: body({ keep, merge }) }),
     deleteObservation: (bank: string, id: string, force = false) => request(`${b(bank)}/observations/${enc(id)}${force ? '?force=true' : ''}`, { method: 'DELETE' }),
     /** Queue a consolidation. 409 model_required when no model is configured. */
     consolidate: (bank: string) => optional(request<{ operation_id: string; deduplicated: boolean }>(`${b(bank)}/consolidate`, { method: 'POST', body: {} })),
@@ -175,7 +185,7 @@ export function createBanksApi(request: Request) {
       optional(request<{ mental_model: MentalModel; mental_model_id: string; operation_id: string | null }>(`${b(bank)}/mental-models`, { method: 'POST', body: body(model) })),
     /** Edit a model. A `body` is a person's edit; a new `folder` moves it and changes its id. */
     updateMentalModel: (bank: string, id: string, patch: ModelInput) => request<MentalModel>(m(bank, id), { method: 'PATCH', body: body(patch) }),
-    refreshMentalModel: (bank: string, id: string) => request<{ operation_id: string; status: string; deduplicated: boolean }>(`${m(bank, id)}/refresh`, { method: 'POST', body: {} }),
+    refreshMentalModel: (bank: string, id: string, mode?: 'full' | 'delta') => request<{ operation_id: string; status: string; deduplicated: boolean }>(`${m(bank, id)}/refresh`, { method: 'POST', body: body(mode ? { mode } : {}) }),
     acceptProposal: (bank: string, id: string) => request<MentalModel>(`${m(bank, id)}/proposal/accept`, { method: 'POST', body: {} }),
     rejectProposal: (bank: string, id: string) => request<{ rejected: string }>(`${m(bank, id)}/proposal/reject`, { method: 'POST', body: {} }),
     deleteMentalModel: (bank: string, id: string) => request(m(bank, id), { method: 'DELETE' }),

@@ -191,3 +191,21 @@ test('webhook form helpers', () => {
   assert.equal(deliveryText({ status: 'pending', attempts: 0 }), 'pending');
   assert.equal(deliveryText({ status: 'pending', attempts: 2, last_error: '503' }), 'retrying, attempt 2: 503');
 });
+
+test('observation edit, duplicate review and refresh mode hit the documented routes', async () => {
+  const seen: string[] = [];
+  const bodies: unknown[] = [];
+  const request = createClient({ fetch: async (url, init) => {
+    seen.push(`${init?.method || 'GET'} ${url}`); bodies.push(init?.body ? JSON.parse(String(init.body)) : undefined);
+    return Response.json({ candidates: [], observation: {}, operation_id: 'o', status: 'queued', deduplicated: false });
+  } });
+  const api = createBanksApi(request);
+  await api.updateObservation('b', 'obs-1', 'new text');
+  await api.duplicates('b', { type: 'fact' });
+  await api.mergeDuplicates('b', 'a', 'c');
+  await api.refreshMentalModel('b', 'm', 'delta');
+  assert.deepEqual(seen, ['PATCH /api/banks/b/observations/obs-1', 'GET /api/banks/b/duplicates?type=fact', 'POST /api/banks/b/duplicates/merge', 'POST /api/banks/b/mental-models/m/refresh']);
+  assert.deepEqual(bodies[0], { text: 'new text' });
+  assert.deepEqual(bodies[2], { keep: 'a', merge: 'c' });
+  assert.deepEqual(bodies[3], { mode: 'delta' });
+});
