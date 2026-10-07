@@ -1,3 +1,5 @@
+//go:build !amd64 || purego
+
 package rerank
 
 const useFMA = false
