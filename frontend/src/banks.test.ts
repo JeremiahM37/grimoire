@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ApiError, createClient } from './api';
 import { createBanksApi, createFromTemplate, isMissingRoute, isModelRequired, UNAVAILABLE, withOverrides } from './banksApi';
-import { armNames, builtinTemplates, chunkId, CONFIG_KEYS, CONFIG_TEXT_KEYS, filterFacts, opKindLabel, radialLayout, rankRows, staleText, validBankId } from './banksModel';
+import { deliveryText, eventsLabel, validWebhookUrl, WEBHOOK_EVENTS, armNames, builtinTemplates, chunkId, CONFIG_KEYS, CONFIG_TEXT_KEYS, filterFacts, opKindLabel, radialLayout, rankRows, staleText, validBankId } from './banksModel';
 
 test('chunk ids match the server encoding', () => {
   assert.equal(chunkId('t1', 'd1', 0), 't1_d1_0');
@@ -161,4 +161,33 @@ test('retain, recall and reflect send the server\'s shapes', async () => {
   assert.deepEqual(bodies[2], { url: '/api/banks/b/memories/recall', query: 'q', budget: 'low', trace: true });
   assert.deepEqual(bodies[3], { url: '/api/banks/b/reflect', query: 'q', fact_types: ['world'], include: { facts: {} } });
   assert.deepEqual(bodies[4], { url: '/api/banks/b/reflect', query: 'q', include: { facts: {}, tool_calls: {} } });
+});
+
+test('webhook calls use the bank routes and an older server resolves to UNAVAILABLE', async () => {
+  const seen: string[] = [];
+  const request = createClient({ fetch: async (url, init) => { seen.push(`${init?.method || 'GET'} ${url} ${init?.body ?? ''}`.trim()); return Response.json({ items: [] }); } });
+  const api = createBanksApi(request);
+  await api.webhooks('b');
+  await api.createWebhook('b', { url: 'https://x.test/h', events: ['retain.completed'] });
+  await api.updateWebhook('b', 'w/1', { enabled: false });
+  await api.deliveries('b', 'w/1', 10);
+  await api.deleteWebhook('b', 'w/1');
+  assert.deepEqual(seen, ['GET /api/banks/b/webhooks', 'POST /api/banks/b/webhooks {"url":"https://x.test/h","events":["retain.completed"]}',
+    'PATCH /api/banks/b/webhooks/w%2F1 {"enabled":false}', 'GET /api/banks/b/webhooks/w%2F1/deliveries?limit=10', 'DELETE /api/banks/b/webhooks/w%2F1']);
+  const old = createBanksApi(createClient({ fetch: async () => new Response('404 page not found\n', { status: 404, statusText: 'Not Found' }) }));
+  assert.equal(await old.webhooks('b'), UNAVAILABLE);
+});
+
+test('webhook form helpers', () => {
+  assert.ok(validWebhookUrl('https://example.com/hook'));
+  assert.ok(validWebhookUrl(' http://10.0.0.5:8080/x '));
+  assert.ok(!validWebhookUrl('ftp://example.com'));
+  assert.ok(!validWebhookUrl('not a url'));
+  assert.ok(WEBHOOK_EVENTS.includes('*') && WEBHOOK_EVENTS.includes('retain.completed'));
+  assert.equal(eventsLabel([]), 'default events');
+  assert.equal(eventsLabel(['a', 'b']), 'a, b');
+  assert.equal(deliveryText({ status: 'delivered', attempts: 1, last_response_status: 200 }), 'delivered (200)');
+  assert.equal(deliveryText({ status: 'failed', attempts: 3, last_error: 'timeout' }), 'failed after 3 attempts: timeout');
+  assert.equal(deliveryText({ status: 'pending', attempts: 0 }), 'pending');
+  assert.equal(deliveryText({ status: 'pending', attempts: 2, last_error: '503' }), 'retrying, attempt 2: 503');
 });
