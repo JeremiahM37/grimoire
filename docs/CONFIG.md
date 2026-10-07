@@ -25,6 +25,8 @@ Everything is environment-driven (same variables bare-metal, systemd, Docker):
 | `GRIMOIRE_RERANK_MODEL` | `cross-encoder/ms-marco-MiniLM-L-6-v2` | Local: a hub repo id (fetched once, ~90 MB) or a path to a directory with `config.json`, `tokenizer.json` and `model.safetensors`. Remote: the model name the service expects |
 | `GRIMOIRE_RERANK_URL` / `_API_KEY` | *(empty)* | Remote reranker base URL (`/rerank` is appended unless present) and bearer token |
 | `GRIMOIRE_RERANK_MAX_LEN` | `256` | Local reranker: tokens per (query, passage) pair, specials included; longer pairs are truncated longest-first (max 512) |
+| `GRIMOIRE_BANK_WORKERS` | `2` | Background workers for memory-bank operations (async retain, consolidation, mental-model refresh) and webhook delivery; `0` turns them off. Memory-bank recall uses the reranker above, except that `auto` only uses a local model already on disk |
+| `GRIMOIRE_WEBHOOK_ALLOW_PRIVATE` | *(off)* | Let memory-bank webhooks reach loopback and private networks. Link-local and cloud-metadata addresses stay refused |
 | `GRIMOIRE_WHISPER_URL` / `_MODEL` | *(empty)* | Audio-memo transcription |
 | `GRIMOIRE_WEB_SEARCH_PROVIDER` | *(off)* | `searxng` · `brave` · `serper` · `google` — enables `search_web` / `open_urls` |
 | `GRIMOIRE_WEB_SEARCH_URL` / `_KEY` / `_CX` | *(empty)* | SearXNG base URL · provider key (or `vault:name` to read it from the credential vault) · Google engine id |
