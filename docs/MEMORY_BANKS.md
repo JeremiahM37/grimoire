@@ -193,3 +193,24 @@ JSON mode, with system prompt and content kept apart. For a provider that
 thinks before answering, `GRIMOIRE_LLM_REASONING_EFFORT=off` turns thinking
 off where the provider has a switch for it, and `GRIMOIRE_LLM_EXTRA_BODY`
 passes any vendor-specific field. Recall never calls a model.
+
+## Coding agents
+
+One bank per repository, MCP setup for Claude Code and Codex, seeding from git
+history and an optional session-transcript hook: see [CODING_AGENTS.md](CODING_AGENTS.md).
+
+## From the shell, the web app and code
+
+- **CLI**: `grimoire bank help`. The commands are an HTTP client of a running
+  server (`GRIMOIRE_URL`, `GRIMOIRE_AUTH_TOKEN`, or `--url`/`--token`):
+  `list`, `create --template`, `show`, `update`, `delete --yes`,
+  `retain` (text, `--file`, `--dir` or stdin), `recall --trace`, `memories ls|rm`,
+  `entities`, `documents`, `import-git`, and `reflect`, `observations`, `models`,
+  `ops`, `templates` for the surfaces still being built — those print
+  "not available on this server" until the server has them.
+- **Web app**: *Memory banks* in the sidebar or the command palette — profile
+  editor, memories, documents and chunks, entities, and a recall playground
+  that shows each arm's ranks and the trace.
+- **Python / JavaScript**: `Grimoire(...).bank("name")` in `clients/python`, and
+  `@jeremiahm37/grimoire/banks` in `clients/js`, each with a wrapper that adds
+  recalled memories to an OpenAI-compatible chat call and retains the exchange.
