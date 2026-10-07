@@ -310,7 +310,7 @@ class Bank:
         """The entries dated around ``anchor`` (a ``#ref`` or ``YYYY-MM-DD``), oldest first."""
         return self._req("GET", "/timeline" + _q({"anchor": anchor, "before": before, "after": after}))
 
-    def get(self, ids: list[str]) -> dict[str, Any]:
+    def get_entries(self, ids: list[str]) -> dict[str, Any]:
         """Entries in full by ``#ref`` or id: ``{"items": [...], "missing": [...]}``."""
         return self._req("GET", "/lookup" + _q({"ids": ",".join(ids)}))
 

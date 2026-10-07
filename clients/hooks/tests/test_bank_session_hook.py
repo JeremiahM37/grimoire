@@ -230,7 +230,7 @@ def start_event(repo, source="startup"):
 
 
 def test_fit_items_drops_the_lowest_value_until_it_fits():
-    items = ["- most valuable"] + ["- filler %d %s" % (i, "z" * 50) for i in range(40)]
+    items = ["- most valuable"] + [f"- filler {i} {'z' * 50}" for i in range(40)]
     text, kept, dropped = hook.fit_items("<a>\n", items, "\n</a>", 500)
     assert len(text) <= 500 and kept + dropped == len(items) and dropped > 0
     assert "- most valuable" in text and "left out" in text

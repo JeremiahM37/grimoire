@@ -330,7 +330,7 @@ def test_coding_agent_surfaces(stub, g):
     bank = g.bank("s")
     bank.index("cache", types=["fact"], limit=5)
     bank.timeline("#f3a9c1b2", before=2)
-    bank.get(["#f3a9c1b2", "o77aa001"])
+    bank.get_entries(["#f3a9c1b2", "o77aa001"])
     bank.context(max_chars=3000, source="resume")
     bank.write_digest("a:1", [{"speaker": "user", "text": "hi"}], use_model=True)
     assert stub.find("GET", "/api/banks/s/index")[0]["path"] == "/api/banks/s/index?q=cache&types=fact&limit=5"
