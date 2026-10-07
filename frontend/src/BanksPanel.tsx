@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { ApiError } from './api';
 import {
   createBanksApi, createFromTemplate, isModelRequired, UNAVAILABLE, type BankProfile, type BanksApi, type BankStats, type BankSummary,
-  type Delivery, type Directive, type DocumentDetail, type DocumentSummary, type EntityDetail, type EntitySummary, type Fact, type Maybe, type MentalModel,
+  type Delivery, type Directive, type DuplicateCandidate, type DocumentDetail, type DocumentSummary, type EntityDetail, type EntitySummary, type Fact, type Maybe, type MentalModel,
   type ModelNode, type Observation, type Operation, type RecallResponse, type ReflectResponse, type Request, type Webhook,
 } from './banksApi';
 import {
@@ -15,10 +15,10 @@ import {
 // Every server call is in banksApi.ts. A server from before a feature existed
 // is told apart from an error, and the tab says the feature is not there.
 
-type Tab = 'profile' | 'memories' | 'documents' | 'entities' | 'observations' | 'models' | 'directives' | 'operations' | 'webhooks' | 'playground';
+type Tab = 'profile' | 'memories' | 'documents' | 'entities' | 'observations' | 'duplicates' | 'models' | 'directives' | 'operations' | 'webhooks' | 'playground';
 const TABS: [Tab, string][] = [
   ['playground', 'Playground'], ['memories', 'Memories'], ['documents', 'Documents'], ['entities', 'Entities'],
-  ['observations', 'Observations'], ['models', 'Models'], ['directives', 'Directives'], ['operations', 'Operations'], ['webhooks', 'Webhooks'], ['profile', 'Profile'],
+  ['observations', 'Observations'], ['duplicates', 'Duplicates'], ['models', 'Models'], ['directives', 'Directives'], ['operations', 'Operations'], ['webhooks', 'Webhooks'], ['profile', 'Profile'],
 ];
 
 const NO_MODEL = 'This needs a language model, and none is configured on the server.';
@@ -82,6 +82,7 @@ export function BanksPanel({ request, close }: { request: Request; close: () => 
           {tab === 'documents' && <DocumentsTab api={api} bank={bank} />}
           {tab === 'entities' && <EntitiesTab api={api} bank={bank} />}
           {tab === 'observations' && <ObservationsTab api={api} bank={bank} />}
+          {tab === 'duplicates' && <DuplicatesTab api={api} bank={bank} />}
           {tab === 'models' && <ModelsTab api={api} bank={bank} />}
           {tab === 'directives' && <DirectivesTab api={api} bank={bank} />}
           {tab === 'operations' && <OperationsTab api={api} bank={bank} />}
@@ -433,6 +434,11 @@ function ObservationsTab({ api, bank }: { api: BanksApi; bank: string }) {
       if (r !== UNAVAILABLE) setNote(r.deduplicated ? `A consolidation is already queued (operation ${r.operation_id}).` : `Consolidation queued (operation ${r.operation_id}). See Operations.`);
     } catch (e) { setError(e); }
   };
+  const [editId, setEditId] = useState<string>(), [draft, setDraft] = useState('');
+  const saveEdit = async (o: Observation) => {
+    setError(undefined);
+    try { await api.updateObservation(bank, o.id, draft); setEditId(undefined); setNote('Saved. This observation is now marked human and consolidation will not overwrite it.'); void load(); } catch (e) { setError(e); }
+  };
   const retire = async (o: Observation) => {
     const human = o.authority === 'human';
     if (!confirm(human ? 'A person wrote this observation. Retire it anyway? It moves to the history.' : 'Retire this observation? It moves to the history.')) return;
@@ -449,13 +455,55 @@ function ObservationsTab({ api, bank }: { api: BanksApi; bank: string }) {
       {!data.items.length ? <p className="vault-note">No observations yet. They are written by consolidation, which needs a language model.</p> :
         <p className="vault-note">{data.total} observation(s). Edit observations.md in the vault to correct one: a person's text is never overwritten by a model.</p>}
       {data.items.map(o => <ObservationCard key={o.id} o={o}>
-        <div className="banks-actions"><button className="btn banks-small" onClick={() => void retire(o)}>Retire</button></div>
+        {editId === o.id ? <form className="banks-form" data-testid="observation-editor" onSubmit={e => { e.preventDefault(); void saveEdit(o); }}>
+          <textarea name="text" aria-label="Observation text" rows={4} value={draft} onChange={e => setDraft(e.target.value)} />
+          <div className="banks-actions"><button type="submit" className="btn banks-small" disabled={!draft.trim() || draft === o.text}>Save</button>
+            <button type="button" className="btn banks-small" onClick={() => setEditId(undefined)}>Cancel</button></div>
+        </form> : <div className="banks-actions">
+          <button className="btn banks-small" data-edit-observation={o.id} onClick={() => { setEditId(o.id); setDraft(o.text); }}>Edit</button>
+          <button className="btn banks-small" onClick={() => void retire(o)}>Retire</button></div>}
       </ObservationCard>)}
       {history && data.history?.length ? <><div className="pr-clabel">History</div>
         {data.history.map((o, i) => <div className="inspect-chunk banks-history" key={o.id + i}>
           <div className="ic-head"><span>{o.deleted ? 'retired' : 'replaced'} · was {o.of}</span><span className="ic-score">{when(o.superseded_at)}</span></div>
           <div className="ic-text"><s>{o.text}</s></div></div>)}</> : null}
     </div>}
+  </>;
+}
+
+// ---- duplicates ------------------------------------------------------------------------
+
+function DuplicatesTab({ api, bank }: { api: BanksApi; bank: string }) {
+  const [data, setData] = useState<Maybe<{ candidates: DuplicateCandidate[] }>>();
+  const [type, setType] = useState(''), [error, setError] = useState<unknown>(), [note, setNote] = useState('');
+  const [pending, setPending] = useState<DuplicateCandidate>();
+  const load = useCallback(() => api.duplicates(bank, { type, limit: 50 }).then(setData).catch(setError), [api, bank, type]);
+  useEffect(() => { void load(); }, [load]);
+  if (data === UNAVAILABLE) return <Unavailable what="Duplicate review" />;
+  const merge = async (c: DuplicateCandidate) => {
+    setError(undefined); setNote('');
+    try {
+      const r = await api.mergeDuplicates(bank, c.keep.id, c.merge.id);
+      setPending(undefined); setNote(`Merged ${r.merged} into ${r.kept}. The old text is struck through and kept in its file.`); void load();
+    } catch (e) { setError(e); }
+  };
+  return <>
+    <div className="banks-filters"><select aria-label="Kind" value={type} onChange={e => setType(e.target.value)}>
+      <option value="">Facts and observations</option><option value="fact">Facts</option><option value="observation">Observations</option></select></div>
+    <ErrorText error={error} /><p className="vault-note" id="banks-duplicates-note">{note}</p>
+    {!data ? <p className="vault-note">Loading…</p> : !data.candidates.length ? <p className="vault-note">No near-duplicates found.</p> :
+      <div id="banks-duplicates">{data.candidates.map(c => <div className="inspect-chunk" key={c.keep.id + c.merge.id} data-duplicate={`${c.keep.id}|${c.merge.id}`}>
+        <div className="ic-head"><span>{c.type} · shares {c.shared.join(', ')}</span><span className="ic-score">{c.score.toFixed(2)}</span></div>
+        <div className="banks-compare">
+          <div><div className="pr-clabel">Keep {c.keep.human && <span className="banks-badge human">human</span>}</div><div className="ic-text">{c.keep.text}</div><div className="banks-sub">{c.keep.id}</div></div>
+          <div><div className="pr-clabel">Merge into it {c.merge.human && <span className="banks-badge human">human</span>}</div><div className="ic-text">{c.merge.text}</div><div className="banks-sub">{c.merge.id}</div></div>
+        </div>
+        {pending === c ? <div className="banks-actions" data-testid="merge-confirm">
+          <span className="vault-note">Strike the right-hand text through and keep it in the file?</span>
+          <button className="btn banks-small" data-confirm-merge onClick={() => void merge(c)}>Confirm merge</button>
+          <button className="btn banks-small" onClick={() => setPending(undefined)}>Cancel</button></div>
+          : <div className="banks-actions"><button className="btn banks-small" data-merge onClick={() => setPending(c)}>Merge</button></div>}
+      </div>)}</div>}
   </>;
 }
 
@@ -475,6 +523,7 @@ function ModelView({ api, bank, model, changed, moved, deleted }: {
   api: BanksApi; bank: string; model: MentalModel; changed: (m?: MentalModel) => void; moved: (id: string) => void; deleted: () => void;
 }) {
   const [editing, setEditing] = useState(false), [draft, setDraft] = useState(model.body || ''), [folder, setFolder] = useState(model.folder);
+  const [mode, setMode] = useState<'full' | 'delta'>(model.refresh_mode === 'delta' ? 'delta' : 'full');
   const [error, setError] = useState<unknown>(), [note, setNote] = useState('');
   useEffect(() => { setDraft(model.body || ''); setFolder(model.folder); setEditing(false); }, [model.id, model.version, model.body, model.folder]);
   // fn may return the note to show in place of `done`.
@@ -492,8 +541,11 @@ function ModelView({ api, bank, model, changed, moved, deleted }: {
       {model.based_on?.length ? ` · based on ${model.based_on.length} memories` : ''}{model.tags?.length ? ` · tags ${model.tags.join(', ')}` : ''}
     </p>
     <div className="banks-actions">
+      <select aria-label="Refresh mode" id="banks-model-refresh-mode" value={mode} onChange={e => setMode(e.target.value as 'full' | 'delta')}
+        title="Full rewrites the answer; delta only folds in what changed since the last refresh">
+        <option value="full">Full rewrite</option><option value="delta">Delta (changes only)</option></select>
       <button className="btn" id="banks-model-refresh" onClick={() => void act(async () => {
-        const r = await api.refreshMentalModel(bank, model.id);
+        const r = await api.refreshMentalModel(bank, model.id, mode);
         setNote(r.deduplicated ? `A refresh is already queued (operation ${r.operation_id}).` : `Refresh queued (operation ${r.operation_id}).`);
         // Follow the operation so the answer (or proposal) shows when it lands.
         const op = await waitOperation(api, bank, r.operation_id);
