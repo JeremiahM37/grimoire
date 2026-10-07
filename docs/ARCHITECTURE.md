@@ -48,6 +48,7 @@ live editor).
 | `internal/queries` | Live-query engine: typed parse → parameterized execution |
 | `internal/history` | Per-note version snapshots (ring buffer) |
 | `internal/embed` | Embedders: hashing floor, built-in model2vec, Ollama, OpenAI-compatible |
+| `internal/bank` | Memory banks: retain content into facts (chunk → extract → resolve entities → markdown), four-arm recall; see [MEMORY_BANKS.md](MEMORY_BANKS.md) |
 | `internal/ai` | Answer synthesis, question decomposition, reranking, consolidation, transcription |
 | `internal/crypto`, `internal/secrets` | Argon2id KDF, Fernet sealing, secret vault + broker, note encryption, just-in-time grant requests |
 | `internal/trust` | Origin → trust level, and the fence untrusted passages are wrapped in before a reader sees them |
@@ -136,6 +137,14 @@ until explicitly enabled. Full contract in [PLUGINS.md](PLUGINS.md).
   the note's frontmatter → `index.upsert` → the retrieval cache is PATCHED, not
   rebuilt, so every per-note field the cache holds has to be refreshed there.
   Missing one is invisible until a warm server disagrees with a cold one.
+
+* **Memory bank retain**: `POST /api/banks/{bank}/memories` → chunk and diff
+  against the stored chunk hashes → extract changed chunks (model, or
+  sentence rules) → resolve entities against the bank → write
+  `banks/<bank>/documents/<doc>.md` and `facts/<doc>.md` → `index.upsert`,
+  whose bank hook rebuilds that file's `bank_*` rows. A person's edits are
+  read from the facts file itself (no trailer, `by=human`, or text that no
+  longer matches its hash) and survive every rewrite.
 
 ## Testing
 

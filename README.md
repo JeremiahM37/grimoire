@@ -184,6 +184,10 @@ Agents without a grant can *ask*; asking grants nothing.
 
 <!-- tools:end -->
 
+Memory banks take a whole conversation and extract the facts themselves,
+then recall by meaning, words, entities and time; facts you correct in the
+file outrank what a model extracted. See [docs/MEMORY_BANKS.md](docs/MEMORY_BANKS.md).
+
 Any MCP client works. `grimoire agent-setup` prints the config plus a
 CLAUDE.md/AGENTS.md snippet, since agents read context files more reliably than
 they browse tool lists.
