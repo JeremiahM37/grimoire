@@ -71,6 +71,12 @@ var Fields = map[string]Field{
 	"rerank_url":     {"GRIMOIRE_RERANK_URL", ""},
 	"rerank_api_key": {"GRIMOIRE_RERANK_API_KEY", ""},
 	"rerank_max_len": {"GRIMOIRE_RERANK_MAX_LEN", "256"},
+	// Memory-bank webhooks refuse loopback and private-network targets
+	// unless this is on; link-local and cloud metadata stay refused.
+	"webhook_allow_private": {"GRIMOIRE_WEBHOOK_ALLOW_PRIVATE", ""},
+	// Background workers for memory-bank operations (async retain,
+	// consolidation, mental-model refresh). 0 turns them off.
+	"bank_workers": {"GRIMOIRE_BANK_WORKERS", "2"},
 }
 
 // InternalFields are persisted in the same file and resolved the same way, but

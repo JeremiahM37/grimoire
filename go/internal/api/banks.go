@@ -34,6 +34,7 @@ func (s *Server) bankRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/banks/{bank}/documents/{id}", s.getBankDocument)
 	mux.HandleFunc("DELETE /api/banks/{bank}/documents/{id}", s.deleteBankDocument)
 	mux.HandleFunc("GET /api/banks/{bank}/chunks/{id}", s.getBankChunk)
+	s.bankReasoningRoutes(mux)
 }
 
 // bankFor reads and checks the {bank} path value.
@@ -90,6 +91,11 @@ func writeBankErr(w http.ResponseWriter, err error) {
 		writeErr(w, http.StatusBadRequest, strings.TrimPrefix(err.Error(), bank.ErrInvalid.Error()+": "))
 	case errors.Is(err, bank.ErrHumanProtected):
 		writeErr(w, http.StatusConflict, "a person wrote or edited this; pass force=true to remove it anyway")
+	case errors.Is(err, bank.ErrModelRequired):
+		writeJSON(w, http.StatusConflict, map[string]string{"detail": "model_required: this needs a language model and none is configured",
+			"code": "model_required"})
+	case errors.Is(err, bank.ErrTerminal):
+		writeErr(w, http.StatusConflict, "the operation has already finished")
 	default:
 		writeErr(w, http.StatusInternalServerError, err.Error())
 	}
@@ -315,6 +321,9 @@ func parseISO(s string) (time.Time, error) {
 // maxRetainItems bounds one synchronous retain.
 const maxRetainItems = 500
 
+// maxAsyncRetainItems bounds one asynchronous retain request.
+const maxAsyncRetainItems = 10000
+
 func (s *Server) retainBank(w http.ResponseWriter, r *http.Request) {
 	id, ok := s.bankWritable(w, r)
 	if !ok {
@@ -330,14 +339,12 @@ func (s *Server) retainBank(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "invalid json")
 		return
 	}
+	limit := maxRetainItems
 	if req.Async {
-		// The operations queue lands in the next phase; refusing is better
-		// than silently running a "background" retain in the foreground.
-		writeErr(w, http.StatusBadRequest, "async retain is not available yet; send async=false")
-		return
+		limit = maxAsyncRetainItems
 	}
-	if len(req.Items) == 0 || len(req.Items) > maxRetainItems {
-		writeErr(w, http.StatusBadRequest, fmt.Sprintf("items must hold 1..%d entries", maxRetainItems))
+	if len(req.Items) == 0 || len(req.Items) > limit {
+		writeErr(w, http.StatusBadRequest, fmt.Sprintf("items must hold 1..%d entries", limit))
 		return
 	}
 	items := make([]bank.Item, 0, len(req.Items))
@@ -349,8 +356,24 @@ func (s *Server) retainBank(w http.ResponseWriter, r *http.Request) {
 		}
 		items = append(items, it)
 	}
-	res, err := s.Banks.Retain(r.Context(), id, items, bank.RetainOptions{
-		Agent: agentFor(r), DocumentTags: req.DocumentTags, Mode: req.Mode})
+	opts := bank.RetainOptions{Agent: agentFor(r), DocumentTags: req.DocumentTags, Mode: req.Mode}
+	if req.Async {
+		// A large batch is split into operations of at most maxRetainItems,
+		// so each stays a unit of work the queue can retry and cancel.
+		var ids []string
+		for start := 0; start < len(items); start += maxRetainItems {
+			opID, err := s.Banks.EnqueueRetain(id, items[start:min(start+maxRetainItems, len(items))], opts)
+			if err != nil {
+				writeBankErr(w, err)
+				return
+			}
+			ids = append(ids, opID)
+		}
+		writeJSON(w, http.StatusAccepted, map[string]any{"success": true, "bank_id": id, "items_count": len(items),
+			"async": true, "operation_id": ids[0], "operation_ids": ids})
+		return
+	}
+	res, err := s.Banks.Retain(r.Context(), id, items, opts)
 	if err != nil {
 		writeBankErr(w, err)
 		return
@@ -378,13 +401,33 @@ func (s *Server) recallBank(w http.ResponseWriter, r *http.Request) {
 		TagsMatch      string                     `json:"tags_match"`
 		Include        map[string]json.RawMessage `json:"include"`
 		Trace          bool                       `json:"trace"`
+		TagGroups      []bank.TagGroup            `json:"tag_groups"`
+		TemporalWindow *struct {
+			Start string `json:"start"`
+			End   string `json:"end"`
+		} `json:"temporal_window"`
+		MinScores          *bank.MinScores `json:"min_scores"`
+		PreferObservations bool            `json:"prefer_observations"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 		writeErr(w, http.StatusBadRequest, "invalid json")
 		return
 	}
 	req := bank.RecallRequest{Query: in.Query, Types: in.Types, Budget: in.Budget, MaxTokens: in.MaxTokens,
-		Tags: in.Tags, TagsMatch: in.TagsMatch, Trace: in.Trace}
+		Tags: in.Tags, TagsMatch: in.TagsMatch, Trace: in.Trace, TagGroups: in.TagGroups, MinScores: in.MinScores,
+		PreferObservations: in.PreferObservations}
+	if tw := in.TemporalWindow; tw != nil {
+		a, err1 := parseISO(tw.Start)
+		b, err2 := parseISO(tw.End)
+		if err1 != nil || err2 != nil {
+			writeErr(w, http.StatusBadRequest, "temporal_window needs ISO-8601 start and end")
+			return
+		}
+		if b.Hour() == 0 && b.Minute() == 0 && b.Second() == 0 {
+			b = b.Add(24*time.Hour - time.Nanosecond) // a date end covers its whole day
+		}
+		req.Window = &bank.Window{Start: a, End: b}
+	}
 	if in.QueryTimestamp != "" {
 		t, err := parseISO(in.QueryTimestamp)
 		if err != nil {
@@ -409,6 +452,20 @@ func (s *Server) recallBank(w http.ResponseWriter, r *http.Request) {
 	}
 	if raw, ok := in.Include["source_facts"]; ok && string(raw) != "null" {
 		req.SourceFacts = true
+		var opt struct {
+			MaxTokens       *int `json:"max_tokens"`
+			MaxTokensPerObs *int `json:"max_tokens_per_observation"`
+		}
+		_ = json.Unmarshal(raw, &opt)
+		if opt.MaxTokens != nil {
+			req.SourceFactsMaxTokens = *opt.MaxTokens
+			if req.SourceFactsMaxTokens == 0 {
+				req.SourceFacts = false
+			}
+		}
+		if opt.MaxTokensPerObs != nil {
+			req.SourceFactsPerObs = *opt.MaxTokensPerObs
+		}
 	}
 	res, err := s.Banks.Recall(r.Context(), id, req)
 	if err != nil {
