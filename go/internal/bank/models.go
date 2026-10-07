@@ -528,6 +528,11 @@ func (e *Engine) CreateModel(bankID string, spec ModelSpec) (*MentalModel, error
 		return nil, err
 	}
 	id := strings.Trim(strings.TrimSpace(spec.ID), "/")
+	if id != "" && !strings.Contains(id, "/") && m.Folder != "" {
+		// A bare id with a folder names the page in that folder; an id that
+		// already holds a path says where it lives itself.
+		id = joinModelID(m.Folder, id)
+	}
 	if id == "" {
 		base := joinModelID(m.Folder, slugID(m.Name))
 		id = base
