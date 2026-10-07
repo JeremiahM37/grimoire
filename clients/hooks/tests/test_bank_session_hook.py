@@ -378,3 +378,29 @@ def test_stale_buffers_of_sessions_that_never_ended_are_swept(environment, repo)
     assert buffer.exists()
     hook.sweep_activity(env, now=buffer.stat().st_mtime + hook.ACTIVITY_MAX_AGE + 60)
     assert not buffer.exists()
+
+
+def test_file_memory_is_opt_in_once_per_file_and_bounded(environment, repo):
+    read = {"hook_event_name": "PreToolUse", "tool_name": "Read", "session_id": "s", "cwd": str(repo),
+            "tool_input": {"file_path": str(repo / "src" / "app.py")}}
+    calls = []
+
+    def get(base, token, path, timeout):
+        calls.append((path, timeout))
+        return {"items": [{"text": "app.py was split in two", "human": True, "date": "2026-09-01"},
+                          {"text": "y" * 5000}]}
+
+    assert hook.run(read, environment, get=get) is None  # off by default
+    enabled = {**environment, "GRIMOIRE_BANK_FILES": "1"}
+    out = hook.run(read, enabled, get=get)
+    context = out["hookSpecificOutput"]["additionalContext"]
+    assert out["hookSpecificOutput"]["hookEventName"] == "PreToolUse"
+    assert "path=src/app.py" in calls[0][0].replace("%2F", "/") or "src%2Fapp.py" in calls[0][0]
+    assert "- app.py was split in two [written by a person] (2026-09-01)" in context
+    assert len(context) <= hook.FILE_MEMORY_CHARS
+    assert hook.run(read, enabled, get=get) is None  # once per file per session
+    other = {**read, "tool_name": "Edit"}
+    assert hook.run(other, enabled, get=get) is None
+    outside = {**read, "session_id": "t", "tool_input": {"file_path": "/etc/passwd"}}
+    assert hook.run(outside, enabled, get=get) is None
+    assert len(calls) == 1

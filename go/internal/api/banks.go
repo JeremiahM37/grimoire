@@ -37,6 +37,7 @@ func (s *Server) bankRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/banks/{bank}/context", s.bankContext)
 	mux.HandleFunc("GET /api/banks/{bank}/index", s.bankIndex)
 	mux.HandleFunc("GET /api/banks/{bank}/timeline", s.bankTimeline)
+	mux.HandleFunc("GET /api/banks/{bank}/file-memory", s.bankFileMemory)
 	mux.HandleFunc("GET /api/banks/{bank}/lookup", s.bankLookup)
 	mux.HandleFunc("GET /api/banks/{bank}/sessions", s.listBankSessions)
 	mux.HandleFunc("POST /api/banks/{bank}/sessions/{session}/digest", s.writeSessionDigest)
@@ -724,4 +725,25 @@ func (s *Server) bankLookup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": items, "missing": missing})
+}
+
+// bankFileMemory returns what the bank remembers about one file.
+func (s *Server) bankFileMemory(w http.ResponseWriter, r *http.Request) {
+	id, ok := s.bankReadable(w, r)
+	if !ok {
+		return
+	}
+	q := r.URL.Query()
+	file := strings.TrimSpace(q.Get("path"))
+	if file == "" || len(file) > 500 {
+		writeErr(w, http.StatusBadRequest, "path is required")
+		return
+	}
+	limit, _ := strconv.Atoi(q.Get("limit"))
+	items, err := s.Banks.FileMemory(id, file, limit)
+	if err != nil {
+		writeBankErr(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"path": file, "items": items})
 }

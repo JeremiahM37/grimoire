@@ -81,6 +81,7 @@ var routeAccess = map[string]access{
 	"GET /api/banks/{bank}/memories":                             scoped,
 	"GET /api/banks/{bank}/index":                                scoped,
 	"GET /api/banks/{bank}/timeline":                             scoped,
+	"GET /api/banks/{bank}/file-memory":                          scoped,
 	"GET /api/banks/{bank}/lookup":                               scoped,
 	"GET /api/banks/{bank}/sessions":                             scoped,
 	"POST /api/banks/{bank}/sessions/{session}/digest":           scoped,

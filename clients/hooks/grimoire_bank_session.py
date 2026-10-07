@@ -14,6 +14,9 @@ A Claude Code / Codex command hook, Python 3 standard library only.
   per file edit or command (path, command, exit status; never output) to a
   session buffer. At ``Stop`` the buffer is retained once with no model call
   and handed to the digest, so a session costs at most one model call.
+- ``PreToolUse`` on ``Read`` (only with ``GRIMOIRE_BANK_FILES=1``): add what the
+  bank remembers about that file (facts and session digests that name its path),
+  once per file per session and within a small share of the hook budget.
 - ``SessionStart`` (only with ``GRIMOIRE_BANK_CONTEXT=1``): add the bank's
   standing rules and knowledge as context. Every injection is measured and its
   lowest-value items dropped until it fits ``GRIMOIRE_HOOK_MAX_CHARS`` (default
@@ -640,6 +643,64 @@ def start_context(event, environment, base, bank, get):
     return {"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": text}}
 
 
+FILE_MEMORY_CHARS = 2_500   # default budget for one file's memory
+
+
+def seen_file(environment, session, rel):
+    """True when this file was already injected in the session; records it if not."""
+    marker = state_dir(environment) / (hashlib.sha256(("files\0" + session).encode()).hexdigest()
+                                        + ".files")
+    try:
+        known = marker.read_text().splitlines() if marker.exists() else []
+        if rel in known:
+            return True
+        if len(known) < 500:
+            with marker.open("a") as handle:
+                handle.write(rel + "\n")
+    except OSError:
+        pass
+    return False
+
+
+def file_memory(event, environment, base, bank, get):
+    """PreToolUse on Read: the bank's memory of that file, under the hook budget."""
+    if event.get("tool_name") != "Read":
+        return None
+    tool_input = event.get("tool_input")
+    target = tool_input.get("file_path") if isinstance(tool_input, dict) else None
+    if not isinstance(target, str) or not target or len(target) > 500:
+        return None
+    rel = relative_path(target, str(event.get("cwd", "")))
+    if os.path.isabs(rel) or rel.startswith(".."):
+        return None  # outside the repository
+    session = str(event.get("session_id", ""))
+    if session and seen_file(environment, session, rel):
+        return None
+    out = get(base, environment.get("GRIMOIRE_AUTH_TOKEN", ""),
+              "/api/banks/" + urllib.parse.quote(bank, safe="") + "/file-memory?"
+              + urllib.parse.urlencode({"path": rel, "limit": 8}), 1.5)
+    items = out.get("items") if isinstance(out, dict) else None
+    if not isinstance(items, list):
+        return None
+    lines = []
+    for item in items:
+        if not isinstance(item, dict) or not isinstance(item.get("text"), str):
+            continue
+        mark = " [written by a person]" if item.get("human") else ""
+        when = f" ({item['date']})" if item.get("date") else ""
+        lines.append(f"- {item['text'].strip()[:400]}{mark}{when}")
+    if not lines:
+        return None
+    head = (f'<grimoire_file_memory bank="{bank}" path="{rel}">\n'
+            "What this repository's memory bank holds about this file; a record of the past, "
+            "which may be out of date. Verify against the code.\n")
+    default = FILE_MEMORY_CHARS if "GRIMOIRE_HOOK_MAX_CHARS" not in environment else DEFAULT_HOOK_CHARS
+    body, kept, _ = fit_items(head, lines, "\n</grimoire_file_memory>", hook_limit(environment, default))
+    if not kept:
+        return None
+    return {"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": body}}
+
+
 def run(event, environment=None, send=request_json, get=request_get):
     environment = os.environ if environment is None else environment
     name = event.get("hook_event_name", "")
@@ -651,6 +712,9 @@ def run(event, environment=None, send=request_json, get=request_get):
             return None
     elif name == "SessionStart":
         if environment.get("GRIMOIRE_BANK_CONTEXT") != "1":
+            return None
+    elif name == "PreToolUse":
+        if environment.get("GRIMOIRE_BANK_FILES") != "1" or event.get("tool_name") != "Read":
             return None
     elif name in {"PostToolUse", "PostToolUseFailure"}:
         if environment.get("GRIMOIRE_BANK_TOOLS") != "1":
@@ -668,6 +732,8 @@ def run(event, environment=None, send=request_json, get=request_get):
         return None
     if name == "SessionStart":
         return start_context(event, environment, base, bank, get)
+    if name == "PreToolUse":
+        return file_memory(event, environment, base, bank, get)
     if name == "UserPromptSubmit":
         return recall(event, environment, base, bank, send)
     found = session_turns(event)

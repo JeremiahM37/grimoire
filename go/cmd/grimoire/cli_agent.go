@@ -27,7 +27,7 @@ import (
 const agentUsage = `grimoire agent — wire a coding agent to Grimoire in one command
 
   grimoire agent install [--claude-code] [--codex] [--bank NAME] [--url URL]
-                         [--recall] [--no-mcp] [--no-tools] [--dry-run]
+                         [--recall] [--files] [--no-mcp] [--no-tools] [--dry-run]
   grimoire agent uninstall [--claude-code] [--codex] [--dry-run]
   grimoire agent status [--claude-code] [--codex]
 
@@ -39,7 +39,9 @@ writes nothing. No token is written anywhere; the agent's environment supplies i
 
 Hooks: SessionStart (inject the bank's rules, knowledge and the last session's
 digest), PostToolUse (local activity buffer), Stop and SessionEnd (retain the
-session and write its digest). --recall adds UserPromptSubmit recall.
+session and write its digest). --recall adds UserPromptSubmit recall. --files (Claude
+Code only, off by default) adds a PreToolUse hook on Read that injects what the bank
+remembers about the file being read.
 Files: Claude Code ~/.claude/settings.json and ~/.claude.json; Codex ~/.codex/hooks.json
 and ~/.codex/config.toml.`
 
@@ -57,7 +59,7 @@ type agentTarget struct {
 	dir         string // config folder
 	hooksFile   string
 	mcpFile     string
-	events      func(command string, recall bool, tools bool) []hookSpec
+	events      func(command string, recall, tools, files bool) []hookSpec
 	mcpIsTOML   bool
 	hookHarness string
 }
@@ -72,8 +74,11 @@ func agentTargets(home string) map[string]*agentTarget {
 		"claude-code": {name: "claude-code", dir: filepath.Join(home, ".claude"),
 			hooksFile: filepath.Join(home, ".claude", "settings.json"),
 			mcpFile:   filepath.Join(home, ".claude.json"), hookHarness: "claude-code",
-			events: func(_ string, recall, tools bool) []hookSpec {
+			events: func(_ string, recall, tools, files bool) []hookSpec {
 				specs := []hookSpec{{"SessionStart", "startup|resume|clear|compact", 8}}
+				if files {
+					specs = append(specs, hookSpec{"PreToolUse", "Read", 3})
+				}
 				if tools {
 					specs = append(specs, hookSpec{"PostToolUse", "Edit|MultiEdit|Write|NotebookEdit|Bash", 5})
 				}
@@ -86,7 +91,7 @@ func agentTargets(home string) map[string]*agentTarget {
 		"codex": {name: "codex", dir: filepath.Join(home, ".codex"),
 			hooksFile: filepath.Join(home, ".codex", "hooks.json"),
 			mcpFile:   filepath.Join(home, ".codex", "config.toml"), mcpIsTOML: true, hookHarness: "codex",
-			events: func(_ string, recall, tools bool) []hookSpec {
+			events: func(_ string, recall, tools, _ bool) []hookSpec {
 				specs := []hookSpec{{"SessionStart", "startup|resume|clear", 8}}
 				if tools {
 					specs = append(specs, hookSpec{"PostToolUse", "Bash|apply_patch", 5})
@@ -148,7 +153,7 @@ func cmdAgent(args []string) int {
 	}
 	opts := agentOptions{
 		bank: f.str("--bank", ""), url: f.str("--url", os.Getenv("GRIMOIRE_URL")),
-		recall: f.on["--recall"], noMCP: f.on["--no-mcp"], noTools: f.on["--no-tools"],
+		recall: f.on["--recall"], files: f.on["--files"], noMCP: f.on["--no-mcp"], noTools: f.on["--no-tools"],
 		dryRun: f.on["--dry-run"], home: home,
 	}
 	if opts.bank != "" && !bank.ValidID(opts.bank) {
@@ -182,8 +187,8 @@ func cmdAgent(args []string) int {
 }
 
 type agentOptions struct {
-	bank, url, home                string
-	recall, noMCP, noTools, dryRun bool
+	bank, url, home                       string
+	recall, files, noMCP, noTools, dryRun bool
 }
 
 func agentQuote(s string) string {
@@ -203,6 +208,9 @@ func hookCommand(t *agentTarget, o agentOptions, script string) string {
 	}
 	if o.recall {
 		env = append(env, "GRIMOIRE_BANK_RECALL=1")
+	}
+	if o.files && t.name == "claude-code" {
+		env = append(env, "GRIMOIRE_BANK_FILES=1")
 	}
 	env = append(env, "GRIMOIRE_BANK_HARNESS="+t.hookHarness)
 	if o.bank != "" {
@@ -236,7 +244,7 @@ func installAgent(t *agentTarget, o agentOptions) ([]string, error) {
 	if err != nil {
 		return out, err
 	}
-	changed := mergeHooks(root, t.events(command, o.recall, !o.noTools), command)
+	changed := mergeHooks(root, t.events(command, o.recall, !o.noTools, o.files), command)
 	next, err := encodeJSON(root)
 	if err != nil {
 		return out, err
