@@ -379,3 +379,26 @@ func TestBankContextEndpointHonoursMaxChars(t *testing.T) {
 		t.Errorf("missing bank = %d", w.Code)
 	}
 }
+
+func TestSessionDigestOverHTTPLeadsTheContext(t *testing.T) {
+	_, h := testServer(t)
+	w := do(t, h, "POST", "/api/banks/dg/sessions/abc:1/digest", map[string]any{
+		"turns": []map[string]any{
+			{"speaker": "user", "text": "Fix the flaky login test. <private>pin 8842</private>", "timestamp": "2026-10-07T10:00:00Z"},
+			{"speaker": "assistant", "text": "The cause is a race in the fixture. I fixed the fixture ordering. Next we should add a retry."}},
+		"activity": map[string]any{"files": []string{"login_test.go"}}})
+	var res map[string]any
+	decode(t, w, &res)
+	if w.Code != http.StatusOK || res["written"] != true || res["method"] != "rules" {
+		t.Fatalf("digest = %d %s", w.Code, w.Body)
+	}
+	w = do(t, h, "GET", "/api/banks/dg/sessions", nil)
+	if !strings.Contains(w.Body.String(), `"session_id":"abc:1"`) {
+		t.Errorf("sessions = %s", w.Body)
+	}
+	w = do(t, h, "GET", "/api/banks/dg/context?source=resume", nil)
+	body := w.Body.String()
+	if !strings.Contains(body, "Where we left off") || !strings.Contains(body, "flaky login test") || strings.Contains(body, "8842") {
+		t.Errorf("context = %s", body)
+	}
+}

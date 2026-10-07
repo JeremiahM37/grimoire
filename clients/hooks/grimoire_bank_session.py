@@ -299,7 +299,8 @@ def state_dir(environment):
     return directory
 
 
-def retain(event, environment, base, bank, send):
+def session_turns(event):
+    """(session id, turns) for a Stop/SessionEnd event, or None."""
     session = event.get("session_id", "")
     if not isinstance(session, str) or not re.fullmatch(r"[A-Za-z0-9._:-]{1,200}", session):
         return None
@@ -309,6 +310,45 @@ def retain(event, environment, base, bank, send):
     turns = read_turns(transcript)
     if not any(t["speaker"] == "user" for t in turns):
         return None
+    return session, turns
+
+
+def digest(event, environment, base, bank, send, session, turns):
+    """Write the session's "where we left off" note.
+
+    Every Stop writes the rule-based digest, which costs no model call. The
+    model-written one is requested once, at SessionEnd (Codex has no
+    SessionEnd, so there it is the Stop), and the marker below keeps a repeat
+    of the same input from calling it again.
+    """
+    if environment.get("GRIMOIRE_BANK_DIGEST", "1") == "0":
+        return None
+    use_model = event.get("hook_event_name") == "SessionEnd" or \
+        environment.get("GRIMOIRE_BANK_HARNESS", "") == "codex"
+    use_model = use_model and environment.get("GRIMOIRE_BANK_DIGEST_MODEL", "1") != "0"
+    recent = [{"speaker": t["speaker"], "text": t["text"][:1500]} | (
+        {"timestamp": t["timestamp"]} if t.get("timestamp") else {}) for t in turns[-80:]]
+    activity = {}
+    body = {"turns": recent, "use_model": use_model, "activity": activity}
+    stamp = hashlib.sha256((bank + "\0" + json.dumps(body, sort_keys=True)).encode()).hexdigest()
+    marker = state_dir(environment) / (hashlib.sha256(
+        (base + "\0" + bank + "\0" + session + "\0digest").encode()).hexdigest() + ".sent")
+    try:
+        if marker.read_text() == stamp:
+            return None
+    except OSError:
+        pass
+    timeout = max(1.0, min(60.0, float(environment.get("GRIMOIRE_BANK_TIMEOUT", "10"))))
+    if use_model:
+        timeout = max(timeout, 30.0)  # one model call is made while this waits
+    send(base, environment.get("GRIMOIRE_AUTH_TOKEN", ""),
+         "/api/banks/" + urllib.parse.quote(bank, safe="") + "/sessions/"
+         + urllib.parse.quote(session, safe="") + "/digest", body, timeout)
+    marker.write_text(stamp)
+    return None
+
+
+def retain(event, environment, base, bank, send, session, turns):
     digest = hashlib.sha256((bank + "\0" + json.dumps(turns)).encode()).hexdigest()
     marker = state_dir(environment) / (hashlib.sha256(
         (base + "\0" + bank + "\0" + session).encode()).hexdigest() + ".sent")
@@ -437,7 +477,19 @@ def run(event, environment=None, send=request_json, get=request_get):
         return start_context(event, environment, base, bank, get)
     if name == "UserPromptSubmit":
         return recall(event, environment, base, bank, send)
-    return retain(event, environment, base, bank, send)
+    found = session_turns(event)
+    if found is None:
+        return None
+    session, turns = found
+    failure = None
+    try:
+        retain(event, environment, base, bank, send, session, turns)
+    except (OSError, ValueError) as error:  # still try the digest, then report
+        failure = error
+    digest(event, environment, base, bank, send, session, turns)
+    if failure:
+        raise failure
+    return None
 
 
 def main():

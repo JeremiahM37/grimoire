@@ -13,7 +13,9 @@ SPEC.loader.exec_module(hook)
 
 @pytest.fixture
 def environment(tmp_path):
-    return {"GRIMOIRE_BANK_SESSIONS": "1", "GRIMOIRE_BANK_STATE_DIR": str(tmp_path / "state")}
+    # The digest has its own tests below; the others look at the transcript retain alone.
+    return {"GRIMOIRE_BANK_SESSIONS": "1", "GRIMOIRE_BANK_DIGEST": "0",
+            "GRIMOIRE_BANK_STATE_DIR": str(tmp_path / "state")}
 
 
 @pytest.fixture
@@ -259,3 +261,49 @@ def test_session_start_injection_is_opt_in_and_never_exceeds_the_limit(environme
     assert len(text) <= 1500
     assert seen[0] == "/api/banks/coding-agent%3Amy-repo/context?max_chars=1500&source=compact"
     assert hook.run(start_event(repo), on, get=lambda *a: {"context": ""}) is None
+
+
+def test_stop_writes_a_rule_digest_and_session_end_asks_for_the_model_once(environment, repo, tmp_path):
+    env = {**environment, "GRIMOIRE_BANK_DIGEST": "1"}
+    transcript = claude_transcript(tmp_path / "t.jsonl")
+    calls = []
+
+    def send(base, token, path, body, timeout):
+        calls.append((path, body))
+        return {}
+
+    hook.run(event(transcript, repo, "Stop"), env, send)
+    digests = [c for c in calls if c[0].endswith("/digest")]
+    path, body = digests[0]
+    assert path == "/api/banks/coding-agent%3Amy-repo/sessions/abc-123/digest"
+    assert body["use_model"] is False
+    assert [t["speaker"] for t in body["turns"]] == ["user", "assistant"]
+    hook.run(event(transcript, repo, "Stop"), env, send)  # same input: nothing sent again
+    assert len([c for c in calls if c[0].endswith("/digest")]) == 1
+    hook.run(event(transcript, repo, "SessionEnd"), env, send)
+    digests = [c for c in calls if c[0].endswith("/digest")]
+    assert len(digests) == 2 and digests[1][1]["use_model"] is True
+    hook.run(event(transcript, repo, "SessionEnd"), env, send)
+    assert len([c for c in calls if c[0].endswith("/digest")]) == 2  # one model call per session
+    off = {**env, "GRIMOIRE_BANK_DIGEST_MODEL": "0", "GRIMOIRE_BANK_STATE_DIR": str(tmp_path / "s2")}
+    calls.clear()
+    hook.run(event(transcript, repo, "SessionEnd"), off, send)
+    assert [c[1]["use_model"] for c in calls if c[0].endswith("/digest")] == [False]
+
+
+def test_a_failed_retain_still_writes_the_digest(environment, repo, tmp_path):
+    import urllib.error
+
+    env = {**environment, "GRIMOIRE_BANK_DIGEST": "1"}
+    transcript = claude_transcript(tmp_path / "t.jsonl")
+    seen = []
+
+    def send(base, token, path, body, timeout):
+        seen.append(path)
+        if path.endswith("/memories"):
+            raise urllib.error.URLError("down")
+        return {}
+
+    with pytest.raises(urllib.error.URLError):
+        hook.run(event(transcript, repo), env, send)
+    assert any(p.endswith("/digest") for p in seen)
