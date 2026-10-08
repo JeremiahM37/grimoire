@@ -1,8 +1,10 @@
 {
   "name": "Grimoire",
   "short_name": "Grimoire",
+  "id": "/",
   "description": "Self-hosted personal context server \u2014 one knowledge and trust boundary shared by you and your AI agents",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#faf7f0",
   "theme_color": "#faf7f0",

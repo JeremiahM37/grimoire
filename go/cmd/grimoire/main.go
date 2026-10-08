@@ -295,6 +295,17 @@ func run(args []string) error {
 		MaxHeaderBytes: 1 << 20,
 	}
 
+	// Optional real-cert HTTPS on the tailnet addresses; see tailnet_tls.go.
+	var tlsSrvs []*http.Server
+	if tp := os.Getenv("GRIMOIRE_TLS_PORT"); tp != "" {
+		ep := envOr("GRIMOIRE_TAILSCALE_ENDPOINT", identity.DefaultTailscaleSocket)
+		tlsSrvs, err = serveTailnetTLS(ep, tp, e.handler)
+		if err != nil {
+			// The plain listener must keep working; only the TLS origin is lost.
+			log.Printf("WARNING: tailnet TLS on :%s unavailable: %v", tp, err)
+		}
+	}
+
 	// Graceful shutdown: an in-flight reindex or write should finish rather
 	// than leaving a half-written index behind.
 	done := make(chan struct{})
@@ -304,6 +315,9 @@ func run(args []string) error {
 		<-sig
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
+		for _, ts := range tlsSrvs {
+			_ = ts.Shutdown(ctx)
+		}
 		if err := srv.Shutdown(ctx); err != nil {
 			log.Printf("shutdown: %v", err)
 		}
