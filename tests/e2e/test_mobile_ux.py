@@ -128,3 +128,14 @@ def test_static_assets_are_compressed_and_cached(server, browser):
     assert "immutable" in r.headers["cache-control"]
     assert r.headers.get("content-encoding") == "gzip"
     ctx.close()
+
+
+def test_theme_color_follows_the_theme_not_a_hard_coded_cream(phone, server):
+    m = phone.request.get(f"{server}/manifest.webmanifest").json()
+    assert m["theme_color"] == m["background_color"] == "#1a1814"
+    colours = lambda: phone.evaluate("[...document.querySelectorAll('meta[name=theme-color]')].map(m => m.content)")
+    phone.evaluate("document.documentElement.dataset.theme = 'dark'")
+    phone.wait_for_function("[...document.querySelectorAll('meta[name=theme-color]')].every(m => m.content === '#1a1814')")
+    phone.evaluate("document.documentElement.dataset.theme = 'light'")
+    phone.wait_for_function("[...document.querySelectorAll('meta[name=theme-color]')].every(m => m.content === '#faf7f0')")
+    assert len(colours()) == 2

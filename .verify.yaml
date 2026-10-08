@@ -79,13 +79,14 @@ steps:
       - navigate: http://127.0.0.1:9119/#verify-note.md
       - wait: 2
     expect:
-      # NOTE: viewport is 414x896 (phone), where the sidebar is correctly collapsed
-      # behind the ☰ drawer — assert the mobile layout, not a desktop two-pane one.
+      # NOTE: viewport is 414x896 (phone). A phone lands on the notes list with the
+      # bottom tab bar; a note is a full screen opened from it.
       vision: >
-        a mobile note-taking app screen: a top bar with a ☰ menu button and a note
-        title, a markdown formatting toolbar (B / I / H / list / link), and an editor
-        showing note text; a working React notes workspace with readable controls, not
-        a blank white page, not an error message, not a stack trace
+        a mobile notes app screen: either the notes list (a search field, a NOTES
+        heading with rows, and a bottom tab bar with Notes, Search, a round plus
+        button, Ask and More) or an open note (a back arrow, the note title and the
+        note text); readable controls, not a blank white page, not an error message,
+        not a stack trace
 
   - name: memory reconciles instead of accumulating
     actions:
