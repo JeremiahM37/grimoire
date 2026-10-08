@@ -3,6 +3,7 @@ package main
 import (
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,10 +13,16 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/watcher"
 )
 
+// editBetweenLines feeds two questions and edits the note between them. The
+// edit waits for the first answer to be fully served (allowEdit) so the first
+// question can only ever see the original file, and the second question waits
+// until settled reports the edit is searchable, rather than sleeping and hoping
+// the watcher's debounce finished first.
 type editBetweenLines struct {
 	path      string
 	first     bool
 	allowEdit <-chan struct{}
+	settled   func() bool
 }
 
 func (reader *editBetweenLines) Read(buffer []byte) (int, error) {
@@ -28,7 +35,12 @@ func (reader *editBetweenLines) Read(buffer []byte) (int, error) {
 	if err := os.WriteFile(reader.path, []byte("# Ownership\n\nThe owner is Ada.\n"), 0o644); err != nil {
 		return 0, err
 	}
-	time.Sleep(100 * time.Millisecond)
+	for deadline := time.Now().Add(10 * time.Second); !reader.settled(); {
+		if time.Now().After(deadline) {
+			return 0, io.ErrNoProgress
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 	copy(buffer, "owner?\n")
 	return len("owner?\n"), io.EOF
 }
@@ -119,13 +131,19 @@ func TestKnowledgeConsoleSeesEditedVaultNoteBetweenQuestions(t *testing.T) {
 		if request.URL.Path == "/api/knowledge/query" {
 			requestCount++
 			if requestCount == 1 {
-				close(allowEdit)
+				// Release the edit only after this response is complete;
+				// closing on arrival let the edit race the first answer.
+				defer close(allowEdit)
 			}
 		}
 		originalHandler.ServeHTTP(writer, request)
 	})
 	output := captureKnowledgeOutput(t, func() int {
-		return runKnowledgeConsole(environment, nil, &editBetweenLines{path: setPath, first: true, allowEdit: allowEdit}, true, false)
+		return runKnowledgeConsole(environment, nil, &editBetweenLines{path: setPath, first: true, allowEdit: allowEdit, settled: func() bool {
+			rec := httptest.NewRecorder()
+			originalHandler.ServeHTTP(rec, httptest.NewRequest("GET", "/api/search?q=Ada", nil))
+			return strings.Contains(rec.Body.String(), "Ada")
+		}}, true, false)
 	})
 	if !strings.Contains(output, "Lin") || !strings.Contains(output, "Ada") {
 		t.Fatalf("console did not observe both file versions: %q", output)
