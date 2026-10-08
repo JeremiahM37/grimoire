@@ -66,7 +66,7 @@ const usage = `grimoire — local-first AI-native notes
   grimoire ingest PATH [--into DIR]   bulk-import a folder of markdown/text
   grimoire import PATH [--into DIR] [--dry-run]
                                       import a ChatGPT or Claude conversations.json
-  grimoire seed-demo                  write a small sample vault (first-run demo)
+  grimoire seed-demo [--yes]          write a small sample vault (needs GRIMOIRE_VAULT or --yes)
   grimoire fetch-model                pre-download the local embedding model
   grimoire export [--out DIR] [--published]
                                       static HTML export (--published: only
@@ -143,6 +143,15 @@ func runCLI(args []string) (handled bool, code int) {
 	if len(args) == 0 {
 		return false, 0
 	}
+	// Help is answered here, before any command (or serve) can open a vault,
+	// index, bind a port or write a file. Doing it centrally means a new
+	// subcommand cannot forget it.
+	if args[0] == "help" && len(args) > 1 {
+		return true, printCommandHelp(args[1])
+	}
+	if args[0] != "-h" && args[0] != "--help" && args[0] != "help" && isHelpRequest(args[1:]) {
+		return true, printCommandHelp(args[0])
+	}
 	switch args[0] {
 	case "-h", "--help", "help":
 		fmt.Println(usage)
@@ -168,6 +177,62 @@ func runCLI(args []string) (handled bool, code int) {
 		return true, 2
 	}
 	return true, fn(args[1:])
+}
+
+// isHelpRequest reports whether args ask for help. Anything after a bare "--"
+// belongs to a wrapped command (`grimoire run NAME -- cmd --help`).
+func isHelpRequest(args []string) bool {
+	for _, a := range args {
+		if a == "--" {
+			return false
+		}
+		if a == "-h" || a == "--help" {
+			return true
+		}
+	}
+	return false
+}
+
+// printCommandHelp prints the usage lines for one command, taken from the
+// usage text so the two cannot drift. Unknown names get the full usage and 2.
+func printCommandHelp(name string) int {
+	if name == "serve" {
+		fmt.Println("grimoire serve [--port N] [--host H]   run the web app + API (the default)")
+		return 0
+	}
+	if _, ok := commands()[name]; !ok && name != "version" {
+		fmt.Fprintf(os.Stderr, "unknown command %q\n\n%s\n", name, usage)
+		return 2
+	}
+	var out []string
+	in := false
+	for _, line := range strings.Split(usage, "\n") {
+		f := strings.Fields(line)
+		if len(f) >= 2 && f[0] == "grimoire" {
+			in = f[1] == name
+		} else if !strings.HasPrefix(line, "   ") {
+			in = false
+		}
+		if in {
+			out = append(out, line)
+		}
+	}
+	if len(out) == 0 {
+		out = []string{"grimoire " + name}
+	}
+	fmt.Println("usage:\n" + strings.Join(out, "\n"))
+	return 0
+}
+
+// requireExplicitVault refuses to write into the default vault unless the
+// caller chose a vault (GRIMOIRE_VAULT) or passed --yes.
+func requireExplicitVault(cmd string, args []string) bool {
+	if os.Getenv("GRIMOIRE_VAULT") != "" || hasFlag(args, "--yes") {
+		return true
+	}
+	fmt.Fprintf(os.Stderr, "grimoire %s writes to a vault, and none was chosen: set GRIMOIRE_VAULT, or pass --yes to use the default (%s)\n",
+		cmd, filepath.Join(os.Getenv("HOME"), "notes"))
+	return false
 }
 
 // ---- shared plumbing --------------------------------------------------------
@@ -451,6 +516,9 @@ func cmdIngest(args []string) int {
 	if len(args) == 0 || strings.HasPrefix(args[0], "--") {
 		return fail("usage: grimoire ingest PATH [--into SUBDIR]")
 	}
+	if !requireExplicitVault("ingest", args) {
+		return 2
+	}
 	src := args[0]
 	if strings.HasPrefix(src, "~/") {
 		if home, err := os.UserHomeDir(); err == nil {
@@ -570,7 +638,10 @@ var demo = []demoNote{
 			"task": "debug-session", "tags": []markdown.Value{"ops"}}},
 }
 
-func cmdSeedDemo([]string) int {
+func cmdSeedDemo(args []string) int {
+	if !requireExplicitVault("seed-demo", args) {
+		return 2
+	}
 	e, err := openEnv()
 	if err != nil {
 		return fail("%v", err)
