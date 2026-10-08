@@ -335,6 +335,9 @@ func cmdImport(args []string) int {
 		return fail("usage: grimoire import PATH [--into SUBDIR] [--dry-run]\n" +
 			"  PATH is conversations.json from a ChatGPT or Claude data export.")
 	}
+	if !hasFlag(args, "--dry-run") && !requireExplicitVault("import", args) {
+		return 2
+	}
 	src := pos[0]
 	if strings.HasPrefix(src, "~/") {
 		if home, err := os.UserHomeDir(); err == nil {
