@@ -1,13 +1,18 @@
 package api
 
 import (
+	"bytes"
+	"compress/gzip"
+	"crypto/sha1"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/JeremiahM37/grimoire/go/internal/index"
 	"github.com/JeremiahM37/grimoire/go/internal/markdown"
@@ -171,41 +176,65 @@ func (s *Server) renameTag(w http.ResponseWriter, r *http.Request) {
 
 // graph serves the note graph for the visualiser.
 func (s *Server) graph(w http.ResponseWriter, r *http.Request) {
-	// Each of these three reads used the `if rows, err := ...; err == nil`
-	// form, which drops the error and leaves the bucket empty. A failing query
-	// then rendered as a 200 with an empty graph — indistinguishable, in the
+	// Each of these reads used the `if rows, err := ...; err == nil` form,
+	// which drops the error and leaves the bucket empty. A failing query then
+	// rendered as a 200 with an empty graph — indistinguishable, in the
 	// visualiser, from a vault with no notes in it.
 	// The graph is a map of the vault, so it is drawn from the caller's
 	// readable spaces only. An edge into a space they cannot see would show
 	// them a note's existence and its title.
-	visible := map[string]bool{}
-	nodes := []map[string]string{}
-	if err := s.eachRow("SELECT path, title, acl FROM notes", nil, func(rows *sql.Rows) error {
-		var path, title, acl string
-		if err := rows.Scan(&path, &title, &acl); err != nil {
+	compact := r.URL.Query().Get("compact") == "1"
+	index := map[string]int{}
+	ids := []string{}
+	titles := []string{}
+	times := []int64{}
+	if err := s.eachRow("SELECT path, title, acl, COALESCE(created,''), COALESCE(mtime,0) FROM notes", nil, func(rows *sql.Rows) error {
+		var path, title, acl, created string
+		var mtime float64
+		if err := rows.Scan(&path, &title, &acl, &created, &mtime); err != nil {
 			return err
 		}
 		if !s.canReadNote(r, path, acl) {
 			return nil
 		}
-		visible[path] = true
-		nodes = append(nodes, map[string]string{"id": path, "title": title})
+		index[path] = len(ids)
+		ids = append(ids, path)
+		titles = append(titles, title)
+		times = append(times, noteTime(created, mtime))
 		return nil
 	}); err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	edges := []map[string]string{}
+	// Tags let the console filter and name clusters; a handful per note is
+	// plenty and keeps the payload small.
+	tags := make([][]string, len(ids))
+	if err := s.eachRow("SELECT note, tag FROM tags ORDER BY note, tag", nil, func(rows *sql.Rows) error {
+		var note, tag string
+		if err := rows.Scan(&note, &tag); err != nil {
+			return err
+		}
+		if i, ok := index[note]; ok && len(tags[i]) < 6 {
+			tags[i] = append(tags[i], tag)
+		}
+		return nil
+	}); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	edges := make([]int32, 0, 2*len(ids))
 	if err := s.eachRow("SELECT src, dst FROM links WHERE resolved=1", nil,
 		func(rows *sql.Rows) error {
 			var src, dst string
 			if err := rows.Scan(&src, &dst); err != nil {
 				return err
 			}
-			if !visible[src] || !visible[dst] {
+			a, okA := index[src]
+			b, okB := index[dst]
+			if !okA || !okB {
 				return nil
 			}
-			edges = append(edges, map[string]string{"src": src, "dst": dst})
+			edges = append(edges, int32(a), int32(b))
 			return nil
 		}); err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
@@ -225,9 +254,70 @@ func (s *Server) graph(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
-		"nodes": nodes, "edges": edges, "unresolved": unresolved,
-	})
+	var out any
+	if compact {
+		// Columnar: parallel arrays and one flat edge list of index pairs. A
+		// fraction of the object form at 30k edges, and the client reads it
+		// straight into typed arrays.
+		out = map[string]any{"v": 2, "ids": ids, "titles": titles, "t": times, "tags": tags, "edges": edges, "unresolved": unresolved}
+	} else {
+		nodes := make([]map[string]string, len(ids))
+		for i := range ids {
+			nodes[i] = map[string]string{"id": ids[i], "title": titles[i]}
+		}
+		pairs := make([]map[string]string, 0, len(edges)/2)
+		for i := 0; i+1 < len(edges); i += 2 {
+			pairs = append(pairs, map[string]string{"src": ids[edges[i]], "dst": ids[edges[i+1]]})
+		}
+		out = map[string]any{"nodes": nodes, "edges": pairs, "unresolved": unresolved}
+	}
+	writeCachedJSON(w, r, out)
+}
+
+// noteTime is a note's date for the graph's time slider: its frontmatter
+// `created` when it parses, otherwise the file's modification time.
+func noteTime(created string, mtime float64) int64 {
+	for _, layout := range []string{time.RFC3339, "2006-01-02T15:04:05", "2006-01-02 15:04", "2006-01-02"} {
+		if t, err := time.Parse(layout, strings.TrimSpace(created)); err == nil {
+			return t.Unix()
+		}
+	}
+	return int64(mtime)
+}
+
+// writeCachedJSON answers with a content hash as its ETag so a console that
+// already holds the current graph gets a 304 and no body. `no-cache` (not
+// `no-store`) keeps the copy but forces revalidation, which matters because
+// the graph is per-caller: what one person may see another may not.
+func writeCachedJSON(w http.ResponseWriter, r *http.Request, v any) {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(v); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	sum := sha1.Sum(buf.Bytes())
+	etag := `"` + hex.EncodeToString(sum[:8]) + `"`
+	h := w.Header()
+	h.Set("ETag", etag)
+	h.Set("Cache-Control", "private, no-cache")
+	h.Add("Vary", "Accept-Encoding")
+	if match := r.Header.Get("If-None-Match"); match != "" && strings.Contains(match, etag) {
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+	h.Set("Content-Type", "application/json")
+	if buf.Len() > 1024 && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+		h.Set("Content-Encoding", "gzip")
+		w.WriteHeader(http.StatusOK)
+		zw := gzip.NewWriter(w)
+		_, _ = zw.Write(buf.Bytes())
+		_ = zw.Close()
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(buf.Bytes())
 }
 
 // eachRow runs a query and hands each row to fn, taking care of the three
