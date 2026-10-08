@@ -165,13 +165,10 @@ def test_graph_view_opens_and_renders(page, server):
     expect(page.locator("#graph-canvas")).to_be_visible()
     expect(page.locator("#graph-stat")).to_contain_text("notes", timeout=5000)
     expect(page.locator("#graph-stat")).to_contain_text("links")
-    # canvas actually paints something (nodes/edges drawn)
-    page.wait_for_timeout(400)
-    painted = page.evaluate(
-        "() => { const c=document.getElementById('graph-canvas');"
-        "const x=c.getContext('2d').getImageData(0,0,c.width,c.height).data;"
-        "let n=0; for(let i=3;i<x.length;i+=4){if(x[i]!==0)n++;} return n; }")
-    assert painted > 0, "graph canvas rendered nothing"
+    # the WebGL stage and its two 2D layers exist, and the engine reports a first paint
+    expect(page.locator("#graph-canvas[data-rendered]")).to_be_visible(timeout=8000)
+    assert page.locator("#graph-canvas canvas").count() >= 3, "graph stage rendered no canvases"
+    expect(page.locator("#graph-canvas")).to_have_attribute("data-phase", "settled", timeout=8000)
     page.click("#graph-close")
     expect(page.locator("#graph-modal")).to_be_hidden()
 
@@ -1289,12 +1286,13 @@ def test_graph_search_zoom_resize_and_note_navigation(page, server):
     page.goto(server)
     page.wait_for_selector("body[data-ready]")
     data={"nodes":[{"id":"graph-hub.md","title":"Graph Hub"},{"id":"graph-spoke.md","title":"Graph Spoke"},{"id":"isolated.md","title":"Isolated note"}],"edges":[{"src":"graph-hub.md","dst":"graph-spoke.md"}]}
-    page.route("**/api/graph",lambda r:r.fulfill(json=data))
+    page.route("**/api/graph*",lambda r:r.fulfill(json=data))
     page.evaluate("document.querySelector('#graph-open').click()")
     expect(page.locator("#graph-stat")).to_have_text("2 notes · 1 links")
     before=float(page.locator("#graph-canvas").get_attribute("data-zoom"))
     page.click("#graph-in")
-    assert float(page.locator("#graph-canvas").get_attribute("data-zoom"))>before
+    # zooming is animated, so wait for the camera to arrive rather than reading it at once
+    page.wait_for_function("b => parseFloat(document.getElementById('graph-canvas').dataset.zoom) > b", arg=before)
     page.fill("#graph-search","Graph Hub")
     page.locator("#graph-results .graph-show").click()
     expect(page.locator("#graph-selection")).to_contain_text("Graph Spoke")
@@ -1441,3 +1439,44 @@ def test_note_and_graph_search_share_keyboard_controls(page, server):
     page.keyboard.press("Enter")
     expect(page.locator("#graph-modal")).to_be_hidden()
     expect(page.locator("#title")).to_have_value("Consistent Search")
+
+
+@pytest.mark.parametrize("page", [DESKTOP, PHONE], indirect=True, ids=["desktop", "phone"])
+def test_graph_filters_timeline_and_focus(page, server):
+    page.goto(server)
+    page.wait_for_selector("body[data-ready]")
+    ids = [f"alpha/n{i}.md" for i in range(12)] + [f"beta/n{i}.md" for i in range(12)]
+    edges = []
+    for base in (0, 12):
+        for i in range(11):
+            edges += [base + i, base + i + 1]
+    edges += [5, 17]
+    data = {"v": 2, "ids": ids, "titles": [f"Note {i}" for i in range(24)], "t": [1_600_000_000 + i * 86400 for i in range(24)],
+            "tags": [["alpha-tag"] if i < 12 else [] for i in range(24)], "edges": edges, "unresolved": []}
+    page.route("**/api/graph*", lambda r: r.fulfill(json=data))
+    page.evaluate("document.querySelector('#graph-open').click()")
+    expect(page.locator("#graph-stat")).to_have_text("24 notes · 23 links", timeout=8000)
+    expect(page.locator("#graph-canvas")).to_have_attribute("data-phase", "settled", timeout=8000)
+    if page.locator("#graph-filters-toggle").is_visible():
+        page.click("#graph-filters-toggle")
+    page.select_option("#graph-folder", "alpha")
+    expect(page.locator("#graph-stat")).to_have_text("12 notes · 11 links")
+    page.select_option("#graph-folder", "")
+    page.select_option("#graph-tag", "alpha-tag")
+    expect(page.locator("#graph-stat")).to_have_text("12 notes · 11 links")
+    page.select_option("#graph-tag", "")
+    page.locator("#graph-time").fill("500")
+    expect(page.locator("#graph-stat")).not_to_have_text("24 notes · 23 links")
+    page.locator("#graph-time").fill("1000")
+    expect(page.locator("#graph-stat")).to_have_text("24 notes · 23 links")
+    # clicking a note focuses it: the inspector lists its neighbours and the depth control appears
+    pos = page.evaluate("(() => { const p = document.getElementById('graph-canvas').engine.screenPosition(5); return {x: p.x, y: p.y}; })()")
+    box = page.locator("#graph-canvas").bounding_box()
+    page.mouse.click(box["x"] + pos["x"], box["y"] + pos["y"])
+    expect(page.locator("#graph-selection")).to_contain_text("Note 5")
+    expect(page.locator("#graph-selection")).to_contain_text("3 connected notes")
+    page.get_by_role("button", name="2 hops").click()
+    expect(page.locator(".graph-depth .on")).to_have_text("2 hops")
+    page.check(".graph-isolate input")
+    expect(page.locator("#graph-stat")).not_to_have_text("24 notes · 23 links")
+    assert page.evaluate("document.documentElement.scrollWidth<=innerWidth")

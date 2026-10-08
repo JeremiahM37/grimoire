@@ -1,104 +1,103 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Graph } from './types';
+import { GraphEngine, readTheme, type ClusterInfo, type Filter } from './graph/engine';
+import { folderOf, normalizeGraph, type Kind } from './graph/model';
 
-type GraphNode = Graph['nodes'][number] & { neighbors: Set<string>; x: number; y: number };
-type Camera = { x: number; y: number; z: number };
+/** Importing this chunk (the Graph button is hovered) is a good moment to bring up the GPU process, which otherwise costs about 100 ms on first use. */
+if (typeof requestIdleCallback === 'function') requestIdleCallback(() => { try { document.createElement('canvas').getContext('webgl2'); } catch { /* no WebGL: the panel reports it */ } });
 
-function color(name: string, fallback: string) {
-  return getComputedStyle(document.body).getPropertyValue(name).trim() || fallback;
-}
-
-/** Canvas drawing is imperative; all graph state and controls remain React-owned. */
+/** The React shell owns controls and state; the WebGL engine owns drawing. */
 export function GraphPanel({ graph, close, open, currentPath }: { graph?: Graph; close: () => void; open: (path: string) => void; currentPath?: string }) {
-  const canvas = useRef<HTMLCanvasElement>(null);
-  const [scope, setScope] = useState<'linked' | 'local' | 'all'>('linked');
+  const canvas = useRef<HTMLDivElement>(null);
+  const engine = useRef<GraphEngine | undefined>(undefined);
+  const data = useMemo(() => (graph ? normalizeGraph(graph) : undefined), [graph]);
+  const [scope, setScope] = useState<Filter['scope']>('linked');
+  const [folder, setFolder] = useState('');
+  const [tag, setTag] = useState('');
+  const [kind, setKind] = useState<'all' | Kind>('all');
+  const [time, setTime] = useState(1000);
+  const [playing, setPlaying] = useState(false);
+  const [depth, setDepth] = useState(1);
+  const [isolate, setIsolate] = useState(false);
   const [query, setQuery] = useState('');
   const [searchIndex, setSearchIndex] = useState(-1);
-  const [selected, setSelected] = useState<string>();
-  const [camera, setCamera] = useState<Camera>({ x: 0, y: 0, z: 1 });
-  const cameraRef = useRef(camera);
-  cameraRef.current = camera;
+  const [selected, setSelected] = useState<number | null>(null);
+  const [hover, setHover] = useState<number | null>(null);
+  const [stat, setStat] = useState({ nodes: 0, edges: 0 });
+  const [phase, setPhase] = useState<'organising' | 'settling' | 'settled'>('organising');
+  const [clusters, setClusters] = useState<ClusterInfo[]>([]);
+  const [failure, setFailure] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false); // only meaningful on narrow screens, where the filter row is collapsed
 
-  const all = useMemo(() => {
-    const rows = new Map<string, GraphNode>();
-    for (const node of graph?.nodes || []) rows.set(node.id, { ...node, neighbors: new Set(), x: 0, y: 0 });
-    for (const edge of graph?.edges || []) {
-      if (edge.src !== edge.dst && rows.has(edge.src) && rows.has(edge.dst)) {
-        rows.get(edge.src)!.neighbors.add(edge.dst);
-        rows.get(edge.dst)!.neighbors.add(edge.src);
-      }
+  const index = useMemo(() => new Map((data?.ids || []).map((id, i) => [id, i])), [data]);
+  const current = currentPath ? index.get(currentPath) : undefined;
+  const facets = useMemo(() => {
+    const folders = new Map<string, number>(), tags = new Map<string, number>();
+    let min = Infinity, max = -Infinity, dated = 0;
+    for (let i = 0; i < (data?.n || 0); i++) {
+      const f = folderOf(data!.ids[i]!) || '/';
+      folders.set(f, (folders.get(f) || 0) + 1);
+      for (const t of data!.tags[i]!) tags.set(t, (tags.get(t) || 0) + 1);
+      const t = data!.t[i]!;
+      if (t > 0) { dated++; min = Math.min(min, t); max = Math.max(max, t); }
     }
-    return rows;
-  }, [graph]);
-  const nodes = useMemo(() => {
-    const active = currentPath ? all.get(currentPath) : undefined;
-    return [...all.values()].filter(node => scope === 'all' || (scope === 'local' ? node.id === active?.id || active?.neighbors.has(node.id) : node.neighbors.size > 0)).map((node, index) => ({ ...node, x: Math.cos(index * 2.399963) * 58 * Math.sqrt(index + 1), y: Math.sin(index * 2.399963) * 58 * Math.sqrt(index + 1) }));
-  }, [all, currentPath, scope]);
-  const nodeMap = useMemo(() => new Map(nodes.map(node => [node.id, node])), [nodes]);
-  const edges = useMemo(() => (graph?.edges || []).filter(edge => nodeMap.has(edge.src) && nodeMap.has(edge.dst)), [graph, nodeMap]);
+    const top = (m: Map<string, number>, k: number) => [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, k);
+    return { folders: top(folders, 40), tags: top(tags, 40), min, max, timeline: dated >= 20 && max - min > 2 * 86400, hasMemory: !!data?.ids.some(id => /^(agent memory|memory|claude\.ai memory)\//i.test(id)) };
+  }, [data]);
+  const cutoff = facets.timeline && time < 1000 ? facets.min + (facets.max - facets.min) * time / 1000 : null;
+
+  // layout effect: start the worker before the browser paints the empty modal
+  useLayoutEffect(() => {
+    const element = canvas.current;
+    if (!element || !data) return;
+    setPhase('organising'); setFailure(''); setSelected(null); setHover(null); setClusters([]);
+    const created = new GraphEngine(element, data, readTheme(), {
+      hover: setHover, select: setSelected, clusters: setClusters, fail: setFailure,
+      stats: (nodes, edges) => setStat({ nodes, edges }),
+      phase: next => { setPhase(next); element.dataset.phase = next; },
+    });
+    engine.current = created;
+    return () => { created.destroy(); engine.current = undefined; };
+  }, [data]);
+  useEffect(() => { engine.current?.setFilter({ scope, folder, tag, kind, cutoff, current }); }, [data, scope, folder, tag, kind, cutoff, current, phase === 'organising']);
+  useEffect(() => { engine.current?.setDepth(depth); }, [depth]);
+  useEffect(() => { engine.current?.setIsolate(isolate); }, [isolate]);
+  // follow the app theme (light/dark toggles and the OS setting)
+  useEffect(() => {
+    let queued = false;
+    const retheme = () => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; engine.current?.setTheme(readTheme()); }); };
+    const observer = new MutationObserver(retheme);
+    observer.observe(document.documentElement, { attributes: true }); observer.observe(document.body, { attributes: true });
+    const media = matchMedia('(prefers-color-scheme: dark)'); media.addEventListener('change', retheme);
+    return () => { observer.disconnect(); media.removeEventListener('change', retheme); };
+  }, []);
+  // play the vault growing note by note
+  useEffect(() => {
+    if (!playing) return;
+    const started = performance.now(), from = time >= 1000 ? 0 : time;
+    let frame = 0;
+    const step = (now: number) => {
+      const value = Math.min(1000, from + (now - started) / 7000 * (1000 - from));
+      setTime(Math.round(value));
+      if (value < 1000) frame = requestAnimationFrame(step); else setPlaying(false);
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [playing]);
+
   const hits = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return q ? [...all.values()].filter(node => `${node.title} ${node.id}`.toLowerCase().includes(q)) : [];
-  }, [all, query]);
-  const selectedNode = selected ? all.get(selected) : undefined;
-
-  const dimensions = useCallback(() => {
-    const element = canvas.current;
-    if (!element) return { width: 1, height: 1 };
-    const rect = element.getBoundingClientRect();
-    const dpr = Math.min(devicePixelRatio || 1, 2);
-    element.width = Math.max(1, Math.round(rect.width * dpr));
-    element.height = Math.max(1, Math.round(rect.height * dpr));
-    return { width: rect.width, height: rect.height };
-  }, []);
-  const fit = useCallback(() => {
-    const { width, height } = dimensions();
-    if (!nodes.length) return setCamera({ x: width / 2, y: height / 2, z: 1 });
-    const xs = nodes.map(node => node.x), ys = nodes.map(node => node.y);
-    const z = Math.min(1.5, Math.max(.08, Math.min((width - 70) / (Math.max(...xs) - Math.min(...xs) + 80), (height - 70) / (Math.max(...ys) - Math.min(...ys) + 80))));
-    setCamera({ x: width / 2 - (Math.max(...xs) + Math.min(...xs)) / 2 * z, y: height / 2 - (Math.max(...ys) + Math.min(...ys)) / 2 * z, z });
-  }, [dimensions, nodes]);
-
-  useEffect(() => { setSelected(undefined); setSearchIndex(-1); fit(); }, [fit, scope]);
+    if (!q || !data) return [];
+    const out: number[] = [];
+    for (let i = 0; i < data.n && out.length < 50; i++) if (`${data.titles[i]} ${data.ids[i]}`.toLowerCase().includes(q)) out.push(i);
+    return out;
+  }, [data, query]);
+  // search-to-fly: the camera glides to the best match as you type
   useEffect(() => {
-    const element = canvas.current;
-    if (!element) return;
-    const observer = new ResizeObserver(() => fit());
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [fit]);
-  useEffect(() => {
-    const element = canvas.current;
-    if (!element) return;
-    const { width, height } = dimensions();
-    const context = element.getContext('2d');
-    if (!context) return;
-    const dpr = Math.min(devicePixelRatio || 1, 2);
-    context.setTransform(dpr, 0, 0, dpr, 0, 0);
-    context.clearRect(0, 0, width, height);
-    const focus = selected;
-    context.lineWidth = 1;
-    for (const edge of edges) {
-      const a = nodeMap.get(edge.src)!, b = nodeMap.get(edge.dst)!;
-      context.globalAlpha = focus && focus !== a.id && focus !== b.id ? .18 : .65;
-      context.strokeStyle = focus === a.id || focus === b.id ? color('--accent', '#7357c5') : color('--line', '#c9c1b1');
-      context.beginPath(); context.moveTo(a.x * camera.z + camera.x, a.y * camera.z + camera.y); context.lineTo(b.x * camera.z + camera.x, b.y * camera.z + camera.y); context.stroke();
-    }
-    for (const node of nodes) {
-      const x = node.x * camera.z + camera.x, y = node.y * camera.z + camera.y;
-      const related = !focus || node.id === focus || all.get(focus)?.neighbors.has(node.id);
-      context.globalAlpha = related ? 1 : .22;
-      context.fillStyle = node.id === focus || node.id === currentPath ? color('--accent', '#7357c5') : color('--link', '#376b95');
-      context.beginPath(); context.arc(x, y, 5 + Math.min(6, node.neighbors.size), 0, Math.PI * 2); context.fill();
-      if (node.id === focus || (related && (nodes.length < 35 || camera.z > 1.3 || node.neighbors.size > 3))) {
-        const title = (node.title || node.id).slice(0, 36);
-        context.globalAlpha = 1; context.font = '12px system-ui'; context.textAlign = 'center'; context.fillStyle = color('--ink', '#1f2530'); context.fillText(title, x, y - 15);
-      }
-    }
-    if (!nodes.length) { context.globalAlpha = 1; context.fillStyle = color('--ink', '#1f2530'); context.font = '15px system-ui'; context.textAlign = 'center'; context.fillText('No notes in this view. Try All notes.', width / 2, height / 2); }
-    context.globalAlpha = 1;
-    element.dataset.zoom = camera.z.toFixed(3);
-  }, [all, camera, currentPath, dimensions, edges, nodeMap, nodes, selected]);
+    if (!hits.length) return;
+    const timer = setTimeout(() => engine.current?.peek(hits[Math.max(0, searchIndex)]!), 280);
+    return () => clearTimeout(timer);
+  }, [hits, searchIndex]);
   useEffect(() => {
     const handle = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
@@ -109,40 +108,46 @@ export function GraphPanel({ graph, close, open, currentPath }: { graph?: Graph;
     return () => removeEventListener('keydown', handle, true);
   }, [close, query]);
 
-  const zoom = (factor: number, center?: { x: number; y: number }) => {
-    const box = canvas.current?.getBoundingClientRect();
-    const x = center?.x ?? (box?.width || 0) / 2, y = center?.y ?? (box?.height || 0) / 2;
-    setCamera(old => { const z = Math.min(5, Math.max(.05, old.z * factor)); const ratio = z / old.z; return { x: x - (x - old.x) * ratio, y: y - (y - old.y) * ratio, z }; });
-  };
-  const focusNode = (id: string) => {
-    const node = all.get(id); if (!node) return;
-    if (!nodeMap.has(id)) setScope('all');
-    requestAnimationFrame(() => {
-      const target = nodeMap.get(id) || node;
-      const rect = canvas.current?.getBoundingClientRect();
-      setCamera(old => ({ x: (rect?.width || 0) / 2 - target.x * Math.max(old.z, 1), y: (rect?.height || 0) / 2 - target.y * Math.max(old.z, 1), z: Math.max(old.z, 1) }));
-      setSelected(id);
-    });
-  };
-  const openResult = (id: string) => { close(); open(id); };
-  const pick = (event: React.PointerEvent<HTMLCanvasElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect(); const point = { x: event.clientX - rect.left, y: event.clientY - rect.top };
-    let found: GraphNode | undefined; let best = 24;
-    for (const node of nodes) { const distance = Math.hypot(node.x * camera.z + camera.x - point.x, node.y * camera.z + camera.y - point.y); if (distance < best) { best = distance; found = node; } }
-    if (found) setSelected(found.id);
-  };
-  const pan = (event: React.PointerEvent<HTMLCanvasElement>) => {
-    const element = event.currentTarget; element.setPointerCapture(event.pointerId);
-    const start = { x: event.clientX, y: event.clientY, camera: cameraRef.current }; let moved = false;
-    const move = (next: PointerEvent) => { const dx = next.clientX - start.x, dy = next.clientY - start.y; if (Math.hypot(dx, dy) > 4) moved = true; setCamera({ ...start.camera, x: start.camera.x + dx, y: start.camera.y + dy }); };
-    const stop = (next: PointerEvent) => { element.removeEventListener('pointermove', move); element.removeEventListener('pointerup', stop); element.removeEventListener('pointercancel', stop); if (!moved) pick(next as unknown as React.PointerEvent<HTMLCanvasElement>); };
-    element.addEventListener('pointermove', move); element.addEventListener('pointerup', stop); element.addEventListener('pointercancel', stop);
-  };
+  const title = (i: number) => data!.titles[i] || data!.ids[i]!;
+  const focusNode = useCallback((i: number) => {
+    const run = () => engine.current?.focus(i, depth, true);
+    if (engine.current?.isVisible(i)) run(); else { setScope('all'); setFolder(''); setTag(''); setKind('all'); setTime(1000); engine.current?.setFilter({ scope: 'all', folder: '', tag: '', kind: 'all', cutoff: null }); setTimeout(run, 60); }
+  }, [depth]);
+  const openResult = (i: number) => { close(); open(data!.ids[i]!); };
+  const neighbours = selected !== null && engine.current ? engine.current.neighbours(selected).sort((a, b) => title(a).localeCompare(title(b))) : [];
   const onSearchKey = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Escape') { event.preventDefault(); setQuery(''); setSearchIndex(-1); return; }
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); setSearchIndex(index => Math.max(0, Math.min(hits.length - 1, index + (event.key === 'ArrowDown' ? 1 : -1)))); return; }
-    if (event.key === 'Enter' && hits.length) { event.preventDefault(); openResult(hits[Math.max(0, searchIndex)]!.id); }
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); setSearchIndex(i => Math.max(0, Math.min(hits.length - 1, i + (event.key === 'ArrowDown' ? 1 : -1)))); return; }
+    if (event.key === 'Enter' && hits.length) { event.preventDefault(); openResult(hits[Math.max(0, searchIndex)]!); }
   };
+  const date = (cutoff ?? facets.max) ? new Date((cutoff ?? facets.max) * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+  const hovered = hover !== null && data ? title(hover) : '';
 
-  return <div id="graph-modal" className="modal" role="dialog" aria-label="Note graph" onMouseDown={event => event.currentTarget === event.target && close()}><div className="modal-box graph-box"><button className="icon modal-close" onClick={close}>✕</button><h2>Graph <span id="graph-stat">{nodes.length} notes · {edges.length} links</span></h2><div className="graph-controls"><div className="note-search graph-search-wrap"><input id="graph-search" type="search" value={query} onChange={event => { setQuery(event.target.value); setSearchIndex(-1); }} onKeyDown={onSearchKey} placeholder="Search note titles…" aria-label="Search graph notes" autoFocus /><button id="graph-search-clear" className="icon" aria-label="Clear graph search" hidden={!query} onClick={() => { setQuery(''); setSearchIndex(-1); }}>✕</button></div><select id="graph-scope" aria-label="Graph scope" value={scope} onChange={event => setScope(event.target.value as typeof scope)}><option value="linked">Connected notes</option><option value="local">Current note &amp; neighbors</option><option value="all">All notes</option></select><button id="graph-out" className="icon" aria-label="Zoom out" onClick={() => zoom(1 / 1.3)}>−</button><button id="graph-in" className="icon" aria-label="Zoom in" onClick={() => zoom(1.3)}>+</button><button id="graph-fit" className="btn" onClick={fit}>Fit</button><button id="graph-reset" className="btn" onClick={() => setCamera(old => ({ ...old, z: 1 }))}>Reset</button></div><div className="graph-workspace"><canvas id="graph-canvas" ref={canvas} tabIndex={0} aria-label="Note graph. Drag to pan, scroll or use plus and minus to zoom. Search to select a note." onPointerDown={pan} onWheel={event => { event.preventDefault(); const rect = event.currentTarget.getBoundingClientRect(); zoom(Math.exp(-event.deltaY * .002), { x: event.clientX - rect.left, y: event.clientY - rect.top }); }} onKeyDown={event => { if (event.key === '+' || event.key === '=') { event.preventDefault(); zoom(1.3); } else if (event.key === '-') { event.preventDefault(); zoom(1 / 1.3); } else if (event.key === 'Home') { event.preventDefault(); fit(); } }} /><aside className="graph-inspector"><p id="graph-search-status" role="status">{query ? hits.length ? `${hits.length} results · Enter to open` : 'No matching notes. Try fewer words.' : ''}</p><div id="graph-results" aria-live="polite">{hits.map((node, index) => <div className={'graph-result' + (index === searchIndex ? ' kbd-sel' : '')} key={node.id}><button className="graph-result-open" onClick={() => openResult(node.id)}>{node.title || node.id}</button><button className="graph-show" aria-label={`Show connections for ${node.title || node.id}`} onClick={() => focusNode(node.id)}>Connections</button></div>)}</div><div id="graph-selection">{selectedNode ? <><strong>{selectedNode.title || selectedNode.id}</strong><button className="btn" onClick={() => openResult(selectedNode.id)}>Open note</button><span>{selectedNode.neighbors.size} connected notes</span>{[...selectedNode.neighbors].sort().map(id => <button className="graph-neighbor" key={id} onClick={() => focusNode(id)}>{all.get(id)?.title || id}</button>)}</> : 'Select a note to see its connections.'}</div></aside></div><p className="graph-help">Drag to pan · scroll to zoom · search and press Enter to open</p><button id="graph-close" onClick={close}>Close</button></div></div>;
+  return <div id="graph-modal" className="modal" role="dialog" aria-label="Note graph" onMouseDown={event => event.currentTarget === event.target && close()}><div className="modal-box graph-box"><button className="icon modal-close" onClick={close}>✕</button>
+    <h2>Graph <span id="graph-stat">{stat.nodes} notes · {stat.edges} links</span><span id="graph-phase" role="status" aria-live="polite">{data && phase !== 'settled' ? (phase === 'organising' ? 'Organising…' : 'Settling…') : ''}</span></h2>
+    <div className={'graph-controls' + (filtersOpen ? ' filters-open' : '')}>
+      <div className="note-search graph-search-wrap"><input id="graph-search" type="search" value={query} onChange={event => { setQuery(event.target.value); setSearchIndex(-1); }} onKeyDown={onSearchKey} placeholder="Search note titles…" aria-label="Search graph notes" autoFocus={!matchMedia('(pointer: coarse)').matches} /><button id="graph-search-clear" className="icon" aria-label="Clear graph search" hidden={!query} onClick={() => { setQuery(''); setSearchIndex(-1); }}>✕</button></div>
+      <select id="graph-scope" aria-label="Graph scope" value={scope} onChange={event => setScope(event.target.value as Filter['scope'])}><option value="linked">Connected notes</option><option value="local">Current note &amp; neighbors</option><option value="all">All notes</option></select>
+      <button id="graph-filters-toggle" className="btn" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(open => !open)}>Filters</button>
+      <select className="graph-filter-part" id="graph-folder" aria-label="Filter by folder" value={folder} onChange={event => setFolder(event.target.value)}><option value="">All folders</option>{facets.folders.map(([name, count]) => <option key={name} value={name}>{name === '/' ? 'Top level' : name} ({count})</option>)}</select>
+      {facets.tags.length > 0 && <select className="graph-filter-part" id="graph-tag" aria-label="Filter by tag" value={tag} onChange={event => setTag(event.target.value)}><option value="">All tags</option>{facets.tags.map(([name, count]) => <option key={name} value={name}>#{name} ({count})</option>)}</select>}
+      {facets.hasMemory && <select className="graph-filter-part" id="graph-kind" aria-label="Filter by type" value={kind} onChange={event => setKind(event.target.value as typeof kind)}><option value="all">Notes &amp; memory</option><option value="note">Notes only</option><option value="memory">Agent memory only</option></select>}
+      <button id="graph-out" className="icon" aria-label="Zoom out" onClick={() => engine.current?.zoom(1 / 1.5)}>−</button><button id="graph-in" className="icon" aria-label="Zoom in" onClick={() => engine.current?.zoom(1.5)}>+</button>
+      <button id="graph-fit" className="btn" onClick={() => engine.current?.fit()}>Fit</button><button id="graph-reset" className="btn" onClick={() => { engine.current?.focus(null); setFolder(''); setTag(''); setKind('all'); setTime(1000); setIsolate(false); engine.current?.fit(); }}>Reset</button>
+    </div>
+    {facets.timeline && <div className={'graph-time graph-filter-part' + (filtersOpen ? ' open' : '')}><button id="graph-play" className="icon" aria-label={playing ? 'Pause timeline' : 'Play the vault growing'} onClick={() => { if (!playing && time >= 1000) setTime(0); setPlaying(p => !p); }}>{playing ? '❚❚' : '▶'}</button><input id="graph-time" type="range" min="0" max="1000" value={time} aria-label="Show notes created up to this date" onChange={event => { setPlaying(false); setTime(Number(event.target.value)); }} /><span id="graph-date">{date}</span></div>}
+    <div className="graph-workspace"><div className="graph-stage"><div id="graph-canvas" ref={canvas} tabIndex={0} role="application" aria-label="Note graph. Drag to pan, scroll or pinch to zoom, click a note to focus its connections. Search to fly to a note." onKeyDown={event => { if (event.key === '+' || event.key === '=') { event.preventDefault(); engine.current?.zoom(1.5); } else if (event.key === '-') { event.preventDefault(); engine.current?.zoom(1 / 1.5); } else if (event.key === 'Home') { event.preventDefault(); engine.current?.fit(); } }} />
+      {!data && <p className="graph-overlay" role="status">Loading graph…</p>}
+      {failure && <p className="graph-overlay" role="alert">The graph needs WebGL, which this browser could not start ({failure}). Search still finds notes.</p>}
+      {hovered && selected === null && <p className="graph-hover" aria-hidden="true">{hovered}</p>}
+    </div>
+    <aside className="graph-inspector"><p id="graph-search-status" role="status">{query ? hits.length ? `${hits.length} results · Enter to open` : 'No matching notes. Try fewer words.' : ''}</p>
+      <div id="graph-results" aria-live="polite">{hits.map((node, position) => <div className={'graph-result' + (position === searchIndex ? ' kbd-sel' : '')} key={node}><button className="graph-result-open" onClick={() => openResult(node)}>{title(node)}</button><button className="graph-show" aria-label={`Show connections for ${title(node)}`} onClick={() => focusNode(node)}>Connections</button></div>)}</div>
+      <div id="graph-selection">{selected !== null && data ? <><strong>{title(selected)}</strong><button className="btn" onClick={() => openResult(selected)}>Open note</button>
+        <div className="graph-depth" role="group" aria-label="Connection depth">{[1, 2, 3].map(d => <button key={d} className={'btn' + (depth === d ? ' on' : '')} aria-pressed={depth === d} onClick={() => setDepth(d)}>{d} hop{d > 1 ? 's' : ''}</button>)}</div>
+        <label className="graph-isolate"><input type="checkbox" checked={isolate} onChange={event => setIsolate(event.target.checked)} /> Show only this neighbourhood</label>
+        <span>{neighbours.length} connected notes</span>{neighbours.map(id => <button className="graph-neighbor" key={id} onClick={() => focusNode(id)}>{title(id)}</button>)}</> : 'Click a note to see its connections.'}</div>
+      {clusters.some(c => c.size > 1) && <div className="graph-legend" aria-label="Clusters"><h3>Clusters</h3>{clusters.filter(c => c.size > 1).slice(0, 40).map(c => <button key={c.id} className="graph-cluster" onClick={() => engine.current?.flyToCluster(c.id)}><i style={{ background: c.color }} />{c.name}<small>{c.size}</small></button>)}</div>}
+    </aside></div>
+    <p className="graph-help">Drag to pan · scroll or pinch to zoom · click a note to focus · search flies there</p><button id="graph-close" onClick={close}>Close</button></div></div>;
 }

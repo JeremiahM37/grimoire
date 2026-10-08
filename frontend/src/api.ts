@@ -62,7 +62,7 @@ export function createGrimoireApi(options: ClientOptions = {}) {
     aliases: (signal?: AbortSignal) => request<Record<string, string>>('/aliases', { signal }),
     tags: (signal?: AbortSignal) => request<TagCount[]>('/tags', { signal }),
     search: (q: string, trusted = false) => request<SearchHit[]>(`/search${query({ q, trusted: trusted || undefined })}`),
-    graph: () => request<Graph>('/graph'),
+    graph: () => request<Graph>('/graph?compact=1'),
     knowledgeGraph: (params: { seed?: string; depth?: number; limit?: number; relation?: string; q?: string; min_degree?: number; document_visibility?: boolean; drop_noisy?: boolean; chunk_visibility?: boolean } = {}) => request<KnowledgeGraph>(`/knowledge/graph${query(params)}`),
     knowledgeQuery: (body: { question: string; limit?: number; depth?: number; after?: string; before?: string; expand?: boolean }) => request<KnowledgeQueryResult>('/knowledge/query', { method: 'POST', body: body as unknown as JsonValue }),
     knowledgeSource: (path: string) => request<KnowledgeSource>(`/knowledge/source${query({ path })}`),

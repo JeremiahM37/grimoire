@@ -51,7 +51,7 @@ export interface Health {
   rev: string;
 }
 export interface SearchHit { path: string; title: string; snippet: string; body?: string; origin?: string; trust: string }
-export interface Graph { nodes: { id: string; title: string }[]; edges: { src: string; dst: string }[]; unresolved: string[] }
+export type Graph = import('./graph/model').RawGraph;
 export type KnowledgeNodeKind = 'entity' | 'document' | 'chunk';
 export interface KnowledgeEvidence { path: string; title: string; text: string; origin: string; trust: string }
 export interface KnowledgeNode { id: string; label: string; kind: KnowledgeNodeKind; path?: string }

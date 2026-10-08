@@ -5,3 +5,8 @@ declare module '/vendor/editor.js' {
     callbacks: { onChange: (text: string) => void };
   }): { setValue(value: string): void; destroy(): void };
 }
+
+declare module 'graphology-layout-forceatlas2/iterate' {
+  const iterate: (settings: Record<string, unknown>, nodes: Float32Array, edges: Float32Array) => unknown;
+  export default iterate;
+}
