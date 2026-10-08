@@ -1143,7 +1143,7 @@ def test_mobile_edge_swipe_opens_and_closes_sidebar(browser, server):
         pg.goto(server)
         pg.wait_for_selector("body[data-ready]", timeout=10000)
         expect(pg.locator("#sidebar")).to_have_class(re.compile(r"\bopen\b"))
-        pg.locator(".note-row").first.click()
+        pg.locator(".note-row[data-path=\"swipe-home.md\"]").click()
         expect(pg.locator("#sidebar")).not_to_have_class(re.compile(r"\bopen\b"), timeout=4000)
         pg.evaluate("""() => {
           const mk = (type, x, y) => new TouchEvent(type, { bubbles: true,
@@ -1264,7 +1264,7 @@ def test_related_notes_leave_room_to_write_and_can_collapse(browser, server):
         pg.request.post(server + "/api/notes", data={"path": "related-room.md", "body": "# Related room\n"})
         pg.goto(server)
         pg.wait_for_selector("body[data-ready]", timeout=10000)
-        pg.locator(".note-row").first.click()  # the phone lands on the list; open a note first
+        pg.locator(".note-row[data-path=\"related-room.md\"]").click()  # the phone lands on the list; open a note first
         pg.locator("#unlinked").evaluate("e=>e.innerHTML='<p>Related context</p>'.repeat(50)")
         before = pg.locator("#ed-body").bounding_box()["height"]
         assert before >= 400
