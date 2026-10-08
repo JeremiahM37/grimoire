@@ -33,7 +33,7 @@
 .react-app button:disabled { cursor: default; opacity: .5; }
 .react-app #side-head { padding: 20px 18px 16px; gap: 8px; }
 .react-app #side-head h1 { font: 650 20px/1.3 var(--sans); letter-spacing: -.7px; flex: 1; }
-.react-app #side-head h1::before { content: '✧'; color: var(--accent); margin-right: 9px; }
+.react-app #side-head h1::before { content: ''; display: inline-block; width: 22px; height: 22px; margin-right: 9px; vertical-align: -4px; background: url('/icon.svg') center / contain no-repeat; }
 .react-app .note-search { margin: 0 14px 12px; }
 .react-app #search { font-size: 12px; padding: 10px 30px 10px 12px; border-radius: 7px; }
 .react-app .side-actions { display: grid; gap: 3px; padding: 0 14px 14px; }
