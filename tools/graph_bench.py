@@ -63,6 +63,8 @@ def main():
         except Exception: pass
         load_lt = page.evaluate("window.__lt.map(x=>Math.round(x[1]))"); ltAt = page.evaluate("window.__lt.map(x=>Math.round(x[0]-window.__t1))")
         page.wait_for_timeout(9000 if mode == '50000' else 5000)  # let the layout settle
+        page.on("console", lambda m: print("console", m.text))
+        if os.environ.get("EXPERIMENT"): page.evaluate(os.environ["EXPERIMENT"])
         if shot: page.screenshot(path=shot)
         page.evaluate("""window.__fr=[];window.__lt.length=0;window.__rec=true;window.__t1=performance.now();let l=performance.now();(function f(t){if(!window.__rec)return;window.__fr.push(t-l);l=t;requestAnimationFrame(f)})(l);""")
         box = page.locator("#graph-canvas").bounding_box(); cx, cy = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2

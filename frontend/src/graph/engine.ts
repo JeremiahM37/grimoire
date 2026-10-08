@@ -133,7 +133,7 @@ export class GraphEngine {
     this.rank = msg.rank; this.cluster = msg.cluster; this.clusterCount = msg.count; this.xy = msg.xy;
     const big = n > 4000;
     // Build in time-boxed slices so even a 50k-node graph never holds the main thread for a long task.
-    const sliceBudget = 10;
+    const sliceBudget = 28;
     let sliceStart = performance.now();
     const yieldIfNeeded = async () => {
       if (performance.now() - sliceStart < sliceBudget) return;
@@ -176,6 +176,10 @@ export class GraphEngine {
       return;
     }
     // sigma appended its canvases after ours; keep the halo layer underneath them and focus layer above
+    // Labels, hover and mouse layers are unused (labels and hover are drawn by our own layers). Each is a full-size canvas
+    // the compositor must still blend every frame, which on a software rasteriser cost ~10x the frame rate; detached
+    // canvases are never composited and sigma draws into them harmlessly.
+    for (const name of ['edgeLabels', 'labels', 'hovers', 'hoverNodes', 'mouse']) this.container.querySelector(`canvas.sigma-${name}`)?.remove();
     this.container.insertBefore(this.bg, this.container.firstChild);
     this.container.appendChild(this.fx);
     this.wire();
