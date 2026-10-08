@@ -238,8 +238,8 @@ def test_banks_panel_fits_a_phone(browser, server):
         seed(page, server)
         page.goto(server)
         page.wait_for_selector("body[data-ready]")
-        page.click("#menu-open")
-        page.click("#banks-open")
+        page.click("#tabbar >> text=More")
+        page.click("#more-sheet >> text=Banks")
         page.locator(f'#banks-list [data-bank="{BANK}"]').click()
         for name in ("playground", "memories", "models", "directives", "operations"):
             tab(page, name)

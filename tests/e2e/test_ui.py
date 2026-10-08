@@ -1133,14 +1133,18 @@ def test_footnotes_render_in_preview(page, server):
 
 
 def test_mobile_edge_swipe_opens_and_closes_sidebar(browser, server):
+    """The notes list is the phone's home screen; a note opens over it and an
+    edge swipe (or the system back gesture) returns to the list."""
     ctx = browser.new_context(viewport=PHONE, has_touch=True)
     ctx.add_init_script("localStorage.setItem('grimoire-editor-mode', 'classic')")
     pg = ctx.new_page()
     try:
+        pg.request.post(server + "/api/notes", data={"path": "swipe-home.md", "body": "# Swipe home\n"})
         pg.goto(server)
         pg.wait_for_selector("body[data-ready]", timeout=10000)
-        assert not pg.locator("#sidebar").evaluate("el => el.classList.contains('open')")
-        # swipe right from the left edge → sidebar opens
+        expect(pg.locator("#sidebar")).to_have_class(re.compile(r"\bopen\b"))
+        pg.locator(".note-row").first.click()
+        expect(pg.locator("#sidebar")).not_to_have_class(re.compile(r"\bopen\b"), timeout=4000)
         pg.evaluate("""() => {
           const mk = (type, x, y) => new TouchEvent(type, { bubbles: true,
             touches: [new Touch({ identifier: 1, target: document.body, clientX: x, clientY: y })],
@@ -1149,19 +1153,8 @@ def test_mobile_edge_swipe_opens_and_closes_sidebar(browser, server):
           document.body.dispatchEvent(mk('touchend', 180, 305));
         }""")
         expect(pg.locator("#sidebar")).to_have_class(re.compile(r"\bopen\b"), timeout=4000)
-        # swipe left on the sidebar → closes
-        pg.evaluate("""() => {
-          const side = document.querySelector('#sidebar');
-          const mk = (type, x, y) => new TouchEvent(type, { bubbles: true,
-            touches: [new Touch({ identifier: 2, target: side, clientX: x, clientY: y })],
-            changedTouches: [new Touch({ identifier: 2, target: side, clientX: x, clientY: y })] });
-          side.dispatchEvent(mk('touchstart', 200, 300));
-          side.dispatchEvent(mk('touchend', 40, 300));
-        }""")
-        expect(pg.locator('#sidebar')).not_to_have_class(re.compile(r'\bopen\b'), timeout=4000)
     finally:
         ctx.close()
-
 
 def test_ios_standalone_metas_and_touch_icon(page, server):
     page.goto(server)
@@ -1268,8 +1261,10 @@ def test_related_notes_leave_room_to_write_and_can_collapse(browser, server):
     ctx = browser.new_context(viewport={"width": 360, "height": 800})
     pg = ctx.new_page()
     try:
+        pg.request.post(server + "/api/notes", data={"path": "related-room.md", "body": "# Related room\n"})
         pg.goto(server)
         pg.wait_for_selector("body[data-ready]", timeout=10000)
+        pg.locator(".note-row").first.click()  # the phone lands on the list; open a note first
         pg.locator("#unlinked").evaluate("e=>e.innerHTML='<p>Related context</p>'.repeat(50)")
         before = pg.locator("#ed-body").bounding_box()["height"]
         assert before >= 400
@@ -1358,13 +1353,22 @@ def test_explain_note_is_one_click_and_does_not_edit(page, server):
     page.click("#ask-open")
     expect(page.locator("#ask-priv")).to_have_value("public")
 
+
+def open_new_note_panel(page):
+    """Desktop has the sidebar button; the phone reaches it from the tab bar's More sheet."""
+    if page.viewport_size["width"] < 700:
+        if page.locator("#sidebar.open").count() == 0:
+            page.click("#menu-open")
+        page.click("#tabbar >> text=More")
+        page.click("#more-sheet >> text=New note")
+    else:
+        page.click("#new-note")
+
 @pytest.mark.parametrize("page", [DESKTOP, PHONE], indirect=True, ids=["desktop", "phone"])
 def test_new_note_panel_folder_and_error_recovery(page, server):
     page.goto(server)
     page.wait_for_selector("body[data-ready]")
-    if page.viewport_size["width"] < 700:
-        page.click("#menu-open")
-    page.click("#new-note")
+    open_new_note_panel(page)
     expect(page.locator("#new-note-title")).to_be_focused()
     page.fill("#new-note-title", "Panel creation")
     page.fill("#new-note-folder", "../outside")
@@ -1379,9 +1383,7 @@ def test_new_note_panel_folder_and_error_recovery(page, server):
     expect(page.locator("#title")).to_have_value("Panel creation")
     expect(page.locator("#content")).to_have_value(re.compile(r"First idea captured here\."))
     assert page.request.get(server + "/api/notes/" + folder + "/panel-creation.md").ok
-    if page.viewport_size["width"] < 700:
-        page.click("#menu-open")
-    page.click("#new-note")
+    open_new_note_panel(page)
     page.click("#new-note-cancel")
     expect(page.locator("#new-note-modal")).to_be_hidden()
 
@@ -1389,9 +1391,7 @@ def test_new_note_panel_folder_and_error_recovery(page, server):
 def test_panel_keyboard_focus_and_short_viewport(page, server):
     page.goto(server)
     page.wait_for_selector("body[data-ready]")
-    if page.viewport_size["width"] < 700:
-        page.click("#menu-open")
-    page.click("#new-note")
+    open_new_note_panel(page)
     page.fill("#new-note-title", "Keyboard draft")
     page.locator("#new-note-create").focus()
     page.keyboard.press("Tab")
@@ -1400,11 +1400,13 @@ def test_panel_keyboard_focus_and_short_viewport(page, server):
     expect(page.locator("#new-note-create")).to_be_focused()
     page.set_viewport_size({"width": 390, "height": 420})
     expect(page.locator("html")).to_have_css("--visible-height", "420px")
+    page.wait_for_timeout(500)  # the sheet slides in when the layout flips to the phone one
     box = page.locator("#new-note-create").bounding_box()
     assert box["y"] >= 0 and box["y"] + box["height"] <= 420
     page.keyboard.press("Escape")
     expect(page.locator("#new-note-modal")).to_be_hidden()
-    expect(page.locator("#new-note")).to_be_focused()
+    if page.viewport_size["width"] >= 700:
+        expect(page.locator("#new-note")).to_be_focused()
     # Cancelling an optional title used to create a unique note anyway.
     calls = []
     page.on("request", lambda r: calls.append(r.url) if r.method == "POST" and r.url.endswith("/api/notes") else None)

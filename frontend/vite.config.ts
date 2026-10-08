@@ -22,7 +22,9 @@ self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
   if (event.request.mode === 'navigate' && (url.pathname === '/' || url.pathname === '/index.html')) {
-    event.respondWith(fetch(event.request).catch(() => caches.match('/')));
+    // The cached shell is versioned with its assets (a deploy changes this file, so a new worker
+    // installs a fresh copy): serve it at once instead of waiting on the network.
+    event.respondWith(caches.match('/').then(hit => hit || fetch(event.request)));
     return;
   }
   if (!PRECACHE.includes(url.pathname) || url.pathname === '/') return;

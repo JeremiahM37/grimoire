@@ -1,0 +1,97 @@
+/* Phone layout.  Everything that changes the desktop is inside the 780px query. */
+#tabbar, #ptr, .m-toast { display: none; }
+.sheet-title { margin: 6px 18px 0; font: 600 17px var(--sans); }
+#capture-sheet .modal-box { padding-bottom: 8px; }
+#capture-text { margin: 10px 16px 0; width: calc(100% - 32px); box-sizing: border-box; min-height: 120px; border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: var(--paper2); color: var(--ink); font: 16px/1.5 var(--sans); resize: none; }
+.capture-url { margin: 8px 18px 0; font-size: 13px; color: var(--link); overflow-wrap: anywhere; }
+.capture-err { margin: 8px 18px 0; color: var(--danger); }
+.sheet-actions { display: flex; justify-content: space-between; gap: 10px; padding: 12px 16px; }
+.sheet-actions .btn { min-height: 46px; padding: 0 18px; }
+.sheet-actions .btn.primary { background: var(--accent); color: #fff; border-color: transparent; }
+.sheet-actions .btn:disabled { opacity: .5; }
+.sheet-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 14px 16px 18px; }
+.sheet-grid button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 76px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper2); color: var(--ink); font: 600 13px var(--sans); }
+.sheet-grid button b { font-size: 20px; color: var(--accent); font-weight: 500; }
+
+@media (max-width: 780px) {
+  html, body { overscroll-behavior-y: contain; }
+  body { -webkit-tap-highlight-color: transparent; }
+  button, summary, .note-row { touch-action: manipulation; }
+
+  /* Notes list is the home screen; a note is a full screen on top of it. */
+  .react-app #sidebar { position: fixed; inset: 0; width: 100%; max-width: none; border: 0; box-shadow: none; z-index: 30;
+    transform: translateX(-16%); opacity: 0; visibility: hidden; transition: transform .22s ease, opacity .18s ease, visibility 0s .22s;
+    padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
+  .react-app #sidebar.open { transform: none; opacity: 1; visibility: visible; transition: transform .22s ease, opacity .18s ease; }
+  .react-app #menu-close, .react-app .side-actions, .react-app #side-foot, .react-app #sidebar-resize { display: none; }
+  .react-app #side-head { padding: calc(10px + env(safe-area-inset-top)) 16px 6px; }
+  .react-app #theme-toggle { min-width: 44px; min-height: 44px; }
+  .react-app .note-search { padding: 4px 12px 8px; }
+  .react-app #search { min-height: 46px; border-radius: 12px; }
+  .react-app #search-clear { width: 44px; height: 44px; right: 12px; top: 4px; }
+  .react-app #note-list { padding: 0 8px 12px; overscroll-behavior: contain; }
+  .react-app .note-row { min-height: 60px; padding-top: 10px; padding-bottom: 10px; border-radius: 12px; }
+  .react-app .note-row:active { background: var(--hover, var(--paper)); }
+  .react-app .library-heading { padding: 6px 16px; }
+  .react-app #tag-filter-bar button { min-height: 44px; }
+
+  /* note screen */
+  .react-app #editor { padding-bottom: env(safe-area-inset-bottom); min-width: 0; max-width: 100vw; overflow-x: clip; }
+  .react-app #app, #app { min-width: 0; }
+  .react-app #sidebar-toggle { display: none !important; }
+  .react-app #plugin-panels { max-height: 110px; overflow: auto; }
+  .react-app #split-btn, .react-app #outline-btn, .react-app #props-btn, .react-app #private-toggle { display: none !important; }
+  .react-app #ed-head { overflow-x: auto; scrollbar-width: none; }
+  .react-app #ed-head::-webkit-scrollbar { display: none; }
+  .react-app #ed-head > * { flex-shrink: 0; }
+  .react-app #ed-head > #title { flex: 1 1 80px; min-width: 80px; }
+  .react-app #ed-head { padding-top: calc(6px + env(safe-area-inset-top)); min-height: 56px; }
+  .react-app #ed-head .icon { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+  .react-app #menu-open { font-size: 30px; line-height: 1; padding-bottom: 4px; }
+  .react-app #title { min-height: 44px; font-size: 18px !important; }
+  .react-app #note-connections > summary { min-height: 48px; display: flex; align-items: center; }
+  .react-app .workspace-empty .btn { min-height: 46px; }
+  #ed-toolbar { display: none; }
+  body.editing #ed-toolbar { display: flex; position: fixed; left: 0; right: 0; bottom: var(--kb, 0px); z-index: 28; margin: 0; padding: 6px 8px calc(6px + env(safe-area-inset-bottom)) !important;
+    background: var(--paper2); border-top: 1px solid var(--line); border-bottom: 0; gap: 6px; justify-content: space-between; }
+  body.editing #ed-toolbar .tb { flex: 1; min-height: 46px; font-size: 17px; border-radius: 10px; }
+  body.editing #ed-body { padding-bottom: 64px; }
+  body.editing #note-connections, body.editing .m-toast { display: none; }
+
+  /* bottom tab bar */
+  #tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 35; display: grid; grid-template-columns: repeat(5, 1fr); align-items: center;
+    height: calc(58px + env(safe-area-inset-bottom)); padding: 0 6px env(safe-area-inset-bottom);
+    background: color-mix(in srgb, var(--paper) 94%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-top: 1px solid var(--line); }
+  #tabbar .tab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 52px; border: 0; background: none; color: var(--ink-soft); font: 600 11px var(--sans); }
+  #tabbar .tab.on { color: var(--accent); }
+  #tabbar .tab.fab { width: 54px; height: 54px; min-height: 0; margin: 0 auto; border-radius: 18px; background: var(--accent); color: #fff; box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 45%, transparent); }
+
+  /* pull to refresh */
+  #ptr { display: block; position: fixed; top: calc(env(safe-area-inset-top) + 6px); left: 50%; width: 34px; height: 34px; margin-left: -17px; z-index: 36; pointer-events: none;
+    border-radius: 50%; background: var(--paper); border: 1px solid var(--line); box-shadow: var(--shadow); opacity: var(--p, 0); transform: translateY(calc(var(--p, 0) * 56px - 44px)); }
+  #ptr span { position: absolute; inset: 8px; border: 2px solid var(--accent); border-right-color: transparent; border-radius: 50%; transform: rotate(calc(var(--p, 0) * 270deg)); }
+  #ptr.spin span { animation: ptr-spin .7s linear infinite; }
+  @keyframes ptr-spin { to { transform: rotate(360deg); } }
+  .m-toast { display: block; position: fixed; left: 50%; bottom: calc(76px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 60; padding: 10px 16px; border-radius: 20px; background: var(--ink); color: var(--paper); font: 600 13px var(--sans); }
+
+  /* sheets instead of modals; heavy panels go full screen */
+  .modal { align-items: flex-end; padding: 0 !important; background: rgba(0, 0, 0, .45); }
+  .modal-box { width: 100% !important; max-width: none !important; border-radius: 20px 20px 0 0; border-width: 1px 0 0; box-shadow: 0 -8px 40px rgba(0, 0, 0, .25);
+    max-height: calc(var(--visible-height, 100dvh) - 40px - env(safe-area-inset-top)) !important; padding-bottom: env(safe-area-inset-bottom); animation: sheet-up .24s cubic-bezier(.2, .8, .2, 1); }
+  .modal-box::before { content: ""; flex: none; width: 40px; height: 4px; border-radius: 2px; background: var(--line); margin: 8px auto 4px; }
+  #graph-modal .modal-box, #banks-modal .modal-box, #knowledge-modal .modal-box, #canvas-view .modal-box { height: var(--visible-height, 100dvh); max-height: none !important; border-radius: 0; border: 0;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); animation: screen-in .22s ease; }
+  #graph-modal .modal-box::before, #banks-modal .modal-box::before, #knowledge-modal .modal-box::before, #canvas-view .modal-box::before { display: none; }
+  .modal-close, .modal-head button, .modal .close { min-width: 44px; min-height: 44px; }
+  .modal button, .modal summary, .modal .btn { min-height: 44px; min-width: 44px; }
+  .modal input:not([type=checkbox]):not([type=radio]):not([type=range]), .modal select, .modal textarea { min-height: 44px; box-sizing: border-box; }
+  .modal .modal-close, .modal button.icon { min-width: 44px !important; min-height: 44px !important; }
+  .react-app .folder-head { min-height: 44px; display: flex; align-items: center; }
+  .graph-controls button, .graph-controls select, .graph-controls input { min-height: 44px; }
+  #graph-canvas, .graph-stage, .knowledge-canvas { touch-action: none; }
+  .menu { position: fixed; left: 8px; right: 8px; bottom: calc(8px + env(safe-area-inset-bottom)); z-index: 55; border-radius: 16px; box-shadow: 0 8px 40px rgba(0, 0, 0, .3); }
+  .menu .mi { padding: 15px 18px; font-size: 16px; }
+  @keyframes sheet-up { from { transform: translateY(40px); opacity: .4; } }
+  @keyframes screen-in { from { transform: translateY(24px); opacity: .5; } }
+  @media (prefers-reduced-motion: reduce) { .react-app #sidebar, .modal-box, #ptr span { transition: none !important; animation: none !important; } }
+}

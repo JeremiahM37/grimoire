@@ -359,13 +359,23 @@ func (s *Server) staticHandler() http.Handler {
 		// console would keep running stale CSS/JS. "no-cache" means revalidate,
 		// not "don't cache": ServeFile still answers 304 from Last-Modified.
 		w.Header().Set("Cache-Control", "no-cache")
+		// Vite content-hashes everything under /assets/, so those never change
+		// under the same URL: a repeat visit costs no request at all.
+		if strings.HasPrefix(r.URL.Path, "/assets/") {
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		}
 		// serve index.html for the app shell, files otherwise
-		if r.URL.Path == "/" {
-			http.ServeFile(w, r, filepath.Join(root, "index.html"))
+		if strings.HasPrefix(r.URL.Path, "/vendor/") {
+			if !serveCompressed(w, r, s.WebDir) {
+				vendor.ServeHTTP(w, r)
+			}
 			return
 		}
-		if strings.HasPrefix(r.URL.Path, "/vendor/") {
-			vendor.ServeHTTP(w, r)
+		if serveCompressed(w, r, root) {
+			return
+		}
+		if r.URL.Path == "/" {
+			http.ServeFile(w, r, filepath.Join(root, "index.html"))
 			return
 		}
 		fs.ServeHTTP(w, r)
