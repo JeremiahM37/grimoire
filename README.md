@@ -1,19 +1,36 @@
-<div align="center">
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/grimoire-dark.svg">
+    <img src="docs/brand/grimoire-light.svg" alt="Grimoire" width="420">
+  </picture>
+</p>
 
-# ✦ Grimoire
+<h3 align="center">Memory your agents read. You edit.</h3>
 
-**You already wrote it down. Your agent still can't see it.**
+<p align="center">
+  <a href="https://github.com/JeremiahM37/grimoire/releases/latest"><img alt="release" src="https://img.shields.io/github/v/release/JeremiahM37/grimoire?label=release&color=8b5cf6"></a>
+  <a href="https://github.com/JeremiahM37/grimoire/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/JeremiahM37/grimoire/actions/workflows/ci.yml/badge.svg"></a>
+  <img alt="Go 1.26+" src="https://img.shields.io/badge/Go-1.26%2B-00add8">
+  <img alt="license MIT" src="https://img.shields.io/badge/license-MIT-97ca00">
+  <img alt="MCP server" src="https://img.shields.io/badge/MCP-server-8b5cf6">
+  <a href="benchmarks/locomo/"><img alt="LoCoMo multi-hop 75%" src="https://img.shields.io/badge/LoCoMo%20multi--hop-75%25-e3b341"></a>
+</p>
 
+<p align="center">
+  <a href="docs/FIRST_INSTALL.md">Quickstart</a> ·
+  <a href="docs/">Docs</a> ·
+  <a href="#mcp-tools-what-claude-gets-in-one-mount">MCP tools</a> ·
+  <a href="benchmarks/locomo/">Benchmarks</a> ·
+  <a href="https://github.com/JeremiahM37/grimoire/releases">Releases</a>
+</p>
+
+<p align="center"><img src="docs/media/hero.png" alt="Grimoire's editor open on a demo vault" width="900"></p>
+
+<p align="center">
 Point it at the markdown vault you already have. Your agents read what you know,
 remember what they learn back into the same files, and act with credentials they
 can use but never see. One self-hosted Go binary, mounted over MCP.
-
-[![CI](https://github.com/JeremiahM37/grimoire/actions/workflows/ci.yml/badge.svg)](https://github.com/JeremiahM37/grimoire/actions/workflows/ci.yml)
-![license](https://img.shields.io/badge/license-MIT-blue)
-![go](https://img.shields.io/badge/go-1.26%2B-00add8)
-[![benchmarks](https://img.shields.io/badge/benchmarks-pre--registered%2C%20nulls%20included-b4741a)](benchmarks/)
-
-![Grimoire dark-mode editor](docs/screenshots/editor-current.png)
+</p>
 
 </div>
 
