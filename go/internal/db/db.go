@@ -134,6 +134,114 @@ CREATE TABLE IF NOT EXISTS model_calls(
 -- The dashboard always asks "since when", so time leads the index.
 CREATE INDEX IF NOT EXISTS idx_model_calls_at ON model_calls(at DESC);
 CREATE INDEX IF NOT EXISTS idx_model_calls_provider ON model_calls(provider);
+-- Memory banks (internal/bank). Every table here is a cache of the markdown
+-- under banks/<bank>/ and is rebuilt from it on reindex, with no model call:
+-- facts are bullets in facts/*.md, entities are the canonical names those
+-- bullets carry, and causal links are ids in their trailers. Only the
+-- embedding cache is not derivable from the files alone, and it is a cache
+-- of the embedder rather than of anything a model decided.
+CREATE TABLE IF NOT EXISTS bank_banks(
+  id TEXT PRIMARY KEY, path TEXT NOT NULL, name TEXT NOT NULL DEFAULT '',
+  updated TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS bank_documents(
+  bank TEXT NOT NULL, doc TEXT NOT NULL, path TEXT NOT NULL,
+  timestamp TEXT NOT NULL DEFAULT '', context TEXT NOT NULL DEFAULT '',
+  tags TEXT NOT NULL DEFAULT '', metadata TEXT NOT NULL DEFAULT '',
+  chunks INTEGER NOT NULL DEFAULT 0, chars INTEGER NOT NULL DEFAULT 0,
+  created TEXT NOT NULL DEFAULT '', updated TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY(bank, doc)
+);
+CREATE INDEX IF NOT EXISTS idx_bank_documents_path ON bank_documents(path);
+CREATE TABLE IF NOT EXISTS bank_chunks(
+  bank TEXT NOT NULL, doc TEXT NOT NULL, idx INTEGER NOT NULL,
+  hash TEXT NOT NULL, text TEXT NOT NULL, path TEXT NOT NULL,
+  PRIMARY KEY(bank, doc, idx)
+);
+CREATE INDEX IF NOT EXISTS idx_bank_chunks_path ON bank_chunks(path);
+-- One row per fact. Times are unix milliseconds, 0 for none; list columns
+-- are joined with U+001F.
+CREATE TABLE IF NOT EXISTS bank_units(
+  rid INTEGER PRIMARY KEY, bank TEXT NOT NULL, id TEXT NOT NULL,
+  doc TEXT NOT NULL DEFAULT '', chunk INTEGER NOT NULL DEFAULT -1,
+  type TEXT NOT NULL, kind TEXT NOT NULL DEFAULT '', text TEXT NOT NULL,
+  context TEXT NOT NULL DEFAULT '',
+  occ_start INTEGER NOT NULL DEFAULT 0, occ_end INTEGER NOT NULL DEFAULT 0,
+  mentioned INTEGER NOT NULL DEFAULT 0,
+  tags TEXT NOT NULL DEFAULT '', entities TEXT NOT NULL DEFAULT '',
+  causes TEXT NOT NULL DEFAULT '', proof INTEGER NOT NULL DEFAULT 0,
+  human INTEGER NOT NULL DEFAULT 0, doc_removed INTEGER NOT NULL DEFAULT 0,
+  challenges TEXT NOT NULL DEFAULT '', metadata TEXT NOT NULL DEFAULT '',
+  path TEXT NOT NULL, line INTEGER NOT NULL DEFAULT 0, embedding BLOB,
+  sources TEXT NOT NULL DEFAULT '',
+  UNIQUE(bank, id)
+);
+CREATE INDEX IF NOT EXISTS idx_bank_units_path ON bank_units(path);
+CREATE INDEX IF NOT EXISTS idx_bank_units_doc ON bank_units(bank, doc);
+-- Keyword search over fact text, entity names, context and dates. bk is a
+-- per-bank token so a MATCH can be confined to one bank inside FTS itself.
+CREATE VIRTUAL TABLE IF NOT EXISTS bank_units_fts USING fts5(
+  bk, body, tokenize='porter unicode61'
+);
+CREATE TABLE IF NOT EXISTS bank_entities(
+  bank TEXT NOT NULL, id TEXT NOT NULL, canonical TEXT NOT NULL,
+  PRIMARY KEY(bank, id)
+);
+CREATE TABLE IF NOT EXISTS bank_unit_entities(
+  bank TEXT NOT NULL, unit INTEGER NOT NULL, entity TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_bank_unit_entities_unit ON bank_unit_entities(unit);
+CREATE INDEX IF NOT EXISTS idx_bank_unit_entities_entity ON bank_unit_entities(bank, entity);
+CREATE TABLE IF NOT EXISTS bank_links(
+  bank TEXT NOT NULL, src TEXT NOT NULL, dst TEXT NOT NULL,
+  kind TEXT NOT NULL, weight REAL NOT NULL DEFAULT 1, path TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_bank_links_src ON bank_links(bank, src);
+CREATE INDEX IF NOT EXISTS idx_bank_links_path ON bank_links(path);
+-- Embeddings by (embedder signature, text hash). A reindex finds every
+-- unchanged fact here instead of embedding it again.
+CREATE TABLE IF NOT EXISTS bank_vec_cache(key TEXT PRIMARY KEY, embedding BLOB NOT NULL);
+-- Mental models and knowledge pages, one row per banks/<bank>/models/**.md.
+-- A cache of the files like every other bank_* table.
+CREATE TABLE IF NOT EXISTS bank_models(
+  bank TEXT NOT NULL, id TEXT NOT NULL, path TEXT NOT NULL, folder TEXT NOT NULL DEFAULT '',
+  name TEXT NOT NULL DEFAULT '', question TEXT NOT NULL DEFAULT '', tags TEXT NOT NULL DEFAULT '',
+  body TEXT NOT NULL DEFAULT '', embedding BLOB,
+  PRIMARY KEY(bank, id)
+);
+CREATE INDEX IF NOT EXISTS idx_bank_models_path ON bank_models(path);
+-- Operational state, NOT rebuilt from files and NOT cleared by a reindex:
+-- which facts consolidation has already read (keyed by the fact's text sum,
+-- so an edited fact is read again), the async operation queue, and webhook
+-- registrations and their delivery log.
+CREATE TABLE IF NOT EXISTS bank_consolidated(
+  bank TEXT NOT NULL, fact TEXT NOT NULL, sum TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'done', at INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY(bank, fact)
+);
+CREATE TABLE IF NOT EXISTS bank_operations(
+  id TEXT PRIMARY KEY, bank TEXT NOT NULL, kind TEXT NOT NULL, status TEXT NOT NULL,
+  payload TEXT NOT NULL DEFAULT '', result TEXT NOT NULL DEFAULT '', error TEXT NOT NULL DEFAULT '',
+  dedupe TEXT NOT NULL DEFAULT '', attempts INTEGER NOT NULL DEFAULT 0,
+  cancel_requested INTEGER NOT NULL DEFAULT 0, progress TEXT NOT NULL DEFAULT '',
+  created INTEGER NOT NULL, started INTEGER NOT NULL DEFAULT 0, finished INTEGER NOT NULL DEFAULT 0,
+  updated INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_bank_operations_bank ON bank_operations(bank, created);
+CREATE INDEX IF NOT EXISTS idx_bank_operations_status ON bank_operations(status, created);
+CREATE TABLE IF NOT EXISTS bank_webhooks(
+  id TEXT PRIMARY KEY, bank TEXT NOT NULL DEFAULT '', url TEXT NOT NULL, secret TEXT NOT NULL DEFAULT '',
+  events TEXT NOT NULL DEFAULT '', enabled INTEGER NOT NULL DEFAULT 1,
+  created INTEGER NOT NULL, updated INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS bank_webhook_deliveries(
+  id TEXT PRIMARY KEY, webhook TEXT NOT NULL, bank TEXT NOT NULL DEFAULT '', event TEXT NOT NULL,
+  payload TEXT NOT NULL, status TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0,
+  next_at INTEGER NOT NULL DEFAULT 0, last_error TEXT NOT NULL DEFAULT '',
+  last_status INTEGER NOT NULL DEFAULT 0, created INTEGER NOT NULL, updated INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_bank_webhook_deliveries_due ON bank_webhook_deliveries(status, next_at);
+CREATE INDEX IF NOT EXISTS idx_bank_webhook_deliveries_hook ON bank_webhook_deliveries(webhook, created);
 CREATE TABLE IF NOT EXISTS memory_entities(
   note TEXT NOT NULL, id TEXT NOT NULL, entity TEXT NOT NULL
 );
@@ -374,6 +482,8 @@ var addedColumns = []struct{ table, column, decl string }{
 	// the tightest bound is known, because the agent knows what it is about to
 	// do and the approver is guessing.
 	{"grant_requests", "max_uses", "INTEGER NOT NULL DEFAULT 0"},
+	// The facts an observation was built from.
+	{"bank_units", "sources", "TEXT NOT NULL DEFAULT ''"},
 }
 
 func hasColumn(conn *sql.DB, table, column string) (bool, error) {

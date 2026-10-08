@@ -218,9 +218,22 @@ func (c *Client) Complete(prompt, backend string) (string, error) {
 			headers["Authorization"] = "Bearer " + k
 		}
 		started := time.Now()
-		out, err := c.post(base+"/chat/completions", headers, map[string]any{
+		body := map[string]any{
 			"model": c.model(), "stream": false, "temperature": 0.2,
-			"messages": []map[string]string{{"role": "user", "content": prompt}}})
+			"messages": []map[string]string{{"role": "user", "content": prompt}}}
+		// Both are opt-in settings: unset, the request is exactly what it
+		// always was. Set, they apply here too, because a provider that thinks
+		// by default (DeepSeek) would otherwise spend seconds reasoning before
+		// every one-line answer.
+		if extra := c.extraBody(); extra != nil {
+			for k, v := range extra {
+				if _, pinned := body[k]; !pinned {
+					body[k] = v
+				}
+			}
+		}
+		applyOpenAIEffort(body, c.effort(CompleteOpts{}))
+		out, err := c.post(base+"/chat/completions", headers, body)
 		if err != nil {
 			c.observe(backend, c.model(), usage.Tokens{}, started, err)
 			return "", err

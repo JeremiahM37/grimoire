@@ -33,17 +33,18 @@ def _free(port):
             raise RuntimeError(f"test port {port} is occupied; choose GRIMOIRE_E2E_PORT") from error
 
 
-@pytest.fixture(scope="session")
-def server(tmp_path_factory):
-    vault = tmp_path_factory.mktemp("e2e-vault")
-    env = {**os.environ, "GRIMOIRE_VAULT": str(vault), "GRIMOIRE_PORT": str(PORT)}
+def _start_server(vault, port, extra_env=None):
+    """Start the binary on a vault and port; returns the process once healthy."""
+    env = {**os.environ, "GRIMOIRE_VAULT": str(vault), "GRIMOIRE_PORT": str(port)}
     # keep e2e hermetic/offline regardless of ambient env
-    for var in ("GRIMOIRE_OLLAMA_URL", "GRIMOIRE_LLM", "GRIMOIRE_LLM_MODEL", "GRIMOIRE_WHISPER_URL"):
+    for var in ("GRIMOIRE_OLLAMA_URL", "GRIMOIRE_LLM", "GRIMOIRE_LLM_MODEL", "GRIMOIRE_WHISPER_URL",
+                "GRIMOIRE_LLM_BASE_URL", "GRIMOIRE_LLM_API_KEY", "GRIMOIRE_LLM_REASONING_EFFORT", "GRIMOIRE_LLM_EXTRA_BODY"):
         env.pop(var, None)
     # the API indexes on every write; the watcher would only add redundant reindex
     # churn over the shared, ever-growing e2e vault (and can starve the server)
     env["GRIMOIRE_NO_WATCHER"] = "1"
-    _free(PORT)
+    env.update(extra_env or {})
+    _free(port)
     # IMPORTANT: discard server output. A PIPE that nobody drains fills the ~64KB
     # OS buffer after enough uvicorn access-log lines, blocking the server on
     # write — it silently stops serving late in a large run.
@@ -58,11 +59,12 @@ def server(tmp_path_factory):
     env.setdefault("GRIMOIRE_WEB_DIR", str(ROOT / "web"))
     proc = subprocess.Popen([binary], cwd=ROOT, env=env,
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    base = f"http://127.0.0.1:{port}"
     for _ in range(100):
         if proc.poll() is not None:
             raise RuntimeError(f"server exited before becoming healthy: {proc.returncode}")
         try:
-            with urllib.request.urlopen(BASE + "/api/health", timeout=1) as response:
+            with urllib.request.urlopen(base + "/api/health", timeout=1) as response:
                 if response.status == 200:
                     break
         except OSError:
@@ -70,18 +72,53 @@ def server(tmp_path_factory):
         time.sleep(0.1)
     else:
         proc.kill(); raise RuntimeError("server did not start")
-    # The vault path is published so a test can seed tables the UI reads
-    # without the server growing a test-only endpoint. WAL plus the busy
-    # timeout make a second writer safe.
-    global VAULT
-    VAULT = vault
-    yield BASE
+    return proc
+
+
+def _stop_server(proc):
     proc.terminate()
     try:
         proc.wait(timeout=10)
     except subprocess.TimeoutExpired:
         proc.kill()
         proc.wait(timeout=5)
+
+
+@pytest.fixture(scope="session")
+def server(tmp_path_factory):
+    vault = tmp_path_factory.mktemp("e2e-vault")
+    proc = _start_server(vault, PORT)
+    # The vault path is published so a test can seed tables the UI reads
+    # without the server growing a test-only endpoint. WAL plus the busy
+    # timeout make a second writer safe.
+    global VAULT
+    VAULT = vault
+    yield BASE
+    _stop_server(proc)
+
+
+@pytest.fixture(scope="session")
+def llm_stub():
+    """An OpenAI-compatible stand-in that answers a bank's model calls (llm_stub.py)."""
+    from llm_stub import StubLLM
+    stub = StubLLM().start()
+    yield stub
+    stub.stop()
+
+
+@pytest.fixture(scope="session")
+def llm_server(tmp_path_factory, llm_stub):
+    """A second server, on its own vault and port, whose language model is the stub.
+
+    Yields (base_url, vault_path). Kept apart from `server` so every other
+    test still runs with no model configured."""
+    vault = tmp_path_factory.mktemp("e2e-llm-vault")
+    port = int(os.environ.get("GRIMOIRE_E2E_LLM_PORT", str(PORT + 1)))
+    proc = _start_server(vault, port, {
+        "GRIMOIRE_LLM": "openai", "GRIMOIRE_LLM_BASE_URL": llm_stub.base_url,
+        "GRIMOIRE_LLM_MODEL": "stub-model", "GRIMOIRE_LLM_API_KEY": "stub-key"})
+    yield f"http://127.0.0.1:{port}", vault
+    _stop_server(proc)
 
 
 @pytest.fixture(scope="session")

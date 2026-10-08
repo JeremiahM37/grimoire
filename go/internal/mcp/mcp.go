@@ -28,6 +28,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/JeremiahM37/grimoire/go/internal/oauth"
@@ -76,7 +77,10 @@ type Server struct {
 	// store share one key for "what did this run learn" without the model being
 	// involved — or able to file its writes under another run.
 	Session string
-	Client  *http.Client
+	// Bank is the memory bank the bank tools use when a call names none;
+	// read from GRIMOIRE_BANK.
+	Bank   string
+	Client *http.Client
 
 	// AuthToken is presented to the API when it is gated by
 	// GRIMOIRE_AUTH_TOKEN. This server is an HTTP client of that API, so
@@ -110,6 +114,9 @@ type Server struct {
 	// leaves every existing deployment exactly as it was — see checkAuth in
 	// http.go.
 	OAuth *oauth.Handler
+
+	allowOnce sync.Once
+	allow     *allowCache
 }
 
 func New(baseURL, agent string) *Server {
@@ -120,6 +127,7 @@ func New(baseURL, agent string) *Server {
 		BaseURL:   strings.TrimRight(baseURL, "/"),
 		Agent:     agent,
 		Session:   strings.TrimSpace(os.Getenv(EnvSession)),
+		Bank:      strings.TrimSpace(os.Getenv(EnvBank)),
 		AuthToken: os.Getenv("GRIMOIRE_AUTH_TOKEN"),
 		// The administrative surface can be gated separately, and some tools
 		// here are on it — list_grants reads the credential console's own
@@ -178,7 +186,10 @@ func (s *Server) Serve(in io.Reader, out io.Writer) error {
 	return scanner.Err()
 }
 
-func (s *Server) handle(req request) *response {
+func (s *Server) handle(req request) *response { return s.handleIn(callCtx{}, req) }
+
+// handleIn serves one request in the bank context an HTTP endpoint gives it.
+func (s *Server) handleIn(rc callCtx, req request) *response {
 	if len(req.ID) == 0 {
 		return nil // notification
 	}
@@ -194,9 +205,9 @@ func (s *Server) handle(req request) *response {
 			"instructions":    Instructions,
 		})
 	case "tools/list":
-		return ok(map[string]any{"tools": Tools()})
+		return ok(map[string]any{"tools": s.toolsFor(rc)})
 	case "tools/call":
-		return s.callTool(req, ok)
+		return s.callTool(rc, req, ok)
 	case "ping":
 		return ok(map[string]any{})
 	default:
@@ -205,7 +216,7 @@ func (s *Server) handle(req request) *response {
 	}
 }
 
-func (s *Server) callTool(req request, ok func(any) *response) *response {
+func (s *Server) callTool(rc callCtx, req request, ok func(any) *response) *response {
 	var params struct {
 		Name      string         `json:"name"`
 		Arguments map[string]any `json:"arguments"`
@@ -214,7 +225,11 @@ func (s *Server) callTool(req request, ok func(any) *response) *response {
 		return &response{JSONRPC: "2.0", ID: req.ID,
 			Error: &rpcError{Code: -32602, Message: "invalid params"}}
 	}
-	result, err := s.dispatch(params.Name, params.Arguments)
+	args, err := s.prepareCall(rc, params.Name, params.Arguments)
+	var result any
+	if err == nil {
+		result, err = s.dispatch(params.Name, args)
+	}
 	if err != nil {
 		// Tool failures are reported as results with isError, not as protocol
 		// errors: the agent should see the message and adapt, not have the
@@ -637,6 +652,9 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 		return s.api("GET", "/api/secrets/requests/"+url.PathEscape(str(args, "id"))+
 			"?"+q.Encode(), nil)
 	default:
+		if r, handled, err := s.dispatchBank(name, args); handled {
+			return r, err
+		}
 		return nil, fmt.Errorf("unknown tool: %s", name)
 	}
 }

@@ -25,6 +25,13 @@ from typing import Any, TypedDict
 
 __all__ = [
     "Answer",
+    "AsyncBank",
+    "Bank",
+    "Banks",
+    "NotAvailable",
+    "ModelRequired",
+    "MemoryClient",
+    "with_memory",
     "Grimoire",
     "GrimoireError",
     "NotFound",
@@ -450,6 +457,21 @@ class Grimoire:
         """Server liveness and corpus counts."""
         return self._request("GET", "/api/health")
 
+    # ---- memory banks -------------------------------------------------
+
+    def bank(self, bank_id: str) -> Bank:
+        """One memory bank: ``g.bank("support").recall("...")``."""
+        return Bank(self, bank_id)
+
+    def async_bank(self, bank_id: str) -> AsyncBank:
+        """The same bank, with awaitable methods."""
+        return AsyncBank(self, bank_id)
+
+    @property
+    def banks(self) -> Banks:
+        """The bank collection: ``g.banks.list()``, ``g.banks.create(...)``."""
+        return Banks(self)
+
     # ---- transport ----------------------------------------------------
 
     def _request(self, method: str, path: str, body: Any = None) -> Any:
@@ -503,3 +525,8 @@ def _message_of(payload: bytes) -> str:
             if parsed.get(key):
                 return str(parsed[key])
     return str(parsed)
+
+
+# Imported last: these modules use the transport helpers defined above.
+from .banks import AsyncBank, Bank, Banks, ModelRequired, NotAvailable  # noqa: E402
+from .openai_memory import MemoryClient, with_memory  # noqa: E402

@@ -13,11 +13,20 @@ Everything is environment-driven (same variables bare-metal, systemd, Docker):
 | `GRIMOIRE_AUTH_TOKEN` | *(empty = open)* | Bearer token for the API/console |
 | `GRIMOIRE_AGENT_NAME` | `agent` | Memory attribution for an MCP client |
 | `GRIMOIRE_SESSION` | *(empty)* | Run id an MCP client stamps on every memory it writes. Set by whatever launches the agent, so "what did this run learn" (`/api/memory/changes?session=`) needs nothing from the model |
+| `GRIMOIRE_BANK` | *(empty)* | The memory bank an MCP client's bank tools (`retain`, `bank_recall`, …) use when a call names none. See [MEMORY_BANKS.md](MEMORY_BANKS.md) |
 | `GRIMOIRE_OLLAMA_URL` | *(empty)* | Reachable Ollama → generative ask/summarize |
 | `GRIMOIRE_LLM` / `GRIMOIRE_LLM_MODEL` | auto / `qwen3.5:4b` | Answer backend (`ollama` · `claude` · `openai`) + model |
 | `GRIMOIRE_LLM_BASE_URL` / `_API_KEY` | *(empty)* | Any OpenAI-compatible endpoint (OpenAI, OpenRouter, Together, Groq, vLLM, LM Studio, LiteLLM…); key can also live in the vault as `llm-api-key` |
+| `GRIMOIRE_LLM_REASONING_EFFORT` | *(empty)* | Reasoning effort for models that think: `low`/`medium`/`high`/`max` is sent as `reasoning_effort`; `off` sends `thinking: {"type": "disabled"}` (the documented switch on DeepSeek's OpenAI-compatible API). Structured calls such as memory-bank extraction are where this matters most |
+| `GRIMOIRE_LLM_EXTRA_BODY` | *(empty)* | A JSON object merged into every OpenAI-compatible request, for vendor fields no setting anticipates (e.g. `{"thinking":{"type":"disabled"}}`). A call's own fields win over it |
 | `GRIMOIRE_EMBED_MODEL` | `nomic-embed-text` | Embeddings (offline hashing fallback built in) |
 | `GRIMOIRE_LOCAL_EMBED` / `_MODEL` | `auto` / `potion-base-8M` | Local semantic embeddings — the ~30 MB model is fetched once on first start (`grimoire fetch-model` to pre-seed); `off` to stay on the hashing embedder |
+| `GRIMOIRE_RERANK` | `auto` | Reranking of retrieved passages: `local` (built-in cross-encoder), `remote` (a `/rerank` service), `off`. `auto` uses `remote` when `GRIMOIRE_RERANK_URL` is set, else `local` when the model is on disk or may be downloaded, else `off`. See [Reranking](#reranking) |
+| `GRIMOIRE_RERANK_MODEL` | `cross-encoder/ms-marco-MiniLM-L-6-v2` | Local: a hub repo id (fetched once, ~90 MB) or a path to a directory with `config.json`, `tokenizer.json` and `model.safetensors`. Remote: the model name the service expects |
+| `GRIMOIRE_RERANK_URL` / `_API_KEY` | *(empty)* | Remote reranker base URL (`/rerank` is appended unless present) and bearer token |
+| `GRIMOIRE_RERANK_MAX_LEN` | `256` | Local reranker: tokens per (query, passage) pair, specials included; longer pairs are truncated longest-first (max 512) |
+| `GRIMOIRE_BANK_WORKERS` | `2` | Background workers for memory-bank operations (async retain, consolidation, mental-model refresh) and webhook delivery; `0` turns them off. Memory-bank recall uses the reranker above, except that `auto` only uses a local model already on disk |
+| `GRIMOIRE_WEBHOOK_ALLOW_PRIVATE` | *(off)* | Let memory-bank webhooks reach loopback and private networks. Link-local and cloud-metadata addresses stay refused |
 | `GRIMOIRE_WHISPER_URL` / `_MODEL` | *(empty)* | Audio-memo transcription |
 | `GRIMOIRE_WEB_SEARCH_PROVIDER` | *(off)* | `searxng` · `brave` · `serper` · `google` — enables `search_web` / `open_urls` |
 | `GRIMOIRE_WEB_SEARCH_URL` / `_KEY` / `_CX` | *(empty)* | SearXNG base URL · provider key (or `vault:name` to read it from the credential vault) · Google engine id |
@@ -55,6 +64,28 @@ Everything is environment-driven (same variables bare-metal, systemd, Docker):
 AI/model settings can also be changed live in ⚙ Settings (persisted in the
 vault, no restart). Editor mode (live/classic) and theme are per-device.
 
+
+## Reranking
+
+First-stage retrieval scores the query and each passage separately. A reranker
+reads them together and reorders the candidates, which mostly helps questions
+whose answer does not share many words with the question.
+
+- **local** runs the `cross-encoder/ms-marco-MiniLM-L-6-v2` cross-encoder
+  inside the server, in pure Go — no extra process, no GPU, and the binary
+  stays a single static file. The weights are downloaded on first use into
+  `.grimoire/models/` and verified against pinned checksums; set
+  `HF_HUB_OFFLINE=1` (or point `GRIMOIRE_RERANK_MODEL` at a local copy) on a
+  host that must not reach the network. `HF_ENDPOINT` selects a mirror. On
+  amd64 CPUs with AVX2 it scores about 100 passages of ~60 tokens in well
+  under half a second. Scores are raw relevance logits.
+- **remote** posts `{model, query, documents, top_n}` to `GRIMOIRE_RERANK_URL`
+  and reads `results[{index, relevance_score}]` — the shape most hosted rerank
+  APIs and self-hosted inference servers accept. A server that asks for
+  `texts` instead of `documents` is retried with that.
+
+Like the other AI settings, all five can be set through `PUT /api/settings` and are
+persisted in `.grimoire/settings.json`, which wins over the environment.
 
 ## Credentials
 

@@ -9,9 +9,10 @@
   "types": "index.d.ts",
   "exports": {
     ".": { "types": "./index.d.ts", "default": "./index.js" },
-    "./tools": { "types": "./tools.d.ts", "default": "./tools.js" }
+    "./tools": { "types": "./tools.d.ts", "default": "./tools.js" },
+    "./banks": { "types": "./banks.d.ts", "default": "./banks.js" }
   },
-  "files": ["index.js", "index.d.ts", "tools.js", "tools.d.ts", "README.md"],
+  "files": ["index.js", "index.d.ts", "tools.js", "tools.d.ts", "banks.js", "banks.d.ts", "README.md"],
   "engines": { "node": ">=18" },
   "scripts": { "test": "node --test test/" },
   "keywords": ["grimoire", "agent-memory", "llm", "mcp", "self-hosted", "rag"],

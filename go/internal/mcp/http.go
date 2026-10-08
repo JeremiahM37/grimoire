@@ -55,6 +55,9 @@ var supportedProtocolVersions = map[string]bool{
 func (s *Server) HTTPHandler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/mcp", s.serveMCP)
+	// One bank per endpoint: the bank comes from the path and tools take
+	// no bank argument — the way to hand an agent exactly one bank.
+	mux.HandleFunc("/mcp/{bank}", s.serveMCP)
 	if s.OAuth != nil {
 		s.OAuth.RegisterPublic(mux)
 	}
@@ -119,7 +122,21 @@ func (s *Server) serveMCP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	resp := s.handle(req)
+	rc := callCtx{}
+	if b := r.PathValue("bank"); b != "" {
+		if !validBankID(b) {
+			http.Error(w, "invalid bank id", http.StatusBadRequest)
+			return
+		}
+		rc = callCtx{bank: b, single: true}
+	} else if b := strings.TrimSpace(r.Header.Get("X-Bank-Id")); b != "" {
+		if !validBankID(b) {
+			http.Error(w, "invalid X-Bank-Id", http.StatusBadRequest)
+			return
+		}
+		rc.bank = b
+	}
+	resp := s.handleIn(rc, req)
 	if resp == nil {
 		// A notification has no id and takes no reply.
 		w.WriteHeader(http.StatusAccepted)

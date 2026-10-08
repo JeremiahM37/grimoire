@@ -411,6 +411,60 @@ steps:
           curl -sf 'http://127.0.0.1:9119/api/timeline?kind=memory&limit=5'
           | python3 -c "import json,sys; e=json.load(sys.stdin)['events']; assert all(x['kind']=='memory' for x in e), e; print('kind filter holds')"
 
+  - name: a memory bank retains, recalls and reflects with no model configured
+    actions:
+      # The verify server has no LLM, so every bank path here is the rule /
+      # extractive one — which is exactly what must work offline.
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/banks/verify-bank/memories
+          -H 'Content-Type: application/json'
+          -d '{"items":[{"content":"Priya adopted a greyhound named Comet. Priya works as a radiographer.","document_id":"v1","tags":["pets"]}]}'
+          | python3 -c "import json,sys; r=json.load(sys.stdin); assert r['success'] and r['mode']=='rules', r"
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/banks/verify-bank/memories/recall
+          -H 'Content-Type: application/json'
+          -d '{"query":"what dog did Priya adopt","trace":true,"tag_groups":[{"tags":["pets"]}]}'
+          | python3 -c "import json,sys; r=json.load(sys.stdin); assert 'greyhound' in r['results'][0]['text'], r; assert 'rerank_error' not in r['trace'] or r['results'], r"
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/banks/verify-bank/reflect
+          -H 'Content-Type: application/json'
+          -d '{"query":"What dog did Priya adopt?","include":{"tool_calls":{}}}'
+          | python3 -c "import json,sys; r=json.load(sys.stdin); assert r['mode']=='extractive' and 'greyhound' in r['text'] and r['based_on']['memories'] and r['trace'], r"
+      # Features that need a model say so, rather than pretending.
+      - shell: >
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:9119/api/banks/verify-bank/consolidate)" = 409
+      # Async retain goes through the operations queue the server runs.
+      - shell: >
+          op=$(curl -sf -X POST http://127.0.0.1:9119/api/banks/verify-bank/memories
+          -H 'Content-Type: application/json'
+          -d '{"async":true,"items":[{"content":"Priya lives in Leeds.","document_id":"v2"}]}'
+          | python3 -c "import json,sys; print(json.load(sys.stdin)['operation_id'])") &&
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            s=$(curl -sf http://127.0.0.1:9119/api/banks/verify-bank/operations/$op | python3 -c "import json,sys; print(json.load(sys.stdin)['status'])");
+            [ "$s" = completed ] && exit 0; sleep 0.5; done; exit 1
+
+  - name: a person's mental-model answer and directives are kept as written
+    actions:
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/banks/verify-bank/mental-models
+          -H 'Content-Type: application/json'
+          -d '{"id":"people/priya","name":"Priya","question":"Who is Priya?","body":"Priya is a radiographer with a greyhound."}'
+          | python3 -c "import json,sys; r=json.load(sys.stdin); assert r['mental_model']['authority']=='human' and r['operation_id'] is None, r"
+      - shell: >
+          curl -sf http://127.0.0.1:9119/api/notes/banks/verify-bank/models/people/priya.md | grep -q 'radiographer with a greyhound'
+      - shell: >
+          curl -sf http://127.0.0.1:9119/api/banks/verify-bank/mental-models-tree
+          | python3 -c "import json,sys; r=json.load(sys.stdin); assert r['roots'][0]['name']=='people', r"
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/banks/verify-bank/directives
+          -H 'Content-Type: application/json' -d '{"name":"Brief","text":"Answer in one sentence."}' | grep -q '"id"'
+      - shell: >
+          curl -sf http://127.0.0.1:9119/api/notes/banks/verify-bank/bank.md | grep -q 'Answer in one sentence.'
+      - shell: >
+          curl -sf -X POST 'http://127.0.0.1:9119/api/banks/verify-research/import?dry_run=1'
+          -H 'Content-Type: application/json' -d '{"template":"research"}'
+          | python3 -c "import json,sys; r=json.load(sys.stdin); assert r['dry_run'] and r['bank_created'] and len(r['mental_models_created'])==2, r"
+
   - name: the harness lints clean, the way CI lints it
     actions:
       # CI runs `ruff check tests/ benchmarks/ clients/` and verify did not,

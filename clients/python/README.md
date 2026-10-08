@@ -113,6 +113,76 @@ you point CrewAI at a *different* embedder, the server refuses the vector on
 width rather than scoring it — a cosine between two models' vectors is a number
 with no meaning, and silently returning one is worse than an error.
 
+## Memory banks
+
+A bank takes raw content — a transcript, a document — extracts the facts
+itself, and recalls them by meaning, words, entities and time. Facts a person
+corrected outrank what a model extracted (`authority: "human"`; a model fact
+that contradicts one carries `disputed_by`). See
+[docs/MEMORY_BANKS.md](../../docs/MEMORY_BANKS.md).
+
+```python
+bank = g.bank("support")
+bank.retain([{"speaker": "Dana", "text": "Move the migration to May."}],
+            document_id="chat-42", timestamp="2024-04-02T10:00:00Z")
+hits = bank.recall("when is the migration?", budget="mid", max_tokens=2048)
+[f["text"] for f in hits["results"]]
+
+g.banks.list(); g.banks.create("research", mission="papers I read")
+bank.list_memories(authority="human"); bank.entities(); bank.documents()
+await g.async_bank("support").recall("...")    # same calls, awaitable
+```
+
+Reasoning over a bank:
+
+```python
+answer = bank.reflect("what does Dana think of the migration?")
+answer["text"], answer["mode"], answer["based_on"]["memories"]   # mode: llm | extractive
+
+op = bank.retain(transcript, document_id="s-1", async_=True)      # 202: queued
+bank.wait_operation(op["operation_id"])                           # completed | failed | cancelled
+
+bank.consolidate()                                  # facts -> observations
+bank.observations(include_history=True)["items"]
+m = bank.create_mental_model("Dana", "Who is Dana?", folder="people")
+bank.refresh_mental_model(m["mental_model_id"])     # "people/dana"
+bank.update_mental_model("people/dana", body="My own words.")   # a person's edit wins
+bank.mental_model("people/dana").get("pending_proposal")        # a later refresh waits here
+bank.accept_proposal("people/dana")                 # or reject_proposal
+bank.mental_model_tree(); bank.export_mental_models(markdown=True)
+bank.create_directive("Answer in one sentence.", name="Brief")
+bank.import_template(template="coding-agent"); g.banks.templates()
+```
+
+Consolidation and mental-model refreshes need a language model on the server;
+without one they raise `ModelRequired` (409, `code: model_required`), while
+reflect answers extractively. Moving a mental model to another folder changes
+its id. On a server from before these routes they raise `NotAvailable` (a
+`NotFound` subclass), so a caller can hide the feature; `retain(...,
+async_=True)` there falls back to a synchronous retain and says so with
+`"async_fallback": True`.
+
+### Memory for any OpenAI-compatible chat client
+
+```python
+from openai import OpenAI          # or AsyncOpenAI, or any client with the same shape
+from grimoire_client import Grimoire, with_memory
+
+llm = with_memory(OpenAI(), Grimoire().bank("user-42"),
+                  session_id="chat-7", max_tokens=1024, background=True)
+llm.chat.completions.create(model="...", messages=[{"role": "user", "content": "..."}])
+```
+
+Before each `chat.completions.create` it recalls with the last user message and
+adds a `# Relevant memories` block to the system prompt; afterwards it retains
+`USER: … / ASSISTANT: …` into the session's document (appending). Options:
+`inject`, `store`, `budget`, `max_tokens`, `types`, `recall_tags`,
+`max_memories`, `tags`, `session_id`, `query`, `background`. Override any of
+them for one call with a `grimoire_` keyword (`grimoire_inject=False`); those
+are removed before the request reaches the model. A failed recall never breaks
+the call; background retain errors are kept in `llm.pending_errors()`, and
+`llm.flush()` waits for them. Streams are retained once exhausted.
+
 ## Knowing when the notes don't say
 
 `ask` returns a `supported` verdict alongside the answer:

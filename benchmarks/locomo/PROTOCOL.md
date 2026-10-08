@@ -78,6 +78,10 @@ reverted and are reported as rejected, per the tuning rule.
     reported anywhere.
 - Both run via the Claude Code CLI from an empty working directory with
   `--strict-mcp-config --max-turns 1` so no ambient project context leaks in.
+  Calls are also lean: `--tools ""` and a one-line `--system-prompt`, because
+  the CLI's default prompt and tool schemas add about 21k tokens per call.
+  Runs made before this change used the default prompt; their reader-token
+  counts include that overhead and are not comparable with later ones.
 
 ## Metrics
 

@@ -43,6 +43,49 @@ await g.search('indentation', { includeSuperseded: true })
 await g.history('2026-08-14T09:00:00Z')   // what was believed then
 ```
 
+## Memory banks
+
+`@jeremiahm37/grimoire/banks` adds memory banks — retain raw content, let the
+server extract the facts, recall by meaning, words, entities and time — and a
+memory wrapper for any OpenAI-compatible client. See
+[docs/MEMORY_BANKS.md](../../docs/MEMORY_BANKS.md).
+
+```js
+import Grimoire from '@jeremiahm37/grimoire'
+import { Bank, Banks, withMemory } from '@jeremiahm37/grimoire/banks'
+
+const g = new Grimoire('http://localhost:9111', { token })
+const bank = new Bank(g, 'support')
+await bank.retain([{ speaker: 'Dana', text: 'Move the migration to May.' }], { documentId: 'chat-42' })
+const { results } = await bank.recall('when is the migration?', { maxTokens: 2048 })
+
+const llm = withMemory(new OpenAI(), bank, { sessionId: 'chat-7', background: true })
+await llm.chat.completions.create({ model, messages })            // recalls, injects, retains
+await llm.chat.completions.create({ model, messages, grimoire: { inject: false } })
+```
+
+Reasoning over a bank:
+
+```js
+const { text, mode, based_on } = await bank.reflect('what does Dana think of the migration?')
+const { operation_id } = await bank.retain(transcript, { documentId: 's-1', async: true })
+await bank.waitOperation(operation_id)                  // completed | failed | cancelled
+await bank.consolidate()                                // facts -> observations
+const { items } = await bank.observations()
+const { mental_model_id } = await bank.createMentalModel('Dana', 'Who is Dana?', { folder: 'people' })
+await bank.refreshMentalModel(mental_model_id)          // 'people/dana'
+await bank.updateMentalModel('people/dana', { body: 'My own words.' })  // a person's edit wins
+await bank.acceptProposal('people/dana')                // or rejectProposal
+await bank.createDirective('Answer in one sentence.', { name: 'Brief' })
+await bank.importTemplate('coding-agent')
+```
+
+Consolidation and mental-model refreshes need a language model on the server;
+without one they reject with `ModelRequired` (`error.code === 'model_required'`),
+while reflect answers extractively. Moving a mental model to another folder
+changes its id. On a server from before these routes they reject with
+`NotAvailable` (a `NotFound`).
+
 ## Scoping and lifetime
 
 ```js

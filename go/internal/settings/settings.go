@@ -26,10 +26,17 @@ type Field struct {
 // embed_model is deliberately present but NOT editable through the API:
 // changing it would invalidate every stored vector.
 var Fields = map[string]Field{
-	"llm":               {"GRIMOIRE_LLM", ""}, // '', 'ollama', 'claude', 'openai' ('' = auto)
-	"llm_model":         {"GRIMOIRE_LLM_MODEL", "qwen3.5:4b"},
-	"llm_base_url":      {"GRIMOIRE_LLM_BASE_URL", ""},
-	"llm_api_key":       {"GRIMOIRE_LLM_API_KEY", ""},
+	"llm":          {"GRIMOIRE_LLM", ""}, // '', 'ollama', 'claude', 'openai' ('' = auto)
+	"llm_model":    {"GRIMOIRE_LLM_MODEL", "qwen3.5:4b"},
+	"llm_base_url": {"GRIMOIRE_LLM_BASE_URL", ""},
+	"llm_api_key":  {"GRIMOIRE_LLM_API_KEY", ""},
+	// Reasoning effort for structured calls (memory-bank extraction and the
+	// like): low|medium|high|max is passed through as reasoning_effort, and
+	// "off" turns thinking off on servers that document a switch for it.
+	"llm_reasoning_effort": {"GRIMOIRE_LLM_REASONING_EFFORT", ""},
+	// A JSON object merged into every OpenAI-compatible request body, for the
+	// vendor-specific fields no generic setting can anticipate.
+	"llm_extra_body":    {"GRIMOIRE_LLM_EXTRA_BODY", ""},
 	"ollama_url":        {"GRIMOIRE_OLLAMA_URL", ""},
 	"embed_model":       {"GRIMOIRE_EMBED_MODEL", "nomic-embed-text"},
 	"embed_base_url":    {"GRIMOIRE_EMBED_BASE_URL", ""},
@@ -55,6 +62,21 @@ var Fields = map[string]Field{
 	"web_search_url":      {"GRIMOIRE_WEB_SEARCH_URL", ""},      // searxng only
 	"web_search_key":      {"GRIMOIRE_WEB_SEARCH_KEY", ""},
 	"web_search_cx":       {"GRIMOIRE_WEB_SEARCH_CX", ""}, // google programmable search id
+	// Reranking retrieved passages before they are used; see
+	// internal/rerank. rerank_model is a hub repo id or a local directory
+	// for the local cross-encoder, or the model name a remote service
+	// expects.
+	"rerank":         {"GRIMOIRE_RERANK", "auto"}, // auto|local|remote|off
+	"rerank_model":   {"GRIMOIRE_RERANK_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2"},
+	"rerank_url":     {"GRIMOIRE_RERANK_URL", ""},
+	"rerank_api_key": {"GRIMOIRE_RERANK_API_KEY", ""},
+	"rerank_max_len": {"GRIMOIRE_RERANK_MAX_LEN", "256"},
+	// Memory-bank webhooks refuse loopback and private-network targets
+	// unless this is on; link-local and cloud metadata stay refused.
+	"webhook_allow_private": {"GRIMOIRE_WEBHOOK_ALLOW_PRIVATE", ""},
+	// Background workers for memory-bank operations (async retain,
+	// consolidation, mental-model refresh). 0 turns them off.
+	"bank_workers": {"GRIMOIRE_BANK_WORKERS", "2"},
 }
 
 // InternalFields are persisted in the same file and resolved the same way, but
