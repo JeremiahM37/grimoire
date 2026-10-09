@@ -51,6 +51,7 @@ g.history("2026-08-14T09:00:00Z")                  # what was believed then
 g.add("the staging box is smaller", session="run-42", category="infra")
 g.add("priya is on call", expires_in="72h")    # stops being recalled by itself
 g.add("never touch prod", immutable=True)      # reconciliation can never remove it
+g.add("grimoire is build 1.4.0", fresh="volatile", check="grimoire version")  # re-checked on use
 
 g.search(session="run-42")                     # what this run learned
 g.scopes()                                     # agents / sessions / categories in use

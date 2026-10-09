@@ -53,6 +53,8 @@ const (
 	Ollama     Provider = "ollama"
 	LMStudio   Provider = "lmstudio"
 	VLLM       Provider = "vllm"
+	TypeSafe   Provider = "typesafe" // Jev, the hosted typed-decision model
+	Laya       Provider = "laya"     // laya-serve, open-weight decisions run locally
 	Unknown    Provider = "unknown"
 )
 
@@ -60,7 +62,7 @@ const (
 // has no per-token price to report.
 func (p Provider) Local() bool {
 	switch p {
-	case Ollama, LMStudio, VLLM:
+	case Ollama, LMStudio, VLLM, Laya:
 		return true
 	}
 	return false
@@ -87,6 +89,7 @@ var hostProviders = map[string]Provider{
 	"api.x.ai":                          XAI,
 	"api.cerebras.ai":                   Cerebras,
 	"api.deepinfra.com":                 DeepInfra,
+	"api.typesafe.ai":                   TypeSafe,
 }
 
 // ProviderFor identifies who serves a base URL.
@@ -131,6 +134,10 @@ func ProviderFor(backend, baseURL string) Provider {
 // the family. An exact-match table goes stale the day a snapshot ships and
 // silently reports zero.
 var prices = map[Provider]map[string]Price{
+	// Jev bills input only; output tokens are free. Listed price, 2026-10.
+	TypeSafe: {
+		"jev": {0.042, 0},
+	},
 	OpenAI: {
 		"gpt-5":       {1.25, 10.00},
 		"gpt-5-mini":  {0.25, 2.00},
@@ -249,6 +256,6 @@ func Providers() []Provider {
 	return []Provider{
 		OpenAI, Anthropic, Google, Groq, Together, Fireworks, DeepSeek,
 		Mistral, OpenRouter, Perplexity, XAI, Cerebras, DeepInfra, Azure,
-		Ollama, LMStudio, VLLM,
+		Ollama, LMStudio, VLLM, TypeSafe, Laya,
 	}
 }

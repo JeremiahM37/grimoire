@@ -63,7 +63,9 @@ const Instructions = "This server is the team's knowledge base and memory: runbo
 	"onboarding rules, recent agent memories). Before assuming any " +
 	"project-specific fact or choosing an approach, check search_notes / " +
 	"ask_notes / recall — teams record accepted fixes that are not visible " +
-	"in the code. Use remember to persist anything future agents need."
+	"in the code. Use remember to persist anything future agents need. " +
+	"A recalled fact marked freshness.action=verify may be out of date: " +
+	"check it before acting on it."
 
 // Server bridges MCP calls to the local HTTP API.
 type Server struct {
@@ -540,7 +542,7 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 		body := map[string]any{
 			"text": str(args, "text"), "topic": str(args, "topic"),
 			"task": str(args, "task"), "agent": s.Agent}
-		for _, k := range []string{"session", "category", "expires_in", "origin", "target_id", "target_path", "expected_text"} {
+		for _, k := range []string{"session", "category", "expires_in", "origin", "target_id", "target_path", "expected_text", "fresh", "check"} {
 			if v := str(args, k); v != "" {
 				body[k] = v
 			}

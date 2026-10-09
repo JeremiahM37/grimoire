@@ -88,6 +88,9 @@ type Server struct {
 	// dreams: one at a time, and the last report for GET /api/dream.
 	dreamMu   sync.Mutex
 	dreamLast *dream.Report
+
+	// the store's learned change rates; see memory_fresh.go.
+	fresh freshCache
 }
 
 // Routes builds the mux. Specific paths are registered before the catch-all

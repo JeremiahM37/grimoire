@@ -283,6 +283,18 @@ var dangerousCommands = []struct {
 	{regexp.MustCompile(`(?i)git\s+push\b[^\n]*\b(?:main|master)\b[^\n]*(?:--force\b|\s-f\b)`), "force-pushes to the default branch"},
 }
 
+// DangerousCommand reports whether a command matches one of the patterns the
+// sweep flags, and why. Writes use it to refuse a stored check that would be
+// dangerous for another agent to run.
+func DangerousCommand(s string) (reason string, bad bool) {
+	for _, d := range dangerousCommands {
+		if d.re.MatchString(s) {
+			return d.reason, true
+		}
+	}
+	return "", false
+}
+
 // zero-width, bidi-control and tag code points. Each one can hide or reorder
 // text in a way a reader cannot see.
 func isZeroWidth(r rune) bool {

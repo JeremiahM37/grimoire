@@ -22,7 +22,10 @@ type contextItem struct {
 	Text      string `json:"text"`
 	Authority string `json:"authority"`
 	Trust     string `json:"trust"`
-	score     float64
+	// Verify is present when the fact should be re-checked before use: the
+	// way to check it, or "re-check" when no way was recorded.
+	Verify string `json:"verify,omitempty"`
+	score  float64
 }
 
 var contextNoise = strings.Fields("please can could would should will do does did how what when where why which who me my we our you your it this that these those help want need now just also really anything something tell explain use using work working fix add make get know thanks thank okay ok yes no continue proceed hello hi")
@@ -114,13 +117,21 @@ func (s *Server) memoryContext(w http.ResponseWriter, r *http.Request) {
 			writeErr(w, http.StatusInternalServerError, err.Error())
 			return
 		}
+		priors, theta, now := s.freshPriors(), s.verifyThreshold(), vault.Now()
 		for _, hit := range hits {
 			if hit.Untrusted() {
 				continue
 			}
-			items = append(items, contextItem{Path: hit.Note, ID: hit.ID, Text: hit.Text,
+			item := contextItem{Path: hit.Note, ID: hit.ID, Text: hit.Text,
 				Authority: hit.Authority().String(), Trust: "trusted",
-				score: contextOverlap(terms, hit.Text)})
+				score: contextOverlap(terms, hit.Text)}
+			if a := hit.Assess(now, priors, theta); a.Action == memory.ActionVerify {
+				item.Verify = "re-check"
+				if a.Check != "" {
+					item.Verify = a.Check
+				}
+			}
+			items = append(items, item)
 		}
 		statement := "SELECT n.path, substr(n.body,1,1000), n.acl FROM notes n WHERE n.private=0 AND COALESCE(n.untrusted,0)=0"
 		var arguments []any

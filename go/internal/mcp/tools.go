@@ -393,7 +393,15 @@ func Tools() []tool {
 				"belief is superseded rather than left to compete with this one, and if it " +
 				"is already recorded nothing is written. The reply says which happened " +
 				"(op: ADD / UPDATE / DELETE / NOOP), so report a correction plainly — " +
-				"'the user prefers tabs now' — rather than hedging it into a new fact.",
+				"'the user prefers tabs now' — rather than hedging it into a new fact.\n" +
+				"FRESHNESS: say how the fact goes out of date. `fresh`: 'volatile' for live " +
+				"state that changes without notice (what is running, a current version, " +
+				"an IP, a balance, who is on call); an interval like '7d' for values that " +
+				"drift (a dependency pin, a config value, a schedule); 'stable' for things " +
+				"that do not change (decisions and why, history, root causes, preferences, " +
+				"conventions). Omit it if unsure and the store learns the rate. With " +
+				"volatile or an interval also give `check`: the read-only command or place " +
+				"to verify it ('grimoire version', 'lan.env ROUTER_IP').",
 			InputSchema: obj(map[string]any{
 				"text":          strProp("what to remember"),
 				"target_id":     strProp("for a known correction: exact fact id from recall; requires target_path and expected_text; human corrections remain protected"),
@@ -412,6 +420,8 @@ func Tools() []tool {
 					"true only for now, so it stops being recalled instead of going stale"),
 				"immutable": map[string]any{"type": "boolean",
 					"description": "pin this fact: reconciliation may never supersede or retract it"},
+				"fresh": strProp("how it goes stale: 'stable', 'volatile', or a re-check interval like '7d'"),
+				"check": strProp("read-only way to verify it: a command, file or URL"),
 			}, "text"),
 		},
 		{
@@ -420,7 +430,12 @@ func Tools() []tool {
 				"re-deriving anything that smells like it was learned the hard way.\n" +
 				"Returns individual facts, newest-relevant first, and only what is " +
 				"currently believed — superseded and expired facts are left out unless you " +
-				"ask for them.",
+				"ask for them.\n" +
+				"Each fact has `freshness.action`. 'use': rely on it. 'verify': it may " +
+				"have changed — before acting on it, check it (`freshness.check` says how) " +
+				"and then report the result with remember(target_id, target_path, " +
+				"expected_text, text): the same text if it still holds, the new value if " +
+				"not. Verify only facts you are about to use, not every fact returned.",
 			InputSchema: obj(map[string]any{
 				"query":    strProp("what you are trying to remember"),
 				"limit":    intProp("max facts (default 10)"),

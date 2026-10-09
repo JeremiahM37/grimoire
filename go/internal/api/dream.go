@@ -188,7 +188,7 @@ func (s *Server) Dream(ctx context.Context, apply, onlyIfChanged bool) (*dream.R
 
 	var findings []dream.Finding
 	findings = append(findings, secscan.Scan(docs, s.knownSecrets())...)
-	findings = append(findings, notecheck.Check(docs, time.Now())...)
+	findings = append(findings, notecheck.CheckWith(docs, time.Now(), s.freshPriors())...)
 	for _, root := range roots {
 		var in []dream.Doc
 		for _, d := range docs {
@@ -296,6 +296,13 @@ func (s *Server) applyDreamFixes(findings []dream.Finding) []dream.Fix {
 		if err := os.WriteFile(abs, []byte(next), mode); err != nil {
 			log.Printf("dream: fixing %s: %v", rel, err)
 			continue
+		}
+		// A memory note is indexed fact by fact, and recall reads the index;
+		// re-derive it now rather than waiting for the watcher to notice.
+		if strings.HasPrefix(rel, memory.Dir+"/") && s.Index != nil {
+			if _, err := s.Index.Upsert(rel); err != nil {
+				log.Printf("dream: reindexing %s: %v", rel, err)
+			}
 		}
 		applied = append(applied, done...)
 	}

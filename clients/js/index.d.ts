@@ -7,6 +7,18 @@
  */
 
 /** One remembered fact. */
+export interface Freshness {
+  tier: string
+  action: 'use' | 'verify'
+  p_stale: number
+  reason?: string
+  check?: string
+  verified_at?: string
+  age_days: number
+  changes?: number
+  verifies?: number
+}
+
 export interface Memory {
   id: string
   text: string
@@ -22,6 +34,8 @@ export interface Memory {
   superseded_by?: string
   helpful?: number
   unhelpful?: number
+  /** Whether to re-check before relying on it. See docs/FRESHNESS.md. */
+  freshness?: Freshness
   score: number
   /** Present when `explain` was requested. */
   scores?: {
@@ -71,6 +85,10 @@ export interface AddOptions {
   infer?: boolean
   /** Bounds what this write may supersede. Default: the whole vault. */
   scope?: 'vault' | 'topic' | 'session' | 'agent'
+  /** How the fact goes stale: 'stable', 'volatile', or a re-check interval like '7d'. */
+  fresh?: string
+  /** Read-only command, file or URL that verifies the fact. */
+  check?: string
 }
 
 export interface SearchOptions {

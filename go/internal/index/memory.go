@@ -178,11 +178,13 @@ func (ix *Index) writeMemoryRows(note *vault.Note) error {
 		if err := ix.DB.Exec(
 			"INSERT OR IGNORE INTO memory_entries(id,note,text,agent,task,session,stamp,category,"+
 				"expires,immutable,superseded_by,superseded_at,helpful,unhelpful,line,"+
-				"embedding,space,acl,private,origin,human,challenges)"+
-				" VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+				"embedding,space,acl,private,origin,human,challenges,"+
+				"fresh,chk,verified,nchange,nverify,since,shape,vol,prate)"+
+				" VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
 			e.ID, note.Path, e.Text, e.Agent, e.Task, e.Session, e.Stamp, e.Category,
 			e.Expires, immutable, e.SupersededBy, e.SupersededAt, e.Helpful,
 			e.Unhelpful, e.Line, blob, space, acl, private, e.Origin, human, e.Challenges,
+			e.Fresh, e.Check, e.Verified, e.Changes, e.Verifies, e.Since, e.Shape(), e.Vol, e.PriorRate,
 		); err != nil {
 			return err
 		}
@@ -277,7 +279,8 @@ func (ix *Index) MemoryEntries(q MemoryQuery) ([]MemoryHit, error) {
 	// already excluded and what remains is a current belief set.
 	sql := "SELECT id,note,text,agent,task,session,stamp,category,expires,immutable," +
 		"superseded_by,superseded_at,helpful,unhelpful,line,embedding,space,acl," +
-		"private,origin,human,challenges FROM memory_entries WHERE " +
+		"private,origin,human,challenges,fresh,chk,verified,nchange,nverify,since,vol,prate" +
+		" FROM memory_entries WHERE " +
 		strings.Join(where, " AND ")
 	limit := q.ScanLimit
 	if limit <= 0 {
@@ -304,7 +307,9 @@ func (ix *Index) MemoryEntries(q MemoryQuery) ([]MemoryHit, error) {
 			&r.hit.Task, &r.hit.Session, &r.hit.Stamp, &r.hit.Category,
 			&r.hit.Expires, &immutable, &r.hit.SupersededBy, &r.hit.SupersededAt,
 			&r.hit.Helpful, &r.hit.Unhelpful, &r.hit.Line, &blob, &r.sp, &r.acl,
-			&private, &r.hit.Origin, &human, &r.hit.Challenges); err != nil {
+			&private, &r.hit.Origin, &human, &r.hit.Challenges,
+			&r.hit.Fresh, &r.hit.Check, &r.hit.Verified, &r.hit.Changes,
+			&r.hit.Verifies, &r.hit.Since, &r.hit.Vol, &r.hit.PriorRate); err != nil {
 			return nil, err
 		}
 		r.hit.Immutable = immutable == 1
@@ -582,4 +587,33 @@ func clamp01(f float64) float64 {
 		return 1
 	}
 	return f
+}
+
+// FreshnessEvidence totals, per shape class, how many times current facts
+// have been found changed and how many observed days of history they cover
+// (first version to last confirmation; see memory.Entry.ObservedDays). It is what
+// memory.LearnPriors turns into the store's own change rates, and it is one
+// aggregate query rather than a walk of every note.
+func (ix *Index) FreshnessEvidence() (changes, exposureDays [2]float64, err error) {
+	rows, err := ix.DB.Query(
+		"SELECT shape, COALESCE(SUM(nchange),0), " +
+			"COALESCE(SUM(MAX(julianday(CASE WHEN verified<>'' THEN verified ELSE stamp END) - " +
+			"julianday(CASE WHEN since<>'' THEN since ELSE stamp END), 0)),0) " +
+			"FROM memory_entries WHERE superseded_by='' AND stamp<>'' GROUP BY shape")
+	if err != nil {
+		return changes, exposureDays, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var shape int
+		var c, d float64
+		if err := rows.Scan(&shape, &c, &d); err != nil {
+			return changes, exposureDays, err
+		}
+		if shape >= 0 && shape < len(changes) {
+			changes[shape] += c
+			exposureDays[shape] += d
+		}
+	}
+	return changes, exposureDays, rows.Err()
 }

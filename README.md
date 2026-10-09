@@ -128,6 +128,32 @@ grimoire challenges --note memory/ops.md --concede ID  # the agent was right
 Hand edits need no marker: an entry's id is a hash of its own content, so text
 that changed after the id was minted is text another hand changed.
 
+### Memory that knows when to re-check
+
+A remembered port, version or deploy target goes stale silently. Each fact
+can carry a freshness tier (`stable`, `volatile`, or a re-check interval such
+as `7d`) and a check: the read-only command that verifies it. Untiered facts
+get a change rate learned from their own history. `recall` then marks each
+fact `use` or `verify`, so agents look up only the few facts that are likely
+to have changed, and they record what they found.
+
+On real agent transcripts, this served 2–3× fewer stale answers than a
+fixed re-check timer at the same lookup budget. A scheduled **dream** keeps
+the tiers honest from each fact's record, and it sweeps memory, including
+stored check commands, for secrets, injected instructions and dangerous
+commands. See [docs/FRESHNESS.md](docs/FRESHNESS.md) for the model, the
+numbers and their caveats.
+
+Most agent memory is prose about the state of work ("the suite passes",
+"the repo is at …"), and no text pattern can tell that kind of fact from a
+settled decision. Point `GRIMOIRE_DECISION_URL` at a typed-decision model and
+each untiered fact is asked once, when it is written. Two choices:
+[Jev](https://typesafe.ai), hosted, at a fraction of a cent per thousand
+facts; or [Laya](https://huggingface.co/convaiinnovations/laya), open-weight
+and run locally with `laya-serve`. Both use the same wire format.
+Grimoire works without either. [docs/FRESHNESS.md](docs/FRESHNESS.md#decision-model)
+compares their accuracy, speed and cost on a real store.
+
 ### In Obsidian
 
 The [Obsidian plugin](clients/obsidian/) shows all of this where you already
@@ -418,10 +444,10 @@ with its own provider, so it cannot know what your coding agent costs. What it
 reports exactly is the calls **it** made: answering, reranking, classifying, on
 a key you configured. Anything else would be invented.
 
-Seventeen providers are priced — OpenAI, Anthropic, Google, Groq, Together,
+Nineteen providers are priced — OpenAI, Anthropic, Google, Groq, Together,
 Fireworks, DeepSeek, Mistral, Perplexity, xAI, Cerebras, DeepInfra, Azure,
-OpenRouter — plus Ollama, LM Studio and vLLM, which are free because they run on
-your hardware. The provider is identified from the API base URL, not the
+OpenRouter, TypeSafe (Jev decisions) — plus Ollama, LM Studio, vLLM and Laya,
+which are free because they run on your hardware. The provider is identified from the API base URL, not the
 configured backend name, because pointing the OpenAI-compatible backend at Groq
 means Groq is billing you.
 

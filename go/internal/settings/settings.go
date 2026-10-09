@@ -87,6 +87,26 @@ var Fields = map[string]Field{
 	"dream_apply": {"GRIMOIRE_DREAM_APPLY", "safe"},
 	// Vault folder the dream report note is written to.
 	"dream_report_dir": {"GRIMOIRE_DREAM_REPORT_DIR", "Dreams"},
+	// Agent memory freshness: the probability a fact has changed since it was
+	// last verified above which recall tells the agent to re-check it before
+	// use. Lower re-checks more (fresher, more lookups); higher re-checks less.
+	"memory_verify_threshold": {"GRIMOIRE_MEMORY_VERIFY_THRESHOLD", "0.3"},
+	// Optional typed-decision model, spoken over TypeSafe's Jev wire format
+	// (POST /v1/systemone): Jev itself (https://api.typesafe.ai, paid, key
+	// required) or a local laya-serve (http://127.0.0.1:8000, free). Empty
+	// is off. When set, a fact remembered without a freshness tier is asked
+	// "does this describe state that changes?" and the probability sets its
+	// change-rate prior. The key may also live in the credential vault as
+	// 'decision-api-key'. See docs/FRESHNESS.md for when this helps.
+	"decision_url":     {"GRIMOIRE_DECISION_URL", ""},
+	"decision_model":   {"GRIMOIRE_DECISION_MODEL", "jev-latest"},
+	"decision_api_key": {"GRIMOIRE_DECISION_API_KEY", ""},
+	// Platt calibration "a,b" applied to the volatility probability:
+	// sigmoid(a*logit(p)+b). Raw jev-1.13.0 probabilities run high (stable
+	// facts centre near 0.45); the default was fitted on 90 hand-labelled
+	// facts from a real store and held up leave-one-out (log loss 0.60 raw,
+	// 0.36 calibrated). "1,0" turns calibration off.
+	"decision_calibration": {"GRIMOIRE_DECISION_CALIBRATION", "1.837,-2.493"},
 	// Optional: an agent's per-project directory (e.g. ~/.claude/projects) and
 	// the memory directory every project is meant to share. When both are
 	// set, a dream reports projects whose memory/ is a separate real

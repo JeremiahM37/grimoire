@@ -105,7 +105,7 @@ export class Grimoire {
   async remember(text, options = {}) {
     const body = { text, agent: options.agent ?? this.agent }
     for (const key of ['topic', 'task', 'session', 'category', 'expires_in',
-      'expires', 'scope']) {
+      'expires', 'scope', 'fresh', 'check']) {
       if (options[key]) body[key] = options[key]
     }
     if (options.immutable) body.immutable = true
