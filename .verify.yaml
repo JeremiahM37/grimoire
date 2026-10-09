@@ -139,6 +139,28 @@ steps:
       - shell: >
           curl -sf 'http://127.0.0.1:9119/api/memory/facets' | grep -q 'run-42'
 
+  - name: injected memory is matched by meaning and cues, and a re-tell teaches a cue
+    actions:
+      # A fact with an agent-supplied cue: a request that shares no words with
+      # the fact surfaces it through the cue, framed as something to follow.
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/memory
+          -H 'Content-Type: application/json'
+          -d '{"topic":"verify-cues","text":"the zebra bucket keeps nightly exports for nine days","agent":"verify","infer":false,"cues":["where do the backups of the database dumps go"]}'
+          | grep -q '"op":"ADD"'
+      - shell: >
+          curl -sf 'http://127.0.0.1:9119/api/memory/context?rank=hybrid&q=where+do+the+backups+of+the+database+dumps+go'
+          | python3 -c 'import json,sys; c=json.load(sys.stdin)["context"]; assert "zebra bucket" in c and c.startswith("Memories from earlier sessions"), c'
+      # Telling it again is a NOOP, and the stated context becomes a learned cue.
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/memory
+          -H 'Content-Type: application/json'
+          -d '{"topic":"verify-cues","text":"the zebra bucket keeps nightly exports for nine days","agent":"verify","context":"tidy up old snapshots on the storage box"}'
+          | grep -q '"op":"NOOP"'
+      - shell: >
+          curl -sf 'http://127.0.0.1:9119/api/memory/context?rank=hybrid&q=tidy+up+old+snapshots+on+the+storage+box'
+          | grep -q 'zebra bucket'
+
   - name: recall says which facts to re-check, and a re-check is recorded
     actions:
       - shell: >

@@ -25,6 +25,10 @@ Everything is environment-driven (same variables bare-metal, systemd, Docker):
 | `GRIMOIRE_DECISION_MODEL` | `jev-latest` | Model id sent with each decision |
 | `GRIMOIRE_DECISION_API_KEY` | *(empty)* | Bearer key for the decision server; can also live in the vault as `decision-api-key` |
 | `GRIMOIRE_DECISION_CALIBRATION` | `1.837,-2.493` | Platt curve `a,b` applied to the returned probability, fitted for jev-1.13.0; `1,0` turns it off |
+| `GRIMOIRE_RETELL_URL` | *(off)* | Typed-decision server that judges whether a prompt restates a memory on file; the prompt before it is learned as that memory's cue ([MEMORY_USE.md](MEMORY_USE.md)) |
+| `GRIMOIRE_RETELL_MODEL` | `jev-latest` | Model name sent to the re-tell judge |
+| `GRIMOIRE_RETELL_API_KEY` | *(none)* | Key for the judge; else the vault secret `retell-api-key`, then the decision key |
+| `GRIMOIRE_RETELL_THRESHOLD` | `0.9` | Yes-probability needed before a cue is learned |
 | `GRIMOIRE_DREAM_INTERVAL_HOURS` | `24` | Hours between scheduled dreams (hygiene + security sweep over agent memory); `0` turns the schedule off. A dream only runs when memory changed since the last one |
 | `GRIMOIRE_DREAM_APPLY` | `safe` | What a scheduled dream may change: `safe` applies mechanical, reversible fixes (index repair, freshness tiers and history from recorded evidence) with a history snapshot first; `off` only reports |
 | `GRIMOIRE_LOCAL_EMBED` / `_MODEL` | `auto` / `potion-base-8M` | Local semantic embeddings — the ~30 MB model is fetched once on first start (`grimoire fetch-model` to pre-seed); `off` to stay on the hashing embedder |

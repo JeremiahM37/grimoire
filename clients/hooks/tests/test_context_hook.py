@@ -26,7 +26,7 @@ def event(prompt="How does kestrel deployment work?", session="one"):
 def test_repeat_and_fact_deduplication(environment):
     calls = []
 
-    def fetch(base, token, query, excluded, budget, mode, paths):
+    def fetch(base, token, query, excluded, budget, mode, paths, extra=None):
         assert mode == "scoped"
         assert paths == ["memory/kestrel.md", "projects/kestrel/"]
         calls.append(excluded)
@@ -41,7 +41,7 @@ def test_repeat_and_fact_deduplication(environment):
 
 
 def test_compaction_and_ttl_rehydrate(environment):
-    def fetch(base, token, query, excluded, budget, mode, paths):
+    def fetch(base, token, query, excluded, budget, mode, paths, extra=None):
         return {"context": "reference", "keys": [KEY]}
 
     hook.run(event(), environment, fetch, now=100)
@@ -49,7 +49,7 @@ def test_compaction_and_ttl_rehydrate(environment):
     assert hook.run(reset, environment, fetch, now=101) is None
     assert hook.run(event(), environment, fetch, now=102)
 
-    def check_expiry(base, token, query, excluded, budget, mode, paths):
+    def check_expiry(base, token, query, excluded, budget, mode, paths, extra=None):
         assert excluded == []
         return {"context": "reference", "keys": [KEY]}
 
@@ -86,7 +86,7 @@ def test_failures_release_lock_and_do_not_mark_seen(environment):
 
 
 def test_credentials_and_project_isolate_seen_state(environment):
-    def fetch(base, token, query, excluded, budget, mode, paths):
+    def fetch(base, token, query, excluded, budget, mode, paths, extra=None):
         assert excluded == []
         return {"context": "reference", "keys": [KEY]}
     hook.run(event(), environment, fetch)
@@ -113,7 +113,64 @@ def test_missing_scope_does_not_fall_back_to_everything(environment):
 def test_all_mode_is_explicit(environment):
     environment["GRIMOIRE_CONTEXT_MODE"] = "all"
     environment["GRIMOIRE_CONTEXT_PATHS"] = "[]"
-    def fetch(base, token, query, excluded, budget, mode, paths):
+    def fetch(base, token, query, excluded, budget, mode, paths, extra=None):
         assert mode == "all" and paths == []
         return {"context": "reference", "keys": [KEY]}
     assert hook.run(event(), environment, fetch)
+
+
+def tool_event(tool="Bash", tool_input=None, session="one"):
+    return {"hook_event_name": "PreToolUse", "session_id": session, "cwd": "/project",
+            "tool_name": tool, "tool_input": tool_input or {"command": "systemctl restart kestrel"}}
+
+
+def test_action_stage_queries_the_pending_command(environment):
+    seen = {}
+
+    def fetch(base, token, query, excluded, budget, mode, paths, extra=None):
+        seen.update(query=query, budget=budget, extra=extra)
+        return {"context": "reference", "keys": [KEY]}
+
+    out = hook.run(tool_event(), environment, fetch, now=100)
+    assert out["hookSpecificOutput"]["hookEventName"] == "PreToolUse"
+    assert seen["query"] == "Bash systemctl restart kestrel"
+    assert seen["extra"]["stage"] == "action" and seen["extra"]["limit"] == 2
+    assert seen["extra"]["min_rel"] == "0.6" and seen["budget"] == 1200
+
+
+def test_action_stage_repeats_only_after_its_ttl(environment):
+    def fetch(base, token, query, excluded, budget, mode, paths, extra=None):
+        return {"context": "" if KEY in excluded else "reference", "keys": [] if KEY in excluded else [KEY]}
+
+    assert hook.run(tool_event(), environment, fetch, now=100)
+    assert hook.run(tool_event(), environment, fetch, now=200) is None
+    assert hook.run(tool_event(), environment, fetch, now=800)
+
+
+@pytest.mark.parametrize("tool,tool_input", [("Read", {"file_path": "/x"}), ("Bash", {"command": ""}),
+                                              ("Grep", {"pattern": "x"}), ("Bash", "not a dict")])
+def test_action_stage_skips_tools_it_does_not_cover(environment, tool, tool_input):
+    def unexpected(*args):
+        pytest.fail("unnecessary request")
+    assert hook.run(tool_event(tool, tool_input), environment, unexpected) is None
+
+
+def test_action_stage_can_be_turned_off(environment):
+    def unexpected(*args):
+        pytest.fail("unnecessary request")
+    environment["GRIMOIRE_CONTEXT_ACTIONS"] = "0"
+    assert hook.run(tool_event(), environment, unexpected) is None
+
+
+def test_subagent_launch_is_matched_on_purpose_and_model(environment):
+    seen = {}
+
+    def fetch(base, token, query, excluded, budget, mode, paths, extra=None):
+        seen["query"] = query
+        return {"context": "reference", "keys": [KEY]}
+
+    launch = {"description": "survey the repo", "subagent_type": "general-purpose",
+              "model": "opus", "prompt": "Read every file under go/ and summarise it. " * 40}
+    assert hook.run(tool_event("Agent", launch), environment, fetch, now=100)
+    assert seen["query"].startswith("Agent launch subagent general-purpose model opus survey the repo")
+    assert len(seen["query"]) < 500

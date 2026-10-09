@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -100,6 +101,17 @@ type memoryIn struct {
 	// `remember` advertises the field to agents rather than inferring it: only
 	// the caller knows what it was reading.
 	Origin string `json:"origin"`
+
+	// Context is what the agent was doing when it wrote this: the request it
+	// was working on. When the fact turns out to be on file already, that
+	// moment is one where the memory should have reached the agent and did
+	// not, and the context is kept as a learned cue for it (memory_cues.go).
+	Context string `json:"context"`
+
+	// Cues are situations in which this fact should come to mind: requests,
+	// commands or paths. The writing agent knows the situation it is in, so
+	// it is the cheapest source of them.
+	Cues []string `json:"cues"`
 
 	// Infer defaults to true. Setting it false stores the text verbatim as one
 	// fact with no extraction and no reconciliation — the escape hatch for a
@@ -382,6 +394,7 @@ func (s *Server) reconcileFact(w http.ResponseWriter, r *http.Request, rel, fact
 	}
 	switch decision.Op {
 	case memory.OpNoop:
+		s.learnFromRetell(r, decision.Target, agent, m.Context)
 		return memoryResult{Op: string(memory.OpNoop), Target: decision.Target,
 			Text: fact, Why: decision.Why}, nil
 	default:
@@ -390,6 +403,7 @@ func (s *Server) reconcileFact(w http.ResponseWriter, r *http.Request, rel, fact
 		if err != nil {
 			return memoryResult{}, err
 		}
+		s.addAgentCues(id, m)
 		return memoryResult{Op: string(memory.OpAdd), ID: id, Text: fact,
 			Path: rel, Why: decision.Why, Challenges: decision.Challenges}, nil
 	}
@@ -852,6 +866,14 @@ func (s *Server) briefing(w http.ResponseWriter, r *http.Request) {
 			n = k
 		}
 	}
+	// Whole note bodies made the briefing unbounded: five recent memory
+	// notes could be most of an agent's first context window. Each body is
+	// cut to max_body characters; read_note has the rest.
+	maxBody := 1500
+	if v, err := strconv.Atoi(r.URL.Query().Get("max_body")); err == nil && v >= 200 && v <= 20000 {
+		maxBody = v
+	}
+	task := strings.TrimSpace(r.URL.Query().Get("task"))
 	collect := func(q string, args ...any) ([]map[string]string, error) {
 		out := []map[string]string{}
 		rows, err := s.Index.DB.Query(q, args...)
@@ -874,7 +896,7 @@ func (s *Server) briefing(w http.ResponseWriter, r *http.Request) {
 			if !s.canReadNote(r, path, acl) {
 				continue
 			}
-			out = append(out, map[string]string{"path": path, "title": title, "body": body})
+			out = append(out, map[string]string{"path": path, "title": title, "body": clipBody(body, maxBody)})
 		}
 		return out, rows.Err()
 	}
@@ -921,8 +943,10 @@ func (s *Server) briefing(w http.ResponseWriter, r *http.Request) {
 	// The facts themselves, not just the notes holding them: an agent joining
 	// a session needs the beliefs that are current, and a note-shaped bucket
 	// hands it every belief the note ever held, including the superseded ones.
+	// With a task, the facts are the ones that bear on it rather than the
+	// newest ones: recency is a poor proxy for what this session will need.
 	facts, err := s.Index.MemoryEntries(index.MemoryQuery{
-		Filter: filterFor(r, false), Limit: n, Now: vault.Now()})
+		Filter: filterFor(r, false), Query: task, AcceptedOnly: task != "", Limit: n, Now: vault.Now()})
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -934,7 +958,21 @@ func (s *Server) briefing(w http.ResponseWriter, r *http.Request) {
 	// one. Counts only here — the full digest is /api/memory/changes — because
 	// a briefing is read before work starts and must stay small.
 	changed, retracted := s.recentBeliefChanges(r)
+	relevant := []map[string]string{}
+	if task != "" {
+		items, err := s.hybridContext(r, task, contextTerms(task), nil)
+		if err == nil {
+			sort.SliceStable(items, func(i, j int) bool { return items[i].score > items[j].score })
+			for _, it := range items {
+				if it.score < contextMinRelevance || len(relevant) == 5 {
+					continue
+				}
+				relevant = append(relevant, map[string]string{"path": it.Path, "id": it.ID, "text": it.Text})
+			}
+		}
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
+		"relevant":        relevant,
 		"pinned":          dedupe(pinned),
 		"onboarding":      dedupe(onboarding),
 		"recent_memories": dedupe(recent),
@@ -1421,4 +1459,14 @@ func (s *Server) memoryFacets(w http.ResponseWriter, r *http.Request) {
 		"agents": agents, "sessions": sessions, "categories": categories,
 		"total": len(hits), "live": live,
 	})
+}
+
+// clipBody cuts a note body to at most n characters on a rune boundary and
+// says so, so a reader knows to fetch the rest.
+func clipBody(body string, n int) string {
+	rs := []rune(body)
+	if len(rs) <= n {
+		return body
+	}
+	return string(rs[:n]) + "\n…(truncated; read_note has the full note)"
 }

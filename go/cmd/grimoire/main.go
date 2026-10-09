@@ -383,6 +383,9 @@ func run(args []string) error {
 	// Dreaming: the scheduled sweep over agent memory. It wakes hourly and
 	// does nothing unless the interval has passed and memory changed.
 	go e.server.DreamLoop(done)
+	// Embed the cue store now, not on the first prompt: a large store takes
+	// longer than a context hook will wait.
+	go e.server.WarmCues()
 
 	// watch for edits made outside grimoire (another editor, a sync client)
 	watch := watcher.New(v, ix, 0)
