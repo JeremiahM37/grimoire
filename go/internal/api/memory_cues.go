@@ -137,6 +137,7 @@ func (s *Server) learnFromRetell(r *http.Request, factID, agent, context string)
 		Text: context, Source: cues.Learned}}); err != nil {
 		log.Printf("cues: learn: %v", err)
 	}
+	s.adherenceRetold(cues.FactTarget(factID))
 }
 
 // addAgentCues attaches the cues a writer supplied to the fact it added.
@@ -325,6 +326,7 @@ func (s *Server) learnCue(it contextItem, prev string) {
 	if _, err := s.cues().Add([]cues.Cue{{Target: target, Kind: cues.Request, Text: prev, Source: cues.Learned}}); err != nil {
 		log.Printf("cues: learn from prompt: %v", err)
 	}
+	s.adherenceRetold(target)
 }
 
 var retellQuestion = map[string]decide.Question{"retell": {
