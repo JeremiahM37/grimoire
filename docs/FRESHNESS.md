@@ -118,7 +118,9 @@ memory store (25 describe changing state):
 | qwen3.5:4b (Ollama, thinking off, yes/no) | 0.61 | 25 / 25 | 51 / 65 | ~230 ms | free (GPU) |
 | qwen3.6:35b-a3b (Ollama, thinking off, yes/no) | 0.76 | 25 / 25 | 31 / 65 | ~540 ms | free (GPU) |
 | Laya fine-tuned on 418 of the store's other facts, calibrated | 0.87 | 8 / 25 | 3 / 65 | ~275 ms | free (one-off ~25 min CPU training) |
-| **Jev 1.13.0**, calibrated | **0.90** | **13 / 25** | **2 / 65** | ~235 ms | ~$0.000015 per fact |
+| Jev 1.13.0, calibrated | 0.90 | 13 / 25 | 2 / 65 | ~235 ms | ~$0.000015 per fact |
+| Laya fine-tuned on 899 synthetic facts, calibrated | 0.92 | — | — | ~215 ms | free (~30 min CPU training) |
+| **Laya fine-tuned on those plus 464 of the store's other facts, calibrated** | **0.94** | — | — | ~215 ms | free (~45 min CPU training) |
 
 AUC 0.5 is chance. The general LLMs were included as a quality reference.
 They call almost every fact changing, so they would send half or more of a
@@ -126,18 +128,50 @@ store's settled facts for re-checking. A small decision model that answers
 with a calibrated probability is better at this one question, as well as
 faster and cheaper. Laya's own model card says its base checkpoints are not
 zero-shot decision engines and need fine-tuning on your own decisions, and
-that is what we saw. Fine-tuned, it gets close to Jev and costs nothing to run.
+that is what we saw: stock Laya is at chance, and fine-tuned it matches Jev.
 
-To get there, label your own facts with any good judge (Jev here), then run
-`laya-train --loss soft-ce` on them and serve the result with
-`LAYA_EXTRA_MODELS='{"volatility": "<dir>"}' laya-serve`. Set
-`GRIMOIRE_DECISION_MODEL=volatility` and fit its own calibration. For the
-checkpoint above that was `GRIMOIRE_DECISION_CALIBRATION=1.851,0.764`. A
-fine-tuned checkpoint has learned from the facts it was trained on, so it
-belongs to that store and should not be published. Jev's raw probabilities run high (stable facts centre
-near 0.45), so they pass through a Platt curve
-(`GRIMOIRE_DECISION_CALIBRATION`). It was fitted on the same 90 facts and held
-up leave-one-out: log loss 0.60 raw, 0.36 calibrated.
+The two fine-tuned rows answer both questions, so they are compared with Jev
+under the shipped policy (speed, log-rate mean, gated at 50%), with each
+model's own calibration:
+
+| Predictor | AUC | Speed right (of 25 changing) | Caught / wrong across ages | Changing / stable flagged at 30 days |
+|---|---|---|---|---|
+| Jev | 0.90 | 14 | 42 / 36 | 14 / 25, 5 / 65 |
+| Laya, synthetic facts only | 0.92 | 15 | 41 / 26 | 13 / 25, 3 / 65 |
+| Laya, synthetic + the store's own facts | 0.94 | 15 | 46 / 28 | 16 / 25, 5 / 65 |
+
+On 90 facts these are a tie, not a ranking. The 95% bootstrap interval for
+the AUC gap over Jev is [−0.06, +0.11] for the synthetic-only model and
+[−0.01, +0.11] for the one that also saw the store's own facts. None of the
+90 test facts was in any training set. The calibrations were fitted on the
+same 90 facts for all three models.
+
+### Fine-tuning Laya
+
+1. Collect a few hundred example facts. Synthetic ones work: the 899 above
+   were written by a small LLM to cover live state, work status, locations,
+   decisions, rules and findings.
+2. Label them with a good judge, both questions. Jev did it here for about
+   $0.01.
+3. Train: `laya-train --data train.jsonl --loss soft-ce --shuffle-options
+   --epochs 6 --max-len 256 --device cpu`. Each line is
+   `{"state": fact, "questions": {...}, "gold": {"changes": {"probabilities":
+   ...}, "speed": {"probabilities": ...}}}`.
+4. Serve: `LAYA_EXTRA_MODELS='{"volatility": "<dir>"}' laya-serve`, then set
+   `GRIMOIRE_DECISION_URL=http://127.0.0.1:8000` and
+   `GRIMOIRE_DECISION_MODEL=volatility`.
+5. Fit a Platt curve for it on a few dozen hand-labelled facts and set
+   `GRIMOIRE_DECISION_CALIBRATION=a,b`. The checkpoints above came out at
+   `2.147,0.359` (synthetic) and `1.931,1.060` (mixed).
+
+A checkpoint trained on a store's own facts has learned from them, so it
+belongs to that store and should not be published. One trained on synthetic
+facts only carries nothing personal.
+
+Jev's raw probabilities run high (stable facts centre near 0.45), so they
+pass through the default Platt curve (`GRIMOIRE_DECISION_CALIBRATION`,
+`1.837,-2.493`). It was fitted on the same 90 facts and held up
+leave-one-out: log loss 0.60 raw, 0.36 calibrated.
 
 A failed, slow (3 s cap) or unconfigured decision server leaves the fact on
 the shape rule. Facts from untrusted origins are never sent, and neither are

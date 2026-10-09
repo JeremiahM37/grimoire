@@ -147,12 +147,15 @@ numbers and their caveats.
 Most agent memory is prose about the state of work ("the suite passes",
 "the repo is at …"), and no text pattern can tell that kind of fact from a
 settled decision. Point `GRIMOIRE_DECISION_URL` at a typed-decision model and
-each untiered fact is asked once, when it is written. Two choices:
-[Jev](https://typesafe.ai), hosted, at a fraction of a cent per thousand
-facts; or [Laya](https://huggingface.co/convaiinnovations/laya), open-weight
-and run locally with `laya-serve`. Both use the same wire format.
-Grimoire works without either. [docs/FRESHNESS.md](docs/FRESHNESS.md#decision-model)
-compares their accuracy, speed and cost on a real store.
+each untiered fact is asked once, when it is written. Two choices, both
+speaking the same wire format:
+[Jev](https://typesafe.ai), hosted, at about 1.5¢ per thousand facts; or
+[Laya](https://huggingface.co/convaiinnovations/laya), open-weight and run
+locally with `laya-serve`. Stock Laya is no better than chance at this
+question. Fine-tuned on about 900 labelled example facts (half an hour on a
+CPU), it matched Jev on a real store. Grimoire works without either.
+[docs/FRESHNESS.md](docs/FRESHNESS.md#decision-model) compares accuracy,
+speed and cost, and shows how to fine-tune.
 
 ### In Obsidian
 
