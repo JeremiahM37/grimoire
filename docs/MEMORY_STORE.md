@@ -105,3 +105,14 @@ tag as "look before you rely on it".
 
 See MEMORY_WRITING.md: `remember` returns non-blocking `warnings`, the dream lists
 `memory_quality` findings.
+
+
+### Procedures that name another machine
+
+A path, unit or port that belongs to another machine is reported as
+"unverifiable here" and is neither a pass nor a failure: a path under another
+user's home or `/root`, or anything on a line that carries an `ssh` / `scp` /
+`pct exec` / `docker exec` style context, a `user@host` or `host:/path`, an IP
+address that is not this host's, a `.ts.net` / `.internal` / `.local` name that
+is not this host's, or a name listed in the `memory_other_hosts` setting. A
+procedure with only such references is counted as seen, not proven.

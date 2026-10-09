@@ -183,7 +183,71 @@ def message_text(content, kinds):
     return ""
 
 
-def turn_of(entry):
+def dig(value, path):
+    """Follow a dotted path ("message.text"); "a|b" tries a then b."""
+    for alternative in str(path).split("|"):
+        current = value
+        for part in alternative.strip().split("."):
+            if isinstance(current, dict):
+                current = current.get(part)
+            elif isinstance(current, list) and part.isdigit() and int(part) < len(current):
+                current = current[int(part)]
+            else:
+                current = None
+            if current is None:
+                break
+        if current not in (None, ""):
+            return current
+    return None
+
+
+def profile_turn(entry, transcripts):
+    """(speaker, text, timestamp) for a line of an agent described by a profile.
+
+    ``transcripts`` is the profile's section: ``format`` pi reads pi.dev message
+    entries; ``generic-jsonl`` reads the field map (``role``, ``text``, ``time``,
+    ``role_user``, ``role_assistant``). Other formats (opencode and cursor are
+    databases) are read by ``grimoire`` itself, not by this hook.
+    """
+    fmt = transcripts.get("format")
+    if fmt == "pi":
+        if entry.get("type") != "message" or not isinstance(entry.get("message"), dict):
+            return None
+        message = entry["message"]
+        role = message.get("role")
+        text = message_text(message.get("content"), {"text"})
+        stamp = entry.get("timestamp") if isinstance(entry.get("timestamp"), str) else None
+        return (role, text, stamp) if role in {"user", "assistant"} and text else None
+    if fmt == "generic-jsonl":
+        mapping = transcripts.get("map") or {}
+        if not mapping.get("role") or not mapping.get("text") or dig(entry, mapping.get("tool", "") or "\0"):
+            return None
+        users = {v.strip().lower() for v in (mapping.get("role_user") or "user,human").split(",")}
+        agents = {v.strip().lower() for v in (mapping.get("role_assistant") or "assistant,ai,model,agent").split(",")}
+        raw = str(dig(entry, mapping["role"]) or "").lower()
+        role = "user" if raw in users else "assistant" if raw in agents else None
+        text = dig(entry, mapping["text"])
+        text = message_text(text, {"text"}) if not isinstance(text, str) else text
+        stamp = dig(entry, mapping["time"]) if mapping.get("time") else None
+        return (role, text, stamp if isinstance(stamp, str) else None) if role and text else None
+    return None
+
+
+def transcript_profile(environment):
+    """The ``transcripts`` section of the resolved profile named by
+    GRIMOIRE_BANK_HARNESS, or {} (Claude Code and Codex need none)."""
+    name = environment.get("GRIMOIRE_BANK_HARNESS", "")
+    if not re.fullmatch(r"[a-z][a-z0-9_-]{0,31}", name) or name in {"claude-code", "codex"}:
+        return {}
+    try:
+        profile = json.loads((Path.home() / ".grimoire" / "agents" / (name + ".json")).read_text())
+    except (OSError, ValueError):
+        return {}
+    section = profile.get("transcripts") if isinstance(profile, dict) else None
+    return section if isinstance(section, dict) else {}
+
+
+def turn_of(entry, transcripts=None):
     """(speaker, text, timestamp) for one transcript line, or None.
 
     Claude Code lines are ``{type: user|assistant, message: {role, content}}``;
@@ -193,6 +257,13 @@ def turn_of(entry):
     """
     if not isinstance(entry, dict):
         return None
+    if transcripts and transcripts.get("format") in {"pi", "generic-jsonl"}:
+        found = profile_turn(entry, transcripts)
+        if not found:
+            return None
+        role, text, stamp = found
+        text = clean(text)
+        return (role, text, stamp) if text else None
     if entry.get("isMeta") or entry.get("isSidechain") or entry.get("isCompactSummary"):
         return None
     stamp = entry.get("timestamp") if isinstance(entry.get("timestamp"), str) else None
@@ -216,7 +287,7 @@ def turn_of(entry):
     return role, text, stamp
 
 
-def read_turns(transcript_path):
+def read_turns(transcript_path, transcripts=None):
     path = Path(transcript_path)
     if not path.is_file():
         return []
@@ -229,7 +300,7 @@ def read_turns(transcript_path):
     turns = []
     for line in raw.splitlines():
         try:
-            turn = turn_of(json.loads(line))
+            turn = turn_of(json.loads(line), transcripts)
         except ValueError:
             continue
         if turn:
@@ -491,7 +562,7 @@ def state_dir(environment):
     return directory
 
 
-def session_turns(event):
+def session_turns(event, environment=None):
     """(session id, turns) for a Stop/SessionEnd event, or None."""
     session = event.get("session_id", "")
     if not isinstance(session, str) or not re.fullmatch(r"[A-Za-z0-9._:-]{1,200}", session):
@@ -499,7 +570,7 @@ def session_turns(event):
     transcript = event.get("transcript_path", "")
     if not isinstance(transcript, str) or not transcript:
         return None
-    turns = read_turns(transcript)
+    turns = read_turns(transcript, transcript_profile(environment) if environment is not None else None)
     if not any(t["speaker"] == "user" for t in turns):
         return None
     return session, turns
@@ -736,7 +807,7 @@ def run(event, environment=None, send=request_json, get=request_get):
         return file_memory(event, environment, base, bank, get)
     if name == "UserPromptSubmit":
         return recall(event, environment, base, bank, send)
-    found = session_turns(event)
+    found = session_turns(event, environment)
     if found is None:
         return None
     session, turns = found

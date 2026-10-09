@@ -122,6 +122,9 @@ type CheckResult struct {
 	Subject string
 	OK      bool
 	Detail  string
+	// Unverifiable marks a reference that belongs to another machine (or is
+	// otherwise out of this host's reach). It is neither a pass nor a failure.
+	Unverifiable bool
 }
 
 // Checker examines a procedure's text. It must be read-only.
@@ -139,6 +142,13 @@ type Env struct {
 	Listening    func(port int) bool
 	// Ports is the allowlist of ports a procedure may name and be checked on.
 	Ports []int
+	// HostNames and HostIPs name this machine (default: the real hostname and
+	// interfaces); OtherHosts are names of other machines (setting
+	// memory_other_hosts). A reference on a line that mentions another host, or
+	// an ssh / pct exec style context, is unverifiable here.
+	HostNames  []string
+	HostIPs    func() []string
+	OtherHosts []string
 }
 
 // DefaultEnv checks the real machine.
@@ -185,10 +195,11 @@ type pathChecker struct{ env Env }
 func (pathChecker) Name() string { return "path" }
 
 func (c pathChecker) Check(text string) []CheckResult {
+	scope := newHostScope(c.env)
 	seen := map[string]bool{}
 	var out []CheckResult
-	for _, m := range pathRE.FindAllStringSubmatch(text, -1) {
-		p := strings.TrimRight(m[1], ".,:;)")
+	for _, loc := range pathRE.FindAllStringSubmatchIndex(text, -1) {
+		p := strings.TrimRight(text[loc[2]:loc[3]], ".,:;)")
 		if seen[p] || strings.ContainsAny(p, "*<>$") {
 			continue
 		}
@@ -204,6 +215,14 @@ func (c pathChecker) Check(text string) []CheckResult {
 		if skip || !plausibleRoot(p, c.env.Home) {
 			continue
 		}
+		if why := scope.foreignLine(lineAt(text, loc[2])); why != "" {
+			out = append(out, unverifiable("path", p, why))
+			continue
+		}
+		if why := scope.foreignPath(p); why != "" {
+			out = append(out, unverifiable("path", p, why))
+			continue
+		}
 		full := p
 		if strings.HasPrefix(p, "~/") {
 			full = filepath.Join(c.env.Home, p[2:])
@@ -213,9 +232,14 @@ func (c pathChecker) Check(text string) []CheckResult {
 		if !ok {
 			d = "path does not exist: " + p
 		}
-		out = append(out, CheckResult{"path", p, ok, d})
+		out = append(out, CheckResult{Checker: "path", Subject: p, OK: ok, Detail: d})
 	}
 	return out
+}
+
+func unverifiable(checker, subject, why string) CheckResult {
+	return CheckResult{Checker: checker, Subject: subject, Unverifiable: true,
+		Detail: UnverifiableHere + ": " + subject + " (" + why + ")"}
 }
 
 func plausibleRoot(p, home string) bool {
@@ -238,14 +262,19 @@ func (c unitChecker) Check(text string) []CheckResult {
 	if c.env.SystemctlCat == nil {
 		return nil
 	}
+	scope := newHostScope(c.env)
 	seen := map[string]bool{}
 	var out []CheckResult
-	for _, m := range unitRE.FindAllStringSubmatch(text, -1) {
-		u := m[1]
+	for _, loc := range unitRE.FindAllStringSubmatchIndex(text, -1) {
+		u := text[loc[2]:loc[3]]
 		if seen[u] || strings.Contains(u, "..") {
 			continue
 		}
 		seen[u] = true
+		if why := scope.foreignLine(lineAt(text, loc[2])); why != "" {
+			out = append(out, unverifiable("unit", u, why))
+			continue
+		}
 		found, avail := c.env.SystemctlCat(u)
 		if !avail {
 			return nil // no systemd here: the check does not apply
@@ -254,7 +283,7 @@ func (c unitChecker) Check(text string) []CheckResult {
 		if !found {
 			d = "systemd unit not found: " + u
 		}
-		out = append(out, CheckResult{"unit", u, found, d})
+		out = append(out, CheckResult{Checker: "unit", Subject: u, OK: found, Detail: d})
 	}
 	return out
 }
@@ -271,20 +300,25 @@ func (c portChecker) Check(text string) []CheckResult {
 	for _, p := range c.env.Ports {
 		allow[p] = true
 	}
+	scope := newHostScope(c.env)
 	seen := map[int]bool{}
 	var out []CheckResult
-	for _, m := range portRE.FindAllStringSubmatch(text, -1) {
-		n, _ := strconv.Atoi(m[1])
+	for _, loc := range portRE.FindAllStringSubmatchIndex(text, -1) {
+		n, _ := strconv.Atoi(text[loc[2]:loc[3]])
 		if seen[n] || !allow[n] {
 			continue
 		}
 		seen[n] = true
+		if why := scope.foreignLine(lineAt(text, loc[2])); why != "" {
+			out = append(out, unverifiable("port", strconv.Itoa(n), why))
+			continue
+		}
 		ok := c.env.Listening(n)
 		d := ""
 		if !ok {
 			d = fmt.Sprintf("nothing is listening on port %d", n)
 		}
-		out = append(out, CheckResult{"port", strconv.Itoa(n), ok, d})
+		out = append(out, CheckResult{Checker: "port", Subject: strconv.Itoa(n), OK: ok, Detail: d})
 	}
 	return out
 }
@@ -294,7 +328,7 @@ func RunChecks(text string, checkers []Checker) (all, failed []CheckResult) {
 	for _, c := range checkers {
 		for _, r := range c.Check(text) {
 			all = append(all, r)
-			if !r.OK {
+			if !r.OK && !r.Unverifiable {
 				failed = append(failed, r)
 			}
 		}
@@ -308,6 +342,29 @@ func FailureDetail(failed []CheckResult) string {
 	parts := make([]string, 0, len(failed))
 	for _, f := range failed {
 		parts = append(parts, f.Detail)
+	}
+	sort.Strings(parts)
+	return strings.Join(parts, "; ")
+}
+
+// Verifiable counts the results that were actually checked here.
+func Verifiable(all []CheckResult) int {
+	n := 0
+	for _, r := range all {
+		if !r.Unverifiable {
+			n++
+		}
+	}
+	return n
+}
+
+// UnverifiableNote renders the unverifiable results as one short sentence, or "".
+func UnverifiableNote(all []CheckResult) string {
+	var parts []string
+	for _, r := range all {
+		if r.Unverifiable {
+			parts = append(parts, r.Detail)
+		}
 	}
 	sort.Strings(parts)
 	return strings.Join(parts, "; ")

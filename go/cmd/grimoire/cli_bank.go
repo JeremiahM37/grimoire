@@ -78,7 +78,7 @@ var bankValued = map[string]bool{
 	"--template": true, "--name": true, "--mission": true, "--retain-mission": true,
 	"--disposition": true, "--skepticism": true, "--literalism": true, "--empathy": true,
 	"--directive": true, "--remove-directive": true, "--config": true,
-	"--file": true, "--dir": true, "--document-id": true, "--timestamp": true,
+	"--file": true, "--dir": true, "--dest": true, "--cutoff": true, "--since": true, "--min-sessions": true, "--min": true, "--document-id": true, "--timestamp": true,
 	"--context": true, "--tags": true, "--mode": true, "--update-mode": true,
 	"--budget": true, "--max-tokens": true, "--types": true, "--tags-match": true,
 	"--schema": true, "--type": true, "--q": true, "--limit": true, "--offset": true,

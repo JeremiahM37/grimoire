@@ -170,6 +170,7 @@ var routeAccess = map[string]access{
 	"GET /api/memory/core":                                       scoped, // rules + topic pointers; the canonical dir only for admins
 	"GET /api/memory/adherence":                                  scoped, // per-memory rates, filtered to readable memories
 	"GET /api/memory/check":                                      scoped, // checks and proposals, filtered to readable memories
+	"GET /api/memory/impact":                                     admin,  // reads agent transcripts on this host; checked in the handler
 	"GET /api/memory/export":                                     scoped, // every fact the caller may read
 	"GET /api/memory/changes":                                    scoped, // fact text, so the same filter as recall
 	"GET /api/memory/facets":                                     scoped, // scope names are drawn from facts

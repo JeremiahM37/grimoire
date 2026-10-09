@@ -282,12 +282,15 @@ func (s *Server) memstoreFindings(docs []dream.Doc) []dream.Finding {
 	if len(dues) > limit {
 		dues = dues[:limit]
 	}
-	checkers := memstore.Checkers(memstore.DefaultEnv(s.verifyPorts()))
+	env := memstore.DefaultEnv(s.verifyPorts())
+	env.OtherHosts = strings.FieldsFunc(s.setting("memory_other_hosts"), func(r rune) bool { return r == ',' || r == ' ' })
+	checkers := memstore.Checkers(env)
 	for _, d := range dues {
 		all, failed := memstore.RunChecks(d.text, checkers)
-		if len(all) == 0 {
-			// Nothing deterministic to check: count it as seen, not as proven.
-			next[d.key] = d.st.Record(true, "", now)
+		if memstore.Verifiable(all) == 0 {
+			// Nothing deterministic to check here (or only references to other
+			// machines): count it as seen, not as proven.
+			next[d.key] = d.st.Record(true, memstore.UnverifiableNote(all), now)
 			continue
 		}
 		detail := memstore.FailureDetail(failed)

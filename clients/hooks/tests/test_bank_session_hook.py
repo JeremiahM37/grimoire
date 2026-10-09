@@ -404,3 +404,39 @@ def test_file_memory_is_opt_in_once_per_file_and_bounded(environment, repo):
     outside = {**read, "session_id": "t", "tool_input": {"file_path": "/etc/passwd"}}
     assert hook.run(outside, enabled, get=get) is None
     assert len(calls) == 1
+
+
+def test_any_profile_with_transcripts_is_retained(tmp_path, monkeypatch):
+    """A new agent whose profile has a transcripts section is read without code."""
+    home = tmp_path / "home"
+    (home / ".grimoire" / "agents").mkdir(parents=True)
+    profile = {"name": "newagent", "transcripts": {"format": "generic-jsonl", "glob": "~/x/*.jsonl",
+               "map": {"role": "who", "text": "body", "time": "ts"}}}
+    (home / ".grimoire" / "agents" / "newagent.json").write_text(json.dumps(profile))
+    monkeypatch.setattr(hook.Path, "home", classmethod(lambda cls: home))
+    path = tmp_path / "t.jsonl"
+    path.write_text("\n".join(json.dumps(x) for x in [
+        {"who": "human", "body": "deploy staging first", "ts": "2026-10-09T10:00:00Z"},
+        {"who": "ai", "body": [{"type": "text", "text": "ok"}]},
+        {"who": "human", "call": "x", "body": "ignored? no: has text"},
+        {"who": "system", "body": "not a turn"}]) + "\n")
+    transcripts = hook.transcript_profile({"GRIMOIRE_BANK_HARNESS": "newagent"})
+    assert transcripts["format"] == "generic-jsonl"
+    turns = hook.read_turns(str(path), transcripts)
+    assert [t["speaker"] for t in turns] == ["user", "assistant", "user"]
+    assert turns[0]["timestamp"] == "2026-10-09T10:00:00Z"
+    # Claude Code and Codex need no profile; an unknown or odd harness name reads nothing.
+    assert hook.transcript_profile({"GRIMOIRE_BANK_HARNESS": "claude-code"}) == {}
+    assert hook.transcript_profile({"GRIMOIRE_BANK_HARNESS": "../etc"}) == {}
+    assert hook.transcript_profile({"GRIMOIRE_BANK_HARNESS": "missing"}) == {}
+
+
+def test_pi_transcript_lines(tmp_path):
+    path = tmp_path / "pi.jsonl"
+    path.write_text("\n".join(json.dumps(x) for x in [
+        {"type": "session", "id": "s", "version": 3},
+        {"type": "message", "id": "a", "timestamp": "2026-10-09T10:00:00Z", "message": {"role": "user", "content": "fix it"}},
+        {"type": "message", "id": "b", "message": {"role": "assistant", "content": [{"type": "text", "text": "done"}]}},
+        {"type": "message", "id": "c", "message": {"role": "toolResult", "content": "x"}}]) + "\n")
+    turns = hook.read_turns(str(path), {"format": "pi"})
+    assert [(t["speaker"], t["text"]) for t in turns] == [("user", "fix it"), ("assistant", "done")]

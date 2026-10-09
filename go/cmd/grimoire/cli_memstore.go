@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/JeremiahM37/grimoire/go/internal/dream/filemem"
+	"github.com/JeremiahM37/grimoire/go/internal/impact"
 	"github.com/JeremiahM37/grimoire/go/internal/memstore"
 )
 
@@ -25,6 +26,8 @@ const memoryUsage = `usage:
   grimoire memory status [--dir STORE]
   grimoire memory index [--dir STORE] [--write] [--budget BYTES]
   grimoire memory core [--budget BYTES] [--format md|text]
+  grimoire memory impact [--since 90d] [--agent NAME] [--min N] [--json]
+  grimoire memory impact --retells [--cutoff 2026-10-09] [--budget 2000] [--since D] [--json]
 
 A directory memory (Claude Code's memory/) becomes a symlink to the store; a
 single file (AGENTS.md, GEMINI.md) gets a managed block holding the core.
@@ -59,6 +62,8 @@ func cmdMemory(args []string) int {
 		return memoryIndexCmd(e, rest)
 	case "core":
 		return memoryCoreCmd(e, rest)
+	case "impact":
+		return memoryImpactCmd(e, rest)
 	}
 	return fail("unknown memory command %q\n\n%s", args[0], memoryUsage)
 }
@@ -315,5 +320,53 @@ func memoryCoreCmd(e *env, args []string) int {
 		return fail("core failed: %s", raw)
 	}
 	fmt.Print(raw)
+	return 0
+}
+
+// memoryImpactCmd prints session friction before and after each memory and
+// exported skill landed: medians, with session counts, labelled correlation.
+func memoryImpactCmd(e *env, args []string) int {
+	q := url.Values{}
+	for flag, param := range map[string]string{"--since": "since", "--agent": "agent", "--min": "min", "--limit": "limit"} {
+		if v := flagOr(args, flag, ""); v != "" {
+			q.Set(param, v)
+		}
+	}
+	retells := hasFlag(args, "--retells")
+	if retells {
+		q.Set("retells", "1")
+		for flag, param := range map[string]string{"--cutoff": "cutoff", "--budget": "budget"} {
+			if v := flagOr(args, flag, ""); v != "" {
+				q.Set(param, v)
+			}
+		}
+	}
+	status, raw := e.call("GET", "/api/memory/impact?"+q.Encode())
+	if status != http.StatusOK {
+		return fail("impact failed: %s", raw)
+	}
+	if hasFlag(args, "--json") {
+		fmt.Println(raw)
+		return 0
+	}
+	var out struct {
+		Report  impact.Report       `json:"report"`
+		Retells impact.RetellReport `json:"retells"`
+		Errors  []string            `json:"errors"`
+	}
+	if err := json.Unmarshal([]byte(raw), &out); err != nil {
+		return fail("%v", err)
+	}
+	if retells {
+		fmt.Print(impact.RetellText(out.Retells))
+		for _, msg := range out.Errors {
+			fmt.Fprintln(os.Stderr, "note:", msg)
+		}
+		return 0
+	}
+	fmt.Print(impact.Text(out.Report))
+	for _, msg := range out.Errors {
+		fmt.Fprintln(os.Stderr, "note:", msg)
+	}
 	return 0
 }

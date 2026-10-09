@@ -20,10 +20,19 @@
     "cwd": "cwd",
     "source": "source"
   },
-  "actions": {"Bash": "command"},
+  "actions": {
+    "Bash": "command"
+  },
   "delegation_tools": [],
   "session_fallback": true,
   "output": "plain-stdout",
-  "mcp": {"file": "", "format": ""},
-  "memory": {"files": []}
+  "mcp": {
+    "file": "",
+    "format": ""
+  },
+  "memory": {
+    "files": [
+      "~/.grimoire/generic/AGENTS.md"
+    ]
+  }
 }

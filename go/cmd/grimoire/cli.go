@@ -59,9 +59,17 @@ const usage = `grimoire — local-first AI-native notes
                                       memory banks on a running server (see: grimoire bank help)
   grimoire agent install|uninstall|status [--claude-code] [--codex] [--agent NAME] [--memory] [--dry-run]
                                       wire a coding agent's hooks and MCP entry in one step
-  grimoire memory link|unlink|status|index|core
+  grimoire memory link|unlink|status|index|core|impact
                                       one memory store for every agent: link an agent's
                                       memory to it, regenerate MEMORY.md (rules + pointers)
+  grimoire skills export --agent NAME [--dry-run] [--remove] [--dest DIR] [--force]
+                                      write procedure memories as native skills (SKILL.md folders)
+                                      into that agent's skills dir; never touches skills it did not write
+  grimoire skills mine [--agent NAME]... [--since 30d] [--min-sessions 3] [--title] [--dry-run]
+                                      find command sequences repeated across sessions; drafts go to a review queue
+  grimoire skills accept ID           save one reviewed draft into the memory store as a procedure
+  grimoire memory impact [--since 90d] [--agent NAME] [--json]
+                                      session friction before vs after each memory/skill landed (correlation only)
   grimoire agent profiles | new NAME  list agent profiles; start a profile for a new agent
   grimoire context --event prompt|action --text TEXT [--agent NAME]
                                       print the memories that apply (for wrappers; no hook needed)
@@ -132,7 +140,7 @@ func commands() map[string]func([]string) int {
 		"knowledge": cmdKnowledge,
 		"documents": cmdDocuments, "document-import": cmdDocumentImport,
 		"remember": cmdRemember, "recall": cmdRecall, "forget": cmdForget,
-		"challenges": cmdChallenges, "memory": cmdMemory, "bank": cmdBank, "agent": cmdAgent, "context": cmdContext,
+		"challenges": cmdChallenges, "memory": cmdMemory, "skills": cmdSkills, "bank": cmdBank, "agent": cmdAgent, "context": cmdContext,
 		"doctor": cmdDoctor, "reindex": cmdReindex, "import": cmdImport, "ingest": cmdIngest, "seed-demo": cmdSeedDemo,
 		"export": cmdExport, "sync": cmdSync, "agent-setup": cmdAgentSetup,
 		"fetch-model": cmdFetchModel,
