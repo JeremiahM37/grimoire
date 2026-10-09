@@ -100,6 +100,15 @@ var toolScope = map[string]string{
 	"use_credential":           oauth.ScopeCredentials,
 	"request_credential":       oauth.ScopeCredentials,
 	"check_credential_request": oauth.ScopeCredentials,
+
+	// Connected sources use the owner's third-party credentials on the
+	// owner's behalf, so they ride the credentials scope, which a web
+	// connector does not get by default. Listing them reveals only names.
+	"sources":              oauth.ScopeNotesRead,
+	"source_search":        oauth.ScopeCredentials,
+	"source_read":          oauth.ScopeCredentials,
+	"source_act":           oauth.ScopeCredentials,
+	"source_action_status": oauth.ScopeCredentials,
 }
 
 // scopeFor reports the scope a tool needs, and whether it is classified at

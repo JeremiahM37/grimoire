@@ -266,6 +266,7 @@ and be linked by reference — see [docs/PASSWORD_MANAGERS.md](docs/PASSWORD_MAN
 | Writing | `create_note` · `update_note` · `append_daily` |
 | Exact values | `get_fact` · **`set_fact`** |
 | Orientation | `get_briefing` · `kb_info` |
+| **Connected sources** (mail, calendar, Drive, Slack, GitHub, …) | `sources` · `source_search` · `source_read` · `source_act` · `source_action_status` |
 
 <!-- tools:end -->
 

@@ -121,7 +121,7 @@ func (r *Runner) Run(ctx context.Context, id string) (Result, error) {
 			return r.fail(c, fmt.Errorf("this connector needs the credential %q, "+
 				"and the secret vault is unavailable", c.Secret))
 		}
-		secret, err = r.Secrets.Get(c.Secret)
+		secret, err = ResolveToken(ctx, r.Secrets, c.Secret, r.Client)
 		if err != nil {
 			// The most common cause by far, and the least obvious from a
 			// generic error: the vault is locked, so no credential resolves.
@@ -255,7 +255,7 @@ func (r *Runner) write(c Connector, docs []Document) (written, skipped int, err 
 			skipped++
 			continue
 		}
-		hash := documentHash(d)
+		hash := documentHash(d) + "|" + TrustOf(c.Config) + fmt.Sprint(d.Own)
 		prev, known := r.Store.docFor(c.ID, d.ExternalID)
 		if known && prev.Hash == hash {
 			// Unchanged since the last sync. Rewriting it would re-embed it
@@ -281,6 +281,18 @@ func (r *Runner) write(c Connector, docs []Document) (written, skipped int, err 
 			// whole point of pulling it — so it must not be able to instruct
 			// an agent. See internal/trust.
 			"origin": trust.Connector(c.Kind, c.ID),
+		}
+		// Trust class. The connector's configured class is always recorded;
+		// it only changes what retrieval does for a document the source
+		// itself vouches was authored by the account owner (d.Own). The
+		// override is the same `trust:` frontmatter key a person uses by hand,
+		// so it is visible in the file and the diff, and `origin` is kept so
+		// "where did this come from" is still answerable.
+		class := TrustOf(c.Config)
+		fm["trust_class"] = class
+		if class == TrustOwn && d.Own {
+			fm["trust"] = "trusted"
+			fm["trust_basis"] = "authored by the account owner (connector trust=own)"
 		}
 		// A reader list from the source, mapped to accounts here. Written into
 		// the note's frontmatter so it survives a reindex and is visible to
