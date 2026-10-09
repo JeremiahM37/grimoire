@@ -560,6 +560,44 @@ type listItem struct {
 	// Untrusted lets the console badge a pulled note in the list, where a
 	// person scanning their vault sees it before they open it.
 	Untrusted bool `json:"untrusted,omitempty"`
+	// Author is empty for a note a person wrote, otherwise the agent (or
+	// "agent") that did, so the console can keep the two apart.
+	Author string `json:"author,omitempty"`
+}
+
+// agentFolders hold notes that agents write; anything under them is an
+// agent's even without an `agent:` field.
+var agentFolders = []string{"Agent Memory/", "memory/", "checkpoints/", "claude.ai memory/", "Dreams/", "banks/"}
+
+// noteAuthor says who wrote a note: "" for a person, else the agent. An
+// explicit `author:` wins (author: me marks a note as yours), then `agent:`,
+// then the signs agents leave: a memory note, an MCP capture, an agent folder.
+func noteAuthor(path, fmJSON string) string {
+	var m map[string]any
+	_ = json.Unmarshal([]byte(fmJSON), &m)
+	str := func(k string) string { v, _ := m[k].(string); return strings.TrimSpace(v) }
+	if a := strings.ToLower(str("author")); a != "" {
+		switch a {
+		case "me", "you", "human", "person", "self":
+			return ""
+		}
+		return str("author")
+	}
+	if a := str("agent"); a != "" {
+		return a
+	}
+	if b, _ := m["memory"].(bool); b {
+		return "agent"
+	}
+	if strings.EqualFold(str("source"), "mcp") {
+		return "agent"
+	}
+	for _, f := range agentFolders {
+		if strings.HasPrefix(path, f) {
+			return "agent"
+		}
+	}
+	return ""
 }
 
 func (s *Server) listNotes(w http.ResponseWriter, r *http.Request) {
@@ -612,6 +650,7 @@ func (s *Server) listNotes(w http.ResponseWriter, r *http.Request) {
 		}
 		it.Private = private != 0
 		it.Pinned = pinnedFlag(fmJSON)
+		it.Author = noteAuthor(it.Path, fmJSON)
 		items = append(items, it)
 	}
 	if err := rows.Err(); err != nil {
@@ -689,6 +728,14 @@ func (s *Server) createNote(w http.ResponseWriter, r *http.Request) {
 	if in.Title != "" {
 		if _, ok := fm.Get("title"); !ok {
 			fm.Set("title", in.Title)
+		}
+	}
+	// An agent's note says so, so the console can tell it from yours.
+	if agent := agentFor(r); agent != "" {
+		_, hasAgent := fm.Get("agent")
+		_, hasAuthor := fm.Get("author")
+		if !hasAgent && !hasAuthor {
+			fm.Set("agent", agent)
 		}
 	}
 	if len(in.Tags) > 0 {

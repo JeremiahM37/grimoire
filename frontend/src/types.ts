@@ -10,6 +10,8 @@ export interface NoteListItem {
   private: boolean;
   pinned: boolean;
   untrusted?: boolean;
+  /** Empty when a person wrote the note, otherwise the agent that did. */
+  author?: string;
 }
 export interface Note {
   path: string;

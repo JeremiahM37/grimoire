@@ -273,6 +273,10 @@ func (s *Server) api(method, path string, body any) (any, error) {
 	if s.AdminToken != "" {
 		req.Header.Set("X-Grimoire-Admin", s.AdminToken)
 	}
+	if s.Agent != "" {
+		// Provenance: notes this agent creates are stamped with its name.
+		req.Header.Set("X-Grimoire-Agent", s.Agent)
+	}
 	resp, err := s.Client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("grimoire unreachable at %s: %w", s.BaseURL, err)
