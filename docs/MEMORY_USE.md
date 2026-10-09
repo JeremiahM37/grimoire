@@ -189,7 +189,10 @@ The hook therefore also runs on `PreToolUse` for:
 It is held to a stricter bar than prompt context, so it does not add noise to
 every tool call:
 
-- `min_rel` 0.6, at most 2 items, 1,200 bytes;
+- `min_rel` 0.7, at most 2 items, 1,200 bytes. At 0.6, 44% of commands
+  that matched no memory's situation still drew a reminder. At 0.7 that fell
+  to 16%, at the cost of the right memory firing 26% of the time instead of
+  29%. A reminder on every other command teaches the reader to skip them;
 - each memory at most once per ten minutes.
 
 `GRIMOIRE_CONTEXT_ACTIONS=0` turns it off.
@@ -201,7 +204,8 @@ every tool call:
 | `GRIMOIRE_CONTEXT_RANK` | `hybrid` | `lexical` restores word matching |
 | `GRIMOIRE_CONTEXT_MIN_REL` | `0.5` | relevance needed to inject on a prompt |
 | `GRIMOIRE_CONTEXT_ACTIONS` | `1` | fire memories on tool calls |
-| `GRIMOIRE_ACTION_MIN_REL` | `0.6` | relevance needed to inject on a tool call |
+| `GRIMOIRE_EDIT_MIN_REL` | `0.8` | relevance needed on a file edit or write, whose path alone matches every memory about its repo |
+| `GRIMOIRE_ACTION_MIN_REL` | `0.7` | relevance needed to inject on a tool call |
 | `GRIMOIRE_ACTION_MAX_BYTES` | `1200` | action-time budget |
 
 | Variable (server) | Default | Meaning |
