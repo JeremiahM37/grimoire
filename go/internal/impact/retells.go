@@ -162,13 +162,15 @@ func Retells(prompts []Prompt, notes []NoteText, o RetellOptions) RetellReport {
 			inv[w] = append(inv[w], i)
 		}
 	}
+	// A week that contains the cutoff is two rows, so BEFORE and AFTER never mix.
 	weeks := map[string]*WeekRow{}
 	week := func(t time.Time) *WeekRow {
 		y, w := t.ISOWeek()
-		k := fmt.Sprintf("%d-W%02d", y, w)
+		after := !o.Cutoff.IsZero() && !t.Before(o.Cutoff)
+		k := fmt.Sprintf("%d-W%02d/%v", y, w, after)
 		r := weeks[k]
 		if r == nil {
-			r = &WeekRow{Week: k, AfterCutoff: !o.Cutoff.IsZero() && !t.Before(o.Cutoff)}
+			r = &WeekRow{Week: fmt.Sprintf("%d-W%02d", y, w), AfterCutoff: after}
 			weeks[k] = r
 		}
 		return r
@@ -280,7 +282,13 @@ func Retells(prompts []Prompt, notes []NoteText, o RetellOptions) RetellReport {
 		}
 		rep.Weeks = append(rep.Weeks, *r)
 	}
-	sort.Slice(rep.Weeks, func(i, j int) bool { return rep.Weeks[i].Week < rep.Weeks[j].Week })
+	sort.Slice(rep.Weeks, func(i, j int) bool {
+		a, b := rep.Weeks[i], rep.Weeks[j]
+		if a.Week != b.Week {
+			return a.Week < b.Week
+		}
+		return !a.AfterCutoff && b.AfterCutoff
+	})
 	for _, r := range rep.Weeks {
 		ph := &rep.Before
 		if r.AfterCutoff {
