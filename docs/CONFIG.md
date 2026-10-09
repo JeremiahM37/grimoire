@@ -258,3 +258,79 @@ Prices are a reference table checked on the date the API returns as
 rates and negotiate them.
 
 Connected accounts (mail, calendar, Drive, Slack, GitHub) and the agent tools that use them: [CONNECTORS.md](CONNECTORS.md).
+
+
+## Agent memory, hooks and gate
+
+Settings added by the agent-memory work, plus the hook-side variables read by the scripts `grimoire agent install --memory` places in `~/.grimoire/hooks/`. Server settings can also be set in the console; the environment wins.
+
+| Variable | Default | What it does |
+|---|---|---|
+| `GRIMOIRE_CONTEXT_GATE_URL` | *(empty = off)* | Decision server (Jev wire format) that vets borderline memories before they are injected. Off by default; see [MEMORY_ADHERENCE.md](MEMORY_ADHERENCE.md#gate-when-not-to-inject) |
+| `GRIMOIRE_CONTEXT_GATE_MODEL` | `jev-latest` | Model name sent to the gate |
+| `GRIMOIRE_CONTEXT_GATE_BAND` | `0.5,0.75` | Relevance range that is asked: above it injects, below never does |
+| `GRIMOIRE_CONTEXT_GATE_MAX` | `3` | Most candidates asked per request, highest first, in parallel under a 400 ms total budget |
+| `GRIMOIRE_CONTEXT_GATE_THRESHOLD` | `0.16` | Yes-probability needed to keep a memory (calibrated for the strict question wording; 0.5 would drop most right memories) |
+| `GRIMOIRE_MEMORY_AUTHORITY` | *(on)* | `off` puts human and agent writes on one rung (recency-only supersession), as a benchmark control arm. Untrusted-source protection is not affected |
+| `GRIMOIRE_MEMORY_CANONICAL_DIR` | *(empty)* | The shared agent-memory directory every agent's memory location links to; falls back to `GRIMOIRE_DREAM_CANONICAL_MEMORY`. See [MEMORY_STORE.md](MEMORY_STORE.md) |
+| `GRIMOIRE_MEMORY_EXTRACT_PROMPT` | *(empty)* | Prefix added to the memory-extraction prompt (biases what is recorded); the output contract is appended and cannot be overridden |
+| `GRIMOIRE_MEMORY_DECIDE_PROMPT` | *(empty)* | Same, for the add/update/ignore reconciliation prompt |
+| `GRIMOIRE_MEMORY_VERIFY_PORTS` | *(empty)* | Comma-separated ports a procedure check may probe; empty probes none |
+| `GRIMOIRE_MEMORY_OTHER_HOSTS` | *(empty)* | Other hosts a procedure check may probe on those ports |
+| `GRIMOIRE_MEMORY_VERIFY_PER_DREAM` | `3` | How many due procedures one dream verifies |
+| `GRIMOIRE_DREAM_REPORT_DIR` | `Dreams` | Vault folder the dream report note is written to |
+| `GRIMOIRE_DREAM_PROJECTS_DIR` | *(empty)* | An agent's per-project directory (e.g. `~/.claude/projects`); with the canonical memory directory, a dream reports projects whose `memory/` is a separate real directory |
+| `GRIMOIRE_DREAM_CANONICAL_MEMORY` | *(empty)* | The memory directory every project is meant to share |
+| `GRIMOIRE_PROVENANCE_GATE` | *(on)* | `off` disables the credential broker's provenance check (a security control; leave on) |
+| `GRIMOIRE_PROVIDER_CACHE_SECONDS` | `0` | How long a password-manager secret is cached after a fetch, unless the provider sets `cache_seconds`. `0` fetches every time. See [PASSWORD_MANAGERS.md](PASSWORD_MANAGERS.md) |
+| `GRIMOIRE_CONNECT_TOKEN` | *(empty)* | Token for `grimoire connect slack|github` when `--token` is not given (keeps it out of shell history). See [CONNECTORS.md](CONNECTORS.md) |
+| `GRIMOIRE_READ_AUDIT_DAYS` | `90` | Days of read-audit history kept; `0` keeps everything |
+| `GRIMOIRE_RATE_EXPENSIVE` | `2` | Per-second limit for costly routes (see `GRIMOIRE_RATE_GENERAL`) |
+| `GRIMOIRE_MCP_CORE` | *(on)* | `0` stops the MCP server appending the standing memory core to its instructions ([AGENTS_ANY.md](AGENTS_ANY.md)) |
+| `GRIMOIRE_AGENT_PROFILE` | *(empty)* | Hook side: the agent profile `grimoire_context.py` loads from `~/.grimoire/agents/NAME.json` (same as `--agent NAME`) |
+| `GRIMOIRE_AGENT_DIR` | `~/.grimoire/agents` | Hook side: where resolved agent profiles are read from |
+| `GRIMOIRE_AUTO_CONTEXT` | `1` | Hook side: `0` turns off the context and outcome hooks |
+| `GRIMOIRE_CONTEXT_MODE` | `manual` | Hook side: `all` or `scoped` enables injection (`grimoire agent install --memory` sets `all`); `manual` injects nothing |
+| `GRIMOIRE_CONTEXT_PATHS` | `[]` | Hook side: JSON list of note paths/prefixes injection is limited to when the mode is `scoped` |
+| `GRIMOIRE_CONTEXT_ACTIONS` | `1` | Hook side: `0` stops memory being restated before tool calls |
+| `GRIMOIRE_CONTEXT_MAX_BYTES` | `2400` | Hook side: budget of one prompt-time injection (128-8000) |
+| `GRIMOIRE_ACTION_MAX_BYTES` | `1200` | Hook side: budget of one action-time injection (128-4000) |
+| `GRIMOIRE_CONTEXT_RANK` | `hybrid` | Hook side: `hybrid` (embeddings + keywords + cues) or `lexical` (word overlap) |
+| `GRIMOIRE_CONTEXT_MIN_REL` | `0.5` | Hook side: relevance floor for prompt-time injection |
+| `GRIMOIRE_ACTION_MIN_REL` | `0.7` | Hook side: relevance floor before a command |
+| `GRIMOIRE_EDIT_MIN_REL` | `0.8` | Hook side: relevance floor before a file edit |
+| `GRIMOIRE_CONTEXT_QUERY_PREFIX` | *(empty)* | Hook side: text prepended to the prompt as the retrieval query |
+| `GRIMOIRE_CONTEXT_STATE_DIR` | `~/.cache/grimoire/context` | Hook side: dedupe state |
+| `GRIMOIRE_CONTEXT_DEBUG` | *(off)* | Hook side: `1` prints a note to stderr when the hook cannot reach the server |
+| `GRIMOIRE_OUTCOME` | `1` | Hook side: `0` turns off adherence reporting (`grimoire_outcome.py`) |
+| `GRIMOIRE_OUTCOME_ENFORCE` | `0` | Hook side: `1` makes the outcome hook ask the server on `PreToolUse` and emit a permission `ask` for `enforce: ask` rules. The context hook already does this; prefer it ([MEMORY_ADHERENCE.md](MEMORY_ADHERENCE.md)) |
+| `GRIMOIRE_BANK_SESSIONS` | *(off)* | Hook side: `1` retains session transcripts into the bank (set by `agent install`) |
+| `GRIMOIRE_BANK_CONTEXT` | *(off)* | Hook side: `1` adds the bank's context at session start |
+| `GRIMOIRE_BANK_RECALL` | *(off)* | Hook side: `1` recalls from the bank on each prompt |
+| `GRIMOIRE_BANK_RECALL_TOKENS` | `1024` | Hook side: token budget of that recall (64-4096) |
+| `GRIMOIRE_BANK_FILES` | *(off)* | Hook side: `1` adds what the bank knows about a file being read |
+| `GRIMOIRE_BANK_TOOLS` | *(off)* | Hook side: `1` records tool use for the end-of-session digest |
+| `GRIMOIRE_BANK_DIGEST` | `1` | Hook side: `0` skips the end-of-session digest |
+| `GRIMOIRE_BANK_DIGEST_MODEL` | `1` | Hook side: `0` builds the digest without a model |
+| `GRIMOIRE_BANK_HARNESS` | *(empty)* | Hook side: the agent profile name stamped on retained sessions |
+| `GRIMOIRE_BANK_TIMEOUT` | `10` | Hook side: seconds before a bank request is abandoned (1-60) |
+| `GRIMOIRE_BANK_STATE_DIR` | `~/.cache/grimoire/bank-sessions` | Hook side: per-session state |
+| `GRIMOIRE_BANK_DEBUG` | *(off)* | Hook side: `1` prints hook errors to stderr |
+| `GRIMOIRE_HOOK_MAX_CHARS` | `9000` | Hook side: most characters one bank injection may render |
+| `GRIMOIRE_INSTALLED_BY` | `grimoire agent install` | Marker in an agent's MCP entry that tells uninstall the entry is ours; do not set by hand |
+| `GRIMOIRE_EMBED_API_KEY` | *(empty)* | Key for `GRIMOIRE_EMBED_BASE_URL` |
+| `GRIMOIRE_LLM_API_KEY` | *(empty)* | Key for `GRIMOIRE_LLM_BASE_URL` (see above) |
+| `GRIMOIRE_LOCAL_EMBED_MODEL` | `minishlab/potion-base-8M` | Hub id of the local embedding model |
+| `GRIMOIRE_RERANK_API_KEY` | *(empty)* | Key for the remote reranker |
+| `GRIMOIRE_RERANK_MODEL_DIR` | *(unset)* | Tests only: a local cross-encoder snapshot for the parity test |
+| `GRIMOIRE_WEB_SEARCH_KEY` | *(empty)* | Web search key; may be `vault:NAME` to name a vault credential |
+| `GRIMOIRE_WEB_SEARCH_CX` | *(empty)* | Google programmable-search id (provider `google`) |
+| `GRIMOIRE_PUBLISH` | *(off)* | Set to `1` to export and serve the published site |
+| `GRIMOIRE_SYNC_TOKEN` | *(empty)* | Bearer token peers use on the peer-sync routes |
+| `GRIMOIRE_SYNC_INTERVAL` | `0` | Seconds between automatic peer syncs; `0` is manual only |
+| `GRIMOIRE_SYNC_PASSPHRASE_FILE` | *(empty)* | File holding the cloud-folder sync passphrase (else `GRIMOIRE_SYNC_PASSPHRASE`) |
+| `GRIMOIRE_TLS_PORT` | *(off)* | Serve HTTPS on this port on the tailnet addresses with a Tailscale certificate |
+| `GRIMOIRE_WEB_DIR` | *(auto)* | Directory of the built web console; searched beside the binary when unset |
+| `GRIMOIRE_ZEROTIER_TOKEN_FILE` | *(empty)* | File holding the ZeroTier API token (else `GRIMOIRE_ZEROTIER_TOKEN`) |
+
+`BW_SESSION` is not a Grimoire setting: it is the Bitwarden CLI's own variable, which a provider is pointed at with `--secret-env session=BW_SESSION` ([PASSWORD_MANAGERS.md](PASSWORD_MANAGERS.md)).

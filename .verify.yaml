@@ -512,6 +512,51 @@ steps:
           -H 'Content-Type: application/json' -d '{"template":"research"}'
           | python3 -c "import json,sys; r=json.load(sys.stdin); assert r['dry_run'] and r['bank_created'] and len(r['mental_models_created'])==2, r"
 
+  - name: memory core, outcome and agent profiles work end to end
+    actions:
+      # The standing-memory core the MCP server appends to its instructions.
+      - shell: >
+          curl -sf 'http://127.0.0.1:9119/api/memory/core?budget=6000'
+          | python3 -c "import json,sys; r=json.load(sys.stdin); assert isinstance(r, dict), r"
+      # A tool call and a turn end are accepted by the outcome endpoint; a
+      # `pre` request only computes a permission decision (null with no rule).
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/memory/outcome
+          -H 'Content-Type: application/json'
+          -d '{"session":"verifyoutcome0001","tool":"Bash","target":"ls"}'
+          | grep -q '"ok":true'
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/memory/outcome
+          -H 'Content-Type: application/json'
+          -d '{"session":"verifyoutcome0001","tool":"Bash","target":"git push","pre":true}'
+          | python3 -c "import json,sys; r=json.load(sys.stdin); assert 'permission' in r and r['permission'] is None, r"
+      - shell: >
+          curl -sf -X POST http://127.0.0.1:9119/api/memory/outcome
+          -H 'Content-Type: application/json'
+          -d '{"session":"verifyoutcome0001","stop":true}' | grep -q '"ok":true'
+      - shell: curl -sf 'http://127.0.0.1:9119/api/memory/adherence?days=30' | grep -q 'injected'
+      # Installing the memory hooks for an agent, dry run, in a scratch HOME:
+      # the context hook and the outcome hook both appear, nothing is written.
+      - shell: >
+          H=$(mktemp -d) && mkdir "$H/.claude" &&
+          out=$(HOME="$H" ./go/grimoire agent install --claude-code --memory --no-mcp --dry-run) &&
+          echo "$out" | grep -q grimoire_context.py && echo "$out" | grep -q grimoire_outcome.py &&
+          test -z "$(ls -A "$H/.claude")" && test ! -e "$H/.grimoire" ; rc=$?; rm -rf "$H"; exit $rc
+      - shell: >
+          H=$(mktemp -d) && HOME="$H" ./go/grimoire agent profiles | grep -q '^codex' ; rc=$?; rm -rf "$H"; exit $rc
+
+  - name: connected sources list with no accounts, and secret providers list their kinds
+    actions:
+      - shell: >
+          curl -sf http://127.0.0.1:9119/api/sources
+          | python3 -c "import json,sys; r=json.load(sys.stdin); assert r == [] or isinstance(r, list), r"
+      - shell: >
+          curl -sf http://127.0.0.1:9119/api/connectors/kinds
+          | python3 -c "import json,sys; r=json.load(sys.stdin); assert r, r"
+      - shell: >
+          curl -sf http://127.0.0.1:9119/api/secrets/providers
+          | python3 -c "import json,sys; r=json.load(sys.stdin); k={x['kind'] for x in r['kinds']}; assert {'bitwarden','onepassword','kdbx','vault'} <= k, k"
+
   - name: the harness lints clean, the way CI lints it
     actions:
       # CI runs `ruff check tests/ benchmarks/ clients/` and verify did not,

@@ -206,3 +206,50 @@ func TestContextCommandPrintsTheBlock(t *testing.T) {
 		t.Error("bad event")
 	}
 }
+
+func TestAgentInstallMemoryAlsoInstallsTheOutcomeHook(t *testing.T) {
+	home := agentHome(t)
+	_ = os.MkdirAll(filepath.Join(home, ".claude"), 0o755)
+	settings := filepath.Join(home, ".claude", "settings.json")
+	if code := cmdAgent([]string{"install", "--claude-code", "--memory", "--no-mcp"}); code != 0 {
+		t.Fatal("install failed")
+	}
+	if _, err := os.Stat(filepath.Join(home, ".grimoire", "hooks", "grimoire_outcome.py")); err != nil {
+		t.Fatalf("outcome script not written: %v", err)
+	}
+	hooks := readJSON(t, settings)["hooks"].(map[string]any)
+	for _, ev := range []string{"PostToolUse", "Stop"} {
+		got := string(mustJSON(hooks[ev]))
+		if !strings.Contains(got, "grimoire_outcome.py") {
+			t.Errorf("%s lacks the outcome hook: %s", ev, got)
+		}
+	}
+	if !strings.Contains(string(mustJSON(hooks["PostToolUse"])), "--event post_action") ||
+		!strings.Contains(string(mustJSON(hooks["Stop"])), "--event stop") {
+		t.Errorf("outcome commands do not name their event: %v", hooks)
+	}
+	if strings.Contains(string(mustJSON(hooks["PreToolUse"])), "grimoire_outcome.py") {
+		t.Error("outcome hook must not sit on PreToolUse")
+	}
+	first, _ := os.ReadFile(settings)
+	if code := cmdAgent([]string{"install", "--claude-code", "--memory", "--no-mcp"}); code != 0 {
+		t.Fatal("second install failed")
+	}
+	if again, _ := os.ReadFile(settings); string(again) != string(first) {
+		t.Error("install is not idempotent with the outcome hook")
+	}
+	// Without --memory the outcome hook goes; uninstall removes everything.
+	if code := cmdAgent([]string{"install", "--claude-code", "--no-mcp"}); code != 0 {
+		t.Fatal("reinstall failed")
+	}
+	if strings.Contains(string(mustJSON(readJSON(t, settings)["hooks"])), "grimoire_outcome.py") {
+		t.Error("outcome hook survived a reinstall without --memory")
+	}
+	_ = cmdAgent([]string{"install", "--claude-code", "--memory", "--no-mcp"})
+	if code := cmdAgent([]string{"uninstall", "--claude-code"}); code != 0 {
+		t.Fatal("uninstall failed")
+	}
+	if strings.Contains(string(mustJSON(readJSON(t, settings))), "grimoire_outcome.py") {
+		t.Error("uninstall left the outcome hook")
+	}
+}

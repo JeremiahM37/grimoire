@@ -122,14 +122,34 @@ def normalise(event, profile, forced=None):
             "tool_input": lookup(event, fields.get("tool_input", "tool_input"))}
 
 
-def render(profile, norm, context):
-    """The hook's output for context: a JSON object or plain text, per profile."""
+def ask_reason(result):
+    """The reason of a server `permission` of decision "ask", else None.
+    Grimoire may only ask; allow and deny are never honoured."""
+    permission = result.get("permission") if isinstance(result, dict) else None
+    if not isinstance(permission, dict) or permission.get("decision") != "ask":
+        return None
+    reason = permission.get("reason")
+    if not isinstance(reason, str) or not reason.strip():
+        return None
+    return reason.strip()[:1000]
+
+
+def render(profile, norm, context, ask=None):
+    """The hook's output for context: a JSON object or plain text, per profile.
+    `ask` is a permission reason for an `enforce: ask` rule: structured agents
+    get permissionDecision "ask" (Claude Code and Codex field names); plain
+    agents get the reason printed ahead of the context."""
     if profile.get("output") == "plain-stdout":
-        return context
+        return "\n".join(part for part in (ask, context) if part)
     name = {"prompt": "UserPromptSubmit", "pre_action": "PreToolUse"}[norm["kind"]]
     events = (profile.get("hooks") or {}).get("events") or {}
-    return {"hookSpecificOutput": {"hookEventName": events.get(norm["kind"]) or name,
-                                   "additionalContext": context}}
+    out = {"hookEventName": events.get(norm["kind"]) or name}
+    if context:
+        out["additionalContext"] = context
+    if ask:
+        out["permissionDecision"] = "ask"
+        out["permissionDecisionReason"] = ask
+    return {"hookSpecificOutput": out}
 
 
 def fetch_context(base, token, query, excluded, budget, mode, paths, extra=None):
@@ -340,9 +360,10 @@ def action_context(norm, environment, fetch, now, state, state_path, base, token
         recent[key] = now
     state["actions"] = dict(list(recent.items())[-128:])
     write_state(state_path, state)
-    if not context:
+    ask = ask_reason(result)
+    if not context and not ask:
         return None
-    return render(profile, norm, context)
+    return render(profile, norm, context, ask)
 
 
 def main(argv=None, environment=None):

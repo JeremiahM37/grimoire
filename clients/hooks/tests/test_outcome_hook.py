@@ -103,3 +103,14 @@ def test_session_hash_matches_the_context_hook():
     ctx = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(ctx)
     assert hook.session_hash("s-1") == ctx.fingerprint("session\0" + "s-1")[:32]
+
+
+def test_event_flag_names_the_event_for_agents_with_other_event_names():
+    sent = []
+    event = {"event_type": "after_command", "session_id": "s1", "tool_name": "Bash",
+             "tool_input": {"command": "ls"}}
+    assert hook.run(event, {}, lambda b, t, body: sent.append(body) or {}, kind="post_action") is None
+    assert sent and sent[0]["tool"] == "Bash" and sent[0]["target"] == "ls"
+    sent.clear()
+    hook.run({"session_id": "s1"}, {}, lambda b, t, body: sent.append(body) or {}, kind="stop")
+    assert sent and sent[0]["stop"] is True

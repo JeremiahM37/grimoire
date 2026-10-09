@@ -139,3 +139,49 @@ def test_main_reads_the_profile_the_installer_wrote(tmp_path, monkeypatch, capsy
     monkeypatch.setattr(sys, "stdin", type("S", (), {"buffer": io.BytesIO(payload)})())
     hook.main(["--agent", "zed"], environment)
     assert capsys.readouterr().out == "from main\n"
+
+
+ASK = {"decision": "ask", "reason": "Grimoire rule: never push unasked [m:abc123]"}
+
+
+def asking(context="remember: never push", permission=ASK):
+    def fetch(base, token, query, excluded, budget, mode, paths, extra=None):
+        return {"context": context, "keys": [KEY] if context else [], "permission": permission}
+    return fetch
+
+
+def push_event(tool="Bash", inp=None):
+    return {"hook_event_name": "PreToolUse", "session_id": "s1", "cwd": "/w",
+            "tool_name": tool, "tool_input": inp or {"command": "git push"}}
+
+
+@pytest.mark.parametrize("profile", [hook.DEFAULT_PROFILE, CODEX])
+def test_enforce_ask_emits_permission_decision(environment, profile):
+    out = hook.run(push_event(), environment, asking(), now=1, profile=profile)["hookSpecificOutput"]
+    assert out["permissionDecision"] == "ask"
+    assert out["permissionDecisionReason"] == ASK["reason"]
+    assert out["additionalContext"] == "remember: never push"
+    assert out["hookEventName"] == "PreToolUse"
+
+
+def test_enforce_ask_is_emitted_even_with_no_context(environment):
+    out = hook.run(push_event(), environment, asking(context=""), now=1)["hookSpecificOutput"]
+    assert out["permissionDecision"] == "ask"
+    assert "additionalContext" not in out
+
+
+@pytest.mark.parametrize("permission", [
+    {"decision": "allow", "reason": "x"}, {"decision": "deny", "reason": "x"},
+    {"decision": "ask"}, {"decision": "ask", "reason": "  "}, "ask", None])
+def test_only_a_well_formed_ask_is_honoured(environment, permission):
+    out = hook.run(push_event(), environment, asking(permission=permission), now=1)
+    assert "permissionDecision" not in out["hookSpecificOutput"]
+    assert hook.run(push_event(), environment, asking(context="", permission=permission), now=2) is None
+
+
+def test_plain_stdout_agents_get_the_reason_printed(environment):
+    event = {"type": "before_command", "workspace": "/p",
+             "command": {"kind": "shell", "args": {"cmd": "git push"}}}
+    out = hook.run(event, environment, asking(), now=1, profile=ZED)
+    assert out == ASK["reason"] + "\nremember: never push"
+    assert hook.run(event, environment, asking(context=""), now=2, profile=ZED) == ASK["reason"]

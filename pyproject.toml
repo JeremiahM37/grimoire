@@ -36,3 +36,8 @@ ignore = [
   "E501",   # long lines: templates/HTML strings — line-length is advisory here
   "E702", "E701",  # small same-line statements are idiomatic in this codebase
 ]
+
+[tool.ruff.lint.per-file-ignores]
+# One-off research scripts written in a dense, star-import style; they are kept
+# as the record of how the gate defaults were measured, not as maintained code.
+"benchmarks/memory_use/round2/gate_*.py" = ["E", "F", "B", "I", "UP"]

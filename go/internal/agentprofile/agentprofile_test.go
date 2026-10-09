@@ -19,6 +19,17 @@ func TestEmbeddedContextHookMatchesTheClientCopy(t *testing.T) {
 	}
 }
 
+func TestEmbeddedOutcomeHookMatchesTheClientCopy(t *testing.T) {
+	want, err := os.ReadFile("../../../clients/hooks/" + OutcomeFileName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(OutcomeScript, want) {
+		t.Fatal("go/internal/agentprofile/" + OutcomeFileName + " differs from clients/hooks/" + OutcomeFileName +
+			"; copy the client file over it")
+	}
+}
+
 func home(t *testing.T) string {
 	t.Helper()
 	h := t.TempDir()

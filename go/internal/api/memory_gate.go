@@ -24,12 +24,19 @@ func (s *Server) settingFloat(key string, def, lo, hi float64) float64 {
 	return def
 }
 
-// The question is short on purpose: a local decision server's latency grows
-// with every token it reads (about 3 ms each on laya-serve), and the gate has
-// 400 ms in total.
+// The stricter wording ("p1" in benchmarks/memory_use/round2): AUC 0.80 against
+// 0.745 for the old one-line question on 180 labelled pairs. It costs a few
+// more tokens to read, which the 400 ms budget absorbs (p50 277 ms, p95 374 ms
+// on Jev with three in parallel). The yes-probabilities it gives are low, so
+// the matching default threshold is 0.16, not 0.5.
 var gateQuestion = map[string]decide.Question{"applies": {
-	Type:         decide.Noul,
-	Instructions: "Would this memory change what the agent does for this request?",
+	Type: decide.Noul,
+	Instructions: "Is this stored memory directly about the task the user is asking for right now, " +
+		"so that the agent would act differently without it? Sharing a topic or a project name is not enough.",
+	Criteria: map[string]string{
+		"true":  "the memory states a rule, fact or preference that governs this exact request",
+		"false": "the memory is only on the same topic, or the request does not touch what it says",
+	},
 }}
 
 // gateClient builds the gate's decision client, or nil when off.
@@ -86,10 +93,10 @@ func (s *Server) applyGate(ctx context.Context, query string, items []contextIte
 		return items
 	}
 	sort.Slice(idx, func(a, b int) bool { return items[idx[a]].score > items[idx[b]].score })
-	if max := int(s.settingFloat("context_gate_max", 4, 0, 10)); len(idx) > max {
+	if max := int(s.settingFloat("context_gate_max", 3, 0, 10)); len(idx) > max {
 		idx = idx[:max]
 	}
-	keep := s.settingFloat("context_gate_threshold", 0.5, 0, 1)
+	keep := s.settingFloat("context_gate_threshold", 0.16, 0, 1)
 	started := time.Now()
 	gctx, cancel := context.WithTimeout(ctx, gateBudget)
 	defer cancel()

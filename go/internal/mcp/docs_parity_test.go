@@ -143,7 +143,9 @@ func TestREADMEEnvVarsAreImplemented(t *testing.T) {
 
 	var code strings.Builder
 	err := filepath.Walk(filepath.Join(root, "go"), func(p string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() || !strings.HasSuffix(p, ".go") {
+		if err != nil || info.IsDir() ||
+			// The hook scripts embedded in the binary read their own settings.
+			!(strings.HasSuffix(p, ".go") || strings.HasSuffix(p, ".py")) {
 			return err
 		}
 		b, err := os.ReadFile(p)

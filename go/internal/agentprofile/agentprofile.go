@@ -38,6 +38,16 @@ var ContextScript []byte
 // its own hook entries.
 const ContextFileName = "grimoire_context.py"
 
+// OutcomeScript is the adherence hook (post-action and stop events), shipped
+// inside the binary; clients/hooks/grimoire_outcome.py is the copy people read
+// and TestEmbeddedOutcomeHookMatchesTheClientCopy keeps them identical.
+//
+//go:embed grimoire_outcome.py
+var OutcomeScript []byte
+
+// OutcomeFileName is what the installer writes it as.
+const OutcomeFileName = "grimoire_outcome.py"
+
 // Events are the logical events. A profile maps each to the agent's own name
 // for it; an event the agent lacks is simply absent.
 var Events = []string{"session_start", "prompt", "pre_action", "post_action", "stop", "session_end", "file_read"}

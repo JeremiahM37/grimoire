@@ -65,6 +65,7 @@ and ~/.codex/config.toml. See docs/AGENTS_ANY.md to add another agent.`
 const (
 	agentMarker   = agenthook.FileName
 	contextMarker = agentprofile.ContextFileName
+	outcomeMarker = agentprofile.OutcomeFileName
 	tomlBegin     = "# >>> grimoire agent install (managed block; `grimoire agent uninstall` removes it) >>>"
 	tomlEnd       = "# <<< grimoire agent install <<<"
 	trustBegin    = "# >>> grimoire agent install: hook trust (managed block; `grimoire agent uninstall` removes it) >>>"
@@ -88,7 +89,7 @@ type hookSpec struct {
 	event, matcher string
 	timeout        int
 	command        string // set by the caller that knows the script and its environment
-	marker         string // which of our scripts the entry runs (agentMarker | contextMarker)
+	marker         string // which of our scripts the entry runs (agentMarker | contextMarker | outcomeMarker)
 }
 
 func newTarget(p *agentprofile.Profile) *agentTarget {
@@ -152,6 +153,35 @@ func contextSpecs(p *agentprofile.Profile, command string) []hookSpec {
 			}
 		}
 		specs = append(specs, hookSpec{event: native, matcher: matcher, timeout: 3, command: command, marker: contextMarker})
+	}
+	return specs
+}
+
+// outcomeSpecs are the adherence hooks: after each action and at the end of a
+// turn, report what the agent did so the server can tell which injected
+// memories were followed. --event names the event for agents whose own event
+// names differ.
+func outcomeSpecs(p *agentprofile.Profile, base string) []hookSpec {
+	var specs []hookSpec
+	for _, logical := range []string{"post_action", "stop"} {
+		native := p.Hooks.Events[logical]
+		if native == "" {
+			continue
+		}
+		matcher := ""
+		if logical == "post_action" {
+			matcher = p.Hooks.Matchers[logical]
+			if matcher == "" {
+				var tools []string
+				for tool := range p.Actions {
+					tools = append(tools, tool)
+				}
+				sort.Strings(tools)
+				matcher = strings.Join(tools, "|")
+			}
+		}
+		specs = append(specs, hookSpec{event: native, matcher: matcher, timeout: 3,
+			command: base + " --event " + logical, marker: outcomeMarker})
 	}
 	return specs
 }
@@ -348,6 +378,15 @@ func contextCommand(t *agentTarget, o agentOptions, script string) string {
 	return strings.Join(env, " ") + " python3 " + agentQuote(script) + " --agent " + t.name
 }
 
+// outcomeCommand is the adherence hook's command line.
+func outcomeCommand(o agentOptions, script string) string {
+	env := ""
+	if o.url != "" {
+		env = "GRIMOIRE_URL=" + agentQuote(o.url) + " "
+	}
+	return env + "python3 " + agentQuote(script)
+}
+
 func installAgent(t *agentTarget, o agentOptions) ([]string, error) {
 	var out []string
 	script := filepath.Join(o.home, ".grimoire", "hooks", agenthook.FileName)
@@ -372,6 +411,14 @@ func installAgent(t *agentTarget, o agentOptions) ([]string, error) {
 			return out, err
 		}
 		specs = append(specs, contextSpecs(t.p, contextCommand(t, o, ctxScript))...)
+
+		outScript := filepath.Join(o.home, ".grimoire", "hooks", agentprofile.OutcomeFileName)
+		msg, err = installScript(outScript, agentprofile.OutcomeScript, o.dryRun)
+		out = append(out, msg)
+		if err != nil {
+			return out, err
+		}
+		specs = append(specs, outcomeSpecs(t.p, outcomeCommand(o, outScript))...)
 	}
 	root, raw, err := readJSONObject(t.hooksFile)
 	if err != nil {
@@ -464,7 +511,7 @@ func statusAgent(t *agentTarget) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	var events, memory []string
+	var events, memory, outcome []string
 	if hooks, ok := root["hooks"].(map[string]any); ok {
 		for ev, groups := range hooks {
 			if groupsHaveMarker(groups, agentMarker) {
@@ -473,12 +520,17 @@ func statusAgent(t *agentTarget) ([]string, error) {
 			if groupsHaveMarker(groups, contextMarker) {
 				memory = append(memory, ev)
 			}
+			if groupsHaveMarker(groups, outcomeMarker) {
+				outcome = append(outcome, ev)
+			}
 		}
 	}
 	sort.Strings(events)
 	sort.Strings(memory)
+	sort.Strings(outcome)
 	out := []string{"hooks: " + orNone(strings.Join(events, ", ")),
-		"memory hook: " + orNone(strings.Join(memory, ", "))}
+		"memory hook: " + orNone(strings.Join(memory, ", ")),
+		"outcome hook: " + orNone(strings.Join(outcome, ", "))}
 	mcp := "not installed"
 	if t.mcpFile == "" {
 		mcp = "none for this profile"
@@ -597,7 +649,7 @@ func writeAtomic(path string, data []byte, mode os.FileMode) error {
 // owned reports whether a command is one of our hooks: it runs a script of ours.
 func owned(command string, markers ...string) bool {
 	if len(markers) == 0 {
-		markers = []string{agentMarker, contextMarker}
+		markers = []string{agentMarker, contextMarker, outcomeMarker}
 	}
 	for _, m := range markers {
 		if strings.Contains(command, m) {
@@ -668,7 +720,7 @@ func mergeHooks(root map[string]any, specs []hookSpec) bool {
 	if hooks == nil {
 		hooks = map[string]any{}
 	}
-	for _, marker := range []string{agentMarker, contextMarker} {
+	for _, marker := range []string{agentMarker, contextMarker, outcomeMarker} {
 		mergeMarker(hooks, specs, marker)
 	}
 	if len(hooks) == 0 {

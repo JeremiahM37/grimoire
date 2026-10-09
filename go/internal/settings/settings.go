@@ -124,10 +124,11 @@ var Fields = map[string]Field{
 	"context_gate_model": {"GRIMOIRE_CONTEXT_GATE_MODEL", "jev-latest"},
 	"context_gate_band":  {"GRIMOIRE_CONTEXT_GATE_BAND", "0.5,0.75"},
 	// Most candidates one request sends to the gate, and the yes-probability a
-	// memory needs to be kept. A decision server that answers one question at a
-	// time (local laya-serve, ~170 ms each) fits two inside the 400 ms budget.
-	"context_gate_max":       {"GRIMOIRE_CONTEXT_GATE_MAX", "4"},
-	"context_gate_threshold": {"GRIMOIRE_CONTEXT_GATE_THRESHOLD", "0.5"},
+	// memory needs to be kept. Defaults from the round-2 gate benchmark: the
+	// strict question wording, three in parallel, threshold 0.16 (its
+	// probabilities run low; 0.5 would drop 44% of the right memories).
+	"context_gate_max":       {"GRIMOIRE_CONTEXT_GATE_MAX", "3"},
+	"context_gate_threshold": {"GRIMOIRE_CONTEXT_GATE_THRESHOLD", "0.16"},
 	// Optional: an agent's per-project directory (e.g. ~/.claude/projects) and
 	// the memory directory every project is meant to share. When both are
 	// set, a dream reports projects whose memory/ is a separate real

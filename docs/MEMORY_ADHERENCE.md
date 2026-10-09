@@ -134,14 +134,34 @@ Off by default. Settings (env `GRIMOIRE_CONTEXT_GATE_*`):
 | `context_gate_url` | *(off)* | a decision server (Jev wire format; local Laya at `http://127.0.0.1:8765` speaks it) |
 | `context_gate_model` | `jev-latest` | model name sent to it |
 | `context_gate_band` | `0.5,0.75` | relevance range that is asked |
-| `context_gate_max` | `4` | most candidates asked per request, highest first |
-| `context_gate_threshold` | `0.5` | yes-probability needed to keep a memory |
+| `context_gate_max` | `3` | most candidates asked per request, highest first |
+| `context_gate_threshold` | `0.16` | yes-probability needed to keep a memory |
 
 Above the band injects, below never does. Inside it, each candidate that
 would otherwise be injected is put to the model ("would this memory change
 what the agent does for this request?"), in parallel, under a hard 400 ms
 total budget. A candidate with no answer in time keeps its score-rule fate.
 Every pass is recorded (latency, kept, dropped, timed out).
+
+### Round-2 benchmark and the defaults
+
+Scripts: `benchmarks/memory_use/round2/gate_*.py` (results: `gate_report.json`) (collect candidates, score
+labelled pairs, latency, report). 180 labelled (memory, request) pairs
+(138 right, 42 wrong) in the relevance band, scored by Jev with two question
+wordings:
+
+| Question | AUC | at threshold 0.5: right kept / wrong removed | calibrated threshold: right kept / wrong removed |
+|---|---|---|---|
+| one line, "would this change what the agent does" | 0.745 | 82.6% / 54.8% | 0.37: 91.3% / 28.6% |
+| **strict**: "directly about the task ... sharing a topic is not enough", with true/false criteria | **0.798** | 56.5% / 88.1% | **0.16: 86.2% / 42.9%** |
+
+The strict wording separates better but answers with low probabilities, so
+its threshold is **0.16**, not 0.5. The shipped gate uses the strict wording,
+`context_gate_threshold=0.16`, `context_gate_max=3` in parallel and the 400 ms
+budget (Jev p50 277 ms, p95 374 ms). It stays **off by default**: even
+calibrated it removes about 40% of the wrong memories at a cost of 10-14% of
+the right ones, a trade for each operator to choose. Laya's local checkpoint
+does not suit the gate (below).
 
 ### Measured on local Laya
 
