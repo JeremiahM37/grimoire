@@ -1,0 +1,129 @@
+/* Shared panel frame: every modal, sheet and dialog in the React shell.
+   Loaded last so it wins over the older per-panel rules in web/style.css,
+   react.css, workspace.css and mobile.css. One header (title left, one close
+   button top right), one body gutter, one input style, full-screen on phones. */
+
+:root { --panel-pad: 20px; --panel-head-h: 50px; }
+
+/* ---- frame ------------------------------------------------------------- */
+.react-app .modal-box { position: relative; }
+
+/* the single close control: always top-right, never a bottom bar */
+.react-app .modal-box > .modal-close {
+  position: absolute; top: 10px; right: 10px; z-index: 3;
+  width: 32px; height: 32px; min-width: 32px; min-height: 32px; padding: 0;
+  display: grid; place-items: center; border-radius: 8px;
+  font-size: 15px; line-height: 1; color: var(--ink-soft); }
+.react-app .modal-box > .modal-close:hover { background: var(--paper2); color: var(--ink); }
+
+/* the one title: same family and size everywhere, aligned to the body gutter */
+.react-app .modal-box > h2 {
+  margin: 0; padding: 16px 52px 12px var(--panel-pad);
+  font: 600 17px/1.3 var(--sans); letter-spacing: -.01em; color: var(--ink);
+  border-bottom: 1px solid var(--line); }
+.react-app .modal-box > h2 small, .react-app .modal-box > h2 span { font-size: 12px; font-weight: 400; color: var(--ink-soft); }
+.react-app .modal-box > h2 .muted { font-weight: 400; }
+
+/* every direct body child shares the same horizontal gutter */
+.react-app .modal:not(#knowledge-modal):not(#canvas-view) > .modal-box > :not(h2):not(.modal-close):not(.banks-head):not(.graph-workspace) { padding-left: var(--panel-pad); padding-right: var(--panel-pad); }
+.react-app .modal:not(#knowledge-modal):not(#canvas-view) > .modal-box > :not(h2):not(.modal-close):last-child { padding-bottom: 16px; }
+
+/* palette: the input runs under the close button */
+.react-app #palette .modal-box > #palette-input { padding-right: 48px; }
+
+/* Banks keeps its own sub-header but uses the same title face */
+.react-app #banks-modal .modal-box.banks-box > h2,
+.react-app #banks-modal .banks-head h2 { font: 600 17px/1.3 var(--sans); }
+.react-app #banks-modal .banks-head { padding: 12px 52px 10px var(--panel-pad); border-bottom: 1px solid var(--line); }
+.react-app #banks-modal .banks-head h2.banks-name { font-size: 17px; }
+.react-app #banks-modal .banks-body { padding: 14px var(--panel-pad) 18px; }
+
+/* ---- inputs (vault, ask, new note, palette) ---------------------------- */
+.react-app :is(#vault-modal, #ask-modal, #new-note-modal, #palette, #graph-modal) :is(input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea) {
+  box-sizing: border-box; min-width: 0; padding: 9px 11px; font: inherit; font-size: 14px;
+  color: var(--ink); background: var(--paper2); border: 1px solid var(--line); border-radius: 8px; }
+.react-app :is(#vault-modal, #ask-modal, #new-note-modal, #palette) :is(input, select, textarea):focus { outline: none; border-color: var(--accent); }
+.react-app #vault-modal select { appearance: auto; }
+
+/* ---- vault ------------------------------------------------------------- */
+#vault-body { padding: 14px 0 0; }
+.react-app #vault-modal section { margin-top: 18px; }
+.react-app #vault-modal section > h3 { margin: 0 0 4px; font: 600 12px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+.react-app #vault-modal .vault-note { margin-bottom: 6px; }
+.react-app #vault-modal .vault-actions { gap: 8px; flex-wrap: wrap; }
+.react-app #vault-modal .vault-actions > .vault-note { flex: 1 1 220px; }
+.react-app #vault-modal .vault-actions > .btn { flex: none; }
+.react-app #vault-modal .v-form { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); align-items: end; margin-top: 8px; }
+.react-app #vault-modal .v-form-add { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.react-app #vault-modal .v-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; font-size: 12px; color: var(--ink-soft); }
+.react-app #vault-modal .v-field small { font-size: 11px; opacity: .8; }
+.react-app #vault-modal .v-field input, .react-app #vault-modal .v-field select { width: 100%; }
+.react-app #vault-modal .v-submit { min-height: 38px; justify-self: start; }
+.react-app #vault-modal .v-form .v-submit { grid-column: 1 / -1; }
+.react-app #vault-modal .v-form-add .v-submit { grid-column: auto; justify-self: stretch; }
+.react-app #vault-modal .v-row { gap: 10px; align-items: flex-start; min-width: 0; }
+.react-app #vault-modal .v-row > span { flex: 1; min-width: 0; overflow-wrap: anywhere; line-height: 1.4; }
+.react-app #vault-modal .v-row > span small { display: block; overflow-wrap: anywhere; }
+.react-app #vault-modal .v-row > span:last-child, .react-app #vault-modal .v-row > .v-revoke { flex: none; }
+.react-app #vault-modal .v-revoke { flex: none; }
+.react-app #vault-modal .v-arow { display: grid; grid-template-columns: auto auto 1fr; gap: 4px 10px; min-width: 0; font-size: 12px; padding: 4px 0; }
+.react-app #vault-modal .v-arow > span { min-width: 0; overflow-wrap: anywhere; }
+.react-app #vault-modal details#v-audit { margin-top: 16px; }
+.react-app #vault-modal details#v-audit > summary { cursor: pointer; font: 600 12px var(--sans); color: var(--ink-soft); padding: 6px 0; }
+
+/* ---- memory banks: new-bank entry point ------------------------------- */
+.banks-new { margin: 10px 0 4px; align-self: flex-start; }
+
+/* ---- mobile: full-screen sheets with a sticky header ------------------- */
+@media (max-width: 780px) {
+  .react-app :is(#vault-modal, #ask-modal, #new-note-modal, #banks-modal, #graph-modal, #palette, #help-modal) .modal-box,
+  .react-app .modal:is(#inspect-modal, #history-modal, #trash-modal, #tags-browser-modal, #tasks-modal, #calendar-modal) .modal-box {
+    display: flex; flex-direction: column; box-sizing: border-box;
+    width: 100vw !important; max-width: 100vw !important; height: var(--visible-height, 100dvh); max-height: var(--visible-height, 100dvh) !important;
+    border: 0 !important; border-radius: 0 !important; overflow-x: hidden; overflow-y: auto;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  .react-app :is(#vault-modal, #ask-modal, #new-note-modal, #palette, #help-modal, #inspect-modal, #history-modal, #trash-modal, #tags-browser-modal, #tasks-modal, #calendar-modal) .modal-box::before { display: none; }
+  .react-app .modal-box > h2 {
+    position: sticky; top: 0; z-index: 2; flex: none; background: var(--paper);
+    padding: 14px 56px 12px var(--panel-pad); }
+  .react-app .modal-box > .modal-close {
+    position: sticky; top: 6px; z-index: 3; align-self: flex-end; flex: none;
+    margin: 6px 6px -44px 0; width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+  .react-app #vault-modal .v-form { grid-template-columns: 1fr 1fr; }
+  .react-app #vault-modal .v-form-add .v-field:first-child, .react-app #vault-modal .v-form-grant .v-field:first-child { grid-column: 1 / -1; }
+  .react-app #vault-modal .v-form-grant .v-field:nth-child(2) { grid-column: 1 / -1; }
+  .react-app #vault-modal .v-form-add .v-submit, .react-app #vault-modal .v-form-grant .v-submit { grid-column: 1 / -1; justify-self: stretch; }
+  .react-app #banks-modal .banks-head { padding-top: 10px; }
+  .react-app #ask-modal #ask-go { flex: 1 0 100%; }
+}
+@media (max-width: 380px) {
+  .react-app #vault-modal .v-form { grid-template-columns: 1fr; }
+}
+
+/* ---- command palette: rows are buttons, so reset them to list rows ----- */
+.react-app #palette .modal-box { width: min(600px, 100%); }
+.react-app #palette #palette-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 4px 0; }
+.react-app #palette .pal-item { display: flex; align-items: baseline; gap: 8px; width: 100%; box-sizing: border-box; min-width: 0;
+  min-height: 40px; margin: 0; padding: 9px 18px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0;
+  background: transparent; color: var(--ink); font: 14px/1.35 var(--sans); text-align: left; cursor: pointer; }
+.react-app #palette .pal-item.sel { background: var(--accent); color: #fff; }
+.react-app #palette .pal-item .pm { margin-left: auto; }
+
+/* ---- small native dialogs (FormDialog: rename, folder, confirm) -------- */
+.react-app dialog.react-note-dialog { box-sizing: border-box; width: min(440px, calc(100vw - 32px)); padding: 0; margin: auto;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--paper); color: var(--ink); box-shadow: 0 8px 40px rgba(40, 30, 10, .25); }
+.react-app dialog.react-note-dialog::backdrop { background: rgba(30, 24, 16, .4); }
+.react-app dialog.react-note-dialog form.form-panel { display: flex; flex-wrap: wrap; gap: 10px 8px; justify-content: flex-end; padding: 0 0 16px; }
+.react-app dialog.react-note-dialog > form > h2 { flex: 0 0 100%; box-sizing: border-box; margin: 0 0 6px; padding: 16px 20px 12px;
+  font: 600 17px/1.3 var(--sans); color: var(--ink); border-bottom: 1px solid var(--line); }
+.react-app dialog.react-note-dialog > form > input,
+.react-app dialog.react-note-dialog > form > textarea { flex: 0 0 calc(100% - 40px); margin: 0 20px; box-sizing: border-box; min-width: 0;
+  padding: 9px 11px; font: inherit; font-size: 14px; color: var(--ink); background: var(--paper2); border: 1px solid var(--line); border-radius: 8px; }
+.react-app dialog.react-note-dialog > form > textarea { min-height: 96px; resize: vertical; }
+.react-app dialog.react-note-dialog > form > input:focus, .react-app dialog.react-note-dialog > form > textarea:focus { outline: none; border-color: var(--accent); }
+.react-app dialog.react-note-dialog > form > p[role=alert] { flex: 0 0 calc(100% - 40px); margin: 0 20px; color: var(--danger); font-size: 13px; }
+.react-app dialog.react-note-dialog > form > button { min-height: 38px; padding: 8px 16px; font: 500 14px var(--sans); color: var(--ink);
+  background: var(--paper2); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.react-app dialog.react-note-dialog > form > button[type=submit] { background: var(--accent); border-color: transparent; color: #fff; }
+.react-app dialog.react-note-dialog > form > button[type=button] { margin-right: 20px; }
+.react-app dialog.react-note-dialog > form > button:disabled { opacity: .5; cursor: default; }

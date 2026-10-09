@@ -123,7 +123,7 @@ export function GraphPanel({ graph, close, open, currentPath }: { graph?: Graph;
   const date = (cutoff ?? facets.max) ? new Date((cutoff ?? facets.max) * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '';
   const hovered = hover !== null && data ? title(hover) : '';
 
-  return <div id="graph-modal" className="modal" role="dialog" aria-label="Note graph" onMouseDown={event => event.currentTarget === event.target && close()}><div className="modal-box graph-box"><button className="icon modal-close" onClick={close}>✕</button>
+  return <div id="graph-modal" className="modal" role="dialog" aria-label="Note graph" onMouseDown={event => event.currentTarget === event.target && close()}><div className="modal-box graph-box"><button id="graph-close" className="icon modal-close" aria-label="Close" title="Close" onClick={close}>✕</button>
     <h2>Graph <span id="graph-stat">{stat.nodes} notes · {stat.edges} links</span><span id="graph-phase" role="status" aria-live="polite">{data && phase !== 'settled' ? (phase === 'organising' ? 'Organising…' : 'Settling…') : ''}</span></h2>
     <div className={'graph-controls' + (filtersOpen ? ' filters-open' : '')}>
       <div className="note-search graph-search-wrap"><input id="graph-search" type="search" value={query} onChange={event => { setQuery(event.target.value); setSearchIndex(-1); }} onKeyDown={onSearchKey} placeholder="Search note titles…" aria-label="Search graph notes" autoFocus={!matchMedia('(pointer: coarse)').matches} /><button id="graph-search-clear" className="icon" aria-label="Clear graph search" hidden={!query} onClick={() => { setQuery(''); setSearchIndex(-1); }}>✕</button></div>
@@ -149,5 +149,5 @@ export function GraphPanel({ graph, close, open, currentPath }: { graph?: Graph;
         <span>{neighbours.length} connected notes</span>{neighbours.map(id => <button className="graph-neighbor" key={id} onClick={() => focusNode(id)}>{title(id)}</button>)}</> : 'Click a note to see its connections.'}</div>
       {clusters.some(c => c.size > 1) && <div className="graph-legend" aria-label="Clusters"><h3>Clusters</h3>{clusters.filter(c => c.size > 1).slice(0, 40).map(c => <button key={c.id} className="graph-cluster" onClick={() => engine.current?.flyToCluster(c.id)}><i style={{ background: c.color }} />{c.name}<small>{c.size}</small></button>)}</div>}
     </aside></div>
-    <p className="graph-help">Drag to pan · scroll or pinch to zoom · click a note to focus · search flies there</p><button id="graph-close" onClick={close}>Close</button></div></div>;
+    <p className="graph-help">Drag to pan · scroll or pinch to zoom · click a note to focus · search flies there</p></div></div>;
 }

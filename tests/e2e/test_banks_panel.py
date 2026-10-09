@@ -128,6 +128,10 @@ def test_create_bank_from_template_and_edit_profile(page, server):
     page.goto(server)
     page.wait_for_selector("body[data-ready]")
     page.click("#banks-open")
+    # With banks present the form sits behind "New bank"; with none it is open.
+    page.wait_for_selector("#banks-new, #banks-create", timeout=8000)
+    if page.locator("#banks-new").count():
+        page.click("#banks-new")
     form = page.locator("#banks-create")
     form.locator('input[name="bank_id"]').fill("e2e-coding")
     form.locator('select[name="template"]').select_option("coding-agent")
