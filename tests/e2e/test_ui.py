@@ -324,6 +324,7 @@ def test_outline_lists_headings_and_navigates(page, server):
     expect(page.locator("#title")).to_have_value("Outline Note", timeout=8000)
     page.fill("#content", "# Top\n\nintro\n\n## Section A\n\naaa\n\n## Section B\n\nbbb")
     expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
+    page.click("#note-more")
     page.click("#outline-btn")
     expect(page.locator("#outline .mi[data-line]")).to_have_count(3)
     expect(page.locator("#outline")).to_contain_text("Section B")
@@ -452,6 +453,7 @@ def test_delete_then_undo_restores_note(page, server):
     page.fill("#content", "please recover me")
     expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
     # delete (confirm dialog) → note leaves the list, Undo toast appears
+    page.click("#note-more")
     page.click("#delete-note")
     answer_panel(page, None)
     expect(page.locator(".note-row .t", has_text="Trash E2E")).to_have_count(0, timeout=8000)
@@ -655,6 +657,7 @@ def test_properties_editor_saves_and_reloads(page, server):
     expect(page.locator("#title")).to_have_value("Props Note", timeout=8000)
     page.fill("#content", "# Props\n\ncontent")
     expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
+    page.click("#note-more")
     page.click("#props-btn")
     expect(page.locator("#props-modal")).to_be_visible()
     page.fill("#pr-tags", "alpha, beta")
@@ -673,6 +676,7 @@ def test_properties_editor_saves_and_reloads(page, server):
     page.fill("#search", "")
     # reopen properties → values persisted
     page.click(".note-row .t >> text=Props Note")
+    page.click("#note-more")
     page.click("#props-btn")
     expect(page.locator("#pr-tags")).to_have_value(re.compile("alpha"))
     expect(page.locator("#pr-pinned")).to_be_checked()
@@ -930,6 +934,7 @@ def test_split_divider_resizes(page, server):
     page.wait_for_selector("body[data-ready]", timeout=10000)
     _create_note(page, "Divider A")
     expect(page.locator("#title")).to_have_value("Divider A", timeout=8000)
+    page.click("#note-more")
     page.click("#split-btn")
     expect(page.locator("#editor2")).to_be_visible()
     main0 = page.evaluate("() => document.getElementById('editor').getBoundingClientRect().width")
@@ -1014,9 +1019,12 @@ def test_private_toggle_hides_from_ask(page, server):
     expect(page.locator("#title")).to_have_value("Secret Recipe", timeout=8000)
     page.fill("#content", "The mysterious flumberry sauce uses a rare ingredient.")
     expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
-    # mark private
+    # mark private (lives in the ⋯ menu)
+    page.click("#note-more")
     page.click("#private-toggle")
-    expect(page.locator("#private-toggle")).to_have_text("🔒", timeout=5000)
+    page.click("#note-more")
+    expect(page.locator("#private-toggle")).to_contain_text("🔒", timeout=5000)
+    page.keyboard.press("Escape")
     # ask should not surface it
     page.click("#ask-open")
     page.fill("#ask-q", "flumberry sauce ingredient")
@@ -1229,7 +1237,12 @@ def test_mobile_header_core_buttons_fit_viewport(browser, server):
     try:
         pg.goto(server)
         pg.wait_for_selector("body[data-ready]", timeout=10000)
-        for btn in ("#preview-toggle", "#delete-note", "#ai-btn"):
+        # the note header (and its ⋯ menu / AI button) only exists with a note open
+        open_new_note_panel(pg)
+        pg.fill("#new-note-title", "Header fit probe")
+        pg.click("#new-note-create")
+        expect(pg.locator("#title")).to_have_value("Header fit probe", timeout=8000)
+        for btn in ("#preview-toggle", "#note-more", "#ai-btn"):
             right = pg.evaluate(
                 f"() => document.querySelector('{btn}').getBoundingClientRect().right")
             assert right <= 390, f"{btn} overflows the phone viewport ({right}px)"
@@ -1355,12 +1368,12 @@ def test_explain_note_is_one_click_and_does_not_edit(page, server):
 
 
 def open_new_note_panel(page):
-    """Desktop has the sidebar button; the phone reaches it from the tab bar's More sheet."""
+    """Desktop has the sidebar button; the phone reaches it from the capture (+) sheet."""
     if page.viewport_size["width"] < 700:
         if page.locator("#sidebar.open").count() == 0:
             page.click("#menu-open")
-        page.click("#tabbar >> text=More")
-        page.click("#more-sheet >> text=New note")
+        page.click("#tabbar [aria-label=Capture]")
+        page.click("#capture-sheet >> text=New note")
     else:
         page.click("#new-note")
 

@@ -647,6 +647,7 @@ details.folder .folder-head[data-dir="memory"] { color: var(--accent); }
 #note-connections>summary { cursor:pointer; padding:10px 16px; font-size:12px; font-weight:600; color:var(--ink-soft); }
 .connections-body { max-height:24dvh; overflow:auto; overscroll-behavior:contain; }
 #note-connections #backlinks,#note-connections #unlinked { max-height:none; overflow:visible; border:0; }
+#note-connections section:empty, #note-connections .connections-body:empty { display:none; }
 #app.zen #note-connections { display:none; }
 #ed-body,#ed-body2 { min-height:0; }
 #title,#ask-q,.ask-input-row { min-width:0; }
