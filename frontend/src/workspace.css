@@ -67,11 +67,19 @@
 .react-app #ed-head { min-height: 64px; padding: 12px 24px; gap: 10px; }
 .react-app #title { font: 550 16px/1.4 var(--sans); min-width: 0; }
 .react-app .icon { min-width: 30px; min-height: 30px; font-size: 15px; }
+/* Desktop has no formatting bar (Obsidian-style): Ctrl+B / Ctrl+I in the editor.
+   On phones the bar is shown docked above the keyboard while editing (mobile.css). */
+@media (min-width: 781px) { .react-app #ed-toolbar { display: none; } }
 .react-app #ed-toolbar { padding: 7px 24px; gap: 6px; background: var(--paper); }
 .react-app #content, .react-app #preview { padding: 32px clamp(24px, 6vw, 96px); }
+/* One vertical rhythm: 1.6 line-height everywhere, list items tighter than paragraphs. */
+.react-app .md { font-size: 15px; line-height: 1.6; }
+.react-app #preview .md { max-width: var(--readable-width); margin: 0 auto; }
+.react-app .md li { margin: .15em 0; }
+.react-app .md li > p { margin: 0; }
+.react-app .md ul, .react-app .md ol { margin: .45em 0; }
 .react-app #live-editor .cm-content { padding: 32px 0; }
-.react-app #live-editor .cm-scroller { padding: 0 clamp(24px, 6vw, 96px); }
-.react-app .md { font-size: 15px; line-height: 1.8; }
+.react-app #live-editor .cm-scroller { padding: 0 24px 0 0; }
 .react-app #note-connections { background: var(--paper); border-top: 1px solid var(--line); }
 .react-app #note-connections > summary { padding: 12px 24px; font-size: 11px; color: var(--ink-soft); }
 .workspace-empty { display: grid; place-items: center; padding: 32px; text-align: center; }
@@ -87,13 +95,13 @@
   .react-app #ed-toolbar { padding: 6px 12px; }
   .react-app #side-head { padding-top: calc(16px + env(safe-area-inset-top)); }
   .react-app #content, .react-app #preview { padding: 22px 18px; }
-  .react-app #live-editor .cm-scroller { padding: 0 18px; }
+  .react-app #live-editor .cm-scroller { padding: 0 18px 0 0; }
   .react-app .note-row { min-height: 48px; }
   .react-app .side-actions > .btn { min-height: 38px; }
   .workspace-empty { padding: 24px; }
   .workspace-empty h2 { font-size: 23px; }
 }
-.react-app #live-editor .cm-editor, .react-app #live-editor .cm-scroller { font-family: var(--sans); font-size: 15px; line-height: 1.8; }
+.react-app #live-editor .cm-editor, .react-app #live-editor .cm-scroller { font-family: var(--sans); font-size: 15px; line-height: 1.6; }
 .react-app .gr-h { font-weight: 650; letter-spacing: -.025em; }
 .react-app .md h1, .react-app .md h2, .react-app .md h3 { font-family: var(--sans); letter-spacing: -.025em; }
 @media (max-width: 780px) {

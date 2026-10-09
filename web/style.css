@@ -7,6 +7,10 @@
   --sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --side-w: 300px;
+  /* writing column: Obsidian-style readable measure, centred in the editor/preview */
+  --readable-width: 740px;
+  --gutter-w: 16px; --list-mark-w: 1.5em;
+  --editor-pad: max(24px, calc(50% - var(--readable-width) / 2));
 }
 /* dark palette — shared by OS-auto and the manual toggle */
 @media (prefers-color-scheme: dark) {
@@ -410,13 +414,16 @@ img.embed { border-left: none; padding: 0; background: none; }   /* image embeds
    against a definite box and CM's own .cm-scroller takes over scrolling. */
 body.live-editor-on #live-editor { display: block; position: absolute; inset: 0; overflow-y: auto; }
 body.live-editor-on #content { display: none; }   /* textarea becomes the hidden mirror */
-#live-editor .cm-editor { height: 100%; font: 16px/1.65 var(--serif); background: transparent; }
+#live-editor .cm-editor { height: 100%; font: 16px/1.6 var(--serif); background: transparent; }
 #live-editor .cm-editor.cm-focused { outline: none; }
-#live-editor .cm-content { padding: 18px 22px 40vh; caret-color: var(--ink); max-width: 64rem; margin: 0 auto; }
+/* Readable measure: the text column is --readable-width wide and centred. The
+   gutter sits immediately left of it (see --editor-pad in workspace.css). */
+#live-editor .cm-content { padding: 18px 0 40vh; caret-color: var(--ink); max-width: var(--readable-width); margin: 0; }
 #live-editor .cm-line { padding: 0; }
-#live-editor .cm-scroller { font-family: var(--serif); line-height: 1.65; }
+#live-editor .cm-scroller { font-family: var(--serif); line-height: 1.6; }
 #live-editor .cm-cursor { border-left-color: var(--ink); }
-#live-editor .cm-activeLine { background: color-mix(in srgb, var(--accent) 4%, transparent); }
+/* no active-line box: it read as a filled bar behind headings */
+#live-editor .cm-activeLine { background: transparent; }
 #live-editor .cm-selectionBackground { background: color-mix(in srgb, var(--accent) 22%, transparent) !important; }
 /* markdown element styling */
 .gr-h { font-weight: 700; line-height: 1.3; }
@@ -501,8 +508,22 @@ details.folder .note-row { padding-left: 26px; }
 .cv-file { color: var(--accent); font-weight: 600; }
 
 /* fold gutter (live editor) */
-#live-editor .cm-foldGutter { width: 14px; color: var(--ink-soft); opacity: .5; cursor: pointer; }
-#live-editor .cm-gutters { background: transparent; border: none; }
+/* Fold carets: a narrow gutter that ends where the text column begins. They are
+   hidden until the pointer is over the editor (desktop); touch keeps them faint
+   so folding stays reachable without hover. */
+#live-editor .cm-gutters { background: transparent; border: none; margin-left: calc(var(--editor-pad) - var(--gutter-w)); }
+#live-editor .cm-foldGutter { width: var(--gutter-w); color: var(--ink-soft); cursor: pointer; }
+#live-editor .cm-foldGutter .cm-gutterElement { padding: 0; text-align: center; opacity: .45; transition: opacity .15s; }
+@media (hover: hover) and (pointer: fine) {
+  #live-editor .cm-foldGutter .cm-gutterElement { opacity: 0; }
+  #live-editor .cm-scroller:hover .cm-foldGutter .cm-gutterElement,
+  #live-editor .cm-foldGutter .cm-gutterElement:hover { opacity: .6; }
+}
+/* Unordered list items on inactive lines: the "-" is replaced by a bullet and
+   wrapped lines hang under the text (padding/text-indent set per line). */
+#live-editor .gr-li { position: relative; }
+#live-editor .gr-bullet { display: inline-block; width: var(--list-mark-w); color: var(--ink-soft); text-indent: 0; }  /* text-indent is inherited: reset it or the dot shifts left */
+#live-editor .gr-task-box { margin-right: 0; }
 
 /* inline images in the live editor */
 #live-editor .gr-img { max-width: min(100%, 480px); max-height: 320px;
