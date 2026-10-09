@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { batchPaths, filteredKnowledgeEdges, filteredKnowledgeNodes, graphNodePositions, highlightedGraph, projectPoint } from './knowledge';
+import { batchPaths, filteredKnowledgeEdges, filteredKnowledgeNodes, graphNodePositions, highlightedGraph, projectPoint, topDegreeNodeIds } from './knowledge';
 import type { KnowledgeGraph } from './types';
 
 const graph: KnowledgeGraph = { revision: 3, truncated: false, nodes: [
@@ -50,4 +50,14 @@ test('edge-driven positions are stable and pull connected nodes together', () =>
   const connectedDistance = Math.hypot(firstLayout.get('a')!.x - firstLayout.get('b')!.x, firstLayout.get('a')!.y - firstLayout.get('b')!.y, firstLayout.get('a')!.z - firstLayout.get('b')!.z);
   const unrelatedDistance = Math.hypot(firstLayout.get('b')!.x - firstLayout.get('chunk-1')!.x, firstLayout.get('b')!.y - firstLayout.get('chunk-1')!.y, firstLayout.get('b')!.z - firstLayout.get('chunk-1')!.z);
   assert.ok(connectedDistance < unrelatedDistance);
+});
+
+test('only the highest-degree nodes are labelled by default', () => {
+  const nodes = Array.from({ length: 20 }, (_, i) => ({ id: `n${i}`, label: `Node ${i}`, kind: 'entity' as const }));
+  const edges = [1, 2, 3, 4, 5, 6].map(i => ({ id: `hub${i}`, source: 'n0', target: `n${i}`, relation: 'mentions', evidence: [] }));
+  const labelled = topDegreeNodeIds(nodes, edges);
+  // Seven nodes carry an edge; the top 15% (ceil 1.05) is two, so the hub plus one leaf.
+  assert.equal(labelled.size, 2);
+  assert.ok(labelled.has('n0'));
+  assert.equal(topDegreeNodeIds(nodes, []).size, 0);
 });

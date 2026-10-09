@@ -229,6 +229,8 @@ def test_react_knowledge_explorer_browses_evidence_and_filters(page, knowledge_s
 
     # Relationship/date controls must affect real requests and rendered state,
     # not only local labels.
+    # Dates and relationship live in the collapsed Filters area now.
+    page.locator("#knowledge-filters-toggle").click()
     date_control = page.locator("input[type=date]")
     expect(date_control).to_have_count(2)
     date_control.nth(0).fill("2026-02-01")
