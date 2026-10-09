@@ -214,13 +214,13 @@ def test_react_knowledge_explorer_browses_evidence_and_filters(page, knowledge_s
     question.fill("When is the Atlas launch review?")
     page.get_by_role("button", name="Ask with citations").click()
     expect(page.locator(".knowledge-answer")).to_contain_text("2026-01-20", timeout=15000)
-    expect(page.locator(".citation").first).to_be_visible()
+    expect(page.locator(".knowledge-answer .citation").first).to_be_visible()
     assert page.get_by_text(re.compile("Launch plan", re.I)).count()
 
     # Selecting a citation highlights the connected graph evidence and exposes
     # the cited document in the inspector.
     before_selection = canvas_digest(page)
-    page.locator(".citation").filter(has_text="Launch plan").first.click()
+    page.locator(".knowledge-answer .citation").filter(has_text="Launch plan").first.click()
     expect(page.locator(".knowledge-inspector")).to_contain_text("Launch plan", timeout=8000)
     page.wait_for_timeout(100)
     assert canvas_digest(page) != before_selection, "citation selection did not redraw highlighted graph"
@@ -229,6 +229,8 @@ def test_react_knowledge_explorer_browses_evidence_and_filters(page, knowledge_s
 
     # Relationship/date controls must affect real requests and rendered state,
     # not only local labels.
+    # Dates and relationship live in the collapsed Filters area now.
+    page.locator("#knowledge-filters-toggle").click()
     date_control = page.locator("input[type=date]")
     expect(date_control).to_have_count(2)
     date_control.nth(0).fill("2026-02-01")
@@ -246,6 +248,7 @@ def test_react_knowledge_explorer_browses_evidence_and_filters(page, knowledge_s
     canvas = page.locator(".knowledge-canvas")
     expect(canvas).to_be_visible()
     expect(canvas).to_have_attribute("aria-label", re.compile("Interactive 2d knowledge graph"))
+    page.locator(".knowledge-list-details > summary").click()
     accessible_items = page.locator(".knowledge-accessible-list")
     expect(accessible_items).to_be_visible()
     first_node = accessible_items.get_by_role("button").first
