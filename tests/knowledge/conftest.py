@@ -99,15 +99,6 @@ def knowledge_server(tmp_path_factory: pytest.TempPathFactory):
                 proc.wait(timeout=5)
 
 
-@pytest.fixture(scope="session")
-def browser():
-    playwright = pytest.importorskip("playwright.sync_api")
-    with playwright.sync_playwright() as api:
-        browser = api.chromium.launch()
-        yield browser
-        browser.close()
-
-
 @pytest.fixture()
 def page(browser, knowledge_server, request):
     viewport = getattr(request, "param", {"width": 1440, "height": 960})

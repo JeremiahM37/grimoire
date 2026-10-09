@@ -11,7 +11,6 @@ import urllib.request
 from pathlib import Path
 
 import pytest
-from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[2]
 PORT = int(os.environ.get("GRIMOIRE_E2E_PORT", "9121"))
@@ -119,14 +118,6 @@ def llm_server(tmp_path_factory, llm_stub):
         "GRIMOIRE_LLM_MODEL": "stub-model", "GRIMOIRE_LLM_API_KEY": "stub-key"})
     yield f"http://127.0.0.1:{port}", vault
     _stop_server(proc)
-
-
-@pytest.fixture(scope="session")
-def browser():
-    with sync_playwright() as p:
-        b = p.chromium.launch()
-        yield b
-        b.close()
 
 
 @pytest.fixture()
