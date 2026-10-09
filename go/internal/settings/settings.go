@@ -129,6 +129,7 @@ var Fields = map[string]Field{
 	// separated; empty probes none) and how many due procedures one dream
 	// checks.
 	"memory_verify_ports":     {"GRIMOIRE_MEMORY_VERIFY_PORTS", ""},
+	"memory_other_hosts":      {"GRIMOIRE_MEMORY_OTHER_HOSTS", ""},
 	"memory_verify_per_dream": {"GRIMOIRE_MEMORY_VERIFY_PER_DREAM", "3"},
 }
 

@@ -84,7 +84,9 @@ are errors, so a typo is not ignored.
 | `session_fallback` | the agent sends no session id: use `GRIMOIRE_SESSION`, else the working directory |
 | `output` | `claude-json` or `plain-stdout` |
 | `mcp` | `file` and `format` (`json`: `mcpServers`, `toml`: `mcp_servers`) for the MCP entry; empty skips it |
-| `memory` | `files` / `dir`: where the agent keeps instructions or memory (tier 1) |
+| `memory` | where the agent keeps instructions or memory (tier 1): `files` (instruction files, get a managed block), `dir` and `glob` (directory memory, becomes a symlink to the store; Claude Code uses `~/.claude/projects/*/memory`). `grimoire agent install --agent NAME --link-memory [--merge]` links all of them; `agent status` shows the state |
+| `transcripts` | `glob` + `format` (`claude-jsonl`, `codex-rollout`, `pi`, `opencode`, `cursor`, `generic-jsonl`); for `generic-jsonl` a `map` of field paths (`session`, `cwd`, `time`, `model`, `role`, `text`, `tool`, `tool_target`, `tool_error`, optional `role_user` / `role_assistant`). Lets session retention, `skills mine` and `memory impact` read that agent's sessions. Text is redacted with the vault's secret patterns before it leaves the reader |
+| `skills_dir` | where the agent loads native skills from; `grimoire skills export --agent NAME` writes procedure memories there (see MEMORY_SKILLS.md) |
 
 The hook takes `--agent NAME` (or `GRIMOIRE_AGENT_PROFILE`) and `--event
 prompt|action|session_start` for agents that do not put the event name in the

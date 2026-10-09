@@ -30,7 +30,8 @@ import (
 const agentUsage = `grimoire agent — wire a coding agent to Grimoire in one command
 
   grimoire agent install [--claude-code] [--codex] [--agent NAME]... [--bank NAME] [--url URL]
-                         [--recall] [--files] [--memory] [--no-mcp] [--no-tools] [--dry-run]
+                         [--recall] [--files] [--memory] [--link-memory [--merge] [--dir STORE]]
+                         [--no-mcp] [--no-tools] [--dry-run]
   grimoire agent uninstall [--claude-code] [--codex] [--agent NAME]... [--dry-run]
   grimoire agent status [--claude-code] [--codex] [--agent NAME]...
   grimoire agent profiles             list the agent profiles (built-in and yours)
@@ -51,6 +52,10 @@ Code only, off by default) adds a PreToolUse hook on Read that injects what the 
 remembers about the file being read. --memory adds the memory hook: the memories that
 bear on each prompt and on each command or edit as it happens (clients/hooks/grimoire_context.py,
 docs/MEMORY_USE.md); it reads the profile written to ~/.grimoire/agents/NAME.json.
+--link-memory also points the agent's own memory at the canonical store, from the profile's
+memory fields: directories (Claude Code's per-project memory/) become symlinks, instruction
+files (Codex's AGENTS.md) get a managed block; --merge folds a non-empty directory into the
+store first (the original is kept as a backup). "agent status" shows the link state.
 Codex runs a hook only after it is trusted, so install asks the installed codex for each
 hook's hash and records it in a managed block of config.toml (uninstall removes it).
 Files: Claude Code ~/.claude/settings.json and ~/.claude.json; Codex ~/.codex/hooks.json
@@ -226,6 +231,10 @@ func cmdAgent(args []string) int {
 	if len(chosen) == 0 {
 		return fail("no agent found: neither ~/.claude nor ~/.codex exists, and no profile's agent was detected. Pass --claude-code, --codex or --agent NAME.")
 	}
+	linkMem := f.on["--link-memory"]
+	if linkMem && action != "install" {
+		return fail("--link-memory belongs to install (undo it with `grimoire memory unlink --agent NAME`)")
+	}
 	opts := agentOptions{
 		bank: f.str("--bank", ""), url: f.str("--url", os.Getenv("GRIMOIRE_URL")),
 		recall: f.on["--recall"], files: f.on["--files"], context: f.on["--memory"], noMCP: f.on["--no-mcp"], noTools: f.on["--no-tools"],
@@ -235,16 +244,32 @@ func cmdAgent(args []string) int {
 		return fail("invalid bank id %q (lowercase letters, digits and . _ : -)", opts.bank)
 	}
 	code := 0
+	var memEnv *env
+	if linkMem {
+		var err error
+		if memEnv, err = openEnv(); err != nil {
+			return fail("%v", err)
+		}
+		defer memEnv.close()
+	}
 	for _, t := range chosen {
 		var lines []string
 		var err error
 		switch action {
 		case "install":
 			lines, err = installAgent(t, opts)
+			if err == nil && memEnv != nil {
+				var more []string
+				more, err = linkProfileMemory(memEnv, t.p, memEnv.storeDir(storeArgs(f)), f.on["--merge"], opts.dryRun)
+				lines = append(lines, more...)
+			}
 		case "uninstall":
 			lines, err = uninstallAgent(t, opts)
 		default:
 			lines, err = statusAgent(t)
+			if err == nil {
+				lines = append(lines, profileMemoryStatus(t.p)...)
+			}
 		}
 		fmt.Printf("%s\n", t.name)
 		for _, l := range lines {
@@ -1040,4 +1065,12 @@ func uninstallTrust(path string, dryRun bool) (string, error) {
 	}
 	next += after
 	return applyFile(path, raw, []byte(next), true, dryRun)
+}
+
+// storeArgs turns --dir into the argument form env.storeDir reads.
+func storeArgs(f *bankFlags) []string {
+	if v, ok := f.get("--dir"); ok {
+		return []string{"--dir", v}
+	}
+	return nil
 }

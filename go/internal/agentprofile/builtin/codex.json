@@ -1,7 +1,9 @@
 {
   "name": "codex",
   "description": "Codex CLI: command hooks in ~/.codex/hooks.json (trusted via config.toml), MCP in config.toml",
-  "detect": ["~/.codex"],
+  "detect": [
+    "~/.codex"
+  ],
   "hooks": {
     "file": "~/.codex/hooks.json",
     "format": "claude-json",
@@ -18,7 +20,9 @@
       "post_action": "Bash|apply_patch",
       "pre_action": "Bash|apply_patch"
     },
-    "timeouts": {"stop": 60}
+    "timeouts": {
+      "stop": 60
+    }
   },
   "event_fields": {
     "event": "hook_event_name",
@@ -35,6 +39,18 @@
     "apply_patch": "command|input"
   },
   "output": "claude-json",
-  "mcp": {"file": "~/.codex/config.toml", "format": "toml"},
-  "memory": {"files": ["~/.codex/AGENTS.md"]}
+  "mcp": {
+    "file": "~/.codex/config.toml",
+    "format": "toml"
+  },
+  "memory": {
+    "files": [
+      "~/.codex/AGENTS.md"
+    ]
+  },
+  "transcripts": {
+    "glob": "~/.codex/sessions/**/rollout-*.jsonl",
+    "format": "codex-rollout"
+  },
+  "skills_dir": "~/.codex/skills"
 }

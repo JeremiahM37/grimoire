@@ -63,8 +63,28 @@ type MCP struct {
 }
 
 type Memory struct {
-	Files []string `json:"files,omitempty"` // instruction files the agent reads
+	Files []string `json:"files,omitempty"` // instruction files the agent reads (managed block)
 	Dir   string   `json:"dir,omitempty"`   // directory-shaped memory
+	// Glob lists patterns whose matches are directory-shaped memory (Claude
+	// Code keeps one memory/ per project: ~/.claude/projects/*/memory).
+	Glob []string `json:"glob,omitempty"`
+}
+
+// TranscriptFormats are the formats the transcript package can read. A test in
+// that package keeps this list and its readers in step.
+var TranscriptFormats = []string{"claude-jsonl", "codex-rollout", "opencode", "pi", "cursor", "generic-jsonl"}
+
+// Transcripts says where an agent's session transcripts are and how to read
+// them, so memory can learn from sessions of any agent.
+type Transcripts struct {
+	// Glob is a path pattern (~ expanded; * matches within one path segment,
+	// ** across segments). For opencode and cursor it names the database file.
+	Glob   string `json:"glob,omitempty"`
+	Format string `json:"format,omitempty"`
+	// Map is for generic-jsonl: where each normalised field lives in a line.
+	// Keys: session, cwd, time, model, role, text, tool, tool_target,
+	// tool_error. Values are dotted JSON paths ("a|b" tries a then b).
+	Map map[string]string `json:"map,omitempty"`
 }
 
 type Profile struct {
@@ -79,7 +99,9 @@ type Profile struct {
 	Output          string            `json:"output"`
 	MCP             MCP               `json:"mcp"`
 	Memory          Memory            `json:"memory"`
-	Source          string            `json:"source,omitempty"` // set on load: builtin | user
+	Transcripts     Transcripts       `json:"transcripts"`
+	SkillsDir       string            `json:"skills_dir,omitempty"` // where the agent loads native skills from
+	Source          string            `json:"source,omitempty"`     // set on load: builtin | user
 }
 
 var nameRE = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,31}$`)
@@ -172,9 +194,9 @@ func overlay(p *Profile, raw []byte) error {
 		return err
 	}
 	var sub struct {
-		Hooks, MCP, Memory map[string]json.RawMessage
+		Hooks, MCP, Memory, Transcripts map[string]json.RawMessage
 	}
-	_ = json.Unmarshal([]byte(`{"Hooks":`+orEmpty(top["hooks"])+`,"MCP":`+orEmpty(top["mcp"])+`,"Memory":`+orEmpty(top["memory"])+`}`), &sub)
+	_ = json.Unmarshal([]byte(`{"Hooks":`+orEmpty(top["hooks"])+`,"MCP":`+orEmpty(top["mcp"])+`,"Memory":`+orEmpty(top["memory"])+`,"Transcripts":`+orEmpty(top["transcripts"])+`}`), &sub)
 	has := func(k string) bool { _, ok := top[k]; return ok }
 	if has("description") {
 		p.Description = fresh.Description
@@ -227,7 +249,22 @@ func overlay(p *Profile, raw []byte) error {
 			p.Memory.Files = fresh.Memory.Files
 		case "dir":
 			p.Memory.Dir = fresh.Memory.Dir
+		case "glob":
+			p.Memory.Glob = fresh.Memory.Glob
 		}
+	}
+	for k := range sub.Transcripts {
+		switch k {
+		case "glob":
+			p.Transcripts.Glob = fresh.Transcripts.Glob
+		case "format":
+			p.Transcripts.Format = fresh.Transcripts.Format
+		case "map":
+			p.Transcripts.Map = fresh.Transcripts.Map
+		}
+	}
+	if has("skills_dir") {
+		p.SkillsDir = fresh.SkillsDir
 	}
 	return nil
 }
@@ -283,6 +320,11 @@ func (p *Profile) expand(home string) {
 	p.Hooks.File = expandPath(p.Hooks.File, home)
 	p.MCP.File = expandPath(p.MCP.File, home)
 	p.Memory.Dir = expandPath(p.Memory.Dir, home)
+	p.Transcripts.Glob = expandPath(p.Transcripts.Glob, home)
+	p.SkillsDir = expandPath(p.SkillsDir, home)
+	for i, g := range p.Memory.Glob {
+		p.Memory.Glob[i] = expandPath(g, home)
+	}
 	for i, d := range p.Detect {
 		p.Detect[i] = expandPath(d, home)
 	}
@@ -369,6 +411,21 @@ func (p *Profile) Validate() error {
 	if p.Hooks.Events["pre_action"] != "" && p.EventFields["tool"] == "" {
 		return errors.New("event_fields.tool is required when the pre_action event is set")
 	}
+	if p.Transcripts.Format != "" && !contains(TranscriptFormats, p.Transcripts.Format) {
+		return fmt.Errorf("transcripts.format %q must be one of %s", p.Transcripts.Format, strings.Join(TranscriptFormats, ", "))
+	}
+	if (p.Transcripts.Glob == "") != (p.Transcripts.Format == "") {
+		return errors.New("transcripts.glob and transcripts.format go together")
+	}
+	if p.Transcripts.Glob != "" && !filepath.IsAbs(p.Transcripts.Glob) {
+		return fmt.Errorf("transcripts.glob %q must be absolute or start with ~/", p.Transcripts.Glob)
+	}
+	if p.Transcripts.Format == "generic-jsonl" && p.Transcripts.Map["role"] == "" && p.Transcripts.Map["text"] == "" && p.Transcripts.Map["tool"] == "" {
+		return errors.New("transcripts.map needs at least role and text (or tool) for generic-jsonl")
+	}
+	if p.SkillsDir != "" && !filepath.IsAbs(p.SkillsDir) {
+		return fmt.Errorf("skills_dir %q must be absolute or start with ~/", p.SkillsDir)
+	}
 	for tool, field := range p.Actions {
 		if tool == "" || field == "" {
 			return errors.New("actions: tool and field names must be non-empty")
@@ -438,4 +495,29 @@ func Starter(name string) ([]byte, error) {
 	g.Description = "Describe " + name + " here"
 	out, err := json.MarshalIndent(g, "", "  ")
 	return append(out, '\n'), err
+}
+
+// MemoryDirs returns the directory-shaped memory locations that exist now:
+// memory.dir plus every match of memory.glob.
+func (p *Profile) MemoryDirs() []string {
+	seen := map[string]bool{}
+	var out []string
+	add := func(d string) {
+		if d == "" || seen[d] {
+			return
+		}
+		if fi, err := os.Stat(d); err == nil && fi.IsDir() {
+			seen[d] = true
+			out = append(out, d)
+		}
+	}
+	add(p.Memory.Dir)
+	for _, g := range p.Memory.Glob {
+		matches, _ := filepath.Glob(g)
+		sort.Strings(matches)
+		for _, m := range matches {
+			add(m)
+		}
+	}
+	return out
 }

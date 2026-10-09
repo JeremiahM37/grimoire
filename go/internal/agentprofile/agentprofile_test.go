@@ -150,3 +150,43 @@ func TestStarterLoadsAsAProfile(t *testing.T) {
 		t.Error("bad name")
 	}
 }
+
+func TestTranscriptsSkillsAndMemoryGlobFields(t *testing.T) {
+	home := t.TempDir()
+	cc, err := Load("claude-code", home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cc.Transcripts.Format != "claude-jsonl" || !strings.HasPrefix(cc.Transcripts.Glob, home) || cc.SkillsDir != filepath.Join(home, ".claude", "skills") {
+		t.Errorf("%+v %q", cc.Transcripts, cc.SkillsDir)
+	}
+	os.MkdirAll(filepath.Join(home, ".claude", "projects", "a", "memory"), 0o755)
+	os.MkdirAll(filepath.Join(home, ".claude", "projects", "b"), 0o755)
+	if dirs := cc.MemoryDirs(); len(dirs) != 1 || !strings.HasSuffix(dirs[0], "a/memory") {
+		t.Errorf("memory dirs %v", dirs)
+	}
+	cx, _ := Load("codex", home)
+	if cx.Transcripts.Format != "codex-rollout" || len(cx.Memory.Files) != 1 {
+		t.Errorf("%+v", cx)
+	}
+	dir := UserDir(home)
+	os.MkdirAll(dir, 0o755)
+	write := func(name, body string) {
+		os.WriteFile(filepath.Join(dir, name+".json"), []byte(body), 0o644)
+	}
+	write("okagent", `{"transcripts":{"glob":"~/l/*.jsonl","format":"generic-jsonl","map":{"role":"r","text":"x"}},"skills_dir":"~/sk"}`)
+	if p, err := Load("okagent", home); err != nil || p.Transcripts.Map["role"] != "r" {
+		t.Errorf("%v %+v", err, p)
+	}
+	for name, body := range map[string]string{
+		"badfmt":  `{"transcripts":{"glob":"~/l","format":"nope"}}`,
+		"nofmt":   `{"transcripts":{"glob":"~/l"}}`,
+		"nomap":   `{"transcripts":{"glob":"~/l","format":"generic-jsonl"}}`,
+		"relskil": `{"skills_dir":"skills"}`,
+	} {
+		write(name, body)
+		if _, err := Load(name, home); err == nil {
+			t.Errorf("%s should be rejected", name)
+		}
+	}
+}
