@@ -1,5 +1,7 @@
 import json,time,urllib.request,yaml
-_cfg=yaml.safe_load(open('/home/admin/.ai-secrets/jev.yaml'))['jev']
+import os
+# JEV_CONFIG names a YAML file with jev.base_url and jev.api_key (kept outside the repo).
+_cfg=yaml.safe_load(open(os.path.expanduser(os.environ.get('JEV_CONFIG','~/.ai-secrets/jev.yaml'))))['jev']
 JEV=_cfg['base_url'].rstrip('/')+'/v1/systemone'
 LAYA='http://127.0.0.1:8765/v1/systemone'
 def call(url,state,questions,model,timeout=30):
