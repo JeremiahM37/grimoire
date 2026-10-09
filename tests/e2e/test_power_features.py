@@ -1,6 +1,7 @@
-import re
 """Power features in the browser: version history modal, note composer
 (extract/merge), folder tree, outgoing links, slides, canvas."""
+import re
+
 from conftest import answer_panel, reload_ready
 from playwright.sync_api import expect
 

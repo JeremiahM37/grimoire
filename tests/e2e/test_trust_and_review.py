@@ -1,4 +1,3 @@
-import re
 """The six operator surfaces added on top of the trust model, in a real browser.
 
 Everything here is driven through the console the way a person would drive it —
@@ -9,6 +8,7 @@ else. A trust tier nobody can see in the app is a trust tier nobody acts on.
 The session vault is shared with the other e2e modules, so every note written
 here is namespaced and every assertion is scoped to it.
 """
+import re
 import urllib.request
 
 import pytest

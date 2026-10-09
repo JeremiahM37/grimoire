@@ -1,6 +1,7 @@
-import re
 """Substrate trust surfaces in the browser: agent-memory provenance + badges,
 retrieval inspection, and the memory palette entry."""
+import re
+
 from conftest import answer_panel
 from playwright.sync_api import expect
 
