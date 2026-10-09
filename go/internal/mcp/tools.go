@@ -543,7 +543,8 @@ func Tools() []tool {
 		},
 		{
 			Name: "list_grants",
-			Description: "Active credential grants (grantee, scope, expiry — never values). " +
+			Description: "Active credential grants (grantee, scope, expiry — never values). A secret " +
+				"kept in an external password manager shows its provider and reference. " +
 				"Errors with 423 while the human has the vault locked.",
 			InputSchema: obj(map[string]any{}),
 		},

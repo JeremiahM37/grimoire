@@ -257,6 +257,12 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/secrets", s.adminOnly(s.listSecrets))
 	mux.HandleFunc("POST /api/secrets", s.adminOnly(s.addSecret))
 	mux.HandleFunc("DELETE /api/secrets/{name}", s.adminOnly(s.deleteSecret))
+	mux.HandleFunc("GET /api/secrets/providers", s.adminOnly(s.listProviders))
+	mux.HandleFunc("POST /api/secrets/providers", s.adminOnly(s.addProvider))
+	mux.HandleFunc("DELETE /api/secrets/providers/{name}", s.adminOnly(s.removeProvider))
+	mux.HandleFunc("POST /api/secrets/providers/{name}/test", s.adminOnly(s.testProvider))
+	mux.HandleFunc("POST /api/secrets/link", s.adminOnly(s.linkSecret))
+	mux.HandleFunc("POST /api/secrets/{name}/unlink", s.adminOnly(s.unlinkSecret))
 	mux.HandleFunc("GET /api/secrets/details", s.adminOnly(s.secretDetails))
 	mux.HandleFunc("GET /api/secrets/scan", s.adminOnly(s.scanSecrets))
 	// Named by literal rather than as /secrets/{name}/versions: that shape is

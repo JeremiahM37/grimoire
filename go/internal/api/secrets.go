@@ -76,10 +76,16 @@ func (s *Server) listSecrets(w http.ResponseWriter, _ *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	// names only — a values endpoint would defeat the entire design
+	// names only — a values endpoint would defeat the entire design. A linked
+	// secret also names its provider and reference, which locate the item
+	// and are not the value.
 	out := make([]map[string]string, 0, len(names))
 	for _, n := range names {
-		out = append(out, map[string]string{"name": n})
+		row := map[string]string{"name": n}
+		if l := s.Secrets.LinkOf(n); l != nil {
+			row["provider"], row["ref"] = l.Provider, l.Ref
+		}
+		out = append(out, row)
 	}
 	writeJSON(w, http.StatusOK, out)
 }

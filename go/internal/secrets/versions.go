@@ -84,6 +84,10 @@ type Info struct {
 	ExpiresInDays *int   `json:"expires_in_days,omitempty"`
 	// RotateDays and StaleAfterDays describe a reminder rather than a deadline.
 	RotateDays int `json:"rotate_days,omitempty"`
+	// Provider and Ref are set when the value lives in an external password
+	// manager. They locate the item; they are not the secret.
+	Provider string `json:"provider,omitempty"`
+	Ref      string `json:"ref,omitempty"`
 	// Status is one of ok, expiring, expired, stale. Computed here so every
 	// surface agrees on what "expiring" means rather than each picking a
 	// threshold.
@@ -121,6 +125,10 @@ func (v *Vault) PutVersioned(name, value string, meta map[string]any, note strin
 	}
 	now := Now().UTC().Format(time.RFC3339)
 	entry, existed := payload[name]
+	if entry.Link != nil {
+		return fmt.Errorf("%s is linked to %s; `grimoire secret unlink %s` before storing a value in it",
+			name, entry.Link.Provider, name)
+	}
 
 	// Carry forward metadata the caller did not mention. A rotation that
 	// supplies only the new value must not silently drop the expiry date and
@@ -264,6 +272,9 @@ func describe(name string, entry secretEntry) Info {
 		Expires:    asString(m[MetaExpires]),
 		RotateDays: asInt(m[MetaRotateDays]),
 		Status:     StatusOK,
+	}
+	if entry.Link != nil {
+		info.Provider, info.Ref = entry.Link.Provider, entry.Link.Ref
 	}
 	now := Now().UTC()
 	if info.Expires != "" {

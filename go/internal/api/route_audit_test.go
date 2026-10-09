@@ -286,14 +286,20 @@ var routeAccess = map[string]access{
 	"GET /api/vault/status":         authed, // lock state only, never a name or value
 
 	// --- instance administration ---
-	"POST /api/vault/init":              admin,
-	"POST /api/vault/unlock":            admin,
-	"POST /api/vault/lock":              admin,
-	"POST /api/vault/change-passphrase": admin,
-	"GET /api/secrets":                  admin,
-	"POST /api/secrets":                 admin,
-	"DELETE /api/secrets/{name}":        admin,
-	"POST /api/secrets/{name}/grant":    admin,
+	"POST /api/vault/init":                    admin,
+	"POST /api/vault/unlock":                  admin,
+	"POST /api/vault/lock":                    admin,
+	"POST /api/vault/change-passphrase":       admin,
+	"GET /api/secrets":                        admin,
+	"POST /api/secrets":                       admin,
+	"DELETE /api/secrets/{name}":              admin,
+	"POST /api/secrets/{name}/grant":          admin,
+	"POST /api/secrets/{name}/unlink":         admin,
+	"GET /api/secrets/providers":              admin,
+	"POST /api/secrets/providers":             admin,
+	"DELETE /api/secrets/providers/{name}":    admin,
+	"POST /api/secrets/providers/{name}/test": admin,
+	"POST /api/secrets/link":                  admin,
 	// History and rollback read and write the vault, so they sit exactly where
 	// the values do. The listing carries no values, but it does carry what an
 	// attacker would most like to know about them — which are unused, which

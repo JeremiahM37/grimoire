@@ -32,6 +32,10 @@ type Grant struct {
 	// within the TTL. Uses is how many times it has been.
 	MaxUses int `json:"max_uses"`
 	Uses    int `json:"uses"`
+	// Provider and Ref are set when the secret lives in an external password
+	// manager. They locate the item and are never the value.
+	Provider string `json:"provider,omitempty"`
+	Ref      string `json:"ref,omitempty"`
 }
 
 // GrantSpec describes a grant to issue.
@@ -96,7 +100,9 @@ func (b *Broker) Grant(spec GrantSpec) (string, error) {
 	if !b.Vault.IsUnlocked() {
 		return "", ErrLocked
 	}
-	if _, err := b.Vault.Get(spec.Secret); err != nil {
+	// Existence only: a linked secret is not resolved at grant time, so a
+	// grant can be issued while the external manager is locked.
+	if err := b.Vault.Exists(spec.Secret); err != nil {
 		return "", err
 	}
 	if strings.TrimSpace(spec.Grantee) == "" {
@@ -174,6 +180,9 @@ func (b *Broker) List() ([]Grant, error) {
 			return nil, err
 		}
 		g.Created = created.String
+		if l := b.Vault.LinkOf(g.Secret); l != nil {
+			g.Provider, g.Ref = l.Provider, l.Ref
+		}
 		out = append(out, g)
 	}
 	if err := rows.Err(); err != nil {
@@ -249,6 +258,17 @@ func (b *Broker) Use(token, method, targetURL, header, body string) (map[string]
 	if err := b.checkProvenance(g, method, targetURL); err != nil {
 		return nil, err
 	}
+	// An external value is fetched BEFORE the use is claimed, so a locked or
+	// unreachable password manager is a clear error that does not burn a
+	// single-use grant. There is no fallback to any other value.
+	link := b.Vault.LinkOf(g.Secret)
+	value, err := b.Vault.Get(g.Secret)
+	if err != nil {
+		if link != nil {
+			b.audit("denied", g.Secret, fmt.Sprintf("grantee=%s reason=provider provider=%s", g.Grantee, link.Provider))
+		}
+		return nil, err
+	}
 	// Claimed BEFORE the call, not after: the point of a single-use grant is
 	// that two concurrent redemptions cannot both succeed, and a claim taken
 	// after the response would let both through. The check and the increment
@@ -263,10 +283,6 @@ func (b *Broker) Use(token, method, targetURL, header, body string) (map[string]
 	// response comes back, whatever the response says. A 500 from the far side
 	// still used the key.
 	b.Vault.MarkUsed(g.Secret)
-	value, err := b.Vault.Get(g.Secret)
-	if err != nil {
-		return nil, err
-	}
 	if method == "" {
 		method = "GET"
 	}
@@ -310,10 +326,20 @@ func (b *Broker) Use(token, method, targetURL, header, body string) (map[string]
 	if err != nil {
 		return nil, err
 	}
-	b.audit("broker", g.Secret, fmt.Sprintf("%s %s -> %d", method, targetURL, resp.StatusCode))
+	detail := fmt.Sprintf("%s %s -> %d", method, targetURL, resp.StatusCode)
+	if link != nil {
+		detail += " provider=" + link.Provider
+	}
+	b.audit("broker", g.Secret, detail)
+	// A server that echoes the credential back would otherwise put it in the
+	// caller's context. Scrub it from the body for every secret.
+	respBody := string(raw)
+	if len(value) >= 4 {
+		respBody = strings.ReplaceAll(respBody, value, "[redacted]")
+	}
 	return map[string]any{
 		"status": resp.StatusCode,
-		"body":   string(raw),
+		"body":   respBody,
 	}, nil
 }
 

@@ -247,7 +247,9 @@ An encrypted vault (Argon2id + Fernet). You mint a scoped, time-boxed grant; the
 server injects the secret into the outbound call and returns the response. The
 key never enters the agent's context, so it cannot be logged, memorised or
 extracted by prompt injection — and revoking is one row, not a key rotation.
-Agents without a grant can *ask*; asking grants nothing.
+Agents without a grant can *ask*; asking grants nothing. Secrets can also stay
+in your password manager (Bitwarden, 1Password, KeePassXC, Vault/OpenBao, pass)
+and be linked by reference — see [docs/PASSWORD_MANAGERS.md](docs/PASSWORD_MANAGERS.md).
 
 ## MCP tools: what Claude gets in one mount
 

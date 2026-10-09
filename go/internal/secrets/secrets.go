@@ -56,6 +56,7 @@ type Vault struct {
 	IdleLock time.Duration
 
 	mu           sync.Mutex
+	ext          external // external password-manager providers; own lock
 	key          []byte
 	lastActivity time.Time
 	failures     int
@@ -78,6 +79,9 @@ type blob struct {
 	KDF      string `json:"kdf"`
 	Secrets  string `json:"secrets"`
 	Grants   string `json:"grants"`
+	// Providers is the sealed set of external password-manager connections,
+	// unlock material included. See external.go.
+	Providers string `json:"providers,omitempty"`
 }
 
 func (v *Vault) loadBlob() blob {
@@ -123,6 +127,7 @@ func (v *Vault) unlockedLocked() bool {
 	}
 	if v.IdleLock > 0 && Now().Sub(v.lastActivity) > v.IdleLock {
 		v.key = nil // auto-lock after idle
+		v.ext.reset()
 		return false
 	}
 	return true
@@ -239,6 +244,7 @@ func (v *Vault) Lock() {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 	v.key = nil
+	v.ext.reset()
 }
 
 type secretEntry struct {
@@ -248,6 +254,10 @@ type secretEntry struct {
 	// with everything else: an old credential is exactly as sensitive as the
 	// one that replaced it.
 	Versions []Version `json:"versions,omitempty"`
+	// Link, when set, means the value lives in an external password manager
+	// and Value is empty. Only the pointer is stored here; the value is
+	// resolved at use time and never persisted.
+	Link *Link `json:"link,omitempty"`
 }
 
 func (v *Vault) payloadLocked() (map[string]secretEntry, error) {
@@ -332,18 +342,30 @@ func (v *Vault) Delete(name string) error {
 
 // Get returns a secret's value. Callers must never send this to an agent — it
 // exists for the broker, which injects it into an outbound request server-side.
+// A linked secret is resolved from its external provider here, at use time.
 func (v *Vault) Get(name string) (string, error) {
 	v.mu.Lock()
-	defer v.mu.Unlock()
 	payload, err := v.payloadLocked()
 	if err != nil {
+		v.mu.Unlock()
 		return "", err
 	}
 	entry, ok := payload[name]
 	if !ok {
+		v.mu.Unlock()
 		return "", fmt.Errorf("no such secret: %s", name)
 	}
-	return entry.Value, nil
+	if entry.Link == nil {
+		v.mu.Unlock()
+		return entry.Value, nil
+	}
+	link := *entry.Link
+	cfg, perr := v.providerConfigLocked(link.Provider)
+	v.mu.Unlock() // never hold the vault lock across a network or process call
+	if perr != nil {
+		return "", perr
+	}
+	return v.ext.resolve(cfg, link)
 }
 
 // SealText encrypts a note body under the session key.
@@ -443,6 +465,8 @@ func (v *Vault) ChangePassphrase(old, next string, reseal func(oldKey, newKey []
 		}
 	}
 
+	oldProviders := b.Providers
+
 	newSalt, err := crypto.NewSalt()
 	if err != nil {
 		return err
@@ -466,6 +490,21 @@ func (v *Vault) ChangePassphrase(old, next string, reseal func(oldKey, newKey []
 	b.Salt = base64.StdEncoding.EncodeToString(newSalt)
 	b.Verifier = base64.StdEncoding.EncodeToString(newVerifier)
 	b.KDF = crypto.DefaultKDF
+	if oldProviders != "" {
+		raw, err := base64.StdEncoding.DecodeString(oldProviders)
+		if err != nil {
+			return err
+		}
+		plain, err := crypto.Unseal(oldKey, raw)
+		if err != nil {
+			return err
+		}
+		sealed, err := crypto.Seal(newKey, plain)
+		if err != nil {
+			return err
+		}
+		b.Providers = base64.StdEncoding.EncodeToString(sealed)
+	}
 	if err := v.saveBlob(b); err != nil {
 		return err
 	}

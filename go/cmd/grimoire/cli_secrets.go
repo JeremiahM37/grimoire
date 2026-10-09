@@ -31,7 +31,7 @@ import (
 
 func cmdSecret(args []string) int {
 	if len(args) == 0 {
-		return fail("usage: grimoire secret init|list|add|rm|history|restore|check|scan|import|export …")
+		return fail("usage: grimoire secret init|list|add|rm|history|restore|check|scan|import|export|provider|link|unlink …")
 	}
 	e, err := openEnv()
 	if err != nil {
@@ -98,6 +98,13 @@ func cmdSecret(args []string) int {
 	}
 
 	switch args[0] {
+	case "provider", "providers":
+		return cmdSecretProvider(v, args[1:])
+	case "link":
+		return cmdSecretLink(v, args[1:])
+	case "unlink":
+		return cmdSecretUnlink(v, args[1:])
+
 	case "list", "ls":
 		prefix := ""
 		if len(args) > 1 {
@@ -142,6 +149,9 @@ func cmdSecret(args []string) int {
 			}
 			if mark != "" {
 				extra = append(extra, mark)
+			}
+			if i.Provider != "" {
+				extra = append(extra, "-> "+i.Ref+" via "+i.Provider)
 			}
 			fmt.Printf("%-32s %s\n", i.Name, strings.Join(extra, " · "))
 		}
@@ -265,6 +275,11 @@ func cmdSecret(args []string) int {
 		return 1
 
 	case "import":
+		for _, a := range args[1:] {
+			if a == "--from" {
+				return importFromProvider(v, args[1:])
+			}
+		}
 		if len(args) < 2 {
 			return fail("usage: grimoire secret import FILE.env")
 		}
@@ -393,6 +408,12 @@ func exportDotenv(v *secrets.Vault) int {
 	}
 	fmt.Fprintln(os.Stderr, "# every value below is cleartext; redirect with care")
 	for _, i := range info {
+		if i.Provider != "" {
+			// a linked secret belongs to the password manager; exporting it
+			// would copy it out of the place it was deliberately kept
+			fmt.Fprintf(os.Stderr, "# skipped %s (linked to %s)\n", i.Name, i.Provider)
+			continue
+		}
 		val, err := v.Get(i.Name)
 		if err != nil {
 			continue
