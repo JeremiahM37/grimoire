@@ -361,3 +361,18 @@ func TestForgetIsAttributedToTheServersIdentity(t *testing.T) {
 		t.Errorf("query %q is not attributed to the server's identity", query)
 	}
 }
+
+// A note the agent creates names it, so the console can list it apart from
+// the notes a person wrote.
+func TestCreateNoteSendsTheAgentName(t *testing.T) {
+	var agent string
+	s := stubAPI(t, func(w http.ResponseWriter, r *http.Request) {
+		agent = r.Header.Get("X-Grimoire-Agent")
+		w.Write([]byte(`{"path":"x.md"}`))
+	})
+	call(t, s, map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+		"params": map[string]any{"name": "create_note", "arguments": map[string]any{"title": "X", "body": "b"}}})
+	if agent != "test-agent" {
+		t.Fatalf("X-Grimoire-Agent = %q, want the server's configured identity", agent)
+	}
+}

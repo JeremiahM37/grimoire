@@ -138,3 +138,27 @@ def test_theme_color_follows_the_theme_not_a_hard_coded_cream(phone, server):
     phone.evaluate("document.documentElement.dataset.theme = 'light'")
     phone.wait_for_function("[...document.querySelectorAll('meta[name=theme-color]')].every(m => m.content === '#faf7f0')")
     assert phone.locator('meta[name=theme-color]').count() == 2
+
+
+def test_folder_tap_folds_it_and_stays_on_the_list(phone, server):
+    """A folder heading is a dropdown: tapping it folds the folder, it does not leave the list."""
+    phone.request.post(f"{server}/api/notes", data={"path": "fieldwork/kestrel-survey.md", "body": "# Kestrel survey\n"})
+    phone.request.post(f"{server}/api/notes", data={"path": "agent-findings.md", "body": "# Agent findings\n"},
+                       headers={"X-Grimoire-Agent": "e2e-agent"})
+    phone.reload()
+    phone.wait_for_selector("body[data-ready]")
+    mine, agents = phone.locator("#section-mine"), phone.locator("#section-agents")
+    expect(mine.locator(".note-row", has_text="Kestrel survey")).to_have_count(1)
+    expect(agents.locator(".note-row", has_text="Agent findings")).to_have_count(1)
+    folder = mine.locator("details.folder").filter(has=phone.locator("summary.folder-head", has_text="fieldwork"))
+    head = folder.locator("summary.folder-head")
+    head.scroll_into_view_if_needed()
+    head.tap()
+    expect(phone.locator("#tabbar")).to_be_visible()
+    assert folder.evaluate("e => e.open") is False
+    head.tap()
+    assert folder.evaluate("e => e.open") is True
+    agents.locator("summary.section-head").tap()
+    expect(phone.locator("#tabbar")).to_be_visible()
+    folder.locator(".note-row", has_text="Kestrel survey").tap()
+    expect(phone.locator("#title")).to_have_value("Kestrel survey")
