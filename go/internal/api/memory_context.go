@@ -28,7 +28,9 @@ type contextItem struct {
 	// Verify is present when the fact should be re-checked before use: the
 	// way to check it, or "re-check" when no way was recorded.
 	Verify string `json:"verify,omitempty"`
-	score  float64
+	// Kind is rule, procedure, preference, fact or reference (memstore).
+	Kind  string `json:"kind,omitempty"`
+	score float64
 }
 
 var contextNoise = strings.Fields("please can could would should will do does did how what when where why which who me my we our you your it this that these those help want need now just also really anything something tell explain use using work working fix add make get know thanks thank okay ok yes no continue proceed hello hi")
@@ -239,6 +241,7 @@ func (s *Server) writeContext(w http.ResponseWriter, items []contextItem, exclud
 		}
 		digest := sha256.Sum256([]byte(item.Path + "\x00" + item.ID + "\x00" + item.Text + "\x00" + item.Authority))
 		item.Key = hex.EncodeToString(digest[:16])
+		s.annotateItem(&item)
 		if excluded[item.Key] {
 			continue
 		}

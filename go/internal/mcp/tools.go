@@ -404,7 +404,13 @@ func Tools() []tool {
 				"that do not change (decisions and why, history, root causes, preferences, " +
 				"conventions). Omit it if unsure and the store learns the rate. With " +
 				"volatile or an interval also give `check`: the read-only command or place " +
-				"to verify it ('grimoire version', 'lan.env ROUTER_IP').",
+				"to verify it ('grimoire version', 'lan.env ROUTER_IP').\n" +
+				"WRITE WELL (docs/MEMORY_WRITING.md): one fact per memory; set `kind` (rule, " +
+				"procedure, preference, fact, reference); for a rule say Why and How to apply; " +
+				"give `context` (the situation it applies in); no secrets (use the credential " +
+				"vault); nothing the repo or git already records; update an existing memory " +
+				"rather than adding a near-duplicate. The reply may carry `warnings`: fix them " +
+				"with a corrected remember, they never block the write.",
 			InputSchema: obj(map[string]any{
 				"text":          strProp("what to remember"),
 				"target_id":     strProp("for a known correction: exact fact id from recall; requires target_path and expected_text; human corrections remain protected"),
@@ -419,6 +425,7 @@ func Tools() []tool {
 				"task":     strProp("optional origin: ticket id, session, url"),
 				"session":  strProp("optional run/conversation id, so this run's learnings can be recalled together"),
 				"category": strProp("optional bucket, e.g. 'preference', 'gotcha', 'ownership'"),
+				"kind":     strProp("rule | procedure | preference | fact | reference — what sort of memory this is"),
 				"expires_in": strProp("optional time-to-live, e.g. '72h' — for something " +
 					"true only for now, so it stops being recalled instead of going stale"),
 				"immutable": map[string]any{"type": "boolean",

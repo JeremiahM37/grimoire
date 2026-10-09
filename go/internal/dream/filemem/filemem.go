@@ -47,7 +47,19 @@ const (
 	minNearDupWords = 20
 
 	maxRelated = 10
+
+	// GeneratedMarker is the first-line comment of a MEMORY.md that Grimoire
+	// generated (rules plus topic pointers). Such an index deliberately does
+	// not link every note, so the "unlinked note" check does not apply to it.
+	GeneratedMarker = "<!-- grimoire:generated-index -->"
 )
+
+// ParseFrontmatter reads the leading YAML block of a note: top-level scalars
+// plus "metadata.<key>" for one level of nesting, the document text without
+// the block, and whether a block was present.
+func ParseFrontmatter(body string) (map[string]string, string, bool) {
+	return parseFrontmatter(body)
+}
 
 // linkRE matches a markdown link and captures its target. Targets with a
 // space are rejected by the character class, which is what the index format
@@ -253,8 +265,9 @@ func checkIndex(index dream.Doc, notes []fileNote, present map[string]bool) []dr
 		firstLine[e.target] = e.line
 	}
 
+	generated := strings.Contains(index.Body, GeneratedMarker)
 	for _, n := range notes {
-		if linked[n.file] {
+		if linked[n.file] || generated {
 			continue
 		}
 		out = append(out, dream.Finding{

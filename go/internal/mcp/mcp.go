@@ -549,7 +549,7 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 		body := map[string]any{
 			"text": str(args, "text"), "topic": str(args, "topic"),
 			"task": str(args, "task"), "agent": s.Agent}
-		for _, k := range []string{"session", "category", "expires_in", "origin", "target_id", "target_path", "expected_text", "fresh", "check", "context"} {
+		for _, k := range []string{"session", "category", "kind", "expires_in", "origin", "target_id", "target_path", "expected_text", "fresh", "check", "context"} {
 			if v := str(args, k); v != "" {
 				body[k] = v
 			}

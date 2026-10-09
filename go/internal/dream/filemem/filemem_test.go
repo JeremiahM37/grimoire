@@ -422,3 +422,25 @@ func TestFragmentedMissingDir(t *testing.T) {
 		t.Errorf("got %+v, want nil", fs)
 	}
 }
+
+func TestGeneratedIndexDoesNotNeedEveryNoteLinked(t *testing.T) {
+	idx := dream.Doc{Path: "mem/MEMORY.md", Kind: dream.KindFileMemory,
+		Body: GeneratedMarker + "\n- [A](a.md) — rule\n- topic: 1 note — recall 'x'\n"}
+	a := dream.Doc{Path: "mem/a.md", Kind: dream.KindFileMemory, Body: "---\nname: a\ndescription: d\ntype: x\n---\nbody"}
+	b := dream.Doc{Path: "mem/b.md", Kind: dream.KindFileMemory, Body: "---\nname: b\ndescription: d2\ntype: x\n---\nbody"}
+	for _, f := range Check("mem", []dream.Doc{idx, a, b}) {
+		if f.Check == "index_missing" {
+			t.Errorf("generated index reported %s as unlinked", f.Path)
+		}
+	}
+	idx.Body = "- [A](a.md)\n"
+	var missing int
+	for _, f := range Check("mem", []dream.Doc{idx, a, b}) {
+		if f.Check == "index_missing" {
+			missing++
+		}
+	}
+	if missing != 1 {
+		t.Errorf("hand-written index: %d index_missing, want 1", missing)
+	}
+}

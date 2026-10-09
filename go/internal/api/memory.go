@@ -15,6 +15,7 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/index"
 	"github.com/JeremiahM37/grimoire/go/internal/markdown"
 	"github.com/JeremiahM37/grimoire/go/internal/memory"
+	"github.com/JeremiahM37/grimoire/go/internal/memstore"
 	"github.com/JeremiahM37/grimoire/go/internal/trust"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
 )
@@ -70,6 +71,9 @@ type memoryIn struct {
 	// so "what did this agent learn during that run" is answerable.
 	Session  string `json:"session"`
 	Category string `json:"category"`
+	// Kind is rule, procedure, preference, fact or reference. It is stored as
+	// the category when no category is given.
+	Kind string `json:"kind"`
 
 	// Expires is an absolute RFC3339 instant; ExpiresIn is a duration from now
 	// ("72h"), which is what a caller usually has. Either one makes the fact
@@ -241,6 +245,15 @@ func (s *Server) rememberOne(w http.ResponseWriter, r *http.Request, m memoryIn)
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	if k := strings.TrimSpace(m.Kind); k != "" {
+		if !memstore.Valid(k) {
+			writeErr(w, http.StatusBadRequest, "kind must be one of rule, procedure, preference, fact, reference")
+			return
+		}
+		if strings.TrimSpace(m.Category) == "" {
+			m.Category = k
+		}
+	}
 	task := strings.TrimSpace(m.Task)
 	rel := s.memoryRel(m.Topic)
 	if m.TargetID != "" {
@@ -284,10 +297,15 @@ func (s *Server) rememberOne(w http.ResponseWriter, r *http.Request, m memoryIn)
 
 	// The first result is the headline for callers that want one line back.
 	head := results[0]
-	writeJSON(w, http.StatusCreated, map[string]any{
+	resp := map[string]any{
 		"path": rel, "created": created, "entry": head.Text,
 		"op": head.Op, "id": head.ID, "results": results,
-	})
+	}
+	// Gentle, non-blocking: the write already happened.
+	if ws := memstore.Lint(strings.TrimSpace(m.Category), text); len(ws) > 0 {
+		resp["warnings"] = ws
+	}
+	writeJSON(w, http.StatusCreated, resp)
 }
 
 // reconcileFact decides what one fact does and applies it. A non-nil error
@@ -661,6 +679,11 @@ type entryOut struct {
 	// how. Present on current facts in recall and the briefing.
 	Freshness *memory.Assessment `json:"freshness,omitempty"`
 
+	// Kind is rule, procedure, preference, fact or reference; Verify is set
+	// when a procedure's last light check failed.
+	Kind   string `json:"kind,omitempty"`
+	Verify string `json:"verify,omitempty"`
+
 	// Why this fact was recalled, for the surface that has to justify it.
 	Scores *scoreBreakdown `json:"scores,omitempty"`
 }
@@ -741,7 +764,7 @@ func (s *Server) recall(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, s.assessHits(hits, entriesOut(hits, boolParam(r, "explain"))))
+	writeJSON(w, http.StatusOK, s.markProcedures(s.assessHits(hits, entriesOut(hits, boolParam(r, "explain")))))
 }
 
 func boolParam(r *http.Request, name string) bool {

@@ -201,6 +201,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/memory", s.recall)
 	mux.HandleFunc("GET /api/memory/context", s.memoryContext)
 	mux.HandleFunc("GET /api/memory/cues", s.listCues)
+	mux.HandleFunc("GET /api/memory/core", s.memoryCore)
 	mux.HandleFunc("POST /api/memory/cues", s.addCues)
 	mux.HandleFunc("GET /api/memory/export", s.exportMemory)
 	mux.HandleFunc("GET /api/memory/changes", s.memoryChanges)

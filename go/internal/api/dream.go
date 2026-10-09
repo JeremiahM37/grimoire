@@ -208,6 +208,7 @@ func (s *Server) Dream(ctx context.Context, apply, onlyIfChanged bool) (*dream.R
 	if pd, canon := s.setting("dream_projects_dir"), s.setting("dream_canonical_memory"); pd != "" && canon != "" {
 		findings = append(findings, filemem.Fragmented(expandHome(pd), expandHome(canon))...)
 	}
+	findings = append(findings, s.memstoreFindings(docs)...)
 	sortFindings(findings)
 	rep.Findings = findings
 

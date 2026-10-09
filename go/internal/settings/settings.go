@@ -121,6 +121,15 @@ var Fields = map[string]Field{
 	// directory, since what is written there is invisible everywhere else.
 	"dream_projects_dir":     {"GRIMOIRE_DREAM_PROJECTS_DIR", ""},
 	"dream_canonical_memory": {"GRIMOIRE_DREAM_CANONICAL_MEMORY", ""},
+	// The shared memory store (docs/MEMORY_STORE.md): the directory every
+	// agent's memory location is linked to. Falls back to
+	// dream_canonical_memory when empty.
+	"memory_canonical_dir": {"GRIMOIRE_MEMORY_CANONICAL_DIR", ""},
+	// Procedure verification: ports a procedure check may probe (comma
+	// separated; empty probes none) and how many due procedures one dream
+	// checks.
+	"memory_verify_ports":     {"GRIMOIRE_MEMORY_VERIFY_PORTS", ""},
+	"memory_verify_per_dream": {"GRIMOIRE_MEMORY_VERIFY_PER_DREAM", "3"},
 }
 
 // InternalFields are persisted in the same file and resolved the same way, but
