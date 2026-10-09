@@ -207,7 +207,7 @@ func (s *Server) handleIn(rc callCtx, req request) *response {
 			"protocolVersion": ProtocolVersion,
 			"capabilities":    map[string]any{"tools": map[string]any{}},
 			"serverInfo":      map[string]any{"name": "grimoire", "version": "1.0.0"},
-			"instructions":    Instructions,
+			"instructions":    s.instructions(),
 		})
 	case "tools/list":
 		return ok(map[string]any{"tools": s.advertised(s.toolsFor(rc))})

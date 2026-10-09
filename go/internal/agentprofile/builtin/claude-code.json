@@ -1,0 +1,47 @@
+{
+  "name": "claude-code",
+  "description": "Claude Code: command hooks in ~/.claude/settings.json, MCP in ~/.claude.json",
+  "detect": ["~/.claude"],
+  "hooks": {
+    "file": "~/.claude/settings.json",
+    "format": "claude-json",
+    "events": {
+      "session_start": "SessionStart",
+      "prompt": "UserPromptSubmit",
+      "pre_action": "PreToolUse",
+      "post_action": "PostToolUse",
+      "stop": "Stop",
+      "session_end": "SessionEnd",
+      "file_read": "PreToolUse"
+    },
+    "matchers": {
+      "session_start": "startup|resume|clear|compact",
+      "post_action": "Edit|MultiEdit|Write|NotebookEdit|Bash",
+      "file_read": "Read"
+    },
+    "timeouts": {"stop": 20}
+  },
+  "event_fields": {
+    "event": "hook_event_name",
+    "prompt": "prompt",
+    "tool": "tool_name",
+    "tool_input": "tool_input",
+    "session": "session_id",
+    "cwd": "cwd",
+    "source": "source",
+    "transcript": "transcript_path"
+  },
+  "actions": {
+    "Bash": "command",
+    "Edit": "file_path",
+    "MultiEdit": "file_path",
+    "Write": "file_path",
+    "NotebookEdit": "notebook_path",
+    "Agent": "prompt",
+    "Task": "prompt"
+  },
+  "delegation_tools": ["Agent", "Task"],
+  "output": "claude-json",
+  "mcp": {"file": "~/.claude.json", "format": "json"},
+  "memory": {"dir": "~/.claude/projects"}
+}

@@ -59,7 +59,9 @@ Claude Code uses `.claude/settings.json`; Codex uses `.codex/hooks.json` (or the
 corresponding user-level files). Supply the environment in the agent launcher
 or a trusted wrapper. On Windows use the installed Python executable. A new
 session and the host's hook trust/approval flow may be required. These files
-are examples, not an installer; nothing changes the operator's configuration.
+are examples. `grimoire agent install --agent NAME --memory` writes them for you
+(merge-only, with backups); see [AGENTS_ANY.md](AGENTS_ANY.md), which also covers
+agents other than these two.
 
 References: [Claude Code hooks](https://code.claude.com/docs/en/hooks),
 [Codex hooks](https://developers.openai.com/codex/hooks).

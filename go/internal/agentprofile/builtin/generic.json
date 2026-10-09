@@ -1,0 +1,29 @@
+{
+  "name": "generic",
+  "description": "Starter for any agent with command hooks; copy it with `grimoire agent new NAME` and edit",
+  "detect": [],
+  "hooks": {
+    "file": "",
+    "format": "claude-json",
+    "events": {
+      "session_start": "SessionStart",
+      "prompt": "UserPromptSubmit",
+      "pre_action": "PreToolUse"
+    }
+  },
+  "event_fields": {
+    "event": "hook_event_name",
+    "prompt": "prompt",
+    "tool": "tool_name",
+    "tool_input": "tool_input",
+    "session": "session_id",
+    "cwd": "cwd",
+    "source": "source"
+  },
+  "actions": {"Bash": "command"},
+  "delegation_tools": [],
+  "session_fallback": true,
+  "output": "plain-stdout",
+  "mcp": {"file": "", "format": ""},
+  "memory": {"files": []}
+}

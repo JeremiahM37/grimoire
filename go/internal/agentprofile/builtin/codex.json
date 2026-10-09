@@ -1,0 +1,40 @@
+{
+  "name": "codex",
+  "description": "Codex CLI: command hooks in ~/.codex/hooks.json (trusted via config.toml), MCP in config.toml",
+  "detect": ["~/.codex"],
+  "hooks": {
+    "file": "~/.codex/hooks.json",
+    "format": "claude-json",
+    "trust": "codex",
+    "events": {
+      "session_start": "SessionStart",
+      "prompt": "UserPromptSubmit",
+      "pre_action": "PreToolUse",
+      "post_action": "PostToolUse",
+      "stop": "Stop"
+    },
+    "matchers": {
+      "session_start": "startup|resume|clear",
+      "post_action": "Bash|apply_patch",
+      "pre_action": "Bash|apply_patch"
+    },
+    "timeouts": {"stop": 60}
+  },
+  "event_fields": {
+    "event": "hook_event_name",
+    "prompt": "prompt",
+    "tool": "tool_name",
+    "tool_input": "tool_input",
+    "session": "session_id",
+    "cwd": "cwd",
+    "source": "source",
+    "transcript": "transcript_path"
+  },
+  "actions": {
+    "Bash": "command",
+    "apply_patch": "command|input"
+  },
+  "output": "claude-json",
+  "mcp": {"file": "~/.codex/config.toml", "format": "toml"},
+  "memory": {"files": ["~/.codex/AGENTS.md"]}
+}
