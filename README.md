@@ -153,7 +153,9 @@ speaking the same wire format:
 [Laya](https://huggingface.co/convaiinnovations/laya), open-weight and run
 locally with `laya-serve`. Stock Laya is no better than chance at this
 question. Fine-tuned on about 900 labelled example facts (half an hour on a
-CPU), it matched Jev on a real store. Grimoire works without either.
+CPU), it matched Jev on a real store, and that checkpoint is
+[published](https://huggingface.co/allnamestaken177/grimoire-volatility-laya).
+Grimoire works without either.
 [docs/FRESHNESS.md](docs/FRESHNESS.md#decision-model) compares accuracy,
 speed and cost, and shows how to fine-tune.
 

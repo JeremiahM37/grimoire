@@ -146,6 +146,23 @@ the AUC gap over Jev is [−0.06, +0.11] for the synthetic-only model and
 90 test facts was in any training set. The calibrations were fitted on the
 same 90 facts for all three models.
 
+### Ready-made checkpoint
+
+The synthetic-only checkpoint is published as
+[allnamestaken177/grimoire-volatility-laya](https://huggingface.co/allnamestaken177/grimoire-volatility-laya)
+(Apache 2.0). To use it without training your own:
+
+```sh
+hf download allnamestaken177/grimoire-volatility-laya --local-dir ./volatility
+LAYA_EXTRA_MODELS='{"volatility": "./volatility"}' LAYA_DEFAULT_MODEL=volatility laya-serve
+export GRIMOIRE_DECISION_URL=http://127.0.0.1:8000
+export GRIMOIRE_DECISION_MODEL=volatility
+export GRIMOIRE_DECISION_CALIBRATION=2.147,0.359
+```
+
+Fine-tuning on your own store can still help a little: the model that also
+saw the store's own facts scored 0.94 against 0.92.
+
 ### Fine-tuning Laya
 
 1. Collect a few hundred example facts. Synthetic ones work: the 899 above
