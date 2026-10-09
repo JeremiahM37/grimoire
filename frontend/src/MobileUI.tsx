@@ -45,8 +45,7 @@ export function MobileChrome(a: Actions) {
     {sheet === 'more' && <div className="modal sheet" id="more-sheet" role="dialog" aria-label="More" onMouseDown={e => e.currentTarget === e.target && close()}><div className="modal-box">
       <div className="sheet-grid">
         <button onClick={pick(a.daily)}><b>◈</b>Today</button>
-        <button onClick={pick(a.newNote)}><b>＋</b>New note</button>
-        <button onClick={pick(a.evidence)}><b>⌘</b>Evidence</button>
+        <button onClick={pick(a.evidence)}><b>❝</b>Evidence</button>
         <button onClick={pick(a.banks)}><b>▤</b>Banks</button>
         <button onClick={pick(a.vault)}><b>◇</b>Vault</button>
         <button onPointerDown={a.graphWarm} onClick={pick(a.graph)}><b>◉</b>Graph</button>

@@ -40,7 +40,12 @@
   .react-app #app, #app { min-width: 0; }
   .react-app #sidebar-toggle { display: none !important; }
   .react-app #plugin-panels { max-height: 110px; overflow: auto; }
-  .react-app #split-btn, .react-app #outline-btn, .react-app #props-btn, .react-app #private-toggle { display: none !important; }
+  /* header keeps back, title, AI and ⋯ only; the rest lives in the ⋯ menu */
+  .react-app #preview-toggle, .react-app .ed-more .mi.desk-only { display: none !important; }
+  .react-app .ed-menu .mi { display: block !important; }
+  .react-app .ed-menu .mi.mob-only { display: block !important; }
+  .react-app .ed-menu .mi.desk-only { display: none !important; }
+  .react-app #ed-head #note-more { min-width: 44px; min-height: 44px; font-size: 22px; }
   .react-app #ed-head { overflow-x: auto; scrollbar-width: none; }
   .react-app #ed-head::-webkit-scrollbar { display: none; }
   .react-app #ed-head > * { flex-shrink: 0; }
