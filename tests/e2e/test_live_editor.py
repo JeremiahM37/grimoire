@@ -127,13 +127,13 @@ def test_link_autocomplete_on_double_bracket(live_page, server):
     assert "[[Complete Me]]" in pg.evaluate("() => document.querySelector('#content').value")
 
 
-def test_toolbar_works_in_live_mode(live_page, server):
+def test_bold_shortcut_works_in_live_mode(live_page, server):
     pg = live_page
     pg.goto(server)
     pg.wait_for_selector("body[data-ready]", timeout=10000)
-    _new_note(pg, "Toolbar Live")
+    _new_note(pg, "Shortcut Live")
     pg.click("#live-editor .cm-content")
-    pg.click('[data-md="bold"]')
+    pg.keyboard.press("Control+b")   # desktop has no formatting bar; Ctrl+B wraps
     assert "**bold**" in pg.evaluate("() => document.querySelector('#content').value")
 
 

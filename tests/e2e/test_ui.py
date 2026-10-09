@@ -261,6 +261,11 @@ def test_editor_toolbar_and_tab(page, server):
     ta = page.locator("#content")
     ta.click()
     ta.fill("")
+    # the formatting bar is hidden on desktop (Obsidian-style); it is docked
+    # above the keyboard on phones, so exercise it at phone width
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.evaluate("document.activeElement.blur()")
+    ta.click()                     # focus again at phone width so the bar is shown
     # toolbar task button inserts a task marker at the line start
     page.click('.tb[data-md="task"]')
     expect(ta).to_have_value("- [ ] ")
@@ -865,7 +870,6 @@ def test_focus_mode_hides_chrome_and_escapes(page, server):
     expect(page.locator("#zen-exit")).to_be_visible()
     expect(page.locator("#content")).to_be_visible()      # writing surface stays
     page.keyboard.press("Escape")                          # exit focus
-    expect(page.locator("#ed-toolbar")).to_be_visible()
     expect(page.locator("#zen-exit")).to_be_hidden()
 
 
