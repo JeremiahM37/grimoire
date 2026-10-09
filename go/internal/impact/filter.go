@@ -19,6 +19,7 @@ const (
 	RuleBenchmark  = "benchmark-harness"  // cwd under /tmp or a benchmark/research harness directory
 	RuleAutomation = "lectern-automation" // Lectern/AgentDeck worker worktrees and test probes
 	RuleAutomated  = "automated-prompt"   // prompt text written by a machine
+	RuleDuplicate  = "duplicate-prompt"   // the same prompt at the same instant again: a resumed session replays its history
 )
 
 // automatedPrompt is the memory hook's own pattern (clients/hooks/grimoire_context.py
@@ -132,4 +133,21 @@ func PromptsOfInteractive(sessions []transcript.Session, on bool) ([]Prompt, Exc
 	out := PromptsOf(kept)
 	ex.PromptsKept = len(out)
 	return out, ex
+}
+
+// DedupePrompts drops a prompt seen again with the same agent, timestamp and
+// text. Resuming or forking a session writes the earlier conversation into the
+// new transcript, so one thing a person typed would count once per file.
+func DedupePrompts(ps []Prompt) ([]Prompt, int) {
+	seen := map[string]bool{}
+	out := ps[:0:0]
+	for _, p := range ps {
+		k := p.Agent + "|" + p.At.UTC().Format("20060102T150405.000") + "|" + p.Text
+		if seen[k] {
+			continue
+		}
+		seen[k] = true
+		out = append(out, p)
+	}
+	return out, len(ps) - len(out)
 }

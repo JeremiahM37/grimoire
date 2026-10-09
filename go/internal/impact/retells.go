@@ -79,6 +79,10 @@ type RetellOptions struct {
 	CachePath string // "" = no cache
 	Cutoff    time.Time
 	Workers   int
+	// Audit, when set, is called once per judged pair (after judging, from one
+	// goroutine) with the prompt, the memory it was paired with, the share of the
+	// prompt's content terms the memory carries, and the verdict. For hand-checking.
+	Audit func(p Prompt, memory NoteText, overlap float64, yes bool)
 }
 
 // WeekRow is one ISO week.
@@ -140,6 +144,7 @@ type cand struct {
 	note   int
 	key    string
 	hash   string
+	ovl    float64
 	yes    bool
 	known  bool
 	failed bool
@@ -209,7 +214,7 @@ func Retells(prompts []Prompt, notes []NoteText, o RetellOptions) RetellReport {
 		}
 		h := sha256.Sum256([]byte(p.Text))
 		nh := sha256.Sum256([]byte(notes[best].Text))
-		c := &cand{p: p, note: best, hash: hex.EncodeToString(h[:8])}
+		c := &cand{p: p, note: best, ovl: float64(bestN) / float64(len(pt)), hash: hex.EncodeToString(h[:8])}
 		c.key = name + "|" + hex.EncodeToString(nh[:8]) + "|" + c.hash
 		week(p.At).Candidates++
 		if y, ok := cache[c.key]; ok {
@@ -272,6 +277,9 @@ func Retells(prompts []Prompt, notes []NoteText, o RetellOptions) RetellReport {
 		}
 		r := week(c.p.At)
 		r.Evaluated++
+		if o.Audit != nil {
+			o.Audit(c.p, notes[c.note], c.ovl, c.yes)
+		}
 		if c.yes {
 			r.Yes++
 			if !notes[c.note].At.IsZero() && !notes[c.note].At.After(c.p.At) {

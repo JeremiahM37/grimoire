@@ -54,3 +54,13 @@ func TestWilson(t *testing.T) {
 		t.Error("empty")
 	}
 }
+
+func TestDedupePrompts(t *testing.T) {
+	at := time.Date(2026, 9, 30, 9, 0, 0, 0, time.UTC)
+	ps := []Prompt{{At: at, Agent: "a", Text: "same thing typed once"}, {At: at, Agent: "a", Text: "same thing typed once"},
+		{At: at.Add(time.Minute), Agent: "a", Text: "same thing typed once"}, {At: at, Agent: "b", Text: "same thing typed once"}}
+	got, n := DedupePrompts(ps)
+	if len(got) != 3 || n != 1 {
+		t.Errorf("%d %d", len(got), n)
+	}
+}

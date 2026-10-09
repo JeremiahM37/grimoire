@@ -153,6 +153,14 @@ func RetellCollect(o CollectOptions, ro RetellOptions) (RetellReport, []error) {
 		prompts = append(prompts, ps...)
 		ex.Merge(pe)
 	}
+	if !o.AllSessions {
+		var dup int
+		prompts, dup = DedupePrompts(prompts)
+		if dup > 0 {
+			ex.PromptsExcluded[RuleDuplicate] += dup
+			ex.PromptsKept -= dup
+		}
+	}
 	var notes []NoteText
 	if o.Store != "" {
 		if ns, err := memstore.LoadDir(o.Store); err == nil {
