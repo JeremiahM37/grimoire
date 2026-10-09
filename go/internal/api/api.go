@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/JeremiahM37/grimoire/go/internal/build"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -19,6 +18,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/JeremiahM37/grimoire/go/internal/build"
+	"github.com/JeremiahM37/grimoire/go/internal/cues"
 
 	"github.com/JeremiahM37/grimoire/go/internal/ai"
 	"github.com/JeremiahM37/grimoire/go/internal/auth"
@@ -91,6 +93,10 @@ type Server struct {
 
 	// the store's learned change rates; see memory_fresh.go.
 	fresh freshCache
+
+	cueOnce  sync.Once
+	cueStore *cues.Store
+	recent   recentQueries
 }
 
 // Routes builds the mux. Specific paths are registered before the catch-all
@@ -194,6 +200,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/memory", s.remember)
 	mux.HandleFunc("GET /api/memory", s.recall)
 	mux.HandleFunc("GET /api/memory/context", s.memoryContext)
+	mux.HandleFunc("GET /api/memory/cues", s.listCues)
+	mux.HandleFunc("POST /api/memory/cues", s.addCues)
 	mux.HandleFunc("GET /api/memory/export", s.exportMemory)
 	mux.HandleFunc("GET /api/memory/changes", s.memoryChanges)
 	mux.HandleFunc("GET /api/memory/facets", s.memoryFacets)

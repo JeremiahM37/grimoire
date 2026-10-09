@@ -258,8 +258,11 @@ func Tools() []tool {
 			Name: "get_briefing",
 			Description: "START HERE when beginning work: the team's standing context in one " +
 				"call — pinned notes, onboarding rules (environment requirements, required " +
-				"steps), and the most recent agent memories. Cheap; call it before your first edit.",
-			InputSchema: obj(map[string]any{}),
+				"steps), and the most recent agent memories. Cheap; call it before your first edit. " +
+				"Pass `task` (what you are about to do) to also get the memories that bear on it.",
+			InputSchema: obj(map[string]any{
+				"task": map[string]any{"type": "string", "description": "what you are about to work on; optional"},
+			}),
 		},
 		{
 			Name: "kb_info",
@@ -422,6 +425,12 @@ func Tools() []tool {
 					"description": "pin this fact: reconciliation may never supersede or retract it"},
 				"fresh": strProp("how it goes stale: 'stable', 'volatile', or a re-check interval like '7d'"),
 				"check": strProp("read-only way to verify it: a command, file or URL"),
+				"context": strProp("what you were asked to do when you learned this. If the user " +
+					"just told you something that turns out to be on file already, this teaches " +
+					"memory to surface it in that situation next time"),
+				"cues": map[string]any{"type": "array", "items": map[string]any{"type": "string"},
+					"description": "up to 8 situations in which this should come to mind: a request, " +
+						"a command, or a file path (e.g. 'deploy grimoire', '/etc/lectern.env')"},
 			}, "text"),
 		},
 		{

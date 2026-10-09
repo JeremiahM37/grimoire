@@ -400,6 +400,9 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 	case "kb_info":
 		return s.api("GET", "/api/health", nil)
 	case "get_briefing":
+		if t := strings.TrimSpace(str(args, "task")); t != "" {
+			return s.api("GET", "/api/briefing?"+url.Values{"task": {t}}.Encode(), nil)
+		}
 		return s.api("GET", "/api/briefing", nil)
 	case "search_notes":
 		q := url.Values{}
@@ -546,9 +549,20 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 		body := map[string]any{
 			"text": str(args, "text"), "topic": str(args, "topic"),
 			"task": str(args, "task"), "agent": s.Agent}
-		for _, k := range []string{"session", "category", "expires_in", "origin", "target_id", "target_path", "expected_text", "fresh", "check"} {
+		for _, k := range []string{"session", "category", "expires_in", "origin", "target_id", "target_path", "expected_text", "fresh", "check", "context"} {
 			if v := str(args, k); v != "" {
 				body[k] = v
+			}
+		}
+		if raw, ok := args["cues"].([]any); ok {
+			var cs []string
+			for _, c := range raw {
+				if t, ok := c.(string); ok && strings.TrimSpace(t) != "" && len(cs) < 8 {
+					cs = append(cs, t)
+				}
+			}
+			if len(cs) > 0 {
+				body["cues"] = cs
 			}
 		}
 		if boolean(args, "immutable") {

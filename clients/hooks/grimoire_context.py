@@ -43,11 +43,13 @@ def write_state(path, state):
         temporary.unlink(missing_ok=True)
 
 
-def fetch_context(base, token, query, excluded, budget, mode, paths):
-    parameters = urllib.parse.urlencode({
+def fetch_context(base, token, query, excluded, budget, mode, paths, extra=None):
+    values = {
         "q": query, "exclude": ",".join(excluded), "max_bytes": budget, "limit": 5,
         "scope": mode, "path": paths,
-    }, doseq=True)
+    }
+    values.update(extra or {})
+    parameters = urllib.parse.urlencode(values, doseq=True)
     headers = {"Accept": "application/json"}
     if token:
         headers["Authorization"] = "Bearer " + token
@@ -77,7 +79,9 @@ def run(event, environment=None, fetch=fetch_context, now=None):
             or (mode == "scoped" and not paths) or (mode == "all" and paths)):
         return None
     event_name = event.get("hook_event_name", "")
-    if event_name not in {"SessionStart", "UserPromptSubmit"}:
+    if event_name not in {"SessionStart", "UserPromptSubmit", "PreToolUse"}:
+        return None
+    if event_name == "PreToolUse" and environment.get("GRIMOIRE_CONTEXT_ACTIONS", "1") == "0":
         return None
     session = event.get("session_id", "")
     if not isinstance(session, str) or not session or len(session) > 256:
@@ -115,6 +119,9 @@ def run(event, environment=None, fetch=fetch_context, now=None):
             if event.get("source") in {"compact", "clear", "resume"}:
                 write_state(state_path, {})
             return None
+        if event_name == "PreToolUse":
+            return action_context(event, environment, fetch, now, state, state_path,
+                                  base, token, mode, paths)
         prompt = event.get("prompt", "")
         if not isinstance(prompt, str) or len(prompt.encode()) > 8000:
             return None
@@ -137,7 +144,11 @@ def run(event, environment=None, fetch=fetch_context, now=None):
                 if isinstance(key, str) and isinstance(stamp, (float, int))
                 and now - stamp < 1800}
         excluded = list(seen)[-256:]
-        result = fetch(base, token, query, excluded, budget, mode, paths)
+        # The session travels as a hash: the server pairs consecutive prompts
+        # to learn from re-tells, and never needs to know which session it is.
+        extra = rank_params(environment)
+        extra["session"] = fingerprint("session\0" + session)[:32]
+        result = fetch(base, token, query, excluded, budget, mode, paths, extra)
         context = result.get("context", "")
         keys = result.get("keys", [])
         if (not isinstance(context, str) or len(context.encode()) > budget
@@ -148,7 +159,8 @@ def run(event, environment=None, fetch=fetch_context, now=None):
         for key in keys:
             seen[key] = now
         seen = dict(list(seen.items())[-256:])
-        write_state(state_path, {"query": query_hash, "checked": now, "seen": seen})
+        state.update({"query": query_hash, "checked": now, "seen": seen})
+        write_state(state_path, state)
         if not context:
             return None
         return {"hookSpecificOutput": {
@@ -156,6 +168,79 @@ def run(event, environment=None, fetch=fetch_context, now=None):
         }}
     finally:
         lock.rmdir()
+
+
+def rank_params(environment):
+    """Ranking for the server: hybrid (embeddings + keywords + cues) unless the
+    operator pins the old word-overlap ranking."""
+    rank = environment.get("GRIMOIRE_CONTEXT_RANK", "hybrid")
+    if rank not in {"hybrid", "lexical"}:
+        rank = "hybrid"
+    extra = {"rank": rank}
+    if rank == "hybrid":
+        extra["min_rel"] = environment.get("GRIMOIRE_CONTEXT_MIN_REL", "0.5")
+    return extra
+
+
+ACTION_TOOLS = {"Bash": "command", "Edit": "file_path", "MultiEdit": "file_path",
+                "Write": "file_path", "NotebookEdit": "notebook_path",
+                "Agent": "prompt", "Task": "prompt"}
+
+
+def action_text(tool, tool_input):
+    """The text an action is matched on. A subagent launch is described by
+    what it is for and which model runs it, not by its whole brief: standing
+    rules about delegation ("the lead plans, a cheaper model implements") are
+    about exactly those two things."""
+    if tool in {"Agent", "Task"}:
+        parts = ["launch subagent", str(tool_input.get("subagent_type", "") or ""),
+                 "model " + str(tool_input.get("model", "") or "default"),
+                 str(tool_input.get("description", "") or ""),
+                 str(tool_input.get("prompt", "") or "")[:300]]
+        return " ".join(p for p in parts if p.strip())
+    return str(tool_input.get(ACTION_TOOLS[tool], "") or "")
+
+
+def action_context(event, environment, fetch, now, state, state_path, base, token, mode, paths):
+    """PreToolUse: the memories that bear on the command or file about to be
+    touched, at the moment the agent acts. A rule read twenty turns ago is the
+    one most likely to be ignored; restating it as the action happens is what
+    makes it stick. Held to a stricter bar and a smaller budget than prompt
+    context, because it runs on every tool call."""
+    tool = event.get("tool_name", "")
+    field = ACTION_TOOLS.get(tool)
+    tool_input = event.get("tool_input", {})
+    if not field or not isinstance(tool_input, dict):
+        return None
+    target = action_text(tool, tool_input)
+    if not target.strip() or len(target.encode()) > 4000:
+        return None
+    query = (tool + " " + target.strip())[:2000]
+    recent = state.get("actions", {})
+    if not isinstance(recent, dict):
+        recent = {}
+    ttl = 600
+    recent = {key: stamp for key, stamp in recent.items()
+              if isinstance(key, str) and isinstance(stamp, (float, int)) and now - stamp < ttl}
+    budget = max(128, min(4000, int(environment.get("GRIMOIRE_ACTION_MAX_BYTES", "1200"))))
+    extra = rank_params(environment)
+    if extra["rank"] == "hybrid":
+        extra["min_rel"] = environment.get("GRIMOIRE_ACTION_MIN_REL", "0.6")
+    extra.update({"limit": 2, "stage": "action"})
+    result = fetch(base, token, query, list(recent)[-128:], budget, mode, paths, extra)
+    context = result.get("context", "")
+    keys = result.get("keys", [])
+    if (not isinstance(context, str) or len(context.encode()) > budget
+            or not isinstance(keys, list) or len(keys) > 2
+            or any(not isinstance(key, str) or not re.fullmatch(r"[a-f0-9]{32}", key) for key in keys)):
+        return None
+    for key in keys:
+        recent[key] = now
+    state["actions"] = dict(list(recent.items())[-128:])
+    write_state(state_path, state)
+    if not context:
+        return None
+    return {"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": context}}
 
 
 def main():

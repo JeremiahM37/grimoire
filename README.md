@@ -159,6 +159,30 @@ Grimoire works without either.
 [docs/FRESHNESS.md](docs/FRESHNESS.md#decision-model) compares accuracy,
 speed and cost, and shows how to fine-tune.
 
+### Memory that reaches the agent when it matters
+
+Most real misses are not facts the agent failed to find. They are standing
+rules it already had and didn't apply, such as "never push without asking" or
+"the lead model plans, a cheaper one implements." The prompt hook injects the
+memories that bear on each request, matched by meaning as well as by words.
+It also fires again on the tool call a rule governs: the `git push`, the file
+edit, the subagent launch. When the user has to repeat something the store
+already held, the situation the agent was in is learned as a cue, so that
+memory fires there next time.
+
+On this deployment's own memory, these changes did three things:
+
+- **Retrieval:** the right memory reached the agent on 59% of requests,
+  up from 46%.
+- **Framing:** with memory framed as something to follow rather than
+  "reference data", actions that went against it fell from 26 to 11 in 101
+  cases.
+- **Long sessions:** firing a rule again at the action cut violations from
+  10 to 3 out of 60.
+
+[docs/MEMORY_USE.md](docs/MEMORY_USE.md) has the method, the numbers and what
+didn't work.
+
 ### In Obsidian
 
 The [Obsidian plugin](clients/obsidian/) shows all of this where you already

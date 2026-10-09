@@ -166,6 +166,7 @@ var routeAccess = map[string]access{
 	"GET /api/complete":                                          scoped,
 	"GET /api/memory":                                            scoped,
 	"GET /api/memory/context":                                    scoped,
+	"GET /api/memory/cues":                                       scoped,
 	"GET /api/memory/export":                                     scoped, // every fact the caller may read
 	"GET /api/memory/changes":                                    scoped, // fact text, so the same filter as recall
 	"GET /api/memory/facets":                                     scoped, // scope names are drawn from facts
@@ -210,6 +211,9 @@ var routeAccess = map[string]access{
 
 	// --- writes and actions that need an account ---
 	"POST /api/memory": authed,
+	// Cues steer which memories reach agents, so adding one is a write like
+	// remember; cueTargetItem refuses targets the caller cannot read.
+	"POST /api/memory/cues": authed,
 	// Vouching for a pulled note rewrites its frontmatter, so it takes the
 	// note's own write check inside the handler as well.
 	"POST /api/stale/verify": authed,

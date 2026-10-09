@@ -107,6 +107,14 @@ var Fields = map[string]Field{
 	// facts from a real store and held up leave-one-out (log loss 0.60 raw,
 	// 0.36 calibrated). "1,0" turns calibration off.
 	"decision_calibration": {"GRIMOIRE_DECISION_CALIBRATION", "1.837,-2.493"},
+	// Re-tell judge: a typed-decision model asked whether a prompt restates a
+	// memory on file, so the prompt before it can be learned as that memory's
+	// cue (docs/MEMORY_USE.md). Off when retell_url is empty. The key falls back
+	// to the vault's 'retell-api-key', then to the decision key.
+	"retell_url":       {"GRIMOIRE_RETELL_URL", ""},
+	"retell_model":     {"GRIMOIRE_RETELL_MODEL", "jev-latest"},
+	"retell_api_key":   {"GRIMOIRE_RETELL_API_KEY", ""},
+	"retell_threshold": {"GRIMOIRE_RETELL_THRESHOLD", "0.9"},
 	// Optional: an agent's per-project directory (e.g. ~/.claude/projects) and
 	// the memory directory every project is meant to share. When both are
 	// set, a dream reports projects whose memory/ is a separate real
