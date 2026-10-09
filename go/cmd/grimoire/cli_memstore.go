@@ -27,7 +27,7 @@ const memoryUsage = `usage:
   grimoire memory index [--dir STORE] [--write] [--budget BYTES]
   grimoire memory core [--budget BYTES] [--format md|text]
   grimoire memory impact [--since 90d] [--agent NAME] [--min N] [--json]
-  grimoire memory impact --retells [--cutoff 2026-10-09] [--budget 2000] [--since D] [--json]
+  grimoire memory impact --retells [--cutoff 2026-10-09] [--budget 2000] [--since D] [--all-sessions] [--json]
 
 A directory memory (Claude Code's memory/) becomes a symlink to the store; a
 single file (AGENTS.md, GEMINI.md) gets a managed block holding the core.
@@ -335,6 +335,9 @@ func memoryImpactCmd(e *env, args []string) int {
 	retells := hasFlag(args, "--retells")
 	if retells {
 		q.Set("retells", "1")
+		if hasFlag(args, "--all-sessions") {
+			q.Set("all", "1")
+		}
 		for flag, param := range map[string]string{"--cutoff": "cutoff", "--budget": "budget"} {
 			if v := flagOr(args, flag, ""); v != "" {
 				q.Set(param, v)

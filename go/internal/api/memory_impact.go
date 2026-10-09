@@ -29,7 +29,9 @@ import (
 //	           strict lexical rule; cutoff= (default 2026-10-09, when injection
 //	           went live) splits BEFORE from AFTER; budget= caps new judge calls
 //	           (default 2000, beyond which a fixed sample is judged). Judged
-//	           pairs are cached in .grimoire/retell-judged.jsonl.
+//	           pairs are cached in .grimoire/retell-judged.jsonl. Only sessions a
+//	           person drove count (no headless runs, benchmark harnesses, Lectern
+//	           workers, machine-written prompts); all=1 turns that off.
 //
 // Reading and parsing transcripts is the slow part, so a result is kept for
 // two minutes.
@@ -133,7 +135,7 @@ func (s *Server) memoryRetells(w http.ResponseWriter, r *http.Request, since tim
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	co := impact.CollectOptions{Home: home, Store: s.canonicalMemoryDir(), Since: since, Agent: q.Get("agent"), Now: time.Now()}
+	co := impact.CollectOptions{Home: home, Store: s.canonicalMemoryDir(), Since: since, Agent: q.Get("agent"), Now: time.Now(), AllSessions: q.Get("all") == "1"}
 	ro := impact.RetellOptions{Cutoff: cutoff, Budget: budget, CachePath: filepath.Join(s.Vault.Root, ".grimoire", "retell-judged.jsonl")}
 	if c := s.retellClient(); c != nil {
 		threshold := 0.9
@@ -155,7 +157,7 @@ func (s *Server) memoryRetells(w http.ResponseWriter, r *http.Request, since tim
 			return a.Noul >= threshold, nil
 		}
 	}
-	key := fmt.Sprintf("%s|%s|%v|%s|%s|%d|%s", home, co.Store, since, co.Agent, cutoffText, budget, ro.JudgeName)
+	key := fmt.Sprintf("%s|%s|%v|%s|%s|%d|%s|%v", home, co.Store, since, co.Agent, cutoffText, budget, ro.JudgeName, co.AllSessions)
 	retellCache.Lock()
 	defer retellCache.Unlock()
 	if retellCache.key != key || time.Since(retellCache.at) > 30*time.Minute {

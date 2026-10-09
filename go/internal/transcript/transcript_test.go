@@ -287,3 +287,15 @@ func TestFilesGlobAndReadAllSince(t *testing.T) {
 		t.Errorf("plain glob: %v", got)
 	}
 }
+
+func TestOriginAndHeadless(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "s.jsonl")
+	os.WriteFile(p, []byte(`{"type":"user","entrypoint":"sdk-cli","sessionId":"a","timestamp":"2026-09-30T10:00:00Z","message":{"content":"hello there my friend"}}`+"\n"), 0o600)
+	ss, err := ReadFile(Spec{Agent: "claude-code", Format: "claude-jsonl"}, p)
+	if err != nil || len(ss) != 1 || ss[0].Origin != "sdk-cli" || !HeadlessOrigin(ss[0].Origin) {
+		t.Fatalf("%v %+v", err, ss)
+	}
+	if HeadlessOrigin("cli") || HeadlessOrigin("") || HeadlessOrigin("vscode") || !HeadlessOrigin("exec") || !HeadlessOrigin("subagent") {
+		t.Error("headless set")
+	}
+}

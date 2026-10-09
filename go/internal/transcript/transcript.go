@@ -56,7 +56,12 @@ type Session struct {
 	End   time.Time
 	Model string
 	Path  string // the file (or database) it came from
-	Turns []Turn
+	// Origin says how the agent was started, where its transcript records it:
+	// Claude Code's `entrypoint` (cli = a person at a terminal; sdk-cli = `claude -p`
+	// or an SDK caller), Codex's source (cli, vscode, exec, subagent). Empty when
+	// the format does not say.
+	Origin string
+	Turns  []Turn
 }
 
 // Turn is one message or one tool call.
@@ -527,3 +532,17 @@ func (b *builder) result(id string, failed bool) {
 }
 
 func (b *builder) session() []Session { return []Session{b.s} }
+
+// HeadlessOrigin reports whether an Origin is a non-interactive run: `claude -p`
+// and SDK callers (sdk-*), `codex exec`, sub-agents and reviewers. An empty or
+// unknown origin is not treated as headless.
+func HeadlessOrigin(o string) bool {
+	if strings.HasPrefix(o, "sdk") {
+		return true
+	}
+	switch o {
+	case "exec", "subagent", "guardian_review", "mcp":
+		return true
+	}
+	return false
+}

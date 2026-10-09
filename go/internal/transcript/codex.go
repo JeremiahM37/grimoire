@@ -35,6 +35,13 @@ func readCodex(path string) ([]Session, error) {
 			if cwd := str(p, "cwd"); cwd != "" {
 				b.s.Cwd = cwd
 			}
+			// source is a string (cli, vscode, exec) or an object for a sub-agent;
+			// thread_source then says what kind (subagent, guardian_review).
+			if src := str(p, "source"); src != "" {
+				b.s.Origin = src
+			} else if ts := str(p, "thread_source"); ts != "" && ts != "user" {
+				b.s.Origin = ts
+			}
 		case "turn_context":
 			if m := str(p, "model"); m != "" {
 				b.s.Model = m

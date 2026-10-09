@@ -22,6 +22,9 @@ type CollectOptions struct {
 	Limit int           // rows returned, newest first (default 60)
 	Now   time.Time
 	Min   int // sessions per side (default 5)
+	// AllSessions keeps headless, benchmark and automated prompts in the
+	// re-tell series. Off by default: a re-tell needs a person who typed it.
+	AllSessions bool
 }
 
 // Collect reads the sessions of every agent whose profile has transcripts,
@@ -135,6 +138,7 @@ func Text(r Report) string {
 func RetellCollect(o CollectOptions, ro RetellOptions) (RetellReport, []error) {
 	profiles, errs := agentprofile.All(o.Home)
 	var prompts []Prompt
+	ex := newExclusions(!o.AllSessions)
 	for _, p := range profiles {
 		if p.Transcripts.Glob == "" || (o.Agent != "" && o.Agent != p.Name) {
 			continue
@@ -145,7 +149,9 @@ func RetellCollect(o CollectOptions, ro RetellOptions) (RetellReport, []error) {
 		}
 		ss, rerrs := transcript.ReadAll(transcript.Spec{Agent: p.Name, Format: p.Transcripts.Format, Glob: p.Transcripts.Glob, Map: p.Transcripts.Map}, opt)
 		errs = append(errs, rerrs...)
-		prompts = append(prompts, PromptsOf(ss)...)
+		ps, pe := PromptsOfInteractive(ss, !o.AllSessions)
+		prompts = append(prompts, ps...)
+		ex.Merge(pe)
 	}
 	var notes []NoteText
 	if o.Store != "" {
@@ -156,5 +162,7 @@ func RetellCollect(o CollectOptions, ro RetellOptions) (RetellReport, []error) {
 			}
 		}
 	}
-	return Retells(prompts, notes, ro), errs
+	rep := Retells(prompts, notes, ro)
+	rep.Exclusions = ex
+	return rep, errs
 }

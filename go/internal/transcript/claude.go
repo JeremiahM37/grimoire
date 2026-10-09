@@ -17,6 +17,9 @@ func readClaude(path string) ([]Session, error) {
 		if typ != "user" && typ != "assistant" {
 			return
 		}
+		if ep := str(e, "entrypoint"); ep != "" && b.s.Origin == "" {
+			b.s.Origin = ep
+		}
 		if e["isMeta"] == true || e["isSidechain"] == true || e["isCompactSummary"] == true {
 			return
 		}

@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -101,6 +102,10 @@ type Phase struct {
 	Retells    float64 `json:"retells_estimated"`
 	PerHundred float64 `json:"retells_per_100_prompts"`
 	HeldThen   int     `json:"retells_where_memory_already_existed"`
+	// CI95Low/High: Wilson 95% interval on the per-100 rate, treating each prompt
+	// as one trial (re-tells found, scaled for any sampling, over prompts).
+	CI95Low  float64 `json:"ci95_low_per_100"`
+	CI95High float64 `json:"ci95_high_per_100"`
 }
 
 // RetellReport is the answer.
@@ -117,6 +122,8 @@ type RetellReport struct {
 	Before     Phase     `json:"before"`
 	After      Phase     `json:"after"`
 	Caveat     string    `json:"caveat"`
+	// Exclusions: what the interactive-only filter dropped, by rule.
+	Exclusions Exclusions `json:"exclusions"`
 }
 
 const retellCaveat = "Re-tells are found by a judge over (prompt, best-matching memory) pairs chosen by shared terms, so the rate is a floor: " +
@@ -302,10 +309,25 @@ func Retells(prompts []Prompt, notes []NoteText, o RetellOptions) RetellReport {
 	for _, ph := range []*Phase{&rep.Before, &rep.After} {
 		if ph.Prompts > 0 {
 			ph.PerHundred = round1(100 * ph.Retells / float64(ph.Prompts))
+			lo, hi := wilson(ph.Retells, float64(ph.Prompts))
+			ph.CI95Low, ph.CI95High = round2(100*lo), round2(100*hi)
 		}
 		ph.Retells = round1(ph.Retells)
 	}
 	return rep
+}
+
+// wilson is the 95% Wilson score interval for k successes in n trials.
+func wilson(k, n float64) (float64, float64) {
+	if n <= 0 {
+		return 0, 0
+	}
+	const z = 1.96
+	p := k / n
+	d := 1 + z*z/n
+	c := p + z*z/(2*n)
+	h := z * math.Sqrt(p*(1-p)/n+z*z/(4*n*n))
+	return math.Max(0, (c-h)/d), math.Min(1, (c+h)/d)
 }
 
 func clip(s string, n int) string {
@@ -397,6 +419,13 @@ func RetellText(r RetellReport) string {
 		r.Cutoff.Format("2006-01-02"), r.Before.Weeks, r.Before.Prompts, r.Before.Retells, r.Before.PerHundred, r.Before.HeldThen)
 	fmt.Fprintf(&b, "AFTER:  %d weeks, %d prompts, %.1f re-tells = %.1f per 100 prompts (%d where the memory already existed)\n",
 		r.After.Weeks, r.After.Prompts, r.After.Retells, r.After.PerHundred, r.After.HeldThen)
+	fmt.Fprintf(&b, "BEFORE 95%% interval: %.2f to %.2f per 100 prompts; AFTER: %.2f to %.2f\n", r.Before.CI95Low, r.Before.CI95High, r.After.CI95Low, r.After.CI95High)
+	if x := r.Exclusions; x.Enabled {
+		fmt.Fprintf(&b, "Interactive sessions only: %d of %d sessions kept (%d of %d prompts). Sessions excluded %v; their prompts %v; automated prompts excluded within kept sessions %v\n",
+			x.SessionsKept, x.SessionsSeen, x.PromptsKept, x.PromptsSeen, x.SessionsExcluded, x.PromptsInDropped, x.PromptsExcluded)
+	} else {
+		fmt.Fprintf(&b, "All sessions and prompts included (%d sessions, %d prompts); headless and automated ones are not filtered.\n", x.SessionsSeen, x.PromptsSeen)
+	}
 	fmt.Fprintf(&b, "(%d memories; %d judge calls made, %d from cache, %d errors; + = after the cutoff; *held = memory already existed at the time)\n",
 		r.Memories, r.JudgeCalls, r.CacheHits, r.Errors)
 	return b.String()
