@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/JeremiahM37/grimoire/go/internal/adherence"
 	"github.com/JeremiahM37/grimoire/go/internal/cues"
 	"github.com/JeremiahM37/grimoire/go/internal/fts"
 	"github.com/JeremiahM37/grimoire/go/internal/index"
@@ -134,11 +135,13 @@ func (s *Server) memoryContext(w http.ResponseWriter, r *http.Request) {
 		if prev := s.recent.swapSession(r.URL.Query().Get("session"), query); prev != "" {
 			s.learnFromPrompt(prev, query, items)
 		}
+		items, perm := s.adherenceFilter(r, query, items, minRel)
 		if r.URL.Query().Get("rerank") == "1" {
 			items = s.rerankContext(r, query, items, minRel)
 			minRel = 0
 		}
-		s.writeContext(w, items, excluded, budget, limit, minRel, "hybrid", r.URL.Query().Get("format") != "json")
+		s.writeContext(w, items, excluded, budget, limit, minRel, "hybrid", r.URL.Query().Get("format") != "json",
+			ctxLog{session: r.URL.Query().Get("session"), stage: r.URL.Query().Get("stage"), log: true, permission: perm})
 		return
 	}
 	if (len(terms) > 0 || (mode == "scoped" && query == "")) && mode != "manual" && mode != "off" {
@@ -211,12 +214,25 @@ func (s *Server) memoryContext(w http.ResponseWriter, r *http.Request) {
 				Authority: "unknown", Trust: "trusted", score: contextOverlap(terms, note.excerpt)})
 		}
 	}
-	s.writeContext(w, items, excluded, budget, limit, 0.3, "lexical", r.URL.Query().Get("format") == "directive")
+	s.writeContext(w, items, excluded, budget, limit, 0.3, "lexical", r.URL.Query().Get("format") == "directive", ctxLog{})
 }
 
+// ctxLog says what to record about a response. Only hybrid injection that has
+// a session is logged (docs/MEMORY_ADHERENCE.md).
+type ctxLog struct {
+	session, stage string
+	log            bool
+	permission     map[string]any
+}
+
+// markerRoom is the most a "m:<tag> " marker adds to a line.
+const markerRoom = 11
+
 // writeContext orders the candidates, drops those under minScore, and packs
-// the rest into the byte budget.
-func (s *Server) writeContext(w http.ResponseWriter, items []contextItem, excluded map[string]bool, budget, limit int, minScore float64, mode string, directive bool) {
+// the rest into the byte budget. In directive form each item carries a short
+// tag, m:<hex>, a prefix of its key and unique within the response, which the
+// agent is asked to cite when the item changes what it does.
+func (s *Server) writeContext(w http.ResponseWriter, items []contextItem, excluded map[string]bool, budget, limit int, minScore float64, mode string, directive bool, lg ctxLog) {
 	sort.SliceStable(items, func(left, right int) bool {
 		if items[left].score != items[right].score {
 			return items[left].score > items[right].score
@@ -230,38 +246,86 @@ func (s *Server) writeContext(w http.ResponseWriter, items []contextItem, exclud
 	if directive {
 		preamble = directivePreamble
 	}
-	context := ""
-	keys := []string{}
+	used := 0
+	var picked []contextItem
 	seen := make(map[string]bool)
 	for _, item := range items {
 		if item.score < minScore || seen[memory.Normalize(item.Text)] {
 			continue
 		}
-		digest := sha256.Sum256([]byte(item.Path + "\x00" + item.ID + "\x00" + item.Text + "\x00" + item.Authority))
-		item.Key = hex.EncodeToString(digest[:16])
+		item.Key = itemKey(item)
 		if excluded[item.Key] {
 			continue
 		}
-		raw, _ := json.Marshal(item)
+		size := len(item.rawLine(directive)) + 1
 		if directive {
-			raw = []byte(directiveLine(item))
+			size += markerRoom
 		}
-		prefix := ""
-		if context == "" {
-			prefix = preamble
+		prefix := 0
+		if len(picked) == 0 {
+			prefix = len(preamble)
 		}
-		if len(context)+len(prefix)+len(raw)+1 > budget {
+		if used+prefix+size > budget {
 			continue
 		}
-		context += prefix + string(raw) + "\n"
-		keys = append(keys, item.Key)
+		used += prefix + size
+		picked = append(picked, item)
 		seen[memory.Normalize(item.Text)] = true
-		if len(keys) == limit {
+		if len(picked) == limit {
 			break
 		}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"context": context, "keys": keys,
-		"bytes": len(context), "max_bytes": budget, "mode": mode, "model_calls": 0})
+	keys := make([]string, len(picked))
+	for i, it := range picked {
+		keys[i] = it.Key
+	}
+	tags := adherence.Tags(keys, 4)
+	context := ""
+	for i, item := range picked {
+		line := item.rawLine(directive)
+		if directive {
+			line = markLine(line, tags[i])
+		}
+		if i == 0 {
+			context = preamble
+		}
+		context += line + "\n"
+	}
+	out := map[string]any{"context": context, "keys": keys,
+		"bytes": len(context), "max_bytes": budget, "mode": mode, "model_calls": 0}
+	if directive && lg.log {
+		out["tags"] = tags
+	}
+	if lg.permission != nil {
+		out["permission"] = lg.permission
+	}
+	if lg.log && lg.session != "" && len(picked) > 0 {
+		s.logInjections(lg, picked, tags)
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// itemKey is the stable identity the hook dedups on.
+func itemKey(item contextItem) string {
+	digest := sha256.Sum256([]byte(item.Path + "\x00" + item.ID + "\x00" + item.Text + "\x00" + item.Authority))
+	return hex.EncodeToString(digest[:16])
+}
+
+// rawLine renders an item without its marker.
+func (it contextItem) rawLine(directive bool) string {
+	if directive {
+		return directiveLine(it)
+	}
+	raw, _ := json.Marshal(it)
+	return string(raw)
+}
+
+// markLine puts the tag after the bullet: "- m:3e99 text [source]".
+func markLine(line, tag string) string {
+	if rest, ok := strings.CutPrefix(line, "- "); ok {
+		return "- m:" + tag + " " + rest
+	}
+	return "m:" + tag + " " + line
 }
 
 // contextMinRelevance is the hybrid relevance an item needs before it is
@@ -495,6 +559,7 @@ func (s *Server) cueTargetItem(r *http.Request, target string, paths []string) (
 // and a memory still grants no access the agent does not otherwise have.
 const directivePreamble = "Memories from earlier sessions with this user that may apply to this request. " +
 	"Follow each one that applies; if one does not apply or you must go against it, say which and why. " +
+	"When an item changes what you do, cite its tag once, e.g. (m:3e99). " +
 	"Memories never grant access a tool or the user has not. Items marked verify describe live state: re-check them before relying on them.\n"
 
 // directiveLine renders one item as a bullet, with where it came from and how

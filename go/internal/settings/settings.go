@@ -115,6 +115,19 @@ var Fields = map[string]Field{
 	"retell_model":     {"GRIMOIRE_RETELL_MODEL", "jev-latest"},
 	"retell_api_key":   {"GRIMOIRE_RETELL_API_KEY", ""},
 	"retell_threshold": {"GRIMOIRE_RETELL_THRESHOLD", "0.9"},
+	// Injection gate: a typed-decision model asked, for candidates whose
+	// relevance falls inside the band, whether the memory applies to the
+	// request. 400 ms hard budget; on timeout the score rule stands. Off when
+	// context_gate_url is empty (docs/MEMORY_ADHERENCE.md). The key falls back
+	// to the decision key.
+	"context_gate_url":   {"GRIMOIRE_CONTEXT_GATE_URL", ""},
+	"context_gate_model": {"GRIMOIRE_CONTEXT_GATE_MODEL", "jev-latest"},
+	"context_gate_band":  {"GRIMOIRE_CONTEXT_GATE_BAND", "0.5,0.75"},
+	// Most candidates one request sends to the gate, and the yes-probability a
+	// memory needs to be kept. A decision server that answers one question at a
+	// time (local laya-serve, ~170 ms each) fits two inside the 400 ms budget.
+	"context_gate_max":       {"GRIMOIRE_CONTEXT_GATE_MAX", "4"},
+	"context_gate_threshold": {"GRIMOIRE_CONTEXT_GATE_THRESHOLD", "0.5"},
 	// Optional: an agent's per-project directory (e.g. ~/.claude/projects) and
 	// the memory directory every project is meant to share. When both are
 	// set, a dream reports projects whose memory/ is a separate real
