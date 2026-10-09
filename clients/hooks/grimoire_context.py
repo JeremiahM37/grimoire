@@ -126,6 +126,10 @@ def run(event, environment=None, fetch=fetch_context, now=None):
         if not isinstance(prompt, str) or len(prompt.encode()) > 8000:
             return None
         prompt = prompt.strip()
+        # Automated turns (background-task notifications, system reminders)
+        # arrive as prompts too; they are not requests and draw only noise.
+        if AUTOMATED_PROMPT.match(prompt):
+            return None
         if not prompt or re.fullmatch(
             r"(?:thanks?|thank you|ok(?:ay)?|yes|no|continue|proceed|hi|hello)[.!\s]*",
             prompt, flags=re.IGNORECASE,
@@ -168,6 +172,9 @@ def run(event, environment=None, fetch=fetch_context, now=None):
         }}
     finally:
         lock.rmdir()
+
+
+AUTOMATED_PROMPT = re.compile(r"\s*(\[SYSTEM NOTIFICATION|<task-notification>|<system-reminder>)", re.IGNORECASE)
 
 
 def rank_params(environment):
@@ -225,7 +232,13 @@ def action_context(event, environment, fetch, now, state, state_path, base, toke
     budget = max(128, min(4000, int(environment.get("GRIMOIRE_ACTION_MAX_BYTES", "1200"))))
     extra = rank_params(environment)
     if extra["rank"] == "hybrid":
-        extra["min_rel"] = environment.get("GRIMOIRE_ACTION_MIN_REL", "0.6")
+        # 0.7, not 0.6: at 0.6, 44% of off-target commands drew a reminder;
+        # at 0.7, 16%, for 3 points fewer right ones (docs/MEMORY_USE.md).
+        extra["min_rel"] = environment.get("GRIMOIRE_ACTION_MIN_REL", "0.7")
+        # A file path is topical: every file in a repo resembles every memory
+        # about that repo. Edits need a near-exact match (4% off-target at 0.8).
+        if tool not in {"Bash", "Agent", "Task"}:
+            extra["min_rel"] = environment.get("GRIMOIRE_EDIT_MIN_REL", "0.8")
     extra.update({"limit": 2, "stage": "action"})
     result = fetch(base, token, query, list(recent)[-128:], budget, mode, paths, extra)
     context = result.get("context", "")

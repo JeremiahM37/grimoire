@@ -135,7 +135,7 @@ def test_action_stage_queries_the_pending_command(environment):
     assert out["hookSpecificOutput"]["hookEventName"] == "PreToolUse"
     assert seen["query"] == "Bash systemctl restart kestrel"
     assert seen["extra"]["stage"] == "action" and seen["extra"]["limit"] == 2
-    assert seen["extra"]["min_rel"] == "0.6" and seen["budget"] == 1200
+    assert seen["extra"]["min_rel"] == "0.7" and seen["budget"] == 1200
 
 
 def test_action_stage_repeats_only_after_its_ttl(environment):
@@ -174,3 +174,22 @@ def test_subagent_launch_is_matched_on_purpose_and_model(environment):
     assert hook.run(tool_event("Agent", launch), environment, fetch, now=100)
     assert seen["query"].startswith("Agent launch subagent general-purpose model opus survey the repo")
     assert len(seen["query"]) < 500
+
+
+@pytest.mark.parametrize("prompt", ["[SYSTEM NOTIFICATION - NOT USER INPUT] task done",
+                                    "<task-notification><task-id>x</task-id></task-notification>"])
+def test_automated_turns_draw_no_context(environment, prompt):
+    def unexpected(*args):
+        pytest.fail("unnecessary request")
+    assert hook.run(event(prompt), environment, unexpected) is None
+
+
+def test_edits_need_a_closer_match_than_commands(environment):
+    seen = {}
+
+    def fetch(base, token, query, excluded, budget, mode, paths, extra=None):
+        seen["min_rel"] = extra["min_rel"]
+        return {"context": "", "keys": []}
+
+    hook.run(tool_event("Edit", {"file_path": "/project/main.go"}), environment, fetch, now=100)
+    assert seen["min_rel"] == "0.8"
