@@ -301,6 +301,8 @@ var routeAccess = map[string]access{
 	"DELETE /api/grants/{token}":                 admin,
 	"GET /api/audit":                             admin,
 	"POST /api/reindex":                          admin,
+	"POST /api/dream":                            admin,
+	"GET /api/dream":                             admin,
 	"GET /api/settings":                          admin,
 	"PUT /api/settings":                          admin,
 	"GET /api/users":                             admin,

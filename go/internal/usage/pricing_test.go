@@ -138,3 +138,16 @@ func TestCostArithmetic(t *testing.T) {
 		t.Errorf("half the tokens cost %v, want 9", half)
 	}
 }
+
+func TestJevIsPricedOnInputOnly(t *testing.T) {
+	if p := ProviderFor("openai", "https://api.typesafe.ai"); p != TypeSafe {
+		t.Fatalf("api.typesafe.ai → %s", p)
+	}
+	cost, known := Cost(TypeSafe, "jev-1.13.0", 1_000_000, 50_000)
+	if !known || cost < 0.0419 || cost > 0.0421 {
+		t.Errorf("a million input tokens of jev = %v (known %v), want $0.042", cost, known)
+	}
+	if !Laya.Local() {
+		t.Error("laya-serve is not booked as local")
+	}
+}

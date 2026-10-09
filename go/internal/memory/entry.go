@@ -94,6 +94,27 @@ type Entry struct {
 	// that the deploy key is X" exploits.
 	Origin string
 
+	// Freshness — see fresh.go. Fresh is the declared tier ("stable",
+	// "volatile", a TTL like "7d", or empty for the learned rate), Check how
+	// to verify the value, Verified the last time an agent confirmed it.
+	// Changes and Verifies count what the fact's history has shown, and Since
+	// is when its first version was written; a replacement inherits all of
+	// them, so a fact that keeps changing keeps the evidence that it does.
+	Fresh string
+	Check string
+	// Vol is a decision model's probability that the fact describes state
+	// that changes, 0.01..1; 0 means nobody asked, and the text's shape
+	// decides the prior instead.
+	Vol float64
+	// PriorRate is the fact's own starting change rate, changes per day,
+	// from a decision model's estimate of how fast it changes (see
+	// fresh.go PriorFromDecision). 0 means the class rate applies.
+	PriorRate float64
+	Verified  string
+	Changes   int
+	Verifies  int
+	Since     string
+
 	// Line is the 0-based index of this entry's bullet in the note body. It is
 	// a parse artifact, not persisted state: it exists so a rewrite can put an
 	// edited entry back where it came from.
@@ -301,6 +322,26 @@ func parseTrailer(s string) Entry {
 			e.Human = v == "human"
 		case "chal":
 			e.Challenges = v
+		case "fresh":
+			e.Fresh = v
+		case "check":
+			e.Check = v
+		case "ver":
+			e.Verified = v
+		case "nc":
+			e.Changes = atoiSafe(v)
+		case "nv":
+			e.Verifies = atoiSafe(v)
+		case "since":
+			e.Since = v
+		case "pr":
+			if f, err := strconv.ParseFloat(v, 64); err == nil && f > 0 && f <= 24 {
+				e.PriorRate = f
+			}
+		case "vol":
+			if f, err := strconv.ParseFloat(v, 64); err == nil && f > 0 && f <= 1 {
+				e.Vol = f
+			}
 		}
 	}
 	return e
@@ -376,6 +417,30 @@ func (e Entry) trailer() string {
 	}
 	if e.SupersededAt != "" {
 		fields = append(fields, "supat="+escapeField(e.SupersededAt))
+	}
+	if e.Fresh != "" {
+		fields = append(fields, "fresh="+escapeField(e.Fresh))
+	}
+	if e.Check != "" {
+		fields = append(fields, "check="+escapeField(e.Check))
+	}
+	if e.Verified != "" {
+		fields = append(fields, "ver="+escapeField(e.Verified))
+	}
+	if e.Changes > 0 {
+		fields = append(fields, "nc="+strconv.Itoa(e.Changes))
+	}
+	if e.Verifies > 0 {
+		fields = append(fields, "nv="+strconv.Itoa(e.Verifies))
+	}
+	if e.Since != "" {
+		fields = append(fields, "since="+escapeField(e.Since))
+	}
+	if e.Vol > 0 {
+		fields = append(fields, "vol="+strconv.FormatFloat(e.Vol, 'f', 2, 64))
+	}
+	if e.PriorRate > 0 {
+		fields = append(fields, "pr="+strconv.FormatFloat(e.PriorRate, 'g', 3, 64))
 	}
 	return " <!--m " + strings.Join(fields, " ") + "-->"
 }

@@ -100,6 +100,9 @@ class Memory:
     unhelpful: int = 0
     score: float = 0.0
     scores: Mapping[str, float] = field(default_factory=dict)
+    #: Whether to re-check before relying on it: ``action`` is ``"use"`` or
+    #: ``"verify"``, ``check`` says how. See docs/FRESHNESS.md.
+    freshness: Mapping[str, Any] = field(default_factory=dict)
 
     @property
     def superseded(self) -> bool:
@@ -126,6 +129,7 @@ class Memory:
             unhelpful=int(raw.get("unhelpful", 0) or 0),
             score=float(raw.get("score", 0.0) or 0.0),
             scores=raw.get("scores") or {},
+            freshness=raw.get("freshness") or {},
         )
 
 
@@ -214,6 +218,8 @@ class Grimoire:
         immutable: bool = False,
         infer: bool = True,
         scope: str = "",
+        fresh: str = "",
+        check: str = "",
     ) -> Result:
         """Record a fact, reconciled against what is already known.
 
@@ -223,6 +229,10 @@ class Grimoire:
 
         ``scope`` bounds what this write may supersede — the default is the
         whole vault, ``"topic"`` / ``"session"`` / ``"agent"`` confine it.
+
+        ``fresh`` says how the fact goes stale — ``"stable"``, ``"volatile"``
+        or a re-check interval like ``"7d"`` — and ``check`` is the read-only
+        command or place that verifies it.
         """
         return _first_result(
             self.remember(
@@ -237,6 +247,8 @@ class Grimoire:
                 immutable=immutable,
                 infer=infer,
                 scope=scope,
+                fresh=fresh,
+                check=check,
             )
         )
 
@@ -245,7 +257,7 @@ class Grimoire:
         body: dict[str, Any] = {"text": text, "agent": kwargs.pop("agent", None) or self.agent}
         for key in (
             "topic", "task", "session", "category", "expires_in", "expires",
-            "scope",
+            "scope", "fresh", "check",
         ):
             value = kwargs.pop(key, "")
             if value:

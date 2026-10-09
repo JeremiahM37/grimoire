@@ -27,6 +27,7 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/connectors"
 	"github.com/JeremiahM37/grimoire/go/internal/crdtstore"
 	"github.com/JeremiahM37/grimoire/go/internal/documents"
+	"github.com/JeremiahM37/grimoire/go/internal/dream"
 	"github.com/JeremiahM37/grimoire/go/internal/history"
 	"github.com/JeremiahM37/grimoire/go/internal/identity"
 	"github.com/JeremiahM37/grimoire/go/internal/index"
@@ -83,6 +84,13 @@ type Server struct {
 	spaceAt      time.Time
 	spaceEnabled bool
 	spaceList    []auth.Space
+
+	// dreams: one at a time, and the last report for GET /api/dream.
+	dreamMu   sync.Mutex
+	dreamLast *dream.Report
+
+	// the store's learned change rates; see memory_fresh.go.
+	fresh freshCache
 }
 
 // Routes builds the mux. Specific paths are registered before the catch-all
@@ -143,6 +151,10 @@ func (s *Server) Routes() http.Handler {
 	s.metricsRoutes(mux)
 	s.bankRoutes(mux)
 	mux.HandleFunc("POST /api/reindex", s.adminOnly(s.reindex))
+	// Dreaming: a sweep over agent memory. Admin-only because the report is
+	// a map of where the vault's credentials and weak points are.
+	mux.HandleFunc("POST /api/dream", s.adminOnly(s.dreamNow))
+	mux.HandleFunc("GET /api/dream", s.adminOnly(s.dreamReport))
 	mux.HandleFunc("GET /api/aliases", s.aliases)
 	mux.HandleFunc("GET /api/notes", s.listNotes)
 	mux.HandleFunc("POST /api/notes", s.createNote)

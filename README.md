@@ -128,6 +128,35 @@ grimoire challenges --note memory/ops.md --concede ID  # the agent was right
 Hand edits need no marker: an entry's id is a hash of its own content, so text
 that changed after the id was minted is text another hand changed.
 
+### Memory that knows when to re-check
+
+A remembered port, version or deploy target goes stale silently. Each fact
+can carry a freshness tier (`stable`, `volatile`, or a re-check interval such
+as `7d`) and a check: the read-only command that verifies it. Untiered facts
+get a change rate learned from their own history. `recall` then marks each
+fact `use` or `verify`, so agents look up only the few facts that are likely
+to have changed, and they record what they found.
+
+On real agent transcripts, this served 2–3× fewer stale answers than a
+fixed re-check timer at the same lookup budget. A scheduled **dream** keeps
+the tiers honest from each fact's record, and it sweeps memory, including
+stored check commands, for secrets, injected instructions and dangerous
+commands. See [docs/FRESHNESS.md](docs/FRESHNESS.md) for the model, the
+numbers and their caveats.
+
+Most agent memory is prose about the state of work ("the suite passes",
+"the repo is at …"), and no text pattern can tell that kind of fact from a
+settled decision. Point `GRIMOIRE_DECISION_URL` at a typed-decision model and
+each untiered fact is asked once, when it is written. Two choices, both
+speaking the same wire format:
+[Jev](https://typesafe.ai), hosted, at about 1.5¢ per thousand facts; or
+[Laya](https://huggingface.co/convaiinnovations/laya), open-weight and run
+locally with `laya-serve`. Stock Laya is no better than chance at this
+question. Fine-tuned on about 900 labelled example facts (half an hour on a
+CPU), it matched Jev on a real store. Grimoire works without either.
+[docs/FRESHNESS.md](docs/FRESHNESS.md#decision-model) compares accuracy,
+speed and cost, and shows how to fine-tune.
+
 ### In Obsidian
 
 The [Obsidian plugin](clients/obsidian/) shows all of this where you already
@@ -201,7 +230,7 @@ Agents without a grant can *ask*; asking grants nothing.
 | | tools |
 |---|---|
 | **Credentials — use, never read** | **`use_credential`** · **`list_grants`** · **`request_credential`** · **`check_credential_request`** |
-| **Agent memory** | **`remember`** · **`recall`** · **`forget`** · **`memory_changes`** · **`memory_graph`** · **`memory_feedback`** · **`memory_scopes`** · **`consolidate_memory`** |
+| **Agent memory** | **`remember`** · **`recall`** · **`forget`** · **`memory_changes`** · **`memory_graph`** · **`memory_feedback`** · **`memory_scopes`** · **`consolidate_memory`** · **`dream`** |
 | **Memory banks** | **`retain`** · **`bank_recall`** · **`reflect`** · `bank_index` · `bank_timeline` · `bank_duplicates` · `bank_merge_duplicates` · `bank_get` · `list_banks` · `create_bank` · `bank_profile` · `list_bank_memories` · `get_bank_memory` · `delete_bank_memory` · `list_entities` · `list_bank_documents` · `get_bank_document` · `delete_bank_document` · `consolidate` · `list_observations` · `update_observation` · `list_mental_models` · `get_mental_model` · `create_mental_model` · `update_mental_model` · `delete_mental_model` · `refresh_mental_model` · `list_directives` · `create_directive` · `delete_directive` · `list_operations` · `get_operation` · `cancel_operation` · `list_bank_templates` · `import_bank_template` |
 | Knowledge | `search_notes` · `ask_notes` · `read_note` · `list_notes` · `backlinks` · `list_tags` · `stale_notes` |
 | Knowledge expansion | `query_knowledge` · `knowledge_graph` · `read_source` · `extract_relationships` · `list_documents` · `refresh_document` · `import_document` |
@@ -418,10 +447,10 @@ with its own provider, so it cannot know what your coding agent costs. What it
 reports exactly is the calls **it** made: answering, reranking, classifying, on
 a key you configured. Anything else would be invented.
 
-Seventeen providers are priced — OpenAI, Anthropic, Google, Groq, Together,
+Nineteen providers are priced — OpenAI, Anthropic, Google, Groq, Together,
 Fireworks, DeepSeek, Mistral, Perplexity, xAI, Cerebras, DeepInfra, Azure,
-OpenRouter — plus Ollama, LM Studio and vLLM, which are free because they run on
-your hardware. The provider is identified from the API base URL, not the
+OpenRouter, TypeSafe (Jev decisions) — plus Ollama, LM Studio, vLLM and Laya,
+which are free because they run on your hardware. The provider is identified from the API base URL, not the
 configured backend name, because pointing the OpenAI-compatible backend at Groq
 means Groq is billing you.
 

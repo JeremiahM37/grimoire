@@ -469,6 +469,20 @@ var addedColumns = []struct{ table, column, decl string }{
 	// The fact this one contradicts but was not allowed to supersede. Stored so
 	// open disagreements are a query rather than a walk of every memory note.
 	{"memory_entries", "challenges", "TEXT NOT NULL DEFAULT ''"},
+	// Freshness (memory/fresh.go): the declared tier, how to verify, the last
+	// confirmation, the fact's observed changes and confirmations, when its
+	// first version was written, and the shape class that sets its prior.
+	// Stored so recall can assess a fact without re-reading its note, and so
+	// the store's own change rate per class is one aggregate query.
+	{"memory_entries", "fresh", "TEXT NOT NULL DEFAULT ''"},
+	{"memory_entries", "chk", "TEXT NOT NULL DEFAULT ''"},
+	{"memory_entries", "verified", "TEXT NOT NULL DEFAULT ''"},
+	{"memory_entries", "nchange", "INTEGER NOT NULL DEFAULT 0"},
+	{"memory_entries", "nverify", "INTEGER NOT NULL DEFAULT 0"},
+	{"memory_entries", "since", "TEXT NOT NULL DEFAULT ''"},
+	{"memory_entries", "shape", "INTEGER NOT NULL DEFAULT 0"},
+	{"memory_entries", "vol", "REAL NOT NULL DEFAULT 0"},
+	{"memory_entries", "prate", "REAL NOT NULL DEFAULT 0"},
 	// Which agent read, as distinct from which account. On a single-user
 	// deployment there is no account, so without this the trail can say a
 	// restricted note was read and not by what — which is most of the question.

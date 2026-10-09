@@ -116,6 +116,16 @@ type memoryIn struct {
 	// because reconciliation ranked across everything the caller may read.
 	// One of: "" / "vault", "topic", "session", "agent".
 	Scope string `json:"scope"`
+
+	// Fresh declares how the fact goes out of date: "stable", "volatile", a
+	// re-check interval ("7d"), or empty to let the learned rate decide.
+	// Check says how to verify it — a command or a place to look. See
+	// memory/fresh.go and memory_fresh.go.
+	Fresh string `json:"fresh"`
+	Check string `json:"check"`
+
+	// inherit is the fact this write replaces, whose history it carries.
+	inherit *memory.Entry
 }
 
 // Reconciliation scopes.
@@ -208,6 +218,10 @@ func (s *Server) rememberOne(w http.ResponseWriter, r *http.Request, m memoryIn)
 	if !validScope(strings.TrimSpace(m.Scope)) {
 		writeErr(w, http.StatusBadRequest,
 			"scope must be one of vault, topic, session, agent")
+		return
+	}
+	if err := validateFresh(m); err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	expires, err := resolveExpiry(m.Expires, m.ExpiresIn)
@@ -304,6 +318,19 @@ func (s *Server) reconcileFact(w http.ResponseWriter, r *http.Request, rel, fact
 			writeErr(w, http.StatusConflict, "correction target changed; recall it again")
 			return memoryResult{}, errHandled
 		}
+		// Writing the same text back is how an agent reports a re-check that
+		// found the fact unchanged: a confirmation, not a new belief.
+		if isConfirmation(m, fact) {
+			if !s.requireWrite(w, r, normPath(target.Note)) {
+				return memoryResult{}, errHandled
+			}
+			if err := s.confirmFact(target, m); err != nil {
+				writeErr(w, statusForVaultErr(err), err.Error())
+				return memoryResult{}, errHandled
+			}
+			return memoryResult{Op: opVerified, ID: target.ID, Target: target.ID,
+				Text: target.Text, Path: target.Note, Why: "re-checked; still true"}, nil
+		}
 		decision = memory.DecideTarget(fact, strings.TrimSpace(m.Origin), m.Human, target.Entry)
 		if decision.Op == memory.OpUpdate {
 			return s.applySupersession(w, r, target, decision, fact, agent, task, m, expires, rel)
@@ -394,6 +421,8 @@ func (s *Server) applySupersession(w http.ResponseWriter, r *http.Request,
 
 	newID := ""
 	if d.Op == memory.OpUpdate {
+		old := target.Entry
+		m.inherit = &old
 		var err error
 		newID, err = s.appendEntry(w, r, rel, fact, agent, task, m, expires, "")
 		if err != nil {
@@ -411,10 +440,15 @@ func (s *Server) applySupersession(w http.ResponseWriter, r *http.Request,
 		writeErr(w, statusForVaultErr(err), err.Error())
 		return memoryResult{}, err
 	}
+	s.forgetPriors()
 	op := string(d.Op)
 	return memoryResult{Op: op, ID: newID, Text: d.Text, Target: target.ID,
 		Path: rel, Why: d.Why}, nil
 }
+
+// opVerified is the result of a write that re-checked a fact and found it
+// unchanged.
+const opVerified = "VERIFIED"
 
 // errHandled marks a path that has already written its own response.
 var errHandled = &handledError{}
@@ -443,6 +477,17 @@ func (s *Server) appendEntryChallenging(w http.ResponseWriter, r *http.Request, 
 		Immutable: m.Immutable, SupersededBy: supersededBy,
 		Origin: strings.TrimSpace(m.Origin), Human: m.Human,
 		Challenges: challenges,
+		Fresh:      memory.NormFresh(m.Fresh),
+		Check:      strings.TrimSpace(m.Check),
+	}
+	if m.inherit != nil {
+		inheritFreshness(&e, *m.inherit)
+	}
+	// A fact with no declared tier and no inherited verdict is the one whose
+	// prior a decision model can improve. Never for an untrusted fact: its
+	// text is someone else's, and is not sent to a third-party service.
+	if e.Fresh == "" && e.Vol == 0 && !e.Untrusted() {
+		e.Vol, e.PriorRate = s.askVolatility(fact)
 	}
 
 	existing, readErr := s.Vault.Read(rel)
@@ -598,6 +643,10 @@ type entryOut struct {
 	// authority reads as "unknown", and the whole point is that it is known.
 	Authority string `json:"authority"`
 
+	// Freshness says whether to re-check this fact before relying on it, and
+	// how. Present on current facts in recall and the briefing.
+	Freshness *memory.Assessment `json:"freshness,omitempty"`
+
 	// Why this fact was recalled, for the surface that has to justify it.
 	Scores *scoreBreakdown `json:"scores,omitempty"`
 }
@@ -678,7 +727,7 @@ func (s *Server) recall(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, entriesOut(hits, boolParam(r, "explain")))
+	writeJSON(w, http.StatusOK, s.assessHits(hits, entriesOut(hits, boolParam(r, "explain"))))
 }
 
 func boolParam(r *http.Request, name string) bool {
@@ -889,7 +938,7 @@ func (s *Server) briefing(w http.ResponseWriter, r *http.Request) {
 		"pinned":          dedupe(pinned),
 		"onboarding":      dedupe(onboarding),
 		"recent_memories": dedupe(recent),
-		"recent_facts":    entriesOut(facts, false),
+		"recent_facts":    s.assessHits(facts, entriesOut(facts, false)),
 		"belief_changes": map[string]any{
 			"window":    "7d",
 			"changed":   changed,

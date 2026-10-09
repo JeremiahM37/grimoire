@@ -92,6 +92,7 @@ changes its id. On a server from before these routes they reject with
 await g.add('the staging box is smaller', { session: 'run-42', category: 'infra' })
 await g.add('priya is on call', { expires_in: '72h' })
 await g.add('never touch prod', { immutable: true })
+await g.add('grimoire is build 1.4.0', { fresh: 'volatile', check: 'grimoire version' })
 
 await g.search('', { session: 'run-42' })
 await g.scopes()
