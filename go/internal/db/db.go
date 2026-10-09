@@ -298,6 +298,20 @@ CREATE TABLE IF NOT EXISTS connector_docs(
   hash TEXT, updated TEXT, PRIMARY KEY(connector, external_id)
 );
 CREATE INDEX IF NOT EXISTS idx_connector_docs_path ON connector_docs(path);
+-- Agent actions on connected sources: a queue the owner approves, and an audit
+-- trail. See internal/connectors/actions.go.
+CREATE TABLE IF NOT EXISTS source_actions(
+  id TEXT PRIMARY KEY, connector TEXT NOT NULL, action TEXT NOT NULL,
+  params TEXT NOT NULL DEFAULT '{}', summary TEXT DEFAULT '', agent TEXT DEFAULT '',
+  state TEXT NOT NULL, created TEXT, decided TEXT DEFAULT '', decided_by TEXT DEFAULT '',
+  note TEXT DEFAULT '', result TEXT DEFAULT '', error TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_source_actions_state ON source_actions(state, created);
+CREATE TABLE IF NOT EXISTS source_audit(
+  id INTEGER PRIMARY KEY, ts TEXT, connector TEXT, kind TEXT, op TEXT,
+  agent TEXT DEFAULT '', outcome TEXT DEFAULT '', detail TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_source_audit_conn ON source_audit(connector, op, ts);
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE IF NOT EXISTS grants(
   token TEXT PRIMARY KEY, secret TEXT, grantee TEXT, scope TEXT,

@@ -104,6 +104,9 @@ const usage = `grimoire — local-first AI-native notes
   grimoire secret import FILE.env     load KEY=value lines
   grimoire run NAME -- cmd            run cmd with the secret in its environment
   grimoire run --prefix NS -- cmd     …with everything under a namespace
+  grimoire connect PROVIDER [flags]   link google|microsoft|slack|github (OAuth or token; read-only by default; --allow gmail.create_draft,… opts in to actions)
+  grimoire sources                    connected sources and the agent actions enabled on each
+  grimoire actions [list|audit|approve ID|deny ID]   decide what agents asked to do
   grimoire user passwd NAME           change an account's password
   grimoire space add NAME PREFIX      create a shared space
   grimoire space list                 list spaces and their prefixes
@@ -139,6 +142,7 @@ func commands() map[string]func([]string) int {
 		"user":        cmdUser, "space": cmdSpace,
 		"secret": cmdSecret, "run": cmdRun,
 		"backup": cmdBackup, "restore": cmdRestore,
+		"connect": cmdConnect, "sources": cmdSources, "actions": cmdActions,
 		"audit": cmdAudit, "eval": cmdEval, "dream": cmdDream,
 	}
 }

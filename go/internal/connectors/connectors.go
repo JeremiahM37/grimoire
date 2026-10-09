@@ -41,6 +41,14 @@ type Document struct {
 	Author     string
 	// Extra frontmatter, e.g. channel, project, labels.
 	Meta map[string]string
+	// Own is set by a source only when it can SHOW the account owner wrote
+	// this document (mail they sent, a Drive file they own and last edited, an
+	// event they organise). On a connector configured trust=own, such a
+	// document is written as trusted and may feed recall and automatic
+	// injection; every other document from that connector stays untrusted.
+	// Most sources never set it: a Slack channel or an inbox is other
+	// people's text no matter whose account pulled it.
+	Own bool
 	// Readers are the source's own identities allowed to read this document —
 	// Slack user ids, Atlassian account ids. Empty means the source did not
 	// say, and the destination space decides. Non-empty NARROWS access: the
@@ -151,7 +159,9 @@ func Get(kind string) (Source, error) {
 func Kinds() []Kind {
 	out := make([]Kind, 0, len(registry))
 	for _, s := range registry {
-		out = append(out, s.Describe())
+		k := s.Describe()
+		k.Fields = append(append([]Field{}, k.Fields...), commonFields()...)
+		out = append(out, k)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Kind < out[j].Kind })
 	return out
@@ -170,7 +180,7 @@ func Validate(kind string, cfg Config) error {
 			return fmt.Errorf("%w: %s is required", ErrConfig, f.Label)
 		}
 	}
-	return nil
+	return validateCommon(kind, cfg)
 }
 
 // missing reports a configuration error for a required field.

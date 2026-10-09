@@ -157,6 +157,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/admin/reads/anomalies", s.readAnomalies)
 	s.authRoutes(mux)
 	s.connectorRoutes(mux)
+	s.sourceRoutes(mux)
 	s.webRoutes(mux)
 	s.metricsRoutes(mux)
 	s.bankRoutes(mux)

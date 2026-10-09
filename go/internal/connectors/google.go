@@ -26,7 +26,7 @@ func (gdrive) Describe() Kind {
 		Name: "Google Drive",
 		Help: "Pulls Docs (and any plain-text or markdown files) that changed since " +
 			"the last sync. Restrict it to a folder unless you mean the whole drive.",
-		SecretHelp: "An OAuth access token with drive.readonly scope, or a service " +
+		SecretHelp: "An OAuth token from `grimoire connect google` (drive.readonly), a raw access token, or a service " +
 			"account token. Service accounts see only what has been shared with them, " +
 			"which is usually what you want: share the folder with the account's email.",
 		Fields: []Field{
@@ -66,7 +66,7 @@ func (g gdrive) Fetch(ctx context.Context, in Input) (Page, error) {
 		"q":        {strings.Join(clauses, " and ")},
 		"orderBy":  {"modifiedTime"},
 		"pageSize": {strconv.Itoa(limit)},
-		"fields":   {"files(id,name,mimeType,modifiedTime,webViewLink,owners(displayName))"},
+		"fields":   {"files(id,name,mimeType,modifiedTime,webViewLink,ownedByMe,lastModifyingUser(me),owners(displayName))"},
 		// A drive that lives in a shared drive returns nothing without these,
 		// which reads as "the folder is empty" rather than as a missing flag.
 		"supportsAllDrives":         {"true"},
@@ -84,7 +84,11 @@ func (g gdrive) Fetch(ctx context.Context, in Input) (Page, error) {
 			MimeType     string `json:"mimeType"`
 			ModifiedTime string `json:"modifiedTime"`
 			WebViewLink  string `json:"webViewLink"`
-			Owners       []struct {
+			OwnedByMe    bool   `json:"ownedByMe"`
+			LastModifier struct {
+				Me bool `json:"me"`
+			} `json:"lastModifyingUser"`
+			Owners []struct {
 				DisplayName string `json:"displayName"`
 			} `json:"owners"`
 		} `json:"files"`
@@ -113,6 +117,9 @@ func (g gdrive) Fetch(ctx context.Context, in Input) (Page, error) {
 			Updated:    f.ModifiedTime,
 			Author:     author,
 			Meta:       map[string]string{"mime": f.MimeType, "source": "google-drive"},
+			// Yours only if you own it AND made the latest edit: a file you
+			// own that someone else last edited carries their text.
+			Own: f.OwnedByMe && f.LastModifier.Me,
 		})
 		if f.ModifiedTime > page.Cursor {
 			page.Cursor = f.ModifiedTime

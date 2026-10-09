@@ -127,6 +127,11 @@ func TestToolCallsHitTheExpectedEndpoints(t *testing.T) {
 		{"query_knowledge", map[string]any{"question": "where?", "limit": 3}, "POST /api/knowledge/query"},
 		{"read_source", map[string]any{"path": "docs/a.md"}, "GET /api/knowledge/source"},
 		{"list_documents", nil, "GET /api/documents"},
+		{"sources", nil, "GET /api/sources"},
+		{"source_search", map[string]any{"source": "s1", "query": "x"}, "POST /api/sources/s1/search"},
+		{"source_read", map[string]any{"source": "s1", "id": "i"}, "POST /api/sources/s1/read"},
+		{"source_act", map[string]any{"source": "s1", "action": "post_message", "params": map[string]any{"text": "x"}}, "POST /api/sources/s1/act"},
+		{"source_action_status", map[string]any{"id": "a1"}, "GET /api/sources/actions/a1"},
 		{"refresh_document", map[string]any{"path": "documents/a.md"}, "POST /api/documents/refresh"},
 	} {
 		seen = nil

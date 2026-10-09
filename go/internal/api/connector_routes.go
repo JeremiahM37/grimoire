@@ -259,6 +259,11 @@ func (s SecretsForConnectors) Get(name string) (string, error) {
 	return s.Server.Secrets.Get(name)
 }
 
+// Put lets the connectors package write back a refreshed OAuth token.
+func (s SecretsForConnectors) Put(name, value string, meta map[string]any) error {
+	return s.Server.Secrets.Put(name, value, meta)
+}
+
 // newConnectorID is random rather than a timestamp. Two connectors created in
 // the same nanosecond would have collided, and a sequential id is guessable —
 // which matters because the id is the whole of a run endpoint's address.

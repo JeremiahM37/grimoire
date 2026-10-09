@@ -680,6 +680,9 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 		return s.api("GET", "/api/secrets/requests/"+url.PathEscape(str(args, "id"))+
 			"?"+q.Encode(), nil)
 	default:
+		if r, handled, err := s.dispatchSources(name, args); handled {
+			return r, err
+		}
 		if r, handled, err := s.dispatchBank(name, args); handled {
 			return r, err
 		}

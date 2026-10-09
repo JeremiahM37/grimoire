@@ -130,6 +130,15 @@ var behaviour = map[string]annotations{
 	"use_credential":           {Title: "Use a credential", OpenWorldHint: true},
 	"request_credential":       {Title: "Ask for a credential"},
 	"check_credential_request": {Title: "Check a credential request", ReadOnlyHint: true, IdempotentHint: true},
+
+	// Connected sources. Searching and reading reach third-party systems with
+	// the owner's credentials (open-world); acting changes the outside world,
+	// so it is neither read-only nor idempotent.
+	"sources":              {Title: "List connected sources", ReadOnlyHint: true, IdempotentHint: true},
+	"source_search":        {Title: "Search a connected source", ReadOnlyHint: true, IdempotentHint: true, OpenWorldHint: true},
+	"source_read":          {Title: "Read from a connected source", ReadOnlyHint: true, IdempotentHint: true, OpenWorldHint: true},
+	"source_act":           {Title: "Act on a connected source", OpenWorldHint: true},
+	"source_action_status": {Title: "Check a source action", ReadOnlyHint: true, IdempotentHint: true},
 }
 
 func obj(props map[string]any, required ...string) map[string]any {
@@ -631,5 +640,5 @@ func Tools() []tool {
 				"id": strProp("the request id returned by request_credential"),
 			}, "id"),
 		},
-	}, append(bankTools(), bankReasoningTools()...)...))
+	}, append(append(bankTools(), bankReasoningTools()...), sourceTools()...)...))
 }

@@ -334,6 +334,15 @@ var routeAccess = map[string]access{
 	"PUT /api/connectors/{id}":                   admin,
 	"DELETE /api/connectors/{id}":                admin,
 	"POST /api/connectors/{id}/run":              admin,
+	"GET /api/sources":                           admin,
+	"POST /api/sources/{id}/search":              admin,
+	"POST /api/sources/{id}/read":                admin,
+	"POST /api/sources/{id}/act":                 admin, // queues; an admin approves
+	"GET /api/sources/actions/{id}":              admin,
+	"GET /api/source-actions":                    admin,
+	"POST /api/source-actions/{id}/approve":      admin, // executes the stored action
+	"POST /api/source-actions/{id}/deny":         admin,
+	"GET /api/source-audit":                      admin,
 	"POST /api/plugins/scaffold":                 admin,
 	"POST /api/plugins/{name}/enable":            admin,
 }

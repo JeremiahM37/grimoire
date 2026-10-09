@@ -256,3 +256,5 @@ that spend.
 Prices are a reference table checked on the date the API returns as
 `prices_updated`. Reconcile against your provider's invoice; providers change
 rates and negotiate them.
+
+Connected accounts (mail, calendar, Drive, Slack, GitHub) and the agent tools that use them: [CONNECTORS.md](CONNECTORS.md).

@@ -33,7 +33,9 @@ func (slack) Describe() Kind {
 			"member of each one — Slack returns not_in_channel otherwise, which " +
 			"is the most common reason a first sync comes back empty.",
 		SecretHelp: "A bot token (xoxb-…) with channels:history, groups:history " +
-			"and users:read. Create it at api.slack.com/apps → OAuth & Permissions.",
+			"and users:read, or a user token (xoxp-…) which also enables live search " +
+			"(search:read). Created at api.slack.com/apps → OAuth & Permissions; " +
+			"`grimoire connect slack` stores it in the vault.",
 		Fields: []Field{
 			{Name: "channels", Label: "Channel IDs", Required: true,
 				Placeholder: "C01234567, C89ABCDEF",
@@ -46,6 +48,10 @@ func (slack) Describe() Kind {
 					"sit in a Grimoire space with matching membership."},
 			{Name: "route_map", Label: "Folder per value",
 				Placeholder: "C0123=team/eng, C0456=hr"},
+			{Name: "post_channels", Label: "Channels agents may post to",
+				Placeholder: "C01234567",
+				Help: "Allowlist for the post_message agent action. Empty means any " +
+					"channel the token can reach — set this."},
 			{Name: "mirror_members", Label: "Mirror channel membership",
 				Placeholder: "no",
 				Help: "yes restricts each pulled conversation to the channel's own " +
