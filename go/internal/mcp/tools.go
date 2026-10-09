@@ -80,6 +80,7 @@ var behaviour = map[string]annotations{
 	"set_fact":           {Title: "Set an exact value", DestructiveHint: true, IdempotentHint: true},
 	"remember":           {Title: "Record a fact", DestructiveHint: true},
 	"consolidate_memory": {Title: "Consolidate memory", DestructiveHint: true},
+	"dream":              {Title: "Dream over memory"},
 	"memory_feedback":    {Title: "Rate a recalled fact", IdempotentHint: true},
 
 	// Retraction. The one tool whose whole purpose is removal.
@@ -538,6 +539,20 @@ func Tools() []tool {
 			InputSchema: obj(map[string]any{
 				"topic": strProp("consolidate only this memory topic (optional)"),
 				"path":  strProp("consolidate only this memory note (optional)"),
+			}),
+		},
+		{
+			Name: "dream",
+			Description: "Sweep all agent memory (memory notes, memory banks, file-based " +
+				"memory with a MEMORY.md index) for hygiene problems — duplicates, broken " +
+				"or truncated indexes, expired facts, unresolved challenges — and security " +
+				"problems: pasted credentials, injected instructions, hidden unicode. " +
+				"Returns findings, most severe first; credentials are always masked. With " +
+				"apply=true it also makes the mechanical, reversible fixes (index repair) " +
+				"and queues due bank consolidations; it never resolves anything that needs " +
+				"judgment. Needs the admin token.",
+			InputSchema: obj(map[string]any{
+				"apply": map[string]any{"type": "boolean", "description": "make mechanical fixes too (default false: report only)"},
 			}),
 		},
 		{

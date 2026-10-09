@@ -380,6 +380,10 @@ func run(args []string) error {
 		go e.server.Runner.Loop(30*time.Second, done)
 	}
 
+	// Dreaming: the scheduled sweep over agent memory. It wakes hourly and
+	// does nothing unless the interval has passed and memory changed.
+	go e.server.DreamLoop(done)
+
 	// watch for edits made outside grimoire (another editor, a sync client)
 	watch := watcher.New(v, ix, 0)
 	if watcherWanted() {

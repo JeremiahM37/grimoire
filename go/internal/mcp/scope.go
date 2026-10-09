@@ -54,6 +54,7 @@ var toolScope = map[string]string{
 	"memory_scopes":      oauth.ScopeMemory,
 	"forget":             oauth.ScopeMemory,
 	"consolidate_memory": oauth.ScopeMemory,
+	"dream":              oauth.ScopeMemory,
 
 	// Memory banks are agent memory too.
 	"retain":                oauth.ScopeMemory,

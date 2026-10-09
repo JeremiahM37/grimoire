@@ -104,6 +104,7 @@ const usage = `grimoire — local-first AI-native notes
   grimoire space member SPACE USER [--read]   grant access to a space
   grimoire backup [--out FILE]        archive the vault (notes, secrets, sync state)
   grimoire restore FILE [--into DIR]  restore an archive and rebuild the index
+  grimoire dream [--apply] [--json]   sweep agent memory (hygiene + security)
   grimoire audit [--denied] [--path P] [--user U] [--limit N]
                                       who opened which restricted document
   grimoire eval build|run|compare     measure retrieval on your own vault
@@ -132,7 +133,7 @@ func commands() map[string]func([]string) int {
 		"user":        cmdUser, "space": cmdSpace,
 		"secret": cmdSecret, "run": cmdRun,
 		"backup": cmdBackup, "restore": cmdRestore,
-		"audit": cmdAudit, "eval": cmdEval,
+		"audit": cmdAudit, "eval": cmdEval, "dream": cmdDream,
 	}
 }
 

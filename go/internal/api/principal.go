@@ -526,6 +526,8 @@ func adminSurface(path string) bool {
 		"/api/vault/", "/api/secrets", "/api/grants", "/api/audit",
 		"/api/connectors", "/api/users", "/api/spaces", "/api/keys",
 		"/api/reindex", "/api/settings", "/api/plugins/",
+		// the dream report maps where credentials sit in memory
+		"/api/dream",
 	} {
 		if strings.HasPrefix(path, p) {
 			return true

@@ -42,6 +42,33 @@ func luhn(digits string) bool {
 	return n >= 13 && sum%10 == 0
 }
 
+// cardPlausible is a Luhn pass from a number an issuer could have minted.
+// One random digit string in ten passes Luhn, and the strings a store is full
+// of are timestamps: 20260909-180115 is a valid "card" by checksum alone. Every
+// major network's numbers start 3-6, or 2221-2720 for Mastercard's 2-series,
+// which rules out every date this century.
+func cardPlausible(m string) bool {
+	var d []byte
+	for i := 0; i < len(m); i++ {
+		if m[i] >= '0' && m[i] <= '9' {
+			d = append(d, m[i])
+		}
+	}
+	if len(d) < 13 {
+		return false
+	}
+	switch d[0] {
+	case '3', '4', '5', '6':
+	case '2':
+		if p := string(d[:4]); p < "2221" || p > "2720" {
+			return false
+		}
+	default:
+		return false
+	}
+	return luhn(string(d))
+}
+
 func ibanValid(s string) bool {
 	s = strings.ReplaceAll(s, " ", "")
 	if len(s) < 15 || len(s) > 34 {
@@ -82,7 +109,7 @@ func ScreenPII(text string) (string, map[string]int) {
 	}
 	rep(piiEmail, "email", nil)
 	rep(piiIBAN, "iban", ibanValid)
-	rep(piiCard, "card", luhn)
+	rep(piiCard, "card", cardPlausible)
 	rep(piiSSN, "ssn", ssnPlausible)
 	rep(piiPhone, "phone", nil)
 	rep(piiAddr, "address", nil)

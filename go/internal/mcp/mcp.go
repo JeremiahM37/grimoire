@@ -630,6 +630,8 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 			body["path"] = p
 		}
 		return s.api("POST", "/api/memory/consolidate", body)
+	case "dream":
+		return s.api("POST", "/api/dream", map[string]any{"apply": boolean(args, "apply")})
 	case "list_grants":
 		return s.api("GET", "/api/grants", nil)
 	case "use_credential":

@@ -77,6 +77,22 @@ var Fields = map[string]Field{
 	// Background workers for memory-bank operations (async retain,
 	// consolidation, mental-model refresh). 0 turns them off.
 	"bank_workers": {"GRIMOIRE_BANK_WORKERS", "2"},
+	// Dreaming: the periodic offline pass over agent memory (hygiene and a
+	// security sweep). Hours between dreams; 0 turns the schedule off, and a
+	// dream still only runs when memory changed since the last one.
+	"dream_interval_hours": {"GRIMOIRE_DREAM_INTERVAL_HOURS", "24"},
+	// What a scheduled dream may change: "safe" applies mechanical, reversible
+	// fixes (index repair) and queues due bank consolidations; "off" only
+	// reports.
+	"dream_apply": {"GRIMOIRE_DREAM_APPLY", "safe"},
+	// Vault folder the dream report note is written to.
+	"dream_report_dir": {"GRIMOIRE_DREAM_REPORT_DIR", "Dreams"},
+	// Optional: an agent's per-project directory (e.g. ~/.claude/projects) and
+	// the memory directory every project is meant to share. When both are
+	// set, a dream reports projects whose memory/ is a separate real
+	// directory, since what is written there is invisible everywhere else.
+	"dream_projects_dir":     {"GRIMOIRE_DREAM_PROJECTS_DIR", ""},
+	"dream_canonical_memory": {"GRIMOIRE_DREAM_CANONICAL_MEMORY", ""},
 }
 
 // InternalFields are persisted in the same file and resolved the same way, but
