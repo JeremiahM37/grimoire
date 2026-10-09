@@ -45,8 +45,7 @@ export function MobileChrome(a: Actions) {
     {sheet === 'more' && <div className="modal sheet" id="more-sheet" role="dialog" aria-label="More" onMouseDown={e => e.currentTarget === e.target && close()}><div className="modal-box">
       <div className="sheet-grid">
         <button onClick={pick(a.daily)}><b>◈</b>Today</button>
-        <button onClick={pick(a.newNote)}><b>＋</b>New note</button>
-        <button onClick={pick(a.evidence)}><b>⌘</b>Evidence</button>
+        <button onClick={pick(a.evidence)}><b>❝</b>Evidence</button>
         <button onClick={pick(a.banks)}><b>▤</b>Banks</button>
         <button onClick={pick(a.vault)}><b>◇</b>Vault</button>
         <button onPointerDown={a.graphWarm} onClick={pick(a.graph)}><b>◉</b>Graph</button>
@@ -101,7 +100,7 @@ function useSheetSwipe() {
     let box: HTMLElement | null = null, y0 = 0, dy = 0;
     const start = (e: TouchEvent) => {
       box = null; if (innerWidth > 780) return;
-      const b = (e.target as Element).closest<HTMLElement>('.modal:not(#graph-modal):not(#banks-modal):not(#knowledge-modal):not(#canvas-view) > .modal-box'); if (!b) return;
+      const b = (e.target as Element).closest<HTMLElement>('.modal:not(#graph-modal):not(#banks-modal):not(#knowledge-modal):not(#canvas-view):not(#vault-modal):not(#ask-modal):not(#new-note-modal):not(#palette) > .modal-box'); if (!b) return;
       const t = e.touches[0]!; if (t.clientY - b.getBoundingClientRect().top > 44) return;
       box = b; y0 = t.clientY; dy = 0; b.style.transition = 'none';
     };

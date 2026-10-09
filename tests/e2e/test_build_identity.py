@@ -7,6 +7,7 @@ def test_running_build_is_visible(page, server):
     health = page.request.get(server + "/api/health").json()
     build = health["build"]
     expect(page.locator("#running-build")).to_contain_text(health["version"])
-    expect(page.locator("#running-build")).to_contain_text(build["revision"][:12] or "revision unknown")
-    label = "local changes" if build["modified"] is True else "clean" if build["modified"] is False else "build status unknown"
-    expect(page.locator("#running-build")).to_contain_text(label)
+    if build["modified"] is True:
+        expect(page.locator("#running-build")).to_contain_text("local changes")
+    # the footer shows only the version; "revision unknown" / "build status unknown" are not shown
+    expect(page.locator("#running-build")).not_to_contain_text("unknown")

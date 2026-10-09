@@ -1,5 +1,7 @@
 """Substrate trust surfaces in the browser: agent-memory provenance + badges,
 retrieval inspection, and the memory palette entry."""
+import re
+
 from conftest import answer_panel
 from playwright.sync_api import expect
 
@@ -18,7 +20,7 @@ def test_memory_note_shows_badge_and_provenance(page, server):
     page.reload()
     page.wait_for_selector("body[data-ready]", timeout=10000)
     # badge in the (memory/ folder of the) note list
-    folder = page.locator("details.folder", has_text="memory/")
+    folder = page.locator("details.folder").filter(has=page.locator("summary.folder-head", has_text=re.compile(r"^memory/?$")))
     expect(folder).to_be_visible(timeout=8000)
     expect(folder.locator(".mem-badge")).to_be_visible()
     # open it → provenance banner with the writing agent + history link

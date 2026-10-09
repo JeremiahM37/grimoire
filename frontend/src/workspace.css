@@ -36,12 +36,44 @@
 .react-app #side-head h1::before { content: ''; display: inline-block; width: 22px; height: 22px; margin-right: 9px; vertical-align: -4px; background: url('/icon.svg') center / contain no-repeat; }
 .react-app .note-search { margin: 0 14px 12px; }
 .react-app #search { font-size: 12px; padding: 10px 30px 10px 12px; border-radius: 7px; }
-.react-app .side-actions { display: grid; gap: 3px; padding: 0 14px 14px; }
+.react-app .side-actions { display: flex; flex-wrap: wrap; gap: 3px; padding: 2px 14px 14px; }
+/* Sidebar tool row: one line of icon buttons (tooltips + aria-labels carry the names). */
+.react-app .side-tool { flex: none; width: 30px; height: 30px; display: inline-grid; place-items: center; padding: 0; border: 0; border-radius: 8px;
+  background: transparent; color: var(--ink-soft); font: 500 15px/1 var(--sans); cursor: pointer; }
+.react-app .side-tool:hover { background: var(--hover); color: var(--ink); }
+.react-app .side-tool:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.react-app .side-tool.primary { background: var(--accent); color: #fff; font-size: 19px; }
+.react-app .side-tool.primary:hover { background: var(--accent); filter: brightness(1.1); color: #fff; }
 .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
 .react-app .btn { font-size: 13px; min-height: 36px; box-shadow: none; }
 .react-app #new-note { background: var(--accent); color: var(--paper); border-color: transparent; font-weight: 600; }
 .react-app .side-actions > .btn { background: transparent; border: 0; text-align: left; padding: 8px 10px; min-height: 34px; color: var(--ink-soft); }
 .react-app .side-actions > .btn:hover { background: var(--hover); color: var(--ink); }
+/* Editor header: title, a quiet status, then only the actions that matter. */
+.react-app #ed-head .ed-spacer { flex: 1; }
+.react-app #ed-head #save-state { font-size: 11px; color: var(--ink-soft); }
+.react-app #preview-toggle.ed-mode { flex: none; min-height: 28px; padding: 0 11px; border: 1px solid var(--line); border-radius: 999px;
+  background: var(--paper2); color: var(--ink-soft); font: 550 12.5px/1 var(--sans); cursor: pointer; }
+.react-app #preview-toggle.ed-mode:hover { color: var(--ink); border-color: var(--ink-soft); }
+.react-app #ai-btn { color: var(--accent); }
+.react-app .ed-more { position: relative; flex: none; display: inline-flex; }
+.react-app .ed-menu .mi { display: block; width: 100%; padding: 8px 14px; border: 0; background: none; color: inherit; font: inherit; font-size: 13.5px; text-align: left; white-space: nowrap; cursor: pointer; }
+.react-app .ed-menu .mi:hover:not(:disabled) { background: var(--accent); color: #fff; }
+.react-app .ed-menu .mi:disabled { opacity: .45; cursor: default; }
+.react-app .ed-menu .mi.danger { color: var(--danger); }
+.react-app .ed-menu .mi.danger:hover:not(:disabled) { background: var(--danger); color: #fff; }
+.react-app .ed-menu .mi.mob-only { display: none; }
+.react-app #outline .mi { display: block; width: 100%; padding: 8px 14px; border: 0; background: none; color: inherit; font: inherit; font-size: 13.5px; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.react-app #outline .mi:hover:not(.empty) { background: var(--accent); color: #fff; }
+/* Outline is a dropdown from the ⋯ menu: anchored under the header, not in the text flow. */
+.react-app #editor { position: relative; }
+@media (min-width: 781px) {
+  .react-app #outline { position: absolute; top: 68px; right: 16px; left: auto; bottom: auto; z-index: 45; min-width: 220px; max-width: min(320px, 60%); max-height: 60dvh; padding: 4px 0; box-shadow: var(--shadow); }
+}
+.react-app .ed-menu .mi-sep { height: 1px; margin: 4px 0; background: var(--line); }
+@media (min-width: 781px) {
+  .react-app .ed-more .ed-menu { position: absolute; top: calc(100% + 6px); right: 0; left: auto; bottom: auto; z-index: 45; min-width: 210px; padding: 4px 0; }
+}
 .workspace-label, .library-heading { font-size: 10px; font-weight: 650; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-soft); }
 .workspace-label { padding: 0 10px 6px; }
 .library-heading { display: flex; justify-content: space-between; padding: 13px 24px 8px; border-top: 1px solid var(--line); }
@@ -62,16 +94,24 @@
 .react-app .folder-head { padding: 12px 10px 6px; font-size: 11px; color: var(--ink-soft); }
 .react-app .folder-head::before { content: '›'; display: inline-block; margin-right: 8px; }
 .react-app details[open] > .folder-head::before { transform: rotate(90deg); }
-.react-app #side-foot { padding: 12px 18px; font-size: 10px; }
-.react-app #running-build { margin-top: 4px; font-size: 9px; opacity: .65; overflow-wrap: anywhere; }
+.react-app #side-foot { padding: 8px 18px 10px; font-size: 10px; }
+.react-app #running-build { font-size: 10px; color: var(--ink-soft); opacity: .7; overflow-wrap: anywhere; }
 .react-app #ed-head { min-height: 64px; padding: 12px 24px; gap: 10px; }
 .react-app #title { font: 550 16px/1.4 var(--sans); min-width: 0; }
 .react-app .icon { min-width: 30px; min-height: 30px; font-size: 15px; }
+/* Desktop has no formatting bar (Obsidian-style): Ctrl+B / Ctrl+I in the editor.
+   On phones the bar is shown docked above the keyboard while editing (mobile.css). */
+@media (min-width: 781px) { .react-app #ed-toolbar { display: none; } }
 .react-app #ed-toolbar { padding: 7px 24px; gap: 6px; background: var(--paper); }
 .react-app #content, .react-app #preview { padding: 32px clamp(24px, 6vw, 96px); }
+/* One vertical rhythm: 1.6 line-height everywhere, list items tighter than paragraphs. */
+.react-app .md { font-size: 15px; line-height: 1.6; }
+.react-app #preview .md { max-width: var(--readable-width); margin: 0 auto; }
+.react-app .md li { margin: .15em 0; }
+.react-app .md li > p { margin: 0; }
+.react-app .md ul, .react-app .md ol { margin: .45em 0; }
 .react-app #live-editor .cm-content { padding: 32px 0; }
-.react-app #live-editor .cm-scroller { padding: 0 clamp(24px, 6vw, 96px); }
-.react-app .md { font-size: 15px; line-height: 1.8; }
+.react-app #live-editor .cm-scroller { padding: 0 24px 0 0; }
 .react-app #note-connections { background: var(--paper); border-top: 1px solid var(--line); }
 .react-app #note-connections > summary { padding: 12px 24px; font-size: 11px; color: var(--ink-soft); }
 .workspace-empty { display: grid; place-items: center; padding: 32px; text-align: center; }
@@ -87,13 +127,13 @@
   .react-app #ed-toolbar { padding: 6px 12px; }
   .react-app #side-head { padding-top: calc(16px + env(safe-area-inset-top)); }
   .react-app #content, .react-app #preview { padding: 22px 18px; }
-  .react-app #live-editor .cm-scroller { padding: 0 18px; }
+  .react-app #live-editor .cm-scroller { padding: 0 18px 0 0; }
   .react-app .note-row { min-height: 48px; }
   .react-app .side-actions > .btn { min-height: 38px; }
   .workspace-empty { padding: 24px; }
   .workspace-empty h2 { font-size: 23px; }
 }
-.react-app #live-editor .cm-editor, .react-app #live-editor .cm-scroller { font-family: var(--sans); font-size: 15px; line-height: 1.8; }
+.react-app #live-editor .cm-editor, .react-app #live-editor .cm-scroller { font-family: var(--sans); font-size: 15px; line-height: 1.6; }
 .react-app .gr-h { font-weight: 650; letter-spacing: -.025em; }
 .react-app .md h1, .react-app .md h2, .react-app .md h3 { font-family: var(--sans); letter-spacing: -.025em; }
 @media (max-width: 780px) {

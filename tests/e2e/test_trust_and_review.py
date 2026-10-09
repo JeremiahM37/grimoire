@@ -8,6 +8,7 @@ else. A trust tier nobody can see in the app is a trust tier nobody acts on.
 The session vault is shared with the other e2e modules, so every note written
 here is namespaced and every assertion is scoped to it.
 """
+import re
 import urllib.request
 
 import pytest
@@ -79,7 +80,7 @@ def test_a_pulled_note_is_badged_in_the_list_before_you_open_it(page, server):
     page.reload()
     page.wait_for_selector("body[data-ready]", timeout=10000)
 
-    folder = page.locator("details.folder", has_text="pulled/")
+    folder = page.locator("details.folder").filter(has=page.locator("summary.folder-head", has_text=re.compile(r"^pulled/?$")))
     expect(folder).to_be_visible(timeout=8000)
     row = folder.locator(".note-row", has_text="Vendor thread")
     expect(row).to_be_visible(timeout=6000)
@@ -92,7 +93,7 @@ def test_opening_a_pulled_note_explains_what_that_means(page, server):
           {"origin": "connector:jira:E2E-1"})
     page.reload()
     page.wait_for_selector("body[data-ready]", timeout=10000)
-    page.locator("details.folder", has_text="pulled/").locator(
+    page.locator("details.folder").filter(has=page.locator("summary.folder-head", has_text=re.compile(r"^pulled/?$"))).locator(
         ".note-row", has_text="Banner probe").click()
 
     prov = page.locator("#provenance")
@@ -120,7 +121,7 @@ def test_vouching_promotes_the_note_and_clears_the_warning(page, server):
           {"origin": "connector:slack:C-VOUCH"})
     page.reload()
     page.wait_for_selector("body[data-ready]", timeout=10000)
-    page.locator("details.folder", has_text="pulled/").locator(
+    page.locator("details.folder").filter(has=page.locator("summary.folder-head", has_text=re.compile(r"^pulled/?$"))).locator(
         ".note-row", has_text="Vouch probe").click()
     expect(page.locator("#provenance")).to_contain_text("untrusted", timeout=6000)
 

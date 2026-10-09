@@ -1,5 +1,7 @@
 """Power features in the browser: version history modal, note composer
 (extract/merge), folder tree, outgoing links, slides, canvas."""
+import re
+
 from conftest import answer_panel, reload_ready
 from playwright.sync_api import expect
 
@@ -89,7 +91,7 @@ def test_folder_tree_groups_and_collapses(page, server):
             "body: JSON.stringify({path: p, title: t, body: 'x'})})", [path, title])
     page.goto(server)
     page.wait_for_selector("body[data-ready]", timeout=10000)
-    folder = page.locator("details.folder", has_text="projects/")
+    folder = page.locator("details.folder").filter(has=page.locator("summary.folder-head", has_text=re.compile(r"^projects/?$")))
     expect(folder).to_be_visible(timeout=8000)
     expect(folder.locator(".note-row", has_text="Alpha P")).to_be_visible()
     folder.locator("summary").click()      # collapse

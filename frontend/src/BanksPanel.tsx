@@ -55,6 +55,7 @@ export function BanksPanel({ request, close }: { request: Request; close: () => 
   const [bank, setBank] = useState<string>();
   const [tab, setTab] = useState<Tab>('playground');
   const [error, setError] = useState<unknown>();
+  const [creating, setCreating] = useState(false);
   const load = useCallback(() => api.list().then(setBanks).catch(setError), [api]);
   useEffect(() => { void load(); }, [load]);
   return <div id="banks-modal" className="modal" role="dialog" aria-label="Memory banks" onMouseDown={e => e.currentTarget === e.target && close()}>
@@ -64,7 +65,7 @@ export function BanksPanel({ request, close }: { request: Request; close: () => 
         <h2 id="banks-title">Memory banks</h2>
         <div className="banks-body"><ErrorText error={error} />
           <BankList banks={banks} select={id => { setBank(id); setTab('playground'); }} />
-          <CreateBank api={api} created={id => { void load(); setBank(id); setTab('profile'); }} />
+          {(creating || banks?.length === 0) ? <CreateBank api={api} created={id => { setCreating(false); void load(); setBank(id); setTab('profile'); }} /> : banks?.length ? <button id="banks-new" className="btn banks-new" onClick={() => setCreating(true)}>＋ New bank</button> : null}
         </div>
       </> : <>
         <div className="banks-head">

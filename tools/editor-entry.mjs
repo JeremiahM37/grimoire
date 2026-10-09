@@ -28,6 +28,7 @@ import { searchKeymap, highlightSelectionMatches, openSearchPanel } from "@codem
 const WIKILINK = /\[\[([^\[\]|]+?)(?:\|([^\[\]]+))?\]\]/g;
 const TAG = /(^|\s)#([A-Za-z][\w/-]*)/g;
 const HIGHLIGHT = /==([^=\n]+)==/g;
+const TASK_LINE = /^\s*[-*+]\s+\[[ xX]\]/;
 
 /* ------------------------------------------------------------- widget types */
 
@@ -47,6 +48,23 @@ class CheckboxWidget extends WidgetType {
 class HrWidget extends WidgetType {
   toDOM() { const hr = document.createElement("hr"); hr.className = "gr-hr"; return hr; }
 }
+
+/** The "•" that stands in for a "- " list marker on lines not being edited. */
+class BulletWidget extends WidgetType {
+  eq() { return true; }
+  toDOM() {
+    const dot = document.createElement("span");
+    dot.className = "gr-bullet";
+    dot.textContent = "•";
+    dot.setAttribute("aria-hidden", "true");
+    return dot;
+  }
+}
+
+/* Width reserved for a bullet or checkbox, and the indent added per nesting
+   level. Used for the hanging indent on inactive list lines (see CSS). */
+const LIST_MARK_EM = 1.5;
+const LIST_INDENT_EM = 1.6;
 
 class ImageWidget extends WidgetType {
   constructor(src, alt) { super(); this.src = src; this.alt = alt; }
@@ -117,13 +135,35 @@ function buildDecorations(view) {
         } else if (name === "Blockquote") {
           for (let l = doc.lineAt(node.from).number; l <= doc.lineAt(node.to).number; l++)
             widgets.push(Decoration.line({ class: "gr-quote" }).range(doc.line(l).from));
+        } else if (name === "ListMark") {
+          // Unordered items get a bullet (or, for tasks, the checkbox below) and
+          // a hanging indent per nesting level; ordered items keep their numbers.
+          const line = doc.lineAt(node.from);
+          const mark = doc.sliceString(node.from, node.to);
+          const bare = /^\s*$/.test(doc.sliceString(line.from, node.from));
+          if (!bare || !/^[-*+]$/.test(mark)) return;
+          if (touches(line.from, line.to)) return;          // raw "- " while editing
+          let depth = 0;
+          for (let p = node.node.parent; p; p = p.parent)
+            if (p.name === "BulletList" || p.name === "OrderedList") depth++;
+          const indent = (depth - 1) * LIST_INDENT_EM + LIST_MARK_EM;
+          widgets.push(Decoration.line({
+            class: "gr-li",
+            attributes: { style: `padding-left:${indent}em;text-indent:-${LIST_MARK_EM}em` },
+          }).range(line.from));
+          // tasks are replaced by TaskMarker below; plain items get a bullet
+          if (!TASK_LINE.test(line.text)) {
+            const gap = /^[ \t]*/.exec(line.text.slice(node.to - line.from))[0].length;
+            const to = node.to + Math.max(gap, 1);            // "-" plus all of its spaces
+            widgets.push(Decoration.replace({ widget: new BulletWidget() }).range(line.from, to));
+          }
         } else if (name === "TaskMarker") {
           const line = doc.lineAt(node.from);
           const checked = /x/i.test(doc.sliceString(node.from, node.to));
           if (!touches(line.from, line.to)) {
-            // swallow the leading "- " too — a task renders as just a checkbox
+            // swallow the leading "- " and indentation too — a task renders as just a checkbox
             const lead = line.text.match(/^(\s*)[-*]\s+/);
-            const from = lead ? line.from + lead[1].length : node.from;
+            const from = lead ? line.from : node.from;
             widgets.push(Decoration.replace({ widget: new CheckboxWidget(checked) })
               .range(from, node.to));
             if (checked)
@@ -256,6 +296,19 @@ function interactions(callbacks) {
   });
 }
 
+/** Ctrl/Cmd+B and +I: wrap the selection, or insert a placeholder and select it. */
+function wrapSelection(mark, placeholder) {
+  return (view) => {
+    const { from, to } = view.state.selection.main;
+    const text = view.state.sliceDoc(from, to) || placeholder;
+    view.dispatch({
+      changes: { from, to, insert: mark + text + mark },
+      selection: { anchor: from + mark.length, head: from + mark.length + text.length },
+    });
+    return true;
+  };
+}
+
 /* ------------------------------------------------------------- autocomplete */
 
 /**
@@ -351,6 +404,8 @@ export function createLiveEditor({ parent, doc = "", callbacks = {} }) {
         ...closeBracketsKeymap,
         { key: "Enter", run: insertNewlineContinueMarkup },
         { key: "Mod-s", run: () => { callbacks.onSave?.(); return true; } },
+        { key: "Mod-b", run: wrapSelection("**", "bold") },
+        { key: "Mod-i", run: wrapSelection("*", "italic") },
         indentWithTab,
         ...historyKeymap,
         ...searchKeymap,
