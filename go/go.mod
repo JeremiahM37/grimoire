@@ -1,6 +1,6 @@
 module github.com/JeremiahM37/grimoire/go
 
-go 1.26.6
+go 1.26.9
 
 require (
 	github.com/fsnotify/fsnotify v1.10.1
