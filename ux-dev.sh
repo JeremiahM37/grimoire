@@ -1,7 +1,7 @@
 #!/bin/bash
-# UX dev loop: rebuild frontend (+go if asked) and (re)start a scratch server on :$PORT
+# UX dev loop: rebuild frontend (+go if asked) and (re)start a scratch server on :$UX_PORT (default 9131)
 set -e
-PORT=${UX_PORT:-$PORT}
+PORT=${UX_PORT:-9131}
 VAULT=/mnt/bulk/grimoire-ux-vault-$PORT
 [ -d $VAULT ] || rsync -a --exclude .grimoire /mnt/bulk/grimoire-ux-vault/ $VAULT/
 cd "$(dirname "$0")"
