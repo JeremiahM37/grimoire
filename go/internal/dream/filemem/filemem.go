@@ -635,12 +635,3 @@ func joinRoot(root, name string) string {
 	}
 	return root + "/" + name
 }
-
-// excerpt shortens text for a finding without splitting a rune.
-func excerpt(text string, runes int) string {
-	if utf8.RuneCountInString(text) <= runes {
-		return text
-	}
-	r := []rune(text)
-	return string(r[:runes]) + "…"
-}

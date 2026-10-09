@@ -83,7 +83,7 @@ func TestFailuresAreErrorsNotGuesses(t *testing.T) {
 
 func TestErrorsNeverEchoTheKey(t *testing.T) {
 	c := server(t, func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "bad key "+strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "), 401)
+		http.Error(w, "bad key "+strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "), http.StatusUnauthorized)
 	})
 	c.APIKey = "sk-very-secret-value"
 	_, err := c.Ask(context.Background(), "x", map[string]Question{"c": {Type: Noul}})

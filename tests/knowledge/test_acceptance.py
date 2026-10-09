@@ -181,9 +181,12 @@ def test_document_import_refresh_and_update_is_incremental(knowledge_server):
 def _open_knowledge(page, base):
     page.goto(base + "/")
     page.wait_for_load_state("domcontentloaded")
-    if page.locator("#menu-open").is_visible():
-        page.locator("#menu-open").click()
-    page.locator("#knowledge-open").click()
+    # A phone has no sidebar toolbar: the explorer is under More in the tab bar.
+    if page.locator("#tabbar").is_visible():
+        page.locator("#tabbar").get_by_role("button", name="More").click()
+        page.locator("#more-sheet").get_by_role("button", name="Evidence").click()
+    else:
+        page.locator("#knowledge-open").click()
     expect(page.locator("#knowledge-modal")).to_be_visible(timeout=10000)
 
 

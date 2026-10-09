@@ -33,7 +33,7 @@ func TestLocalAPISelfAndCert(t *testing.T) {
 	pair := fakePair(t, "box.example.ts.net")
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Sec-Tailscale") != "localapi" {
-			http.Error(w, "no", 403)
+			http.Error(w, "no", http.StatusForbidden)
 			return
 		}
 		switch {
