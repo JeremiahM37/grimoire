@@ -136,3 +136,25 @@ func captureStderr(t *testing.T, f func()) string {
 	b, _ := io.ReadAll(r)
 	return string(b)
 }
+
+// EDITOR is a shell fragment, so arguments quoted inside it must survive: an
+// editor given `--tag "two words"` has to receive that as one argument, with
+// the note path after it.
+func TestEditKeepsQuotingInsideTheEditorVariable(t *testing.T) {
+	dir := vaultDir(t)
+	if _, code := runCmd(t, "new", "Quoted Editor", "body"); code != 0 {
+		t.Fatal("new failed")
+	}
+	script := filepath.Join(t.TempDir(), "tag-editor.sh")
+	body := "#!/bin/sh\n[ \"$1\" = --tag ] || exit 3\necho \"tagged: $2\" >> \"$3\"\n"
+	if err := os.WriteFile(script, []byte(body), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("VISUAL", script+` --tag "two words"`)
+	if _, code := runCmd(t, "edit", "Quoted Editor"); code != 0 {
+		t.Fatalf("edit exit %d", code)
+	}
+	if got := read(t, dir, "quoted-editor.md"); !strings.Contains(got, "tagged: two words") {
+		t.Fatalf("the quoted argument was split or lost:\n%s", got)
+	}
+}

@@ -39,9 +39,10 @@ func TestDidYouMeanSuggestsTheNearestCommand(t *testing.T) {
 	if !strings.Contains(stderr, `unknown command "serach" — did you mean "search"?`) {
 		t.Errorf("missing suggestion:\n%s", stderr)
 	}
-	// The existing guidance still follows the suggestion.
-	if !strings.Contains(stderr, "Try: ") {
-		t.Errorf("the Try: list was dropped:\n%s", stderr)
+	// A near miss is answered in one line: the full command list is for a word
+	// that resembles nothing.
+	if strings.Contains(stderr, "Try: ") || strings.Count(strings.TrimSpace(stderr), "\n") != 0 {
+		t.Errorf("a near miss should print only the suggestion:\n%s", stderr)
 	}
 }
 

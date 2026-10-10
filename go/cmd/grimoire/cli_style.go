@@ -4,6 +4,8 @@ import (
 	"os"
 	"strings"
 	"unicode/utf8"
+
+	"golang.org/x/term"
 )
 
 // Colour for the terminal commands, and nothing else.
@@ -27,7 +29,10 @@ func colourAllowed(f *os.File) bool {
 	if os.Getenv("NO_COLOR") != "" || os.Getenv("TERM") == "dumb" {
 		return false
 	}
-	return isTerminal(f)
+	// A real terminal, not merely a character device: /dev/null is one of
+	// those too, and escape codes written there are harmless but a redirect to
+	// any other device should stay plain.
+	return term.IsTerminal(int(f.Fd()))
 }
 
 // styled wraps s in an ANSI style when on is true, and returns it unchanged

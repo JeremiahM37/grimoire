@@ -213,8 +213,11 @@ func runCLI(args []string) (handled bool, code int) {
 			names = append(names, k)
 		}
 		sort.Strings(names)
+		// A near miss gets one line naming the command meant; only a word that
+		// resembles nothing gets the whole list.
 		if near := suggestCommand(args[0], commandWords()); near != "" {
-			fmt.Fprintf(os.Stderr, "unknown command %q — did you mean %q?\n", args[0], near)
+			fmt.Fprintf(os.Stderr, "unknown command %q — did you mean %q? (grimoire help lists them all)\n", args[0], near)
+			return true, 2
 		}
 		fmt.Fprintf(os.Stderr, "unknown command %q. Try: %s, serve\n",
 			args[0], strings.Join(names, ", "))

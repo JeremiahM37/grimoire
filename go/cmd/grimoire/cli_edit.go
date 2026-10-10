@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
@@ -15,15 +16,27 @@ import (
 // it back from disk. Sealed notes are refused, because the bytes on disk are
 // ciphertext and an editor would happily save a broken copy of them.
 
-// editorArgv picks the editor: $VISUAL, then $EDITOR, then vi. The variable may
-// carry arguments (EDITOR="code --wait"), so it is split on whitespace.
-func editorArgv() []string {
+// editorCommand builds the command that opens path in the user's editor:
+// $VISUAL, then $EDITOR, then vi.
+//
+// The variable is a shell fragment, not a program name: EDITOR="code --wait"
+// and EDITOR='emacsclient -a ""' are both normal. So it is handed to sh with
+// the path as a positional parameter, the way git runs an editor, which keeps
+// quoting inside the variable intact and the path itself out of the shell's
+// parsing. Windows has no sh to rely on, so there it is split on whitespace.
+func editorCommand(path string) (*exec.Cmd, string) {
+	editor := "vi"
 	for _, k := range []string{"VISUAL", "EDITOR"} {
-		if v := strings.Fields(os.Getenv(k)); len(v) > 0 {
-			return v
+		if v := strings.TrimSpace(os.Getenv(k)); v != "" {
+			editor = v
+			break
 		}
 	}
-	return []string{"vi"}
+	if runtime.GOOS == "windows" {
+		argv := strings.Fields(editor)
+		return exec.Command(argv[0], append(argv[1:], path)...), editor
+	}
+	return exec.Command("sh", "-c", editor+` "$@"`, "sh", path), editor
 }
 
 // resolveNote finds the note a user named: a vault path, a path without its
@@ -72,8 +85,7 @@ func editNote(e *env, rel string) int {
 	if err != nil {
 		return fail("%v", err)
 	}
-	argv := editorArgv()
-	cmd := exec.Command(argv[0], append(argv[1:], p)...)
+	cmd, editor := editorCommand(p)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	runErr := cmd.Run()
 	// Re-index even when the editor exits non-zero: many editors write the
@@ -82,7 +94,7 @@ func editNote(e *env, rel string) int {
 		return fail("%v", err)
 	}
 	if runErr != nil {
-		return fail("editor %q failed: %v", argv[0], runErr)
+		return fail("editor %q failed: %v", editor, runErr)
 	}
 	return 0
 }

@@ -166,22 +166,29 @@ func TestColourHelperHonoursNoColourAndNonTerminals(t *testing.T) {
 		t.Error("colour on a pipe")
 	}
 
-	// NO_COLOR and TERM=dumb both veto colour, even where it would be allowed.
-	// /dev/null is a character device, the same test isTerminal applies, so
-	// these two cases exercise only the environment checks.
+	// /dev/null is a character device but not a terminal: a redirect there gets
+	// plain text too.
 	null, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0)
 	if err != nil {
 		t.Skip("no /dev/null:", err)
 	}
 	defer null.Close()
-	t.Setenv("NO_COLOR", "1")
 	if colourAllowed(null) {
-		t.Error("NO_COLOR ignored")
+		t.Error("colour on /dev/null")
 	}
-	t.Setenv("NO_COLOR", "")
-	t.Setenv("TERM", "dumb")
-	if colourAllowed(null) {
-		t.Error("TERM=dumb ignored")
+}
+
+// The environment vetoes are checked before the terminal is consulted, so they
+// hold on a real terminal as well; a test has no terminal to prove that on, so
+// this pins the order instead.
+func TestColourEnvironmentVetoes(t *testing.T) {
+	for _, env := range [][2]string{{"NO_COLOR", "1"}, {"TERM", "dumb"}} {
+		t.Setenv("NO_COLOR", "")
+		t.Setenv("TERM", "xterm-256color")
+		t.Setenv(env[0], env[1])
+		if colourAllowed(os.Stdout) {
+			t.Errorf("%s=%s did not veto colour", env[0], env[1])
+		}
 	}
 }
 
