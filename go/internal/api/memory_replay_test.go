@@ -12,6 +12,7 @@ import (
 )
 
 func TestReplayTermsAndRelevanceMatchTheContextEndpoint(t *testing.T) {
+	t.Parallel()
 	for _, q := range []string{
 		"should I git push the kestrel repository",
 		"please can you help me fix the deploy of kestrel and kestrel",

@@ -52,6 +52,7 @@ func openChallenges(t *testing.T, h http.Handler) []map[string]any {
 }
 
 func TestARefusedSupersessionOpensAChallenge(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	contested(t, h)
 
@@ -70,6 +71,7 @@ func TestARefusedSupersessionOpensAChallenge(t *testing.T) {
 
 // Upholding retracts the agent's claim and leaves the person's standing.
 func TestUpholdingAChallengeRetractsTheAgentsClaim(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	note := contested(t, h)
 	open := openChallenges(t, h)
@@ -95,6 +97,7 @@ func TestUpholdingAChallengeRetractsTheAgentsClaim(t *testing.T) {
 // make the operator's first answer permanent, which is a worse failure than the
 // one it exists to fix.
 func TestConcedingLetsTheAgentsValueWin(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	note := contested(t, h)
 	open := openChallenges(t, h)
@@ -124,6 +127,7 @@ func TestConcedingLetsTheAgentsValueWin(t *testing.T) {
 }
 
 func TestResolutionMustBeUpholdOrConcede(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	note := contested(t, h)
 	open := openChallenges(t, h)
@@ -137,6 +141,7 @@ func TestResolutionMustBeUpholdOrConcede(t *testing.T) {
 // A challenge against a fact that is no longer standing is not a question any
 // more, and asking a person to rule on it would be asking about nothing.
 func TestAChallengeAgainstARetractedFactIsNotListed(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	note := contested(t, h)
 	open := openChallenges(t, h)

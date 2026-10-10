@@ -36,6 +36,7 @@ func ids(doc profileDoc) []string {
 }
 
 func TestProfileRanksHumanFactsFirstThenByImportance(t *testing.T) {
+	t.Parallel()
 	hits := []index.MemoryHit{
 		hit("agentLow", "the agent noted something minor", func(h *index.MemoryHit) { h.Importance = 2 }),
 		hit("agentHigh", "the build must stay green", func(h *index.MemoryHit) {
@@ -68,6 +69,7 @@ func TestProfileRanksHumanFactsFirstThenByImportance(t *testing.T) {
 }
 
 func TestProfileHonoursItsTokenBudgetAndKeepsHumanFactsFirst(t *testing.T) {
+	t.Parallel()
 	var hits []index.MemoryHit
 	hits = append(hits, hit("person", "I prefer short replies", func(h *index.MemoryHit) { h.Human = true }))
 	for i := 0; i < 60; i++ {
@@ -90,6 +92,7 @@ func TestProfileHonoursItsTokenBudgetAndKeepsHumanFactsFirst(t *testing.T) {
 }
 
 func TestProfileLeavesOutSupersededDisputedExpiredAndPulledFacts(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	old := now.Add(-time.Hour).In(time.Local).Format(memory.StampFormat)
 	hits := []index.MemoryHit{
@@ -140,6 +143,7 @@ func TestProfileLeavesOutSupersededDisputedExpiredAndPulledFacts(t *testing.T) {
 }
 
 func TestEveryProfileLineCitesAFactItSelected(t *testing.T) {
+	t.Parallel()
 	hits := []index.MemoryHit{
 		hit("a1", "first fact", nil),
 		hit("a2", "second fact", func(h *index.MemoryHit) { h.Human = true }),
@@ -156,6 +160,7 @@ func TestEveryProfileLineCitesAFactItSelected(t *testing.T) {
 }
 
 func TestProfileForAnAgentKeepsItsOwnFactsAndTheHumans(t *testing.T) {
+	t.Parallel()
 	hits := []index.MemoryHit{
 		hit("mine", "my own note", func(h *index.MemoryHit) { h.Agent = "claude-code" }),
 		hit("theirs", "another agent's note", func(h *index.MemoryHit) { h.Agent = "codex" }),
@@ -169,6 +174,7 @@ func TestProfileForAnAgentKeepsItsOwnFactsAndTheHumans(t *testing.T) {
 }
 
 func TestValidateCitationsRefusesUncitedAndForeignIDs(t *testing.T) {
+	t.Parallel()
 	allowed := map[string]bool{"abc": true, "def": true}
 	cases := []struct {
 		name, text string
@@ -190,6 +196,7 @@ func TestValidateCitationsRefusesUncitedAndForeignIDs(t *testing.T) {
 }
 
 func TestProfileCacheHitsUntilTheMemoryMoves(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "prefs", "text": "the team uses postgres", "agent": "probe"})
 
@@ -216,6 +223,7 @@ func TestProfileCacheHitsUntilTheMemoryMoves(t *testing.T) {
 }
 
 func TestProfileModelRewriteIsKeptOnlyWhenItsCitationsCheck(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	id := fmt.Sprint(remember(t, h, map[string]any{"topic": "prefs", "text": "the team uses postgres", "agent": "probe"})["id"])
 
@@ -250,6 +258,7 @@ func TestProfileModelRewriteIsKeptOnlyWhenItsCitationsCheck(t *testing.T) {
 }
 
 func TestProfileRejectsBadParameters(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	for _, path := range []string{
 		"/api/memory/profile?subject=stranger",

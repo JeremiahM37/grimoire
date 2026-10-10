@@ -9,6 +9,7 @@ import (
 )
 
 func TestBrowserTokenLoginDoesNotExposeToken(t *testing.T) {
+	t.Parallel()
 	s, _ := testServer(t)
 	s.AuthToken = "private-token"
 	h := s.Routes()
@@ -49,6 +50,7 @@ func TestBrowserTokenLoginDoesNotExposeToken(t *testing.T) {
 }
 
 func TestBrowserLoginRejectsLargeFormAndQueryOnlyToken(t *testing.T) {
+	t.Parallel()
 	s, _ := testServer(t)
 	s.AuthToken = "secret"
 	h := s.Routes()

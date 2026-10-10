@@ -23,6 +23,7 @@ type stubSettings map[string]string
 func (s stubSettings) Get(k string) string { return s[k] }
 
 func TestAskDoesNotDecomposeUnlessAsked(t *testing.T) {
+	t.Parallel()
 	var mu sync.Mutex
 	var prompts []string
 	llm := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

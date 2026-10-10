@@ -23,6 +23,7 @@ func seedNotes(t *testing.T, h http.Handler, n int, body string) {
 }
 
 func TestSmallCorpusIsReturnedWholeInsteadOfRanked(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	seedNotes(t, h, 12, "kestrel plumage notes about falconry and weather")
 
@@ -55,6 +56,7 @@ func TestSmallCorpusIsReturnedWholeInsteadOfRanked(t *testing.T) {
 }
 
 func TestCorpusOverBudgetFallsBackToRetrieval(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	seedNotes(t, h, 12, strings.Repeat("kestrel plumage falconry weather ", 40))
 
@@ -75,6 +77,7 @@ func TestCorpusOverBudgetFallsBackToRetrieval(t *testing.T) {
 // A budget of zero disables the shortcut entirely, which is how a deployment
 // that never wants to pay for whole-corpus context turns it off.
 func TestZeroBudgetAlwaysRetrieves(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	seedNotes(t, h, 5, "kestrel plumage")
 	var got struct {
@@ -89,6 +92,7 @@ func TestZeroBudgetAlwaysRetrieves(t *testing.T) {
 // The whole-corpus path bypasses ranking, and ranking is where the private
 // filter lived. This is the test that the shortcut did not open a hole.
 func TestWholeCorpusStillExcludesPrivateNotes(t *testing.T) {
+	t.Parallel()
 	srv, h := testServer(t)
 	seedNotes(t, h, 4, "kestrel plumage")
 	// written straight into the vault, the way an external editor or a sync
@@ -132,6 +136,7 @@ func TestWholeCorpusStillExcludesPrivateNotes(t *testing.T) {
 // the browser suite caught — asking about espresso returned an alphabetical
 // list of every note — expressed as a unit test.
 func TestExtractiveAskRanksEvenWhenTheCorpusFits(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	seedNotes(t, h, 12, "aardvark burrows and termite mounds")
 	do(t, h, "POST", "/api/notes", map[string]any{

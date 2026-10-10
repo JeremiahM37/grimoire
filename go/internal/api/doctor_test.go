@@ -30,6 +30,7 @@ func runDoctor(t *testing.T, h http.Handler) (string, map[string]Check) {
 }
 
 func TestDoctorPassesOnAHealthyInstance(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	status, checks := runDoctor(t, h)
 	if len(checks) < 5 {
@@ -51,6 +52,7 @@ func TestDoctorPassesOnAHealthyInstance(t *testing.T) {
 // The failure this command was written for: memory notes indexed, zero facts
 // queryable, everything else green. Observed on a real deployment.
 func TestDoctorCatchesUnqueryableMemory(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	if _, err := s.WriteNote("memory/2026-08-26.md",
 		"# Memory\n\n- **2026-08-26 09:00 · agent** — the deploy host is prod.example <!--m id=abc123abc123-->\n",
@@ -87,6 +89,7 @@ func TestDoctorCatchesUnqueryableMemory(t *testing.T) {
 // Files on disk that the index cannot see are invisible to search, and read to
 // a user as "the agent doesn't know that" rather than as a fault.
 func TestDoctorCatchesIndexDrift(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	if _, err := s.WriteNote("a.md", "# A\n\nbody\n", nil); err != nil {
 		t.Fatal(err)
@@ -115,6 +118,7 @@ func TestDoctorCatchesIndexDrift(t *testing.T) {
 // Every check must name a remedy when it is not ok, or it has moved the work
 // rather than done it.
 func TestEveryNonOKCheckOffersARemedy(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	if err := s.Index.DB.Exec("DELETE FROM notes"); err != nil {
 		t.Fatal(err)
@@ -131,6 +135,7 @@ func TestEveryNonOKCheckOffersARemedy(t *testing.T) {
 // in both states — including the ordinary one where it is off, since "off"
 // and "configured but never matching" are the two things an operator confuses.
 func TestDoctorReportsIdentityInBothStates(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 
 	_, checks := runDoctor(t, h)

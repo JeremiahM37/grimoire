@@ -38,6 +38,7 @@ func seedRunbook(t *testing.T, h http.Handler) {
 }
 
 func TestBookmarkANoteAHeadingASearchAndATag(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	seedRunbook(t, h)
 
@@ -71,6 +72,7 @@ func TestBookmarkANoteAHeadingASearchAndATag(t *testing.T) {
 }
 
 func TestBookmarksLiveInAnEditableNote(t *testing.T) {
+	t.Parallel()
 	// The reason they are not an index table: a bookmarks file that lived in
 	// the index would be lost on a reindex and would not reach the phone.
 	_, h := testServer(t)
@@ -91,6 +93,7 @@ func TestBookmarksLiveInAnEditableNote(t *testing.T) {
 }
 
 func TestBookmarkLabelsAreDerivedNotStored(t *testing.T) {
+	t.Parallel()
 	// A stored copy of a note's title goes stale silently when the note is
 	// renamed.
 	_, h := testServer(t)
@@ -110,6 +113,7 @@ func TestBookmarkLabelsAreDerivedNotStored(t *testing.T) {
 }
 
 func TestDuplicateBookmarkIsNotAddedTwice(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	seedRunbook(t, h)
 	addMark(t, h, "note", "Deploy Runbook")
@@ -123,6 +127,7 @@ func TestDuplicateBookmarkIsNotAddedTwice(t *testing.T) {
 }
 
 func TestRemoveBookmarkLeavesTheRestAlone(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	seedRunbook(t, h)
 	addMark(t, h, "note", "Deploy Runbook")
@@ -145,6 +150,7 @@ func TestRemoveBookmarkLeavesTheRestAlone(t *testing.T) {
 }
 
 func TestBookmarkValidation(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	for _, body := range []map[string]any{
 		{"kind": "everything", "target": "x"},
@@ -165,6 +171,7 @@ func TestBookmarkValidation(t *testing.T) {
 }
 
 func TestBookmarkToAMissingNoteIsKeptAsDangling(t *testing.T) {
+	t.Parallel()
 	// Same behaviour as an unresolved wiki-link: the bookmark stands, and says
 	// what it points at.
 	_, h := testServer(t)
@@ -179,6 +186,7 @@ func TestBookmarkToAMissingNoteIsKeptAsDangling(t *testing.T) {
 }
 
 func TestBookmarksRespectReaderLists(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	aliceKey := makeUser(t, s, h, "", "alice", "admin")
 	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
@@ -209,6 +217,7 @@ func TestBookmarksRespectReaderLists(t *testing.T) {
 }
 
 func TestBookmarkParsingIgnoresOtherLines(t *testing.T) {
+	t.Parallel()
 	// The file is a note, so a person will write in it.
 	_, h := testServer(t)
 	seedRunbook(t, h)

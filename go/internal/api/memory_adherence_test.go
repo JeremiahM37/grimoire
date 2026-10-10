@@ -59,6 +59,7 @@ func postOutcome(t *testing.T, h http.Handler, body map[string]any) map[string]a
 }
 
 func TestInjectedItemsCarryTagsAndJSONStaysUnchanged(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "kestrel", "text": pushRule})
 	out := ctxJSON(t, h, "should I git push the kestrel repository", "session", "sess-aaaa-1111")
@@ -78,6 +79,7 @@ func TestInjectedItemsCarryTagsAndJSONStaysUnchanged(t *testing.T) {
 }
 
 func TestOutcomeCitedFollowedViolatedIgnored(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	fillStore(t, h, 80) // rarity across the store needs a store
 	fact := remember(t, h, map[string]any{"topic": "kestrel", "text": pushRule})
@@ -162,6 +164,7 @@ func factCounts(t *testing.T, s *Server, fact map[string]any) [2]int {
 }
 
 func TestOutcomeValidatesInput(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	for _, b := range []map[string]any{
 		{"session": "x"}, {"session": "sess-dddd-4444", "cited": []string{"zz"}},
@@ -174,6 +177,7 @@ func TestOutcomeValidatesInput(t *testing.T) {
 }
 
 func TestRetellContradictsTheLatestInjection(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	fact := remember(t, h, map[string]any{"topic": "deploy", "text": releaseFact})
 	sess := "sess-eeee-5555"
@@ -191,6 +195,7 @@ func TestRetellContradictsTheLatestInjection(t *testing.T) {
 }
 
 func TestEnforceAskReturnsPermissionAtActionStage(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	fact := remember(t, h, map[string]any{"topic": "kestrel", "text": pushRule})
 	target := "fact:" + fact["id"].(string)
@@ -225,6 +230,7 @@ func TestEnforceAskReturnsPermissionAtActionStage(t *testing.T) {
 }
 
 func TestIgnoredInjectionsAreDownRankedForInjectionOnly(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	fillStore(t, h, 80)
 	remember(t, h, map[string]any{"topic": "zebra", "text": zebraFact})
@@ -272,6 +278,7 @@ func ctxGateServer(delay time.Duration, verdict float64, calls *atomic.Int32) *h
 }
 
 func TestGateDropsInBandRejectsAndFallsBackOnTimeout(t *testing.T) {
+	t.Parallel()
 	var calls atomic.Int32
 	srv := ctxGateServer(0, 0.1, &calls)
 	defer srv.Close()
@@ -319,6 +326,7 @@ func TestGateDropsInBandRejectsAndFallsBackOnTimeout(t *testing.T) {
 }
 
 func TestProposeChecksStoresSuggestionsNeverApplies(t *testing.T) {
+	t.Parallel()
 	var asked atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		asked.Add(1)
@@ -366,6 +374,7 @@ func fpItems(t *testing.T, out map[string]any) (map[string]any, []any, string) {
 }
 
 func TestContextCarriesSaltedFingerprintsNotText(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	fillStore(t, h, 80)
 	remember(t, h, map[string]any{"topic": "zebra", "text": zebraFact})
@@ -411,6 +420,7 @@ func TestContextCarriesSaltedFingerprintsNotText(t *testing.T) {
 }
 
 func TestSituationTokensAreNotFingerprints(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	fillStore(t, h, 80)
 	remember(t, h, map[string]any{"topic": "zebra", "text": zebraFact})
@@ -424,6 +434,7 @@ func TestSituationTokensAreNotFingerprints(t *testing.T) {
 }
 
 func TestOutcomeUsedUnknownAndLateUpgrade(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	fillStore(t, h, 80)
 	fact := remember(t, h, map[string]any{"topic": "zebra", "text": zebraFact})
@@ -476,6 +487,7 @@ func TestOutcomeUsedUnknownAndLateUpgrade(t *testing.T) {
 }
 
 func TestOutcomeFingerprintInputIsValidated(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	for _, fp := range []map[string]int{{"zz": 1}, {"3e99": 0}, {"3e99": 7}} {
 		if rec := do(t, h, "POST", "/api/memory/outcome", map[string]any{"session": "sess-fp00-0020", "fp": fp}); rec.Code != 400 {

@@ -40,6 +40,7 @@ var protectedRoutes = []struct {
 }
 
 func TestAuthTokenUnsetLeavesServerOpen(t *testing.T) {
+	t.Parallel()
 	// The documented default. Asserted so that adding the gate cannot silently
 	// become mandatory for existing deployments.
 	s, _ := testServer(t)
@@ -55,6 +56,7 @@ func TestAuthTokenUnsetLeavesServerOpen(t *testing.T) {
 }
 
 func TestAuthTokenRejectsMissingAndWrongCredentials(t *testing.T) {
+	t.Parallel()
 	s, _ := testServer(t)
 	s.AuthToken = "s3cret-token"
 	h := s.Routes()
@@ -91,6 +93,7 @@ func TestAuthTokenRejectsMissingAndWrongCredentials(t *testing.T) {
 }
 
 func TestAuthTokenAcceptsValidCredentials(t *testing.T) {
+	t.Parallel()
 	s, _ := testServer(t)
 	s.AuthToken = "s3cret-token"
 	h := s.Routes()
@@ -120,6 +123,7 @@ func TestAuthTokenAcceptsValidCredentials(t *testing.T) {
 // A ?token= is accepted once and promoted to a cookie, so the credential stops
 // travelling in URLs — where it would end up in proxy logs and Referer headers.
 func TestAuthTokenFromQueryIsPromotedToCookie(t *testing.T) {
+	t.Parallel()
 	s, _ := testServer(t)
 	s.AuthToken = "s3cret-token"
 	h := s.Routes()
@@ -149,6 +153,7 @@ func TestAuthTokenFromQueryIsPromotedToCookie(t *testing.T) {
 // Health stays open so an uptime check or proxy probe does not need the
 // credential. It must not become a way to learn anything else.
 func TestAuthTokenLeavesHealthOpen(t *testing.T) {
+	t.Parallel()
 	s, _ := testServer(t)
 	s.AuthToken = "s3cret-token"
 	rec := httptest.NewRecorder()
@@ -161,6 +166,7 @@ func TestAuthTokenLeavesHealthOpen(t *testing.T) {
 // The static console must be gated too: it is same-origin with the API, so
 // serving it unauthenticated hands an attacker the client for the API.
 func TestAuthTokenGatesTheConsole(t *testing.T) {
+	t.Parallel()
 	s, _ := testServer(t)
 	s.AuthToken = "s3cret-token"
 	s.WebDir = t.TempDir()
@@ -174,6 +180,7 @@ func TestAuthTokenGatesTheConsole(t *testing.T) {
 // The headers SECURITY.md promises are asserted here because two of them were
 // documented but not being sent at all.
 func TestSecurityHeadersArePresent(t *testing.T) {
+	t.Parallel()
 	s, _ := testServer(t)
 	rec := httptest.NewRecorder()
 	s.Routes().ServeHTTP(rec, httptest.NewRequest("GET", "/api/health", nil))
@@ -193,6 +200,7 @@ func TestSecurityHeadersArePresent(t *testing.T) {
 }
 
 func TestFrameOptionsOverride(t *testing.T) {
+	t.Parallel()
 	s, _ := testServer(t)
 	s.FrameOptions = "DENY"
 	rec := httptest.NewRecorder()
@@ -205,6 +213,7 @@ func TestFrameOptionsOverride(t *testing.T) {
 // The sync token authenticates a peer, and only a peer. Sharing a credential
 // with another machine must not also hand that machine the secret vault.
 func TestSyncTokenIsScopedToPeerRoutes(t *testing.T) {
+	t.Parallel()
 	s, _ := testServer(t)
 	s.AuthToken = "admin-token"
 	s.SyncToken = "peer-token"

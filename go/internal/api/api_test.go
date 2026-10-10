@@ -25,6 +25,28 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
 )
 
+// TestMain pins the vault clock once for the whole package. testServer used to
+// swap it per test, which made every test that built a server unsafe to run in
+// parallel; a test that needs another time still assigns vault.Now itself and
+// restores it, and stays serial.
+//
+// It also points HOME at a throwaway directory. Several handlers keep per-user
+// state under the home directory (rule outcomes, impact logs), so tests that
+// ran in parallel against the real one would read each other's sessions and
+// write into the developer's own home.
+func TestMain(m *testing.M) {
+	vault.Now = func() time.Time { return time.Date(2026, 8, 14, 9, 0, 0, 0, time.Local) }
+	home, err := os.MkdirTemp("", "grimoire-api-home-")
+	if err != nil {
+		panic(err)
+	}
+	os.Setenv("HOME", home)
+	os.Setenv("XDG_CONFIG_HOME", "")
+	code := m.Run()
+	os.RemoveAll(home)
+	os.Exit(code)
+}
+
 func testServer(t *testing.T) (*Server, http.Handler) {
 	t.Helper()
 	root := t.TempDir()
@@ -38,10 +60,6 @@ func testServer(t *testing.T) (*Server, http.Handler) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { database.Close() })
-
-	old := vault.Now
-	vault.Now = func() time.Time { return time.Date(2026, 8, 14, 9, 0, 0, 0, time.Local) }
-	t.Cleanup(func() { vault.Now = old })
 
 	vaultSecrets := secrets.New(gdir)
 	st := settings.New(gdir)
@@ -94,6 +112,7 @@ func decode(t *testing.T, w *httptest.ResponseRecorder, v any) {
 }
 
 func TestCreateReadUpdateDelete(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 
 	w := do(t, h, "POST", "/api/notes", map[string]any{
@@ -134,6 +153,7 @@ func TestCreateReadUpdateDelete(t *testing.T) {
 
 // An explicit path collision must be reported, not silently overwrite.
 func TestCreateRejectsDuplicatePath(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	body := map[string]any{"path": "dup.md", "body": "one"}
 	if w := do(t, h, "POST", "/api/notes", body); w.Code != http.StatusCreated {
@@ -146,6 +166,7 @@ func TestCreateRejectsDuplicatePath(t *testing.T) {
 
 // A title-derived slug collision auto-suffixes instead of failing.
 func TestCreateAutoSuffixesTitleCollision(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	for i := 0; i < 3; i++ {
 		w := do(t, h, "POST", "/api/notes", map[string]any{"title": "Meeting"})
@@ -170,6 +191,7 @@ func TestCreateAutoSuffixesTitleCollision(t *testing.T) {
 }
 
 func TestPinTogglesAndFloatsToTop(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	do(t, h, "POST", "/api/notes", map[string]any{"path": "a.md", "body": "a"})
 	do(t, h, "POST", "/api/notes", map[string]any{"path": "b.md", "body": "b"})
@@ -199,6 +221,7 @@ func TestPinTogglesAndFloatsToTop(t *testing.T) {
 }
 
 func TestRenameAndDuplicate(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	do(t, h, "POST", "/api/notes", map[string]any{"path": "orig.md", "body": "# Orig\n\nbody"})
 
@@ -220,6 +243,7 @@ func TestRenameAndDuplicate(t *testing.T) {
 }
 
 func TestSearchAndTagsAndGraph(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	do(t, h, "POST", "/api/notes", map[string]any{
 		"path": "gw.md", "body": "# Gateway\n\nthe api gateway listens on port 8443 #infra"})
@@ -250,6 +274,7 @@ func TestSearchAndTagsAndGraph(t *testing.T) {
 }
 
 func TestFactsAndTasksAndComplete(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	do(t, h, "POST", "/api/notes", map[string]any{
 		"path": "ops.md",
@@ -283,6 +308,7 @@ func TestFactsAndTasksAndComplete(t *testing.T) {
 }
 
 func TestTagRenameAcrossNotes(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	do(t, h, "POST", "/api/notes", map[string]any{"path": "x.md", "body": "# X\n\n#old and #older"})
 	do(t, h, "POST", "/api/notes", map[string]any{"path": "y.md", "body": "# Y\n\n#old"})
@@ -311,6 +337,7 @@ func TestTagRenameAcrossNotes(t *testing.T) {
 }
 
 func TestHistorySnapshotsAndRestores(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	do(t, h, "POST", "/api/notes", map[string]any{"path": "h.md", "body": "version one"})
 	// the update path snapshots the previous body automatically — that is what
@@ -349,6 +376,7 @@ func TestHistorySnapshotsAndRestores(t *testing.T) {
 // A version id becomes part of a filesystem path, so it must be validated
 // strictly rather than cleaned.
 func TestHistoryRejectsPathTraversalInVersionID(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	do(t, h, "POST", "/api/notes", map[string]any{"path": "h.md", "body": "x"})
 	// The property that matters: a traversal must never reach the filesystem
@@ -367,6 +395,7 @@ func TestHistoryRejectsPathTraversalInVersionID(t *testing.T) {
 }
 
 func TestMemoryRememberAndRecall(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	w := do(t, h, "POST", "/api/memory", map[string]any{
 		"text":  "the deploy service is owned by the platform team",
@@ -423,6 +452,7 @@ func TestMemoryRememberAndRecall(t *testing.T) {
 }
 
 func TestMemoryRejectsBadAgentName(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	w := do(t, h, "POST", "/api/memory", map[string]any{
 		"text": "x", "agent": "bad\nname<script>"})
@@ -435,6 +465,7 @@ func TestMemoryRejectsBadAgentName(t *testing.T) {
 }
 
 func TestDailyAndCapture(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	w := do(t, h, "GET", "/api/daily", nil)
 	if w.Code != http.StatusOK {
@@ -473,6 +504,7 @@ func TestDailyAndCapture(t *testing.T) {
 }
 
 func TestDailyRejectsBadDate(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	if w := do(t, h, "GET", "/api/daily?date=../escape", nil); w.Code != http.StatusBadRequest {
 		t.Errorf("bad date = %d, want 400", w.Code)
@@ -480,6 +512,7 @@ func TestDailyRejectsBadDate(t *testing.T) {
 }
 
 func TestSettingsRoundTrip(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	w := do(t, h, "GET", "/api/settings", nil)
 	if w.Code != http.StatusOK {
@@ -501,6 +534,7 @@ func TestSettingsRoundTrip(t *testing.T) {
 
 // The read surface must never serve a private note.
 func TestReadExcludesPrivateNotes(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	do(t, h, "POST", "/api/notes", map[string]any{
 		"path": "secret.md", "body": "classified",
@@ -516,6 +550,7 @@ func TestReadExcludesPrivateNotes(t *testing.T) {
 }
 
 func TestUnlinkedMentions(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	do(t, h, "POST", "/api/notes", map[string]any{"path": "Gateway.md", "body": "# Gateway\n\nthe thing"})
 	do(t, h, "POST", "/api/notes", map[string]any{"path": "mentions.md",
@@ -532,6 +567,7 @@ func TestUnlinkedMentions(t *testing.T) {
 }
 
 func TestEncryptDecryptRoundTrip(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	_ = s
 	if err := s.Secrets.Initialize("correct horse battery"); err != nil {
@@ -594,6 +630,7 @@ func TestEncryptDecryptRoundTrip(t *testing.T) {
 }
 
 func TestEncryptRequiresUnlockedVault(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	s.Secrets.Initialize("correct horse battery")
 	do(t, h, "POST", "/api/notes", map[string]any{"path": "x.md", "body": "x"})
@@ -604,6 +641,7 @@ func TestEncryptRequiresUnlockedVault(t *testing.T) {
 }
 
 func TestCRDTDocAndMerge(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	do(t, h, "POST", "/api/notes", map[string]any{"path": "shared.md", "body": "hello world"})
 
@@ -636,6 +674,7 @@ func TestCRDTDocAndMerge(t *testing.T) {
 
 // Merging into ciphertext would destroy the note.
 func TestCRDTRefusesEncryptedNotes(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	s.Secrets.Initialize("correct horse battery")
 	do(t, h, "POST", "/api/notes", map[string]any{"path": "enc.md", "body": "secret stuff"})
@@ -652,6 +691,7 @@ func TestCRDTRefusesEncryptedNotes(t *testing.T) {
 }
 
 func TestVaultAndGrantRoutes(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	w := do(t, h, "GET", "/api/vault/status", nil)
 	var st map[string]any
@@ -682,6 +722,7 @@ func TestVaultAndGrantRoutes(t *testing.T) {
 }
 
 func TestAttachAndServeFile(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	// write the attachment directly, then check it is served back
 	p, err := s.Vault.SafeRawPath("attachments/pic.png")
@@ -707,6 +748,7 @@ func TestAttachAndServeFile(t *testing.T) {
 }
 
 func TestCanvasCRUDAndValidation(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	good := map[string]any{
 		"nodes": []any{map[string]any{"id": "a", "type": "text", "text": "hi"}},
@@ -736,6 +778,7 @@ func TestCanvasCRUDAndValidation(t *testing.T) {
 }
 
 func TestExportVaultProducesAZip(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	do(t, h, "POST", "/api/notes", map[string]any{"path": "a.md", "body": "# A\n\nalpha"})
 	w := do(t, h, "GET", "/api/export/vault", nil)
@@ -753,6 +796,7 @@ func TestExportVaultProducesAZip(t *testing.T) {
 
 // A zip is untrusted input: "zip slip" entries must be refused, not cleaned.
 func TestImportRefusesZipSlip(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)

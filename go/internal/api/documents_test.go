@@ -8,6 +8,7 @@ import (
 )
 
 func TestListDocumentsDoesNotAppendUnreadableRecords(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	adminKey := makeUser(t, s, h, "", "admin", "admin")
 	bobKey := makeUser(t, s, h, adminKey, "bob", "member")

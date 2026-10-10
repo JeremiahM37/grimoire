@@ -11,6 +11,7 @@ import (
 )
 
 func TestSetFactUpdatesInPlaceThenAppends(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	do(t, h, "POST", "/api/notes", map[string]any{
 		"path": "ops.md", "body": "# Ops\n\n- port:: 8443\n\ntrailing prose\n"})
@@ -58,6 +59,7 @@ func TestSetFactUpdatesInPlaceThenAppends(t *testing.T) {
 }
 
 func TestSetFactValidates(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	do(t, h, "POST", "/api/notes", map[string]any{"path": "n.md", "body": "# N\n"})
 	for _, body := range []map[string]any{
@@ -76,6 +78,7 @@ func TestSetFactValidates(t *testing.T) {
 }
 
 func TestConsolidateMemoryDedupesWithoutAnLLM(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	// infer=false stores verbatim with no reconciliation, which is the only
 	// way a duplicate reaches the note now — reconciliation refuses to write
@@ -111,6 +114,7 @@ func TestConsolidateMemoryDedupesWithoutAnLLM(t *testing.T) {
 }
 
 func TestRememberRefusesToWriteADuplicateInTheFirstPlace(t *testing.T) {
+	t.Parallel()
 	// The behaviour consolidation used to clean up after: the same belief
 	// reported twice must not land twice.
 	_, h := testServer(t)
@@ -129,6 +133,7 @@ func TestRememberRefusesToWriteADuplicateInTheFirstPlace(t *testing.T) {
 }
 
 func TestConsolidateSnapshotsBeforeRewriting(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	do(t, h, "POST", "/api/memory", map[string]any{
 		"topic": "deploy", "text": "one", "agent": "a", "infer": false})
@@ -146,6 +151,7 @@ func TestConsolidateSnapshotsBeforeRewriting(t *testing.T) {
 }
 
 func TestAudioMemoSavesTheRecordingEvenWithoutTranscription(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 
 	var buf bytes.Buffer

@@ -19,6 +19,7 @@ func (noContextEmbedding) Signature() string { return "no-context-embedding" }
 func (noContextEmbedding) Dim() int          { return 384 }
 
 func TestMemoryContextRelevantBoundedAndModelFree(t *testing.T) {
+	t.Parallel()
 	server, handler := testServer(t)
 	remember(t, handler, map[string]any{"text": "The kestrel deployment requires copper certificates", "topic": "kestrel"})
 	remember(t, handler, map[string]any{"text": "The kitchen cupboards are painted purple", "topic": "kitchen"})
@@ -46,6 +47,7 @@ func TestMemoryContextRelevantBoundedAndModelFree(t *testing.T) {
 }
 
 func TestMemoryContextExcludesChallengesAndRecallsCorrectedText(t *testing.T) {
+	t.Parallel()
 	_, handler := testServer(t)
 	first := remember(t, handler, map[string]any{"text": "The kestrel deployment uses copper certificates", "topic": "kestrel", "human": true})
 	remember(t, handler, map[string]any{"text": "The kestrel deployment uses silver certificates", "topic": "kestrel"})
@@ -66,6 +68,7 @@ func TestMemoryContextExcludesChallengesAndRecallsCorrectedText(t *testing.T) {
 }
 
 func TestMemoryContextIncludesNotesButNotPrivateImportedOrHistory(t *testing.T) {
+	t.Parallel()
 	_, handler := testServer(t)
 	for _, note := range []map[string]any{
 		{"path": "runbook.md", "body": "# Kestrel deployment\n\nKestrel deployment needs bronze certificates."},
@@ -91,6 +94,7 @@ func TestMemoryContextIncludesNotesButNotPrivateImportedOrHistory(t *testing.T) 
 }
 
 func TestExplicitCorrectionBypassesParaphraseRecognition(t *testing.T) {
+	t.Parallel()
 	_, handler := testServer(t)
 	first := remember(t, handler, map[string]any{"topic": "deploy", "text": "The team sits downstairs"})
 	replacement := map[string]any{"topic": "deploy", "text": "Our new office is on floor seven",
@@ -106,6 +110,7 @@ func TestExplicitCorrectionBypassesParaphraseRecognition(t *testing.T) {
 }
 
 func TestExplicitCorrectionProtectsHumanAndRejectsStaleText(t *testing.T) {
+	t.Parallel()
 	_, handler := testServer(t)
 	first := remember(t, handler, map[string]any{"topic": "deploy", "text": "The team sits downstairs", "human": true})
 	replacement := map[string]any{"topic": "deploy", "text": "Our new office is on floor seven",
@@ -122,6 +127,7 @@ func TestExplicitCorrectionProtectsHumanAndRejectsStaleText(t *testing.T) {
 }
 
 func TestMemoryContextScopeIsAnAllowlistNotAQueryHint(t *testing.T) {
+	t.Parallel()
 	server, handler := testServer(t)
 	for number := 0; number < 110; number++ {
 		remember(t, handler, map[string]any{"text": fmt.Sprintf("Kestrel deployment forbidden %d", number), "topic": "other", "infer": false})
@@ -145,6 +151,7 @@ func TestMemoryContextScopeIsAnAllowlistNotAQueryHint(t *testing.T) {
 }
 
 func TestMemoryContextScopeDoesNotGrantAccess(t *testing.T) {
+	t.Parallel()
 	server, handler := testServer(t)
 	adminKey := makeUser(t, server, handler, "", "admin", "admin")
 	aliceKey := makeUser(t, server, handler, adminKey, "alice", "member")
@@ -166,6 +173,7 @@ func TestMemoryContextScopeDoesNotGrantAccess(t *testing.T) {
 }
 
 func TestExplicitCorrectionSurvivesReindexAndDoesNotTrustStaleIndex(t *testing.T) {
+	t.Parallel()
 	server, handler := testServer(t)
 	first := remember(t, handler, map[string]any{"topic": "deploy", "text": "The team sits downstairs"})
 	notePath := first["path"].(string)

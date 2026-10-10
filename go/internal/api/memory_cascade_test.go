@@ -108,6 +108,7 @@ func assertNoForgottenText(t *testing.T, out map[string]any) {
 }
 
 func TestCascadeRedactsAndRemovesAcrossCopies(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	path, id := rememberFact(t, h, "ownership", forgetText, "claude", false)
 	copyPath, _ := rememberFact(t, h, "ownership",
@@ -135,6 +136,7 @@ func TestCascadeRedactsAndRemovesAcrossCopies(t *testing.T) {
 }
 
 func TestAgentForgetChallengesAHumanCopyAndReportsIt(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	path, id := rememberFact(t, h, "ownership", forgetText, "claude", false)
 	// A person's own entry says the same thing, in the same note.
@@ -170,6 +172,7 @@ func TestAgentForgetChallengesAHumanCopyAndReportsIt(t *testing.T) {
 }
 
 func TestAgentCannotCascadeAPersonsEntry(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	path, id := rememberFact(t, h, "ownership", forgetText, "", true)
 	code, _ := run(t, h, cascadeReq(t, path, id, "claude-code", false))
@@ -182,6 +185,7 @@ func TestAgentCannotCascadeAPersonsEntry(t *testing.T) {
 }
 
 func TestHumanForgetCascadesFully(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	path, id := rememberFact(t, h, "ownership", forgetText, "", true)
 	code, out := run(t, h, cascadeReq(t, path, id, "", false))
@@ -194,6 +198,7 @@ func TestHumanForgetCascadesFully(t *testing.T) {
 }
 
 func TestCascadeDryRunChangesNothingAndWritesNoReceipt(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	path, id := rememberFact(t, h, "ownership", forgetText, "claude", false)
 	before := cNote(t, s, path)
@@ -213,6 +218,7 @@ func TestCascadeDryRunChangesNothingAndWritesNoReceipt(t *testing.T) {
 }
 
 func TestCascadeIsIdempotentAndAnswersWithTheReceipt(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	path, id := rememberFact(t, h, "ownership", forgetText, "claude", false)
 	code, first := run(t, h, cascadeReq(t, path, id, "claude-code", false))
@@ -236,6 +242,7 @@ func TestCascadeIsIdempotentAndAnswersWithTheReceipt(t *testing.T) {
 }
 
 func TestReceiptsHoldNoForgottenText(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	path, id := rememberFact(t, h, "ownership", forgetText, "claude", false)
 	rememberFact(t, h, "ownership", "Ownership note: "+forgetText+" and pages", "claude", false)
@@ -265,6 +272,7 @@ func TestReceiptsHoldNoForgottenText(t *testing.T) {
 }
 
 func TestResidualHitsOutsideMemoryAreReported(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	path, id := rememberFact(t, h, "ownership", forgetText, "claude", false)
 	if w := do(t, h, "POST", "/api/notes", map[string]any{
@@ -281,6 +289,7 @@ func TestResidualHitsOutsideMemoryAreReported(t *testing.T) {
 }
 
 func TestDreamReportsAreRedacted(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	path, id := rememberFact(t, h, "ownership", forgetText, "claude", false)
 	if w := do(t, h, "POST", "/api/notes", map[string]any{
@@ -297,6 +306,7 @@ func TestDreamReportsAreRedacted(t *testing.T) {
 }
 
 func TestShortTextIsRefused(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	path, id := rememberFact(t, h, "ownership", "yes ok", "claude", false)
 	if code, _ := run(t, h, cascadeReq(t, path, id, "claude-code", false)); code != http.StatusBadRequest {
@@ -305,6 +315,7 @@ func TestShortTextIsRefused(t *testing.T) {
 }
 
 func TestPlainForgetIsUnchanged(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	path, id := rememberFact(t, h, "ownership", forgetText, "claude", false)
 	w := do(t, h, "DELETE", "/api/memory/entry?path="+path+"&id="+id+"&agent=claude", nil)
@@ -321,6 +332,7 @@ func TestPlainForgetIsUnchanged(t *testing.T) {
 }
 
 func TestCascadeCannotWriteWhereTheCallerCannot(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	adminKey := makeUser(t, s, h, "", "admin", "admin")
 	bobKey := makeUser(t, s, h, adminKey, "bob", "member")
@@ -363,6 +375,7 @@ func TestCascadeCannotWriteWhereTheCallerCannot(t *testing.T) {
 }
 
 func TestProfilesDoNotServeAForgottenFactFromCache(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	path, id := rememberFact(t, h, "ownership", forgetText, "claude", false)
 	rememberFact(t, h, "ownership", "it pages the on call rota", "claude", false)

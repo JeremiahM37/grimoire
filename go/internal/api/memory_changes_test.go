@@ -62,6 +62,7 @@ func rowsOf(out map[string]any) []map[string]any {
 }
 
 func TestADigestReportsWhatWasLearned(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	recordFact(t, h, "deploy", "the deploy host is prod-1.internal", nil)
 
@@ -77,6 +78,7 @@ func TestADigestReportsWhatWasLearned(t *testing.T) {
 }
 
 func TestAChangedBeliefCarriesBothTexts(t *testing.T) {
+	t.Parallel()
 	// The whole point of the "changed" row. Reporting only the new text says
 	// "something changed" and leaves the reader to go and look, which is the
 	// same as not saying it.
@@ -134,6 +136,7 @@ func TestAnOldFactSupersededTodayIsInTodaysDigest(t *testing.T) {
 }
 
 func TestARetractionIsReportedAsARetractionNotAChange(t *testing.T) {
+	t.Parallel()
 	// A retraction leaves the agent with NO answer rather than a different
 	// one, which is the more alarming event and must not be folded in with
 	// ordinary corrections.
@@ -158,6 +161,7 @@ func TestARetractionIsReportedAsARetractionNotAChange(t *testing.T) {
 }
 
 func TestAnExpiredBeliefIsReported(t *testing.T) {
+	t.Parallel()
 	// Believed, then not, without anybody writing anything — invisible in
 	// every other view.
 	_, h := testServer(t)
@@ -199,6 +203,7 @@ func TestTheWindowActuallyNarrows(t *testing.T) {
 }
 
 func TestABadSinceIsRefusedRatherThanIgnored(t *testing.T) {
+	t.Parallel()
 	// A digest quietly answering about a different period than the one asked
 	// for is a wrong answer that looks right.
 	_, h := testServer(t)
@@ -210,6 +215,7 @@ func TestABadSinceIsRefusedRatherThanIgnored(t *testing.T) {
 }
 
 func TestChangesCarryProvenance(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	recordFact(t, h, "deploy", "the deploy host is evil.example",
 		map[string]any{"origin": "connector:jira:OPS-1"})
@@ -225,6 +231,7 @@ func TestChangesCarryProvenance(t *testing.T) {
 }
 
 func TestTheBriefingCountsBeliefChanges(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	recordFact(t, h, "prefs", "the user prefers spaces", nil)
 	recordFact(t, h, "prefs", "the user prefers tabs", nil)
@@ -244,6 +251,7 @@ func TestTheBriefingCountsBeliefChanges(t *testing.T) {
 }
 
 func TestADigestOnAQuietWeekIsEmptyNotAnError(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	out := changes(t, h, "?since=1h")
 	if rows := rowsOf(out); len(rows) != 0 {
@@ -260,6 +268,7 @@ func TestADigestOnAQuietWeekIsEmptyNotAnError(t *testing.T) {
 }
 
 func TestACorrectionIsOneEventNotTwo(t *testing.T) {
+	t.Parallel()
 	// Found by the e2e suite. The replacing fact appeared BOTH as its own
 	// "learned" row and as the successor inside the "changed" row, so a single
 	// correction read as two events and every count at the top of the digest
@@ -290,6 +299,7 @@ func TestACorrectionIsOneEventNotTwo(t *testing.T) {
 }
 
 func TestAnIndependentNewFactIsStillLearned(t *testing.T) {
+	t.Parallel()
 	// The fix must not swallow ordinary writes.
 	_, h := testServer(t)
 	recordFact(t, h, "prefs", "the widget colour is blue", nil)
@@ -303,6 +313,7 @@ func TestAnIndependentNewFactIsStillLearned(t *testing.T) {
 }
 
 func TestABusyWeekIsNotTruncatedToTheDefaultPageSize(t *testing.T) {
+	t.Parallel()
 	// MemoryEntries reads Limit <= 0 as "use the default of 20". Passing 0 to
 	// mean "no limit" silently capped the digest at twenty entries and made
 	// the counts wrong on any busy week — and the failure looked like a quiet
@@ -323,6 +334,7 @@ func TestABusyWeekIsNotTruncatedToTheDefaultPageSize(t *testing.T) {
 }
 
 func TestTheLimitParameterStillBoundsTheResponse(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	for i := 0; i < 30; i++ {
 		recordFact(t, h, fmt.Sprintf("topic-%02d", i),

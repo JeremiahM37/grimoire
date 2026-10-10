@@ -24,6 +24,7 @@ func basisOf(t *testing.T, facts []map[string]any, needle string) string {
 }
 
 func TestBasisAppearsOnEveryRecalledFact(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "ops", "text": "the deploy host is prod-1", "infer": false})
 
@@ -37,6 +38,7 @@ func TestBasisAppearsOnEveryRecalledFact(t *testing.T) {
 }
 
 func TestEvidencePromotesAnAgentFactToObserved(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "ops", "infer": false,
 		"text":     "the backup runs at 03:00",
@@ -61,6 +63,7 @@ func TestEvidencePromotesAnAgentFactToObserved(t *testing.T) {
 }
 
 func TestEvidenceDoesNotChangeTheFactId(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	plain := remember(t, h, map[string]any{"topic": "a", "infer": false, "text": "the cache is redis"})
 	ev := remember(t, h, map[string]any{"topic": "b", "infer": false, "text": "the cache is redis",
@@ -71,6 +74,7 @@ func TestEvidenceDoesNotChangeTheFactId(t *testing.T) {
 }
 
 func TestRememberRefusesMalformedEvidence(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	for _, bad := range [][]string{{"a,b"}, {"line\nbreak"}} {
 		w := do(t, h, "POST", "/api/memory", map[string]any{
@@ -82,6 +86,7 @@ func TestRememberRefusesMalformedEvidence(t *testing.T) {
 }
 
 func TestHumanAndImportedAndPulledFactsKeepTheirBasis(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "ops", "infer": false, "human": true,
 		"text": "the owner is Jeremiah"})
@@ -99,6 +104,7 @@ func TestHumanAndImportedAndPulledFactsKeepTheirBasis(t *testing.T) {
 }
 
 func TestRecallBasisFilterKeepsOnlyTheListedBases(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "ops", "infer": false, "human": true,
 		"text": "the team ships on tuesdays"})
@@ -123,6 +129,7 @@ func TestRecallBasisFilterKeepsOnlyTheListedBases(t *testing.T) {
 }
 
 func TestRecallRejectsAnUnknownBasisOrMode(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	for _, path := range []string{"/api/memory?q=x&basis=bogus", "/api/memory?q=x&mode=facts",
 		"/api/memory/context?q=x&recall_mode=facts"} {
@@ -133,6 +140,7 @@ func TestRecallRejectsAnUnknownBasisOrMode(t *testing.T) {
 }
 
 func TestDefaultRecallIsTheSameAsModeAll(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "prefs", "infer": false, "category": "preference",
 		"text": "the user prefers tabs"})
@@ -147,6 +155,7 @@ func TestDefaultRecallIsTheSameAsModeAll(t *testing.T) {
 }
 
 func TestFactualModeDropsPreferencesAndKeepsFacts(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "prefs", "infer": false, "category": "preference",
 		"text": "the user prefers tabs"})
@@ -188,6 +197,7 @@ func TestPersonalCategoriesCanBeReconfigured(t *testing.T) {
 }
 
 func TestProfileExcludePersonalLeavesPreferencesOut(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "prefs", "infer": false, "human": true,
 		"category": "preference", "text": "the user prefers tabs"})
@@ -208,6 +218,7 @@ func TestProfileExcludePersonalLeavesPreferencesOut(t *testing.T) {
 }
 
 func TestProfileLinesCarryTheBasisTag(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "ops", "infer": false, "human": true,
 		"text": "the owner is Jeremiah"})
@@ -221,6 +232,7 @@ func TestProfileLinesCarryTheBasisTag(t *testing.T) {
 }
 
 func TestContextRecallModeFactualLeavesPreferencesOut(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "prefs", "infer": false, "category": "preference",
 		"text": "the reviewer prefers tabs over spaces"})
@@ -250,6 +262,7 @@ func TestContextRecallModeFactualLeavesPreferencesOut(t *testing.T) {
 }
 
 func TestExplainKeepsBasisBesideTheScores(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "ops", "infer": false, "human": true,
 		"text": "the deploy host is prod-1"})

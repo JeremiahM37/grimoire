@@ -94,6 +94,7 @@ func textsOf(records []map[string]any) map[string]map[string]any {
 }
 
 func TestImportMem0IsUntrustedAndIdempotent(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	raw := portFixture(t, "mem0.json")
 
@@ -123,6 +124,7 @@ func TestImportMem0IsUntrustedAndIdempotent(t *testing.T) {
 }
 
 func TestImportDryRunWritesNothing(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	before := len(exportJSONL(t, h, ""))
 
@@ -136,6 +138,7 @@ func TestImportDryRunWritesNothing(t *testing.T) {
 }
 
 func TestImportLettaAndZepKeepTheirShape(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	letta := importFile(t, h, "", "from=auto", portFixture(t, "letta_agent.json"))
 	if letta.Format != "letta" || letta.Written != 3 {
@@ -155,6 +158,7 @@ func TestImportLettaAndZepKeepTheirShape(t *testing.T) {
 }
 
 func TestImportNeverRecordsAHumanAuthor(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	// A file that says it is a person. The write path must not take its word.
 	raw := []byte(`{"format":"grimoire-memory","version":1,"count":1}` + "\n" +
@@ -169,6 +173,7 @@ func TestImportNeverRecordsAHumanAuthor(t *testing.T) {
 }
 
 func TestGrimoireExportRoundTripsIntoAFreshVault(t *testing.T) {
+	t.Parallel()
 	_, src := testServer(t)
 	for _, body := range []map[string]any{
 		{"text": "The deploy needs a VPN reset", "topic": "ops", "agent": "claude-code",
@@ -219,6 +224,7 @@ func equalRecords(a, b []map[string]any) bool {
 }
 
 func TestGrimoireImportRestoresSupersession(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	raw := portFixture(t, "grimoire.jsonl")
 	if got := importFile(t, h, "", "from=grimoire", raw); got.Written != 2 || got.Skipped == nil {
@@ -236,6 +242,7 @@ func TestGrimoireImportRestoresSupersession(t *testing.T) {
 }
 
 func TestExportRespectsTheReaderList(t *testing.T) {
+	t.Parallel()
 	server, h := testServer(t)
 	adminKey := makeUser(t, server, h, "", "admin", "admin")
 	aliceKey := makeUser(t, server, h, adminKey, "alice", "member")
@@ -292,6 +299,7 @@ func asKeyBody(t *testing.T, h http.Handler, key, path string) string {
 }
 
 func TestExportFormatsAndRefusals(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	if w := asKey(t, h, "", "GET", "/api/memory/export?format=yaml", nil); w.Code != http.StatusBadRequest {
 		t.Fatalf("unknown format = %d", w.Code)
@@ -314,6 +322,7 @@ func TestExportFormatsAndRefusals(t *testing.T) {
 }
 
 func TestImportIsBodyLimited(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	big := bytes.Repeat([]byte(" "), maxImportBytes+1)
 	if w := rawAs(t, h, "", "POST", "/api/memory/import?from=mem0", big); w.Code != http.StatusRequestEntityTooLarge {

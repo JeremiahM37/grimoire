@@ -35,6 +35,7 @@ func onlyFact(t *testing.T, h http.Handler) map[string]any {
 }
 
 func TestVolatileFactIsMarkedForVerificationWithItsCheck(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "versions", "infer": false,
 		"text": "grimoire on AIServer is build 1.4.0-dev", "fresh": "volatile",
@@ -50,6 +51,7 @@ func TestVolatileFactIsMarkedForVerificationWithItsCheck(t *testing.T) {
 }
 
 func TestStableFactIsUsedWithoutAReCheck(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "decisions", "infer": false,
 		"text": "we chose SQLite over Postgres because the vault must run offline", "fresh": "stable"})
@@ -157,6 +159,7 @@ func TestAReplacementCarriesTheReplacedFactsHistory(t *testing.T) {
 }
 
 func TestFreshnessInputsAreValidated(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	for _, body := range []map[string]any{
 		{"text": "x", "fresh": "sometimes"},
@@ -173,6 +176,7 @@ func TestFreshnessInputsAreValidated(t *testing.T) {
 }
 
 func TestInjectedContextMarksFactsToReCheck(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "versions", "infer": false,
 		"text": "grimoire release build is 1.4.0-dev on AIServer", "fresh": "volatile",
@@ -188,6 +192,7 @@ func TestInjectedContextMarksFactsToReCheck(t *testing.T) {
 }
 
 func TestBriefingFactsCarryFreshness(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "versions", "infer": false,
 		"text": "grimoire on AIServer is build 1.4.0-dev", "fresh": "volatile"})
@@ -244,6 +249,7 @@ func TestDreamRetiersAFactFromItsHistory(t *testing.T) {
 // A fact corrected within a day of being written was refined, not changed:
 // the replacement keeps its history but no change is counted.
 func TestASameDayCorrectionIsNotCountedAsAChange(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "research", "infer": false,
 		"text": "the bf16 result exceeds the 0.01 gate"})
@@ -260,6 +266,7 @@ func TestASameDayCorrectionIsNotCountedAsAChange(t *testing.T) {
 }
 
 func TestAnUntrustedSourceCannotConfirmAFact(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "versions", "infer": false,
 		"text": "grimoire on AIServer is build 1.4.0-dev", "fresh": "volatile"})
@@ -280,6 +287,7 @@ func TestAnUntrustedSourceCannotConfirmAFact(t *testing.T) {
 // A configured decision server sets an untiered fact's prior; a declared
 // tier, an untrusted fact, or a dead server never block or change the write.
 func TestDecisionServerSetsTheVolatilityPrior(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	asked := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -52,6 +52,7 @@ func actionCtx(t *testing.T, h http.Handler, session, tu, cmd string) map[string
 }
 
 func TestTraceCardLinksActionsAndRecordsTheReminderOutcome(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	fillStore(t, h, 80)
 	fact := remember(t, h, map[string]any{"topic": "zebra", "text": zebraFact})
@@ -97,6 +98,7 @@ func TestTraceCardLinksActionsAndRecordsTheReminderOutcome(t *testing.T) {
 }
 
 func TestOutcomeTraceFieldsAreValidated(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	for name, body := range map[string]map[string]any{
 		"bad tool_use id":  {"session": "sess-valid-0001", "tool": "Bash", "target": "ls", "tu": "a b;c"},
@@ -147,6 +149,7 @@ func setHoldout(t *testing.T, s *Server, rate string, draw float64) {
 }
 
 func TestHoldoutWithholdsEligibleItemsAndLogsPropensity(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	fillStore(t, h, 40)
 	fact := remember(t, h, map[string]any{"topic": "zebra", "text": zebraFact})
@@ -206,6 +209,7 @@ func TestHoldoutWithholdsEligibleItemsAndLogsPropensity(t *testing.T) {
 }
 
 func TestHoldoutNeverWithholdsPinnedEnforcedOrCompiledRules(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	fillStore(t, h, 40)
 	pinned := remember(t, h, map[string]any{"topic": "zebra", "text": zebraFact, "immutable": true})
@@ -252,6 +256,7 @@ func (f *fakeEstimator) Lift(r []utilization.Record) (utilization.Estimate, erro
 }
 
 func TestCausalStatusesAndTheEstimatorInterface(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	fillStore(t, h, 40)
 	fact := remember(t, h, map[string]any{"topic": "zebra", "text": zebraFact})

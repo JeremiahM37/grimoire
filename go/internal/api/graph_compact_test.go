@@ -7,6 +7,7 @@ import (
 )
 
 func TestGraphCompactAndETag(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	do(t, h, "POST", "/api/notes", map[string]any{"path": "gw.md", "body": "# Gateway\n\nport #infra"})
 	do(t, h, "POST", "/api/notes", map[string]any{"path": "hub.md", "body": "# Hub\n\nsee [[Gateway]] #infra"})

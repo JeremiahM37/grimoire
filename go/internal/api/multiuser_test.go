@@ -74,6 +74,7 @@ func makeUser(t *testing.T, s *Server, h http.Handler, adminKey, name, role stri
 }
 
 func TestSingleUserDeploymentIsUnchanged(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	// no accounts: everything works with no credentials at all
 	if w := do(t, h, "POST", "/api/notes", map[string]any{
@@ -95,6 +96,7 @@ func TestSingleUserDeploymentIsUnchanged(t *testing.T) {
 }
 
 func TestMembersCannotReachEachOthersNotes(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	aliceKey := makeUser(t, s, h, "", "alice", "admin") // first account is the admin
 	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
@@ -148,6 +150,7 @@ func TestMembersCannotReachEachOthersNotes(t *testing.T) {
 }
 
 func TestSharedSpacesAndReadOnlyMembership(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	adminKey := makeUser(t, s, h, "", "admin", "admin")
 	bobKey := makeUser(t, s, h, adminKey, "bob", "member")
@@ -193,6 +196,7 @@ func TestSharedSpacesAndReadOnlyMembership(t *testing.T) {
 }
 
 func TestAnonymousCallersSeeNothingOnceAccountsExist(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	adminKey := makeUser(t, s, h, "", "admin", "admin")
 	asKey(t, h, adminKey, "POST", "/api/notes", map[string]any{
@@ -220,6 +224,7 @@ func TestAnonymousCallersSeeNothingOnceAccountsExist(t *testing.T) {
 }
 
 func TestMembersCannotAdministerTheInstance(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	adminKey := makeUser(t, s, h, "", "admin", "admin")
 	bobKey := makeUser(t, s, h, adminKey, "bob", "member")
@@ -243,6 +248,7 @@ func TestMembersCannotAdministerTheInstance(t *testing.T) {
 }
 
 func TestLoginIssuesASessionAndLogoutEndsIt(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	makeUser(t, s, h, "", "alice", "admin")
 
@@ -403,6 +409,7 @@ func pulledDocumentRestrictedToOnePerson(t *testing.T) {
 // unauthenticated caller, on a multi-user instance. It answers to the same
 // rules as every other read now.
 func TestSyncIsNotAWayAroundTheAccessRules(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	adminKey := makeUser(t, s, h, "", "admin", "admin")
 	aliceKey := makeUser(t, s, h, adminKey, "alice", "member")
@@ -457,6 +464,7 @@ func TestSyncIsNotAWayAroundTheAccessRules(t *testing.T) {
 // A single-user deployment has no accounts, so sync must work exactly as it
 // always has — device sync is the original reason it exists.
 func TestSyncIsUnchangedWithoutAccounts(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	if _, err := s.WriteNote("note.md", "# Note\n\nbody", nil); err != nil {
 		t.Fatal(err)
@@ -476,6 +484,7 @@ func TestSyncIsUnchangedWithoutAccounts(t *testing.T) {
 // everyone then executes, so installing a plugin is equivalent to running code
 // as whoever opens the console — including the administrator.
 func TestOnlyAdministratorsCanInstallPlugins(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	adminKey := makeUser(t, s, h, "", "admin", "admin")
 	bobKey := makeUser(t, s, h, adminKey, "bob", "member")
@@ -502,6 +511,7 @@ func TestOnlyAdministratorsCanInstallPlugins(t *testing.T) {
 // The write half of sync. Requiring a principal to CALL push says nothing about
 // where they may write.
 func TestSyncPushCannotWriteWhereTheCallerCannot(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	adminKey := makeUser(t, s, h, "", "admin", "admin")
 	aliceKey := makeUser(t, s, h, adminKey, "alice", "member")
@@ -546,6 +556,7 @@ func TestSyncPushCannotWriteWhereTheCallerCannot(t *testing.T) {
 // and attachment upload. Each returns or accepts note content, and each was
 // written for a server where one person owned everything.
 func TestTheOtherContentSurfacesRespectTheRulesToo(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	adminKey := makeUser(t, s, h, "", "admin", "admin")
 	aliceKey := makeUser(t, s, h, adminKey, "alice", "member")
@@ -598,6 +609,7 @@ func TestTheOtherContentSurfacesRespectTheRulesToo(t *testing.T) {
 // content type, an .html or .svg runs JavaScript with the viewer's session —
 // nosniff does not prevent that, it only prevents MIME sniffing.
 func TestUploadedDocumentsCannotActAsTheApp(t *testing.T) {
+	t.Parallel()
 	s, _ := testServer(t)
 	h := s.Routes()
 	// Write the files directly: the upload route has its own tests.
@@ -648,6 +660,7 @@ func TestUploadedDocumentsCannotActAsTheApp(t *testing.T) {
 // one that did but belonged to someone else, so a non-owner could tell which
 // trash ids were real. Trash ids are timestamps, so they are guessable.
 func TestPurgingATrashIdDoesNotRevealWhetherItExists(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	adminKey := makeUser(t, s, h, "", "root", "admin")
 	aliceKey := makeUser(t, s, h, adminKey, "alice", "member")

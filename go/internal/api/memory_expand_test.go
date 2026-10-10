@@ -126,6 +126,7 @@ func TestRecallExpandDefaultFollowsTheEnvironment(t *testing.T) {
 }
 
 func TestRecallRefusesMalformedHops(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	for _, q := range []string{"?q=x&hops=3", "?q=x&hops=-1", "?q=x&hops=two"} {
 		w := do(t, h, "GET", "/api/memory"+q, nil)

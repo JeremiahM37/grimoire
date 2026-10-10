@@ -7,6 +7,7 @@ import (
 )
 
 func TestCompiledRuleChecksActAtActionStage(t *testing.T) {
+	t.Parallel()
 	srv, h := testServer(t)
 	fact := remember(t, h, map[string]any{"topic": "kestrel", "text": pushRule})
 	target := "fact:" + fact["id"].(string)

@@ -13,6 +13,7 @@ import (
 // A request body must be capped before a handler reads it: the JSON decoder
 // will otherwise stream whatever it is given into memory.
 func TestEnormousBodiesAreRefused(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	huge := bytes.NewReader([]byte(`{"path":"big.md","body":"` +
 		strings.Repeat("x", 12<<20) + `"}`))
@@ -28,6 +29,7 @@ func TestEnormousBodiesAreRefused(t *testing.T) {
 // The expensive routes spend someone else's resources — an LLM, a website, a
 // third-party API — so a loop over them must be stopped.
 func TestExpensiveRoutesAreRateLimited(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	limited := 0
 	for i := 0; i < 60; i++ {
@@ -54,6 +56,7 @@ func TestExpensiveRoutesAreRateLimited(t *testing.T) {
 // prevent. This test is 1,000 requests because the one that missed it was 100,
 // under a burst of 200.
 func TestOrdinaryReadsAreNotThrottledAtConsoleSpeed(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	for i := 0; i < 1000; i++ {
 		req := httptest.NewRequest("GET", "/api/health", nil)
@@ -70,6 +73,7 @@ func TestOrdinaryReadsAreNotThrottledAtConsoleSpeed(t *testing.T) {
 // can set, or not by caller at all, would make this either useless or a way to
 // lock other people out.
 func TestRateLimitIsPerCaller(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	spend := func(addr string) int {
 		throttled := 0
@@ -96,6 +100,7 @@ func TestRateLimitIsPerCaller(t *testing.T) {
 // X-Forwarded-For is caller-supplied. Honouring it unconditionally lets anyone
 // mint a fresh identity per request and walk straight through every limit.
 func TestForwardedHeadersAreIgnoredUnlessAProxyIsTrusted(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	throttled := 0
 	for i := 0; i < 60; i++ {
@@ -117,6 +122,7 @@ func TestForwardedHeadersAreIgnoredUnlessAProxyIsTrusted(t *testing.T) {
 // Login is the one credential check an unauthenticated caller can drive, so it
 // has to back off — the same reasoning the secret vault has always applied.
 func TestLoginBacksOffAfterRepeatedFailures(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	makeUser(t, s, h, "", "alice", "admin")
 

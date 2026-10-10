@@ -28,6 +28,7 @@ func seedCalls(t *testing.T, s *Server) {
 }
 
 func TestUsageReportsRollupsAndScope(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	seedCalls(t, s)
 
@@ -71,6 +72,7 @@ func TestUsageReportsRollupsAndScope(t *testing.T) {
 }
 
 func TestUsageRollsUpByProviderSurfaceAndAgent(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	seedCalls(t, s)
 	var out struct {
@@ -106,6 +108,7 @@ func TestUsageRollsUpByProviderSurfaceAndAgent(t *testing.T) {
 }
 
 func TestAgentActivityReportsWhatAgentsDid(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	seedCalls(t, s)
 	if _, err := s.WriteNote("memory/ops.md",
@@ -162,6 +165,7 @@ func TestAgentActivityReportsWhatAgentsDid(t *testing.T) {
 
 // An empty ledger must answer, not error — a fresh install has no usage.
 func TestUsageOnAnEmptyLedger(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	w := do(t, h, "GET", "/api/usage", nil)
 	if w.Code != http.StatusOK {

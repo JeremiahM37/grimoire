@@ -43,6 +43,7 @@ func staleRows(out map[string]any) []map[string]any {
 }
 
 func TestTheQueueListsOnlyOverdueNotes(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	writeVerified(t, h, "rotten.md", "2019-01-01", "# Rotten\n\nan old runbook")
 	writeVerified(t, h, "fine.md", "2026-08-20", "# Fine\n\nchecked yesterday")
@@ -61,6 +62,7 @@ func TestTheQueueListsOnlyOverdueNotes(t *testing.T) {
 }
 
 func TestWhatTheVaultLeansOnComesFirst(t *testing.T) {
+	t.Parallel()
 	// Both overdue; the one a dozen notes point at is the one worth a person's
 	// afternoon.
 	_, h := testServer(t)
@@ -85,6 +87,7 @@ func TestWhatTheVaultLeansOnComesFirst(t *testing.T) {
 }
 
 func TestTheQueueReportsTheWholeBacklogNotJustThePage(t *testing.T) {
+	t.Parallel()
 	// A queue that says "20" when there are 340 is how a backlog stays
 	// invisible.
 	_, h := testServer(t)
@@ -101,6 +104,7 @@ func TestTheQueueReportsTheWholeBacklogNotJustThePage(t *testing.T) {
 }
 
 func TestMemoryNotesAreNotInTheQueue(t *testing.T) {
+	t.Parallel()
 	// Facts carry their own lifecycle — TTL, decay, supersession — so asking a
 	// person to re-verify a memory note is busywork that teaches them to
 	// ignore the queue.
@@ -116,6 +120,7 @@ func TestMemoryNotesAreNotInTheQueue(t *testing.T) {
 }
 
 func TestTheThresholdIsAdjustable(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	writeVerified(t, h, "recent.md", "2026-08-01", "# Recent\n\nchecked three weeks ago")
 
@@ -131,6 +136,7 @@ func TestTheThresholdIsAdjustable(t *testing.T) {
 }
 
 func TestTheQueueSaysHowMuchOfTheVaultHasEverBeenReviewed(t *testing.T) {
+	t.Parallel()
 	// On a vault where nobody uses `verified:`, the queue is really an age
 	// listing. Saying so is more honest than letting it look like a review
 	// process that is running.
@@ -145,6 +151,7 @@ func TestTheQueueSaysHowMuchOfTheVaultHasEverBeenReviewed(t *testing.T) {
 }
 
 func TestConfirmingANoteWritesTheDateIntoTheFile(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	writeVerified(t, h, "rotten.md", "2019-01-01", "# Rotten\n\nan old runbook")
 	if len(staleRows(staleQueue(t, h, ""))) != 1 {
@@ -169,6 +176,7 @@ func TestConfirmingANoteWritesTheDateIntoTheFile(t *testing.T) {
 }
 
 func TestConfirmingWithAnUnreadableDateIsRefused(t *testing.T) {
+	t.Parallel()
 	// A date the parser will not read would leave the note carrying a
 	// `verified:` line and still counted as never checked — the most confusing
 	// possible outcome.
@@ -182,6 +190,7 @@ func TestConfirmingWithAnUnreadableDateIsRefused(t *testing.T) {
 }
 
 func TestConfirmingAMissingNoteIs404(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	if w := do(t, h, "POST", "/api/stale/verify",
 		map[string]any{"path": "nope.md"}); w.Code != http.StatusNotFound {
@@ -190,6 +199,7 @@ func TestConfirmingAMissingNoteIs404(t *testing.T) {
 }
 
 func TestRetrievalHitsCarryAgeAndStaleness(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	writeVerified(t, h, "rotten.md", "2019-01-01", "# Rotten\n\nthe kestrel deploy runbook")
 
@@ -207,6 +217,7 @@ func TestRetrievalHitsCarryAgeAndStaleness(t *testing.T) {
 }
 
 func TestPrivateNotesAreInTheReviewQueue(t *testing.T) {
+	t.Parallel()
 	// `private` excludes a note from retrieval; it is not an access boundary,
 	// and the note list already shows private notes to whoever may see the
 	// space. Excluding them from the queue would hide exactly the runbooks

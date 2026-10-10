@@ -9,6 +9,7 @@ import (
 )
 
 func TestNoteAuthorTellsPeopleFromAgents(t *testing.T) {
+	t.Parallel()
 	cases := []struct{ path, fm, want string }{
 		{"journal/2026-10-09.md", `{"title":"x"}`, ""},
 		{"idea.md", `{"agent":"codex"}`, "codex"},
@@ -32,6 +33,7 @@ func TestNoteAuthorTellsPeopleFromAgents(t *testing.T) {
 // A note an agent creates through the API is stamped with its name and listed
 // as the agent's; one created from the console (no agent header) is yours.
 func TestCreatedNotesCarryTheirAuthorIntoTheList(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	body, _ := json.Marshal(map[string]any{"path": "by-agent.md", "body": "# A\n"})
 	req := httptest.NewRequest("POST", "/api/notes", bytes.NewReader(body))

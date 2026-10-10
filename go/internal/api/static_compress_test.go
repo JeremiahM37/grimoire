@@ -10,6 +10,7 @@ import (
 )
 
 func TestStaticAssetsAreGzippedAndImmutable(t *testing.T) {
+	t.Parallel()
 	web := t.TempDir()
 	dist := filepath.Join(web, "..", "frontend", "dist")
 	_ = dist

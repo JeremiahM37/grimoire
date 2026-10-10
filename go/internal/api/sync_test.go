@@ -22,6 +22,7 @@ func twoPeers(t *testing.T) (a *Server, ah http.Handler, b *Server, bh http.Hand
 }
 
 func TestSyncMovesNotesBothWays(t *testing.T) {
+	t.Parallel()
 	_, ah, _, bh, _ := twoPeers(t)
 	do(t, ah, "POST", "/api/notes", map[string]any{
 		"path": "mine.md", "body": "# Mine\n\nwritten on A\n"})
@@ -45,6 +46,7 @@ func TestSyncMovesNotesBothWays(t *testing.T) {
 }
 
 func TestSyncNowRefusesWithoutAPeer(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	if w := do(t, h, "POST", "/api/sync/now", nil); w.Code != http.StatusBadRequest {
 		t.Errorf("sync with no peer = %d, want 400", w.Code)
@@ -52,6 +54,7 @@ func TestSyncNowRefusesWithoutAPeer(t *testing.T) {
 }
 
 func TestManifestIsKeyedByPath(t *testing.T) {
+	t.Parallel()
 	// the wire format a peer of either implementation expects: {path: {hash, mtime}}
 	_, h := testServer(t)
 	do(t, h, "POST", "/api/notes", map[string]any{"path": "a.md", "body": "# A\n"})
@@ -71,6 +74,7 @@ func TestManifestIsKeyedByPath(t *testing.T) {
 }
 
 func TestPushWithAStaleBaseHashMakesAConflictCopy(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	do(t, h, "POST", "/api/notes", map[string]any{
 		"path": "shared.md", "body": "# Shared\n\nthe server's version\n"})
@@ -109,6 +113,7 @@ func TestPushWithAStaleBaseHashMakesAConflictCopy(t *testing.T) {
 }
 
 func TestPullReportsMissingNotesAsNull(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	do(t, h, "POST", "/api/notes", map[string]any{"path": "here.md", "body": "# Here\n"})
 

@@ -80,6 +80,7 @@ func multipartUpload(t *testing.T, h http.Handler, key, path, filename, body str
 }
 
 func TestKnowledgeSurfacesHidePrivateSpaceAndReaderNotes(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	adminKey := makeUser(t, s, h, "", "admin", "admin")
 	aliceKey := makeUser(t, s, h, adminKey, "alice", "member")
@@ -138,6 +139,7 @@ func TestKnowledgeSurfacesHidePrivateSpaceAndReaderNotes(t *testing.T) {
 }
 
 func TestKnowledgeTrustedOnlyFiltersBeforeGraphStats(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	adminKey := makeUser(t, s, h, "", "admin", "admin")
 	writeSecurityNote(t, s, "trusted.md", "# Trusted\n\nTRUSTED_MARKER", map[string]any{"entities": []string{"TrustedEntity"}})
@@ -165,6 +167,7 @@ func TestKnowledgeTrustedOnlyFiltersBeforeGraphStats(t *testing.T) {
 }
 
 func TestKnowledgeExtractionIsMultiuserScopedBeforeModelCalls(t *testing.T) {
+	t.Parallel()
 	var calls atomic.Int32
 	model := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls.Add(1)
@@ -240,6 +243,7 @@ func TestKnowledgeExtractionIsMultiuserScopedBeforeModelCalls(t *testing.T) {
 }
 
 func TestDocumentsEnforceReaderWriteBoundariesAndHideOriginals(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	adminKey := makeUser(t, s, h, "", "admin", "admin")
 	bobKey := makeUser(t, s, h, adminKey, "bob", "member")
@@ -305,6 +309,7 @@ func TestDocumentsEnforceReaderWriteBoundariesAndHideOriginals(t *testing.T) {
 }
 
 func TestKnowledgeAndDocumentPathsRejectTraversalAndSymlinkSources(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	adminKey := makeUser(t, s, h, "", "admin", "admin")
 	for _, path := range []string{"../.grimoire/index.db", "/etc/passwd", "documents/../../outside.md"} {

@@ -54,6 +54,7 @@ func get(t *testing.T, h http.Handler, path string) *httptest.ResponseRecorder {
 }
 
 func TestPublishingDoesNotExistUntilTurnedOn(t *testing.T) {
+	t.Parallel()
 	// A public surface must not appear because somebody typed a frontmatter
 	// key.
 	s, h := publishing(t, false)
@@ -66,6 +67,7 @@ func TestPublishingDoesNotExistUntilTurnedOn(t *testing.T) {
 }
 
 func TestPublishedNotesAreServedAnonymously(t *testing.T) {
+	t.Parallel()
 	s, h := publishing(t, true)
 	seedPublished(t, s)
 
@@ -90,6 +92,7 @@ func TestPublishedNotesAreServedAnonymously(t *testing.T) {
 }
 
 func TestUnpublishedAndPrivateNotesAreNotServed(t *testing.T) {
+	t.Parallel()
 	s, h := publishing(t, true)
 	seedPublished(t, s)
 
@@ -115,6 +118,7 @@ func TestUnpublishedAndPrivateNotesAreNotServed(t *testing.T) {
 }
 
 func TestLinksResolveOnlyToPublishedNotes(t *testing.T) {
+	t.Parallel()
 	// A link to an unpublished note must not become a working URL into the
 	// vault.
 	s, h := publishing(t, true)
@@ -133,6 +137,7 @@ func TestLinksResolveOnlyToPublishedNotes(t *testing.T) {
 }
 
 func TestBacklinksComeOnlyFromPublishedNotes(t *testing.T) {
+	t.Parallel()
 	// An unpublished note linking to a published one must not be able to
 	// announce itself in the footer.
 	s, h := publishing(t, true)
@@ -155,6 +160,7 @@ func TestBacklinksComeOnlyFromPublishedNotes(t *testing.T) {
 }
 
 func TestPublishedSurfaceStillAnswersToTheGlobalAuthToken(t *testing.T) {
+	t.Parallel()
 	// An operator who closed the server closed it. A "public" surface that
 	// punched through the gate would be a hole; the way to run a public site
 	// is not to set that token.
@@ -171,6 +177,7 @@ func TestPublishedSurfaceStillAnswersToTheGlobalAuthToken(t *testing.T) {
 }
 
 func TestUnpublishingTakesEffect(t *testing.T) {
+	t.Parallel()
 	s, h := publishing(t, true)
 	seedPublished(t, s)
 	if w := get(t, h, "/published/public"); w.Code != http.StatusOK {
@@ -189,6 +196,7 @@ func TestUnpublishingTakesEffect(t *testing.T) {
 }
 
 func TestPublishedIndexSaysSoWhenEmpty(t *testing.T) {
+	t.Parallel()
 	_, h := publishing(t, true)
 	body := get(t, h, "/published").Body.String()
 	if !strings.Contains(body, "Nothing published") {
@@ -197,6 +205,7 @@ func TestPublishedIndexSaysSoWhenEmpty(t *testing.T) {
 }
 
 func TestPublishedPathCannotEscapeTheVault(t *testing.T) {
+	t.Parallel()
 	s, h := publishing(t, true)
 	seedPublished(t, s)
 	for _, path := range []string{
@@ -213,6 +222,7 @@ func TestPublishedPathCannotEscapeTheVault(t *testing.T) {
 // publication. Obsidian's %%comment%% is exactly that marker, and this renderer
 // printed it verbatim — so the private aside went out with the note.
 func TestPublishedNotesDoNotLeakComments(t *testing.T) {
+	t.Parallel()
 	s, h := publishing(t, true)
 	if _, err := s.WriteNote("public.md",
 		"# Runbook\n\nRestart nginx. %%the real password is hunter2%%\n",

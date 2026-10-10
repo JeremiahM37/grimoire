@@ -33,6 +33,7 @@ func prefixCorpus() []index.MemoryHit {
 }
 
 func TestPrefixIsByteIdenticalAcrossRepeatedCallsAndInputOrder(t *testing.T) {
+	t.Parallel()
 	hits := prefixCorpus()
 	now := time.Now()
 	a := buildPrefix(hits, now, prefixDefaultTokens)
@@ -62,6 +63,7 @@ func TestPrefixIsByteIdenticalAcrossRepeatedCallsAndInputOrder(t *testing.T) {
 }
 
 func TestPrefixAppendsWithoutMovingTheHead(t *testing.T) {
+	t.Parallel()
 	hits := prefixCorpus()
 	now := time.Now()
 	before := buildPrefix(hits, now, prefixDefaultTokens)
@@ -89,6 +91,7 @@ func TestPrefixAppendsWithoutMovingTheHead(t *testing.T) {
 }
 
 func TestPrefixSinceCurrentTokenIsUnchanged(t *testing.T) {
+	t.Parallel()
 	l := buildPrefix(prefixCorpus(), time.Now(), prefixDefaultTokens)
 	for _, since := range []string{l.AppendOnlySince, l.Version} {
 		resp := l.respond("user", since)
@@ -106,6 +109,7 @@ func TestPrefixSinceCurrentTokenIsUnchanged(t *testing.T) {
 }
 
 func TestPrefixReportsSupersessionAndEditsAsRewrites(t *testing.T) {
+	t.Parallel()
 	hits := prefixCorpus()
 	now := time.Now()
 	before := buildPrefix(hits, now, prefixDefaultTokens)
@@ -142,6 +146,7 @@ func TestPrefixReportsSupersessionAndEditsAsRewrites(t *testing.T) {
 }
 
 func TestPrefixBudgetTruncatesFromTheEnd(t *testing.T) {
+	t.Parallel()
 	hits := prefixCorpus()
 	now := time.Now()
 	full := buildPrefix(hits, now, prefixMaxTokens)
@@ -181,6 +186,7 @@ func TestPrefixBudgetTruncatesFromTheEnd(t *testing.T) {
 }
 
 func TestPrefixSelection(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	hits := []index.MemoryHit{
 		stamped("keep", "the team uses postgres", "2026-10-01 10:00", nil),
@@ -215,6 +221,7 @@ func TestPrefixSelection(t *testing.T) {
 }
 
 func TestPrefixEndpoint(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "prefs", "text": "the team uses postgres", "agent": "probe", "importance": 4})
 

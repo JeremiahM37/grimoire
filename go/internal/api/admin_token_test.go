@@ -29,6 +29,7 @@ func withAdmin(t *testing.T, h http.Handler, method, path string, body any, toke
 }
 
 func TestAdminTokenClosesTheLeversAndLeavesReadingOpen(t *testing.T) {
+	t.Parallel()
 	s, h := adminTokenServer(t)
 	// Seed through the vault directly: the API is now gated for this test.
 	if _, err := s.Vault.Write("open.md", "# Open\n\nkestrel migration", nil); err != nil {
@@ -86,6 +87,7 @@ func TestAdminTokenClosesTheLeversAndLeavesReadingOpen(t *testing.T) {
 // With no token configured the server behaves exactly as it did — this must not
 // become a setting people have to know about to keep their instance working.
 func TestNoAdminTokenChangesNothing(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	for _, path := range []string{"/api/secrets", "/api/connectors", "/api/users"} {
 		if w := do(t, h, "GET", path, nil); w.Code == http.StatusUnauthorized {
@@ -98,6 +100,7 @@ func TestNoAdminTokenChangesNothing(t *testing.T) {
 // than the token does, so accounts take precedence and an admin is not asked
 // for a second credential.
 func TestASignedInAdministratorDoesNotNeedTheToken(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	adminKey := makeUser(t, s, h, "", "alice", "admin")
 	s.AdminToken = "sekrit-admin-token"
@@ -119,6 +122,7 @@ func TestASignedInAdministratorDoesNotNeedTheToken(t *testing.T) {
 // simply not hold the instance's token — so it names itself, and clicking an
 // admin panel stops reloading the page and explaining nothing.
 func TestTheAdminGateNamesItselfSoTheConsoleDoesNotReload(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	s.AdminToken = "the-admin-token"
 	handler := s.requireAdminToken(h)
@@ -145,6 +149,7 @@ func TestTheAdminGateNamesItselfSoTheConsoleDoesNotReload(t *testing.T) {
 }
 
 func TestTheGateHeaderIsAbsentWhenTheTokenIsCorrect(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	s.AdminToken = "the-admin-token"
 	handler := s.requireAdminToken(h)

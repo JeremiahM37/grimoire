@@ -15,6 +15,7 @@ import (
 // to the second step, and resolves a relative date against the note's own
 // date taken from its filename.
 func TestAskGroundedProcedure(t *testing.T) {
+	t.Parallel()
 	var mu sync.Mutex
 	var prompts []string
 	llm := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

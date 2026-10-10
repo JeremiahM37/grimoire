@@ -41,6 +41,7 @@ var cannedFacts = []map[string]any{
 }
 
 func TestBankLifecycleOverHTTP(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	calls := stubExtractor(t, s, cannedFacts...)
 
@@ -206,6 +207,7 @@ func TestBankLifecycleOverHTTP(t *testing.T) {
 }
 
 func TestRetainCreatesTheBankAndWorksWithNoModel(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	w := do(t, h, "POST", "/api/banks/notes:scratch/memories", map[string]any{"items": []map[string]any{
 		{"content": "Priya moved to Toronto in March 2022. She works at Shopify."}}})
@@ -229,6 +231,7 @@ func TestRetainCreatesTheBankAndWorksWithNoModel(t *testing.T) {
 // A human edit made through the file survives a re-retain over HTTP, and the
 // extracted fact it contradicts comes back below it, marked disputed.
 func TestHumanEditWinsOverHTTP(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	stubExtractor(t, s, map[string]any{"what": "Maya's favourite tea is green tea", "fact_type": "world",
 		"entities": []any{"Maya"}})
@@ -278,6 +281,7 @@ func TestHumanEditWinsOverHTTP(t *testing.T) {
 }
 
 func TestBanksFollowSpacesAndMembership(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	adminKey := makeUser(t, s, h, "", "alice", "admin")
 	bobKey := makeUser(t, s, h, adminKey, "bob", "member")
@@ -335,6 +339,7 @@ func TestBanksFollowSpacesAndMembership(t *testing.T) {
 }
 
 func TestRetainOverHTTPDropsPrivateSpansAndRedactsOnRequest(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	key := "ghp_" + strings.Repeat("aB3dE5gH7j", 4)
 	w := do(t, h, "POST", "/api/banks/priv/memories", map[string]any{"items": []map[string]any{
@@ -359,6 +364,7 @@ func TestRetainOverHTTPDropsPrivateSpansAndRedactsOnRequest(t *testing.T) {
 }
 
 func TestBankContextEndpointHonoursMaxChars(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	for i := 0; i < 40; i++ {
 		do(t, h, "POST", "/api/banks/ctx/memories", map[string]any{"items": []map[string]any{
@@ -381,6 +387,7 @@ func TestBankContextEndpointHonoursMaxChars(t *testing.T) {
 }
 
 func TestSessionDigestOverHTTPLeadsTheContext(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	w := do(t, h, "POST", "/api/banks/dg/sessions/abc:1/digest", map[string]any{
 		"turns": []map[string]any{
@@ -404,6 +411,7 @@ func TestSessionDigestOverHTTPLeadsTheContext(t *testing.T) {
 }
 
 func TestProgressiveDisclosureRoutes(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	for i, text := range []string{"Alpha service owns billing.", "Beta service owns search."} {
 		do(t, h, "POST", "/api/banks/pd/memories", map[string]any{"items": []map[string]any{
@@ -431,6 +439,7 @@ func TestProgressiveDisclosureRoutes(t *testing.T) {
 }
 
 func TestFileMemoryAndDuplicateRoutes(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	for i, text := range []string{"The retry loop in src/queue/worker.go was rewritten.", "Retries in src/queue/worker.go were rewritten again."} {
 		do(t, h, "POST", "/api/banks/fm/memories", map[string]any{"items": []map[string]any{
@@ -461,6 +470,7 @@ func TestFileMemoryAndDuplicateRoutes(t *testing.T) {
 // commons and 404 for a hidden bank, which told a caller which bank names were
 // real.
 func TestBankRoutesGiveTheSameAnswerForAbsentAndHiddenBanks(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	adminKey := makeUser(t, s, h, "", "root", "admin")
 	aliceKey := makeUser(t, s, h, adminKey, "alice", "member")
@@ -495,6 +505,7 @@ func TestBankRoutesGiveTheSameAnswerForAbsentAndHiddenBanks(t *testing.T) {
 // used to create it, and read routes confirm the bank, so the operation
 // answered 404 until the worker ran.
 func TestAsyncRetainOperationReadableImmediately(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	for _, id := range []string{"fresh-a", "fresh-b", "fresh-c"} {
 		w := do(t, h, "POST", "/api/banks/"+id+"/memories",

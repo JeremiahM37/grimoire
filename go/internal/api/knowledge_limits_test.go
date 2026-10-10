@@ -8,6 +8,7 @@ import (
 )
 
 func TestKnowledgeWorkSharesExpensiveRequestBudget(t *testing.T) {
+	t.Parallel()
 	_, handler := testServer(t)
 	paths := []string{"/api/knowledge/query", "/api/knowledge/extract", "/api/documents/import", "/api/documents/refresh"}
 	limited := false

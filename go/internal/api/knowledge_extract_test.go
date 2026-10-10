@@ -12,6 +12,7 @@ import (
 )
 
 func TestKnowledgeExtractionIsExplicitCachedAndScoped(t *testing.T) {
+	t.Parallel()
 	var calls atomic.Int32
 	model := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls.Add(1)
@@ -54,6 +55,7 @@ func TestKnowledgeExtractionIsExplicitCachedAndScoped(t *testing.T) {
 }
 
 func TestKnowledgeExtractionRejectsInvalidBatches(t *testing.T) {
+	t.Parallel()
 	_, handler := testServer(t)
 	for _, paths := range [][]string{nil, {""}, {"../outside.md"}, make([]string, 11)} {
 		response := do(t, handler, "POST", "/api/knowledge/extract", map[string]any{"paths": paths})
@@ -64,6 +66,7 @@ func TestKnowledgeExtractionRejectsInvalidBatches(t *testing.T) {
 }
 
 func TestKnowledgeQueryRejectsInvalidDatesAndDepth(t *testing.T) {
+	t.Parallel()
 	_, handler := testServer(t)
 	for _, body := range []map[string]any{
 		{"question": "launch", "after": "2026-02-30"},

@@ -49,6 +49,7 @@ func trustServer(t *testing.T) (*Server, http.Handler) {
 }
 
 func TestNoteViewReportsProvenance(t *testing.T) {
+	t.Parallel()
 	_, h := trustServer(t)
 
 	var own map[string]any
@@ -68,6 +69,7 @@ func TestNoteViewReportsProvenance(t *testing.T) {
 }
 
 func TestRetrieveReportsAndFiltersOnTrust(t *testing.T) {
+	t.Parallel()
 	_, h := trustServer(t)
 
 	var all []map[string]any
@@ -101,6 +103,7 @@ func TestRetrieveReportsAndFiltersOnTrust(t *testing.T) {
 }
 
 func TestSearchReportsAndFiltersOnTrust(t *testing.T) {
+	t.Parallel()
 	// Full-text search does NOT go through the ranking filter, so it is the
 	// surface most likely to be forgotten — which is exactly why it is tested
 	// separately rather than assumed to follow retrieve.
@@ -133,6 +136,7 @@ func TestSearchReportsAndFiltersOnTrust(t *testing.T) {
 }
 
 func TestContextEndpointHonoursTrust(t *testing.T) {
+	t.Parallel()
 	// /api/context is the whole-corpus handover an agent uses instead of
 	// retrieving. On a small vault nothing is ranked, so a filter that lived
 	// only in ranking would silently not apply here.
@@ -156,6 +160,7 @@ func TestContextEndpointHonoursTrust(t *testing.T) {
 }
 
 func TestAskReportsHowMuchUntrustedContextItRead(t *testing.T) {
+	t.Parallel()
 	_, h := trustServer(t)
 
 	var out map[string]any
@@ -184,6 +189,7 @@ func TestAskReportsHowMuchUntrustedContextItRead(t *testing.T) {
 }
 
 func TestAskCitationsCarryProvenance(t *testing.T) {
+	t.Parallel()
 	_, h := trustServer(t)
 	var out map[string]any
 	decode(t, do(t, h, "POST", "/api/ask", map[string]any{"q": "kestrel deploy"}), &out)
@@ -200,6 +206,7 @@ func TestAskCitationsCarryProvenance(t *testing.T) {
 }
 
 func TestTheOfflineAnswerLabelsUntrustedPassages(t *testing.T) {
+	t.Parallel()
 	// With no LLM configured the extractive floor answers. It cannot judge,
 	// so labelling is the only defence it has — and on a self-hosted install
 	// this path is the common case, not an edge.
@@ -213,6 +220,7 @@ func TestTheOfflineAnswerLabelsUntrustedPassages(t *testing.T) {
 }
 
 func TestTrustOverviewCountsBySource(t *testing.T) {
+	t.Parallel()
 	_, h := trustServer(t)
 	var out map[string]any
 	decode(t, do(t, h, "GET", "/api/trust", nil), &out)
@@ -237,6 +245,7 @@ func TestTrustOverviewCountsBySource(t *testing.T) {
 }
 
 func TestTrustOverviewOnACleanVaultSaysThereIsNothingToFilter(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	do(t, h, "POST", "/api/notes", map[string]any{"title": "Only mine", "body": "hello"})
 	var out map[string]any
@@ -250,6 +259,7 @@ func TestTrustOverviewOnACleanVaultSaysThereIsNothingToFilter(t *testing.T) {
 }
 
 func TestVouchingPromotesANoteAndIsVisibleInTheFile(t *testing.T) {
+	t.Parallel()
 	s, h := trustServer(t)
 
 	w := do(t, h, "POST", "/api/trust/vouch", map[string]any{"path": "pulled/thread.md"})
@@ -290,6 +300,7 @@ func TestVouchingPromotesANoteAndIsVisibleInTheFile(t *testing.T) {
 }
 
 func TestVouchRejectsAnUnknownLevel(t *testing.T) {
+	t.Parallel()
 	_, h := trustServer(t)
 	w := do(t, h, "POST", "/api/trust/vouch",
 		map[string]any{"path": "pulled/thread.md", "trust": "sort-of"})
@@ -299,6 +310,7 @@ func TestVouchRejectsAnUnknownLevel(t *testing.T) {
 }
 
 func TestRememberRecordsAndReportsAFactsOrigin(t *testing.T) {
+	t.Parallel()
 	_, h := trustServer(t)
 
 	w := do(t, h, "POST", "/api/memory", map[string]any{
@@ -350,6 +362,7 @@ func TestRememberRecordsAndReportsAFactsOrigin(t *testing.T) {
 }
 
 func TestFencingHappensOnTheReaderPath(t *testing.T) {
+	t.Parallel()
 	// A unit test of the prompt assembly rather than of the HTTP route: the
 	// fence is what the MODEL sees, and no response body can show it.
 	contexts := []ai.Context{
@@ -388,6 +401,7 @@ func TestFencingHappensOnTheReaderPath(t *testing.T) {
 }
 
 func TestAllTrustedContextPaysNoPreambleTokens(t *testing.T) {
+	t.Parallel()
 	contexts := []ai.Context{
 		{Path: "runbook.md", Title: "Runbook", Chunk: "the deploy host is prod-1"},
 	}
@@ -398,6 +412,7 @@ func TestAllTrustedContextPaysNoPreambleTokens(t *testing.T) {
 }
 
 func TestAClippedWebPageIsRecordedAsUntrusted(t *testing.T) {
+	t.Parallel()
 	// The browser extension is how most outside text actually arrives. A
 	// clipping that looked like the operator's own note would be a wider hole
 	// than the connectors — anybody can get a person to clip a page.
@@ -424,6 +439,7 @@ func TestAClippedWebPageIsRecordedAsUntrusted(t *testing.T) {
 }
 
 func TestATypedCaptureStaysTrusted(t *testing.T) {
+	t.Parallel()
 	// A capture with no URL is text the person typed or pasted themselves.
 	// Marking every capture untrusted would fence the quick-capture inbox,
 	// which is where people put their own thinking.
@@ -450,6 +466,7 @@ func TestATypedCaptureStaysTrusted(t *testing.T) {
 // about trust, and `POST /api/query` filtered by readability only. This walks
 // them.
 func TestNoContentSurfaceSilentlyIgnoresTheTrustFilter(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	do(t, h, "POST", "/api/notes", map[string]any{
 		"path": "mine.md",
@@ -502,6 +519,7 @@ func TestNoContentSurfaceSilentlyIgnoresTheTrustFilter(t *testing.T) {
 }
 
 func TestATaskFromAPulledNoteSaysSo(t *testing.T) {
+	t.Parallel()
 	// A person scanning their own task view should be able to see that an item
 	// is not theirs, without having to open the note it came from.
 	_, h := testServer(t)
@@ -522,6 +540,7 @@ func TestATaskFromAPulledNoteSaysSo(t *testing.T) {
 }
 
 func TestSmartRetrieveIsReachableAndDegradesToPlain(t *testing.T) {
+	t.Parallel()
 	// The multi-hop path /api/ask uses had no way to be called on its own, so
 	// the console's "what would the agent see" showed a different ranking from
 	// the one the agent answering that question actually saw, and every

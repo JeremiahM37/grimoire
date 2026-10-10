@@ -15,6 +15,7 @@ import (
 // only against a hand-written stub; this runs the real handler's reply through
 // the real MCP initialize, so a rename of the "core" field cannot pass quietly.
 func TestMCPInstructionsCarryWhatTheCoreHandlerReturns(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	dir := t.TempDir()
 	for _, n := range []string{"alpha", "beta"} {

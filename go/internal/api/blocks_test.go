@@ -45,6 +45,7 @@ func blockTexts(t *testing.T, h http.Handler, query string) []string {
 }
 
 func TestBlocksEndpointFilters(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	planVault(t, h)
 
@@ -77,6 +78,7 @@ func TestBlocksEndpointFilters(t *testing.T) {
 }
 
 func TestBlocksEndpointValidation(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	planVault(t, h)
 	for _, query := range []string{"?kind=paragraph", "?level=zero", "?level=-1"} {
@@ -87,6 +89,7 @@ func TestBlocksEndpointValidation(t *testing.T) {
 }
 
 func TestTasksComeFromTheIndex(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	planVault(t, h)
 
@@ -120,6 +123,7 @@ func TestTasksComeFromTheIndex(t *testing.T) {
 }
 
 func TestTasksCanBeNarrowedNow(t *testing.T) {
+	t.Parallel()
 	// The point of indexing them: "the open tasks in this project" no longer
 	// means fetching the whole vault and throwing most of it away.
 	_, h := testServer(t)
@@ -136,6 +140,7 @@ func TestTasksCanBeNarrowedNow(t *testing.T) {
 }
 
 func TestBlocksRespectReaderLists(t *testing.T) {
+	t.Parallel()
 	// A line is note content, so every rule that governs reading a note
 	// governs reading a line of one.
 	s, h := testServer(t)
@@ -169,6 +174,7 @@ func TestBlocksRespectReaderLists(t *testing.T) {
 }
 
 func TestQueryBlockOverLinesGoesThroughTheSameAccessFilter(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	aliceKey := makeUser(t, s, h, "", "alice", "admin")
 	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
@@ -188,6 +194,7 @@ func TestQueryBlockOverLinesGoesThroughTheSameAccessFilter(t *testing.T) {
 }
 
 func TestTemplateBlockRendersThroughTheAPI(t *testing.T) {
+	t.Parallel()
 	// The console draws markdown itself, so a live template is hydrated from
 	// the server — which keeps ONE definition of what the block means across
 	// the console, the read surface and a published page.
@@ -211,6 +218,7 @@ func TestTemplateBlockRendersThroughTheAPI(t *testing.T) {
 }
 
 func TestTemplateRenderNeedsABlockAndAnAccount(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	if w := do(t, h, "POST", "/api/template/render",
 		map[string]any{"block": ""}); w.Code != http.StatusBadRequest {
@@ -225,6 +233,7 @@ func TestTemplateRenderNeedsABlockAndAnAccount(t *testing.T) {
 }
 
 func TestTemplateCannotReachANoteTheCallerCannotRead(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	aliceKey := makeUser(t, s, h, "", "alice", "admin")
 	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
@@ -246,6 +255,7 @@ func TestTemplateCannotReachANoteTheCallerCannotRead(t *testing.T) {
 // --- retrieval scores and grounding ----------------------------------------
 
 func TestRetrieveReportsTheLegsRawScores(t *testing.T) {
+	t.Parallel()
 	// `score` is a reciprocal-rank value: the top hit scores about the same
 	// whether it answers the question exactly or is the least bad of ten poor
 	// matches. Anything downstream that wants to know how good the match
@@ -279,6 +289,7 @@ func TestRetrieveReportsTheLegsRawScores(t *testing.T) {
 }
 
 func TestAskReportsWhetherTheNotesSupportedTheAnswer(t *testing.T) {
+	t.Parallel()
 	// With no reader configured the answer is extractive, which quotes
 	// passages rather than judging them — so the honest verdict is "unknown",
 	// and a caller that reads that as "grounded" has mistaken the absence of a
@@ -305,6 +316,7 @@ func TestAskReportsWhetherTheNotesSupportedTheAnswer(t *testing.T) {
 }
 
 func TestAskPropagatesTheReadersVerdict(t *testing.T) {
+	t.Parallel()
 	// The whole chain, with a stub reader: prompt in, verdict out, and the
 	// verdict line stripped from the answer the caller shows a person.
 	s, h := testServer(t)

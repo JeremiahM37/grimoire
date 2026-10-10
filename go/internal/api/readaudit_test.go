@@ -32,6 +32,7 @@ func recorded(t *testing.T, s *Server, q readlog.Query) []readlog.Row {
 // The question the audit trail exists to answer: after the fact, who opened a
 // restricted document — and who tried and could not.
 func TestRestrictedReadsAreRecordedBothWays(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	withReads(t, s)
 	aliceKey := makeUser(t, s, h, "", "alice", "admin")
@@ -84,6 +85,7 @@ func TestRestrictedReadsAreRecordedBothWays(t *testing.T) {
 // The trail must not become a log of everything everybody reads. An ordinary
 // note in the commons is not an access event.
 func TestOrdinaryReadsAreNotRecorded(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	withReads(t, s)
 	aliceKey := makeUser(t, s, h, "", "alice", "admin")
@@ -105,6 +107,7 @@ func TestOrdinaryReadsAreNotRecorded(t *testing.T) {
 // A single-user deployment has nothing to restrict and nobody to restrict it
 // from, so it must write nothing at all.
 func TestSingleUserWritesNoAuditTrail(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	withReads(t, s)
 	if w := do(t, h, "POST", "/api/notes", map[string]any{
@@ -122,6 +125,7 @@ func TestSingleUserWritesNoAuditTrail(t *testing.T) {
 // The trail says which people looked at which sensitive documents, so reading
 // it is administration, not membership.
 func TestAuditTrailIsAdminOnly(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	withReads(t, s)
 	aliceKey := makeUser(t, s, h, "", "alice", "admin")
@@ -145,6 +149,7 @@ func TestAuditTrailIsAdminOnly(t *testing.T) {
 // A vault export copies restricted documents out wholesale; each one is an
 // access, and the trail would be misleading if the bulk path skipped it.
 func TestVaultExportRecordsEachRestrictedDocument(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	withReads(t, s)
 	aliceKey := makeUser(t, s, h, "", "alice", "admin")
@@ -166,6 +171,7 @@ func TestVaultExportRecordsEachRestrictedDocument(t *testing.T) {
 // An answer that quotes a restricted document has disclosed it. Searching is
 // not recorded, but being shown the text is.
 func TestAnsweredCitationsOfRestrictedNotesAreRecorded(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	withReads(t, s)
 	aliceKey := makeUser(t, s, h, "", "alice", "admin")
@@ -208,6 +214,7 @@ func TestAnsweredCitationsOfRestrictedNotesAreRecorded(t *testing.T) {
 // way, so a filter deleted in a refactor fails here rather than in someone's
 // vault.
 func TestQueryBlocksAreFilteredToWhatTheCallerMaySee(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	aliceKey := makeUser(t, s, h, "", "alice", "admin")
 	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
@@ -258,6 +265,7 @@ func TestQueryBlocksAreFilteredToWhatTheCallerMaySee(t *testing.T) {
 
 // The vault import writes notes from an uploaded archive. It answered anyone.
 func TestVaultImportRequiresAnAccount(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	s2, h2 := testServer(t)
 	makeUser(t, s2, h2, "", "alice", "admin")
@@ -353,6 +361,7 @@ func TestFullCorpusAnswersStillObeyAccess(t *testing.T) {
 // it came from without checking whether the caller may write there, and purge
 // destroyed its last copy without checking anything at all.
 func TestTrashDoesNotLeakOrAcceptOtherPeoplesNotes(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	aliceKey := makeUser(t, s, h, "", "alice", "admin")
 	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
@@ -407,6 +416,7 @@ func TestTrashDoesNotLeakOrAcceptOtherPeoplesNotes(t *testing.T) {
 // them and — worse — change them, which includes repointing this instance's
 // model endpoint at a server of their choosing.
 func TestSettingsAreAdministrative(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	aliceKey := makeUser(t, s, h, "", "alice", "admin")
 	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
@@ -473,6 +483,7 @@ func call(t *testing.T, h http.Handler, key, method, path string, body any) *htt
 // only thing keeping him out. An earlier version of this test reused a fixture
 // whose note had no alias and no tag, and passed with every filter removed.
 func TestDerivedSurfacesRespectReaderLists(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	aliceKey := makeUser(t, s, h, "", "alice", "admin")
 	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
@@ -542,6 +553,7 @@ func TestDerivedSurfacesRespectReaderLists(t *testing.T) {
 // the template path comes from the caller — so without a read check it is a
 // read of any note in the vault wearing a write's clothes.
 func TestTemplateApplyIsNotAReadBypass(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	aliceKey := makeUser(t, s, h, "", "alice", "admin")
 	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
@@ -590,6 +602,7 @@ func TestTemplateApplyIsNotAReadBypass(t *testing.T) {
 // points at something the caller legitimately owns — so a pass means the body
 // path was checked, not that the request was refused for some other reason.
 func TestNotePathsInRequestBodiesAreChecked(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	aliceKey := makeUser(t, s, h, "", "alice", "admin")
 	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
@@ -669,6 +682,7 @@ func mustUser(t *testing.T, s *Server, name string) auth.User {
 // registers one of these directly, the dispatcher's check is silently gone and
 // this is what says so.
 func TestNoteActionRoutesAreGatedByTheDispatcher(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	aliceKey := makeUser(t, s, h, "", "alice", "admin")
 	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
@@ -714,6 +728,7 @@ func TestNoteActionRoutesAreGatedByTheDispatcher(t *testing.T) {
 // cross spaces by design. One request re-wrote the whole vault on behalf of
 // anyone who could reach the port.
 func TestIndirectWriteTargetsAreChecked(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	aliceKey := makeUser(t, s, h, "", "alice", "admin")
 	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
@@ -868,6 +883,7 @@ func truncate(s string, n int) string {
 // someone typed — the failure mode that produced every hole found in the last
 // two days. Firing all the field names at once needs no such list.
 func TestNoWriteRouteTouchesAnotherMembersNotes(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	aliceKey := makeUser(t, s, h, "", "alice", "admin")
 	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
@@ -996,6 +1012,7 @@ func shotgun(aim string, all []string) map[string]any {
 // The trail read back: bursts, over HTTP, on the route an operator reaches.
 
 func TestAnomaliesRouteReportsASweepAndItsThresholds(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	withReads(t, s)
 	aliceKey := makeUser(t, s, h, "", "alice", "admin")
@@ -1040,6 +1057,7 @@ func TestAnomaliesRouteReportsASweepAndItsThresholds(t *testing.T) {
 }
 
 func TestAnomaliesRouteIsAdminOnly(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	withReads(t, s)
 	aliceKey := makeUser(t, s, h, "", "alice", "admin")
@@ -1054,6 +1072,7 @@ func TestAnomaliesRouteIsAdminOnly(t *testing.T) {
 }
 
 func TestAnomaliesRouteRefusesNonsenseThresholds(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	withReads(t, s)
 	aliceKey := makeUser(t, s, h, "", "alice", "admin")
@@ -1066,6 +1085,7 @@ func TestAnomaliesRouteRefusesNonsenseThresholds(t *testing.T) {
 }
 
 func TestAQuietInstanceReportsNoAnomaliesAndSaysWhy(t *testing.T) {
+	t.Parallel()
 	// A single-user instance restricts nothing, so nothing is recorded — and
 	// an empty answer there means "not applicable", not "all clear".
 	s, h := testServer(t)

@@ -16,6 +16,7 @@ import (
 // a dry run leaves alone, and that an apply is an ordinary retraction.
 
 func TestRememberStoresImportanceInTheBullet(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "ops", "text": "the backup key is in the vault",
 		"infer": false, "importance": 5})
@@ -26,6 +27,7 @@ func TestRememberStoresImportanceInTheBullet(t *testing.T) {
 }
 
 func TestRememberWithoutImportanceWritesNoField(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "ops", "text": "the cache is redis", "infer": false})
 	if body := noteBody(t, h, "memory/ops.md"); strings.Contains(body, "imp=") {
@@ -34,6 +36,7 @@ func TestRememberWithoutImportanceWritesNoField(t *testing.T) {
 }
 
 func TestRememberRejectsImportanceOutsideOneToFive(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	for _, bad := range []int{-1, 6, 9} {
 		w := do(t, h, "POST", "/api/memory", map[string]any{
@@ -45,6 +48,7 @@ func TestRememberRejectsImportanceOutsideOneToFive(t *testing.T) {
 }
 
 func TestAReplacementKeepsItsPredecessorsImportance(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	out := remember(t, h, map[string]any{"topic": "prefs", "text": "the user prefers tabs",
 		"infer": false, "importance": 5})
@@ -58,6 +62,7 @@ func TestAReplacementKeepsItsPredecessorsImportance(t *testing.T) {
 }
 
 func TestHelpfulFeedbackCountsUseInTheIndexOnly(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	out := remember(t, h, map[string]any{"topic": "ops", "text": "the deploy host is prod-1", "infer": false})
 	id := out["id"].(string)
@@ -175,6 +180,7 @@ func TestPruneNeverTakesAProtectedFact(t *testing.T) {
 }
 
 func TestPruneInputIsValidated(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	for _, body := range []map[string]any{
 		{"below": 4},  // 4 and 5 are never candidates, so asking for them is an error
@@ -189,6 +195,7 @@ func TestPruneInputIsValidated(t *testing.T) {
 }
 
 func TestPruneEligibilityMirrorsTheProtections(t *testing.T) {
+	t.Parallel()
 	cutoff := vault.Now().Add(-90 * 24 * time.Hour)
 	old := cutoff.Add(-24 * time.Hour).Format(memory.StampFormat)
 	fresh := vault.Now().Format(memory.StampFormat)

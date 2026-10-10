@@ -16,6 +16,7 @@ func storeNote(t *testing.T, dir, name, typ, desc, body string) {
 }
 
 func TestRememberCarriesKindAndWarnsWithoutBlocking(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	out := remember(t, h, map[string]any{"topic": "rules", "infer": false, "kind": "rule",
 		"text": "Never force-push to main."})
@@ -38,6 +39,7 @@ func TestRememberCarriesKindAndWarnsWithoutBlocking(t *testing.T) {
 }
 
 func TestMemoryCoreRulesAndPointers(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	dir := t.TempDir()
 	for _, n := range []string{"a", "b", "c"} {
@@ -69,6 +71,7 @@ func TestMemoryCoreRulesAndPointers(t *testing.T) {
 }
 
 func TestDreamVerifiesDueProceduresAndRecallShowsVerify(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	dir := t.TempDir()
 	storeNote(t, dir, "reference_deploy.md", "project", "How to deploy",
@@ -115,6 +118,7 @@ func TestDreamVerifiesDueProceduresAndRecallShowsVerify(t *testing.T) {
 }
 
 func TestContextItemsCarryKind(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "rules", "infer": false, "kind": "rule",
 		"text": "Never deploy on fridays because the on-call is thin. Apply when scheduling releases."})

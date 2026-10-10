@@ -57,6 +57,7 @@ func tailnetServer(t *testing.T, verified bool) (*Server, http.Handler) {
 }
 
 func TestWhoamiReportsNothingWhenIdentityIsOff(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	w := asPeer(t, h, "GET", "/api/identity", "127.0.0.1:5000", nil)
 	if w.Code != http.StatusOK {
@@ -73,6 +74,7 @@ func TestWhoamiReportsNothingWhenIdentityIsOff(t *testing.T) {
 }
 
 func TestAVerifiedIdentityReplacesTheSelfAssertedName(t *testing.T) {
+	t.Parallel()
 	_, h := tailnetServer(t, true)
 	// The caller claims to be something else entirely. It does not matter.
 	w := asPeer(t, h, "GET", "/api/identity", "100.64.0.9:41000",
@@ -94,6 +96,7 @@ func TestAVerifiedIdentityReplacesTheSelfAssertedName(t *testing.T) {
 }
 
 func TestAnUnverifiedBackendDoesNotOverrideTheHeader(t *testing.T) {
+	t.Parallel()
 	_, h := tailnetServer(t, false)
 	w := asPeer(t, h, "GET", "/api/identity", "100.64.0.9:41000",
 		map[string]string{"X-Grimoire-Agent": "claude-code"})
@@ -106,6 +109,7 @@ func TestAnUnverifiedBackendDoesNotOverrideTheHeader(t *testing.T) {
 }
 
 func TestAnUnidentifiedPeerKeepsTheOldBehaviourExactly(t *testing.T) {
+	t.Parallel()
 	_, h := tailnetServer(t, true)
 	// A caller the backend does not recognise, on a server where identity IS
 	// configured. This is the common case on a mixed network and it must not
@@ -145,6 +149,7 @@ func TestAForwardedHeaderCannotMintAnIdentity(t *testing.T) {
 // Attribution and authorization are separate on purpose: a verified caller is
 // truthfully named and still gets nothing it was not granted.
 func TestAVerifiedIdentityDoesNotSignItselfIn(t *testing.T) {
+	t.Parallel()
 	s, h := tailnetServer(t, true)
 	if s.Auth == nil || s.Auth.Enabled() {
 		// Single-user: there are no accounts, so there is nothing to grant and
@@ -167,6 +172,7 @@ func TestAVerifiedIdentityDoesNotSignItselfIn(t *testing.T) {
 }
 
 func TestWhoamiNamesTheConfiguredBackends(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	s.Identity = identity.New(
 		fakeBackend{name: "tailscale", peer: "100.64.0.9"},
@@ -189,6 +195,7 @@ func TestWhoamiNamesTheConfiguredBackends(t *testing.T) {
 // The ledger is one of the three places attribution actually lands, so the
 // verified name has to reach it rather than only /whoami.
 func TestTheVerifiedNameReachesTheUsageLedger(t *testing.T) {
+	t.Parallel()
 	s, h := tailnetServer(t, true)
 	if s.Index == nil {
 		t.Skip("no index on this test server")
@@ -225,6 +232,7 @@ func multiUserTailnet(t *testing.T) (*Server, http.Handler, string) {
 }
 
 func TestAnUnmappedIdentityIsNamedButStillAnonymous(t *testing.T) {
+	t.Parallel()
 	_, h, _ := multiUserTailnet(t)
 	w := asPeer(t, h, "GET", "/api/me", "100.64.0.9:41000", nil)
 	var me map[string]any
@@ -239,6 +247,7 @@ func TestAnUnmappedIdentityIsNamedButStillAnonymous(t *testing.T) {
 }
 
 func TestAMappedIdentitySignsIn(t *testing.T) {
+	t.Parallel()
 	s, h, _ := multiUserTailnet(t)
 	u, err := s.Auth.ByName("jam")
 	if err != nil {
@@ -266,6 +275,7 @@ func TestAMappedIdentitySignsIn(t *testing.T) {
 // mechanism is a different principal, or a ZeroTier node named "jam@github"
 // would inherit a tailnet user's account.
 func TestAMappingDoesNotCrossBackends(t *testing.T) {
+	t.Parallel()
 	s, h, _ := multiUserTailnet(t)
 	u, _ := s.Auth.ByName("jam")
 	if err := s.Auth.MapIdentity("zerotier", "jam@github", u.ID); err != nil {
@@ -281,6 +291,7 @@ func TestAMappingDoesNotCrossBackends(t *testing.T) {
 
 // An unverified backend must never reach the sign-in path at all.
 func TestAnUnverifiedIdentityCannotSignIn(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	makeUser(t, s, h, "", "jam", "admin")
 	s.Identity = identity.New(fakeBackend{
@@ -301,6 +312,7 @@ func TestAnUnverifiedIdentityCannotSignIn(t *testing.T) {
 }
 
 func TestUnmappingRevokesTheSignIn(t *testing.T) {
+	t.Parallel()
 	s, h, _ := multiUserTailnet(t)
 	u, _ := s.Auth.ByName("jam")
 	if err := s.Auth.MapIdentity("tailscale", "jam@github", u.ID); err != nil {
@@ -326,6 +338,7 @@ func TestUnmappingRevokesTheSignIn(t *testing.T) {
 // were the surfaces that mattered.
 
 func TestAVerifiedIdentityOutranksTheAgentFieldInTheBody(t *testing.T) {
+	t.Parallel()
 	_, h := tailnetServer(t, true)
 	// The body names an agent, which is how MCP clients have always written
 	// memory. It is still the caller describing itself.
@@ -357,6 +370,7 @@ func TestAVerifiedIdentityOutranksTheAgentFieldInTheBody(t *testing.T) {
 // A device name the pattern rejects must not turn a legitimate write into a
 // 400. Unverified-but-storable beats verified-but-unstorable.
 func TestAnUnstorableVerifiedNameFallsBackInsteadOfFailingTheWrite(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	s.Identity = identity.New(fakeBackend{
 		name: "tailscale", peer: "100.64.0.9", verified: true,

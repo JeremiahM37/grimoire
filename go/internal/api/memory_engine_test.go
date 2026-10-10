@@ -57,6 +57,7 @@ func texts(facts []map[string]any) []string {
 }
 
 func TestContradictionSupersedesTheOldBelief(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	first := remember(t, h, map[string]any{
 		"topic": "prefs", "text": "the user prefers spaces", "agent": "claude"})
@@ -95,6 +96,7 @@ func TestContradictionSupersedesTheOldBelief(t *testing.T) {
 }
 
 func TestSupersededBeliefIsRecoverableOnRequest(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "prefs", "text": "the user prefers spaces"})
 	remember(t, h, map[string]any{"topic": "prefs", "text": "the user prefers tabs"})
@@ -115,6 +117,7 @@ func TestSupersededBeliefIsRecoverableOnRequest(t *testing.T) {
 }
 
 func TestRetractionRemovesTheBeliefWithoutReplacingIt(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "prefs", "text": "the user prefers tabs"})
 	out := remember(t, h, map[string]any{
@@ -135,6 +138,7 @@ func TestRetractionRemovesTheBeliefWithoutReplacingIt(t *testing.T) {
 }
 
 func TestRestatementIsNotWrittenTwice(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "ops", "text": "the deploy needs a VPN reset"})
 	out := remember(t, h, map[string]any{"topic": "ops", "text": "The deploy needs a VPN reset."})
@@ -148,6 +152,7 @@ func TestRestatementIsNotWrittenTwice(t *testing.T) {
 }
 
 func TestUnrelatedFactsAccumulate(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "ops", "text": "the user prefers tabs"})
 	remember(t, h, map[string]any{"topic": "ops", "text": "the backup runs at three in the morning"})
@@ -158,6 +163,7 @@ func TestUnrelatedFactsAccumulate(t *testing.T) {
 }
 
 func TestSupersessionIsRollbackable(t *testing.T) {
+	t.Parallel()
 	// A rewrite of an agent's memory that a person cannot undo is a rewrite
 	// they have to trust blindly.
 	_, h := testServer(t)
@@ -172,6 +178,7 @@ func TestSupersessionIsRollbackable(t *testing.T) {
 }
 
 func TestReconciliationCrossesNotes(t *testing.T) {
+	t.Parallel()
 	// The contradicted belief does not have to be in the note being written.
 	_, h := testServer(t)
 	first := remember(t, h, map[string]any{
@@ -188,6 +195,7 @@ func TestReconciliationCrossesNotes(t *testing.T) {
 }
 
 func TestImmutableFactIsNeverSuperseded(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{
 		"topic": "rules", "text": "the user prefers tabs", "immutable": true})
@@ -205,6 +213,7 @@ func TestImmutableFactIsNeverSuperseded(t *testing.T) {
 }
 
 func TestInferFalseStoresVerbatim(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "raw", "text": "the user prefers tabs"})
 	out := remember(t, h, map[string]any{
@@ -218,6 +227,7 @@ func TestInferFalseStoresVerbatim(t *testing.T) {
 }
 
 func TestScopesAreStoredAndFilterable(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "work", "text": "alice owns the release",
 		"agent": "alice-bot", "session": "run-1", "category": "ownership"})
@@ -244,6 +254,7 @@ func TestScopesAreStoredAndFilterable(t *testing.T) {
 }
 
 func TestSessionScopeAnswersWhatWasLearnedInThisRun(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	for _, text := range []string{"the api key rotates monthly", "the staging box is smaller"} {
 		remember(t, h, map[string]any{"topic": "run", "text": text, "session": "run-42"})
@@ -262,6 +273,7 @@ func TestSessionScopeAnswersWhatWasLearnedInThisRun(t *testing.T) {
 }
 
 func TestExpiryStopsRecallWithoutDeleting(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "oncall",
 		"text": "priya is on call this week", "expires_in": "1h"})
@@ -285,6 +297,7 @@ func TestExpiryStopsRecallWithoutDeleting(t *testing.T) {
 }
 
 func TestExpiryValidation(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	for _, body := range []map[string]any{
 		{"text": "x", "expires": "next tuesday"},
@@ -299,6 +312,7 @@ func TestExpiryValidation(t *testing.T) {
 }
 
 func TestScopeFieldsAreValidated(t *testing.T) {
+	t.Parallel()
 	// They are matched exactly in SQL and rendered into the bullet's trailer,
 	// where a space would truncate the field and a '>' would close the comment.
 	_, h := testServer(t)
@@ -314,6 +328,7 @@ func TestScopeFieldsAreValidated(t *testing.T) {
 }
 
 func TestExplainShowsWhyAFactWasRecalled(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "team", "text": "Priya owns the deploy script"})
 	facts := recallFacts(t, h, "?q=who+owns+the+deploy+script&explain=1")
@@ -337,6 +352,7 @@ func TestExplainShowsWhyAFactWasRecalled(t *testing.T) {
 }
 
 func TestPatchEntryEditsOneFactInPlace(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	out := remember(t, h, map[string]any{"topic": "prefs", "text": "the user prefers tabs"})
 	id := out["id"].(string)
@@ -360,6 +376,7 @@ func TestPatchEntryEditsOneFactInPlace(t *testing.T) {
 }
 
 func TestPatchEntryLeavesTheRestOfTheNoteAlone(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "prefs", "text": "the user prefers tabs"})
 	out := remember(t, h, map[string]any{"topic": "prefs", "text": "the office is on the third floor"})
@@ -377,6 +394,7 @@ func TestPatchEntryLeavesTheRestOfTheNoteAlone(t *testing.T) {
 }
 
 func TestPatchEntryRejectsUnknownAndNonMemoryTargets(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "prefs", "text": "a fact"})
 	if w := do(t, h, "PATCH", "/api/memory/entry", map[string]any{
@@ -395,6 +413,7 @@ func TestPatchEntryRejectsUnknownAndNonMemoryTargets(t *testing.T) {
 }
 
 func TestForgetRetractsButKeepsTheRecord(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	out := remember(t, h, map[string]any{"topic": "prefs", "text": "a mistaken belief"})
 	w := do(t, h, "DELETE",
@@ -411,6 +430,7 @@ func TestForgetRetractsButKeepsTheRecord(t *testing.T) {
 }
 
 func TestHardForgetRemovesTheLine(t *testing.T) {
+	t.Parallel()
 	// The case where the fact itself is the problem and striking it through is
 	// not an answer.
 	_, h := testServer(t)
@@ -435,6 +455,7 @@ func TestHardForgetRemovesTheLine(t *testing.T) {
 }
 
 func TestForgetRejectsUnknownEntry(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "prefs", "text": "a fact"})
 	if w := do(t, h, "DELETE",
@@ -447,6 +468,7 @@ func TestForgetRejectsUnknownEntry(t *testing.T) {
 }
 
 func TestBatchReconcilesAgainstItsOwnEarlierItems(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	w := do(t, h, "POST", "/api/memory/batch", map[string]any{"items": []map[string]any{
 		{"topic": "batch", "text": "the user prefers spaces"},
@@ -473,6 +495,7 @@ func TestBatchReconcilesAgainstItsOwnEarlierItems(t *testing.T) {
 }
 
 func TestBatchValidation(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	if w := do(t, h, "POST", "/api/memory/batch",
 		map[string]any{"items": []any{}}); w.Code != http.StatusBadRequest {
@@ -489,6 +512,7 @@ func TestBatchValidation(t *testing.T) {
 }
 
 func TestBatchReportsPerItemFailure(t *testing.T) {
+	t.Parallel()
 	// One bad item must not lose the good ones, and must not be reported as a
 	// success.
 	_, h := testServer(t)
@@ -515,6 +539,7 @@ func TestBatchReportsPerItemFailure(t *testing.T) {
 }
 
 func TestExportReturnsEverythingIncludingHistory(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "prefs", "text": "the user prefers spaces"})
 	remember(t, h, map[string]any{"topic": "prefs", "text": "the user prefers tabs"})
@@ -530,6 +555,7 @@ func TestExportReturnsEverythingIncludingHistory(t *testing.T) {
 }
 
 func TestFacetsListTheScopesInUse(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "w", "text": "one fact",
 		"agent": "alice-bot", "session": "run-1", "category": "ownership"})
@@ -556,6 +582,7 @@ func TestFacetsListTheScopesInUse(t *testing.T) {
 }
 
 func TestBriefingCarriesCurrentFacts(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "prefs", "text": "the user prefers spaces"})
 	remember(t, h, map[string]any{"topic": "prefs", "text": "the user prefers tabs"})
@@ -573,6 +600,7 @@ func TestBriefingCarriesCurrentFacts(t *testing.T) {
 }
 
 func TestFactRecallRespectsReaderLists(t *testing.T) {
+	t.Parallel()
 	// The fact-level surface is a new way to read note content, and every new
 	// way to read note content is a new way to leak it.
 	s, h := testServer(t)
@@ -610,6 +638,7 @@ func TestFactRecallRespectsReaderLists(t *testing.T) {
 }
 
 func TestReconciliationCannotSupersedeAcrossAReaderList(t *testing.T) {
+	t.Parallel()
 	// Writing a contradicting fact must not become a way to strike through a
 	// belief in a note the writer may not touch.
 	s, h := testServer(t)
@@ -636,6 +665,7 @@ func TestReconciliationCannotSupersedeAcrossAReaderList(t *testing.T) {
 }
 
 func TestRecallLimitIsBounded(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	for i := 0; i < 5; i++ {
 		remember(t, h, map[string]any{"topic": "many",
@@ -653,6 +683,7 @@ func TestRecallLimitIsBounded(t *testing.T) {
 }
 
 func TestMemoryEndpointsRejectAnonymousWrites(t *testing.T) {
+	t.Parallel()
 	// The route audit records the intent; this checks the handlers.
 	s, h := testServer(t)
 	adminKey := makeUser(t, s, h, "", "alice", "admin")
@@ -675,6 +706,7 @@ func TestMemoryEndpointsRejectAnonymousWrites(t *testing.T) {
 }
 
 func TestBatchThatWritesNothingIsNotASuccess(t *testing.T) {
+	t.Parallel()
 	// A caller checking only the HTTP status must not record a write that
 	// never happened.
 	_, h := testServer(t)
@@ -692,6 +724,7 @@ func TestBatchThatWritesNothingIsNotASuccess(t *testing.T) {
 }
 
 func TestPartialBatchStaysASuccessAndSaysWhatLanded(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	w := do(t, h, "POST", "/api/memory/batch", map[string]any{"items": []map[string]any{
 		{"topic": "b", "text": "a fact that lands"}, {"text": ""},
@@ -707,6 +740,7 @@ func TestPartialBatchStaysASuccessAndSaysWhatLanded(t *testing.T) {
 }
 
 func TestAsOfReconstructsAnEarlierBelief(t *testing.T) {
+	t.Parallel()
 	// The question a store that deletes what it replaces cannot answer.
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "prefs", "text": "the user prefers spaces"})
@@ -725,6 +759,7 @@ func TestAsOfReconstructsAnEarlierBelief(t *testing.T) {
 }
 
 func TestAsOfRejectsAMalformedInstant(t *testing.T) {
+	t.Parallel()
 	// Answering a historical question about the present is a wrong answer that
 	// looks right.
 	_, h := testServer(t)
@@ -734,6 +769,7 @@ func TestAsOfRejectsAMalformedInstant(t *testing.T) {
 }
 
 func TestSupersessionRecordsWhenItHappened(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "prefs", "text": "the user prefers spaces"})
 	remember(t, h, map[string]any{"topic": "prefs", "text": "the user prefers tabs"})
@@ -743,6 +779,7 @@ func TestSupersessionRecordsWhenItHappened(t *testing.T) {
 }
 
 func TestRetractionRecordsWhenItHappened(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	out := remember(t, h, map[string]any{"topic": "prefs", "text": "a mistaken belief"})
 	do(t, h, "DELETE", "/api/memory/entry?path=memory/prefs.md&id="+out["id"].(string), nil)
@@ -752,6 +789,7 @@ func TestRetractionRecordsWhenItHappened(t *testing.T) {
 }
 
 func TestRecallFiltersByTask(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "w", "text": "the first fact", "task": "ticket-4"})
 	remember(t, h, map[string]any{"topic": "w", "text": "the second fact", "task": "ticket-9"})
@@ -763,6 +801,7 @@ func TestRecallFiltersByTask(t *testing.T) {
 }
 
 func TestTopicScopeKeepsNamespacesFromSupersedingEachOther(t *testing.T) {
+	t.Parallel()
 	// The isolation a partitioned store depends on: a write into one topic
 	// must not be able to strike through a belief in another.
 	_, h := testServer(t)
@@ -784,6 +823,7 @@ func TestTopicScopeKeepsNamespacesFromSupersedingEachOther(t *testing.T) {
 }
 
 func TestSessionScopeIsolatesRuns(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "w", "text": "the user prefers spaces",
 		"session": "run-1", "scope": "session"})
@@ -801,6 +841,7 @@ func TestSessionScopeIsolatesRuns(t *testing.T) {
 }
 
 func TestSessionScopeWithNoSessionOnlyReachesSessionlessFacts(t *testing.T) {
+	t.Parallel()
 	// "" must mean "the facts with no session", not "every session".
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "w", "text": "the user prefers spaces",
@@ -813,6 +854,7 @@ func TestSessionScopeWithNoSessionOnlyReachesSessionlessFacts(t *testing.T) {
 }
 
 func TestAgentScopeIsolatesAgents(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "w", "text": "the user prefers spaces",
 		"agent": "alice-bot", "scope": "agent"})
@@ -824,6 +866,7 @@ func TestAgentScopeIsolatesAgents(t *testing.T) {
 }
 
 func TestDefaultScopeStillReconcilesAcrossTheVault(t *testing.T) {
+	t.Parallel()
 	// The default has to stay "the whole vault": for one person's memory, a
 	// belief contradicted in another note is still contradicted.
 	_, h := testServer(t)
@@ -835,6 +878,7 @@ func TestDefaultScopeStillReconcilesAcrossTheVault(t *testing.T) {
 }
 
 func TestInvalidScopeIsRefused(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	if w := do(t, h, "POST", "/api/memory",
 		map[string]any{"text": "x", "scope": "everything"}); w.Code != http.StatusBadRequest {
@@ -843,6 +887,7 @@ func TestInvalidScopeIsRefused(t *testing.T) {
 }
 
 func TestFeedbackCountsAndReordersWithoutBurying(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	// Two facts that both answer the query and do NOT reconcile against each
 	// other — otherwise the engine correctly supersedes one and there is
@@ -882,6 +927,7 @@ func TestFeedbackCountsAndReordersWithoutBurying(t *testing.T) {
 }
 
 func TestFeedbackSurvivesInTheNoteAndTheBreakdown(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	out := remember(t, h, map[string]any{"topic": "ops", "text": "a fact worth keeping"})
 	do(t, h, "POST", "/api/memory/feedback", map[string]any{
@@ -901,6 +947,7 @@ func TestFeedbackSurvivesInTheNoteAndTheBreakdown(t *testing.T) {
 }
 
 func TestFeedbackValidation(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	out := remember(t, h, map[string]any{"topic": "ops", "text": "a fact"})
 	for _, body := range []map[string]any{
@@ -917,6 +964,7 @@ func TestFeedbackValidation(t *testing.T) {
 }
 
 func TestFeedbackNeedsWriteAccessToTheFactsNote(t *testing.T) {
+	t.Parallel()
 	// The answer to "is this a lever on someone else's ranking": no, because
 	// it is a write to the note the fact lives in.
 	s, h := testServer(t)
@@ -942,6 +990,7 @@ func TestFeedbackNeedsWriteAccessToTheFactsNote(t *testing.T) {
 }
 
 func TestGraphOverHTTPCarriesNodesEdgesAndEvidence(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "team",
 		"text": "Priya Sharma and Marco Diaz maintain AIServer"})
@@ -983,6 +1032,7 @@ func TestGraphOverHTTPCarriesNodesEdgesAndEvidence(t *testing.T) {
 }
 
 func TestGraphWithoutASeedIsAnOverview(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "team", "text": "Marco Diaz owns the Deploy Runbook"})
 	var g struct {
@@ -995,6 +1045,7 @@ func TestGraphWithoutASeedIsAnOverview(t *testing.T) {
 }
 
 func TestGraphDepthAndLimitAreBounded(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "team", "text": "Marco Diaz owns the Deploy Runbook"})
 	for _, query := range []string{"?entity=marco&depth=99", "?entity=marco&depth=-1",
@@ -1006,6 +1057,7 @@ func TestGraphDepthAndLimitAreBounded(t *testing.T) {
 }
 
 func TestGraphRespectsReaderLists(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	aliceKey := makeUser(t, s, h, "", "alice", "admin")
 	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
@@ -1037,6 +1089,7 @@ func containsString(list []string, want string) bool {
 }
 
 func TestEmbedReturnsVectorsInTheServersSpace(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	var out struct {
 		Model      string      `json:"model"`
@@ -1065,6 +1118,7 @@ func TestEmbedReturnsVectorsInTheServersSpace(t *testing.T) {
 }
 
 func TestEmbedValidation(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	if w := do(t, h, "POST", "/api/embed", map[string]any{}); w.Code != http.StatusBadRequest {
 		t.Errorf("empty = %d, want 400", w.Code)
@@ -1080,6 +1134,7 @@ func TestEmbedValidation(t *testing.T) {
 }
 
 func TestVectorSearchRoundTripsThroughEmbed(t *testing.T) {
+	t.Parallel()
 	// The whole point: embed here, search here, one space.
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "facts",
@@ -1105,6 +1160,7 @@ func TestVectorSearchRoundTripsThroughEmbed(t *testing.T) {
 }
 
 func TestVectorSearchRefusesAForeignEmbeddingSpace(t *testing.T) {
+	t.Parallel()
 	// The check that keeps this honest. Cosine does not report that it is
 	// comparing two unrelated coordinate systems; it reports a number, and
 	// retrieval looks like it works.
@@ -1121,6 +1177,7 @@ func TestVectorSearchRefusesAForeignEmbeddingSpace(t *testing.T) {
 }
 
 func TestVectorSearchAppliesTheSameFiltersAndAccess(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "facts", "text": "run one fact",
 		"session": "run-1", "infer": false})
@@ -1157,6 +1214,7 @@ func TestVectorSearchAppliesTheSameFiltersAndAccess(t *testing.T) {
 }
 
 func TestVectorSearchNeedsSomethingToSearchWith(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	if w := do(t, h, "POST", "/api/memory/search",
 		map[string]any{"limit": 5}); w.Code != http.StatusBadRequest {
@@ -1167,6 +1225,7 @@ func TestVectorSearchNeedsSomethingToSearchWith(t *testing.T) {
 // The value-slot rule reaching the engine through HTTP, and staying inside the
 // bounds every other supersession respects.
 func TestAValueUpdateSupersedesThroughTheAPI(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "run", "agent": "probe",
 		"text": "I set a personal best time in the charity 5K run with a time of 27:12"})
@@ -1203,6 +1262,7 @@ func TestAValueUpdateSupersedesThroughTheAPI(t *testing.T) {
 }
 
 func TestAValueUpdateIsReportedInTheBeliefDigest(t *testing.T) {
+	t.Parallel()
 	// A numeric correction is exactly the kind of change a person wants to see
 	// in the weekly digest, and it only appears there if it reconciled.
 	_, h := testServer(t)

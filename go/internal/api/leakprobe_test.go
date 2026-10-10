@@ -854,6 +854,7 @@ func lpRunProbe(t *testing.T, w *lpWorld, p lpProbe) {
 
 // TestLeakprobeExplicitRoutes drives every explicit probe as every identity.
 func TestLeakprobeExplicitRoutes(t *testing.T) {
+	t.Parallel()
 	w := seedLeakWorld(t)
 	for _, p := range lpProbes(w) {
 		lpRunProbe(t, w, p)
@@ -881,6 +882,7 @@ func TestLeakprobeExplicitRoutes(t *testing.T) {
 // TestLeakprobeRouteCoverage is the failure that stops a new route shipping
 // unprobed. The route table comes from the source, as route_audit_test does it.
 func TestLeakprobeRouteCoverage(t *testing.T) {
+	t.Parallel()
 	covered := map[string]bool{}
 	w := seedLeakWorld(t)
 	for _, p := range lpProbes(w) {
@@ -916,6 +918,7 @@ func TestLeakprobeRouteCoverage(t *testing.T) {
 // member, an anonymous caller, and an agent identity without a grant, and no
 // canary comes back from any of them.
 func TestLeakprobeAdminRoutesRefuseMembers(t *testing.T) {
+	t.Parallel()
 	w := seedLeakWorld(t)
 	for route, class := range routeAccess {
 		if class != admin {
@@ -976,6 +979,7 @@ func lpBodyFor(route string) any {
 // TestLeakprobeGenericSweep drives every registered route with concrete
 // stand-ins, so a route with no explicit entry still gets its canary check.
 func TestLeakprobeGenericSweep(t *testing.T) {
+	t.Parallel()
 	w := seedLeakWorld(t)
 	for _, route := range registeredRoutes(t) {
 		method, pattern, ok := strings.Cut(route, " ")
@@ -999,6 +1003,7 @@ func TestLeakprobeGenericSweep(t *testing.T) {
 // advertises. The MCP layer is an HTTP client of the API, so a refusal there
 // must come from the same checks, and nothing may come back in a result.
 func TestLeakprobeMCPDispatcher(t *testing.T) {
+	t.Parallel()
 	w := seedLeakWorld(t)
 	args := map[string]any{
 		"query": "Priya diary vendor infra", "q": "diary", "text": "probe",
@@ -1069,6 +1074,7 @@ func mcpCall(t *testing.T, m *mcp.Server, name string, args map[string]any) stri
 // deliver content to whoever is entitled to it. A probe that reaches a surface
 // that answers every caller with nothing would pass for the wrong reason.
 func TestLeakprobeFixtureIsLive(t *testing.T) {
+	t.Parallel()
 	w := seedLeakWorld(t)
 	c := lpCanaries
 
@@ -1122,6 +1128,7 @@ func TestLeakprobeFixtureIsLive(t *testing.T) {
 // answer exactly as one that does not. A different status or body shape is a
 // way to enumerate owned names without ever reading them.
 func TestLeakprobeNoExistenceOracle(t *testing.T) {
+	t.Parallel()
 	w := seedLeakWorld(t)
 	pairs := []struct {
 		name, real, fake string
@@ -1161,6 +1168,7 @@ func TestLeakprobeNoExistenceOracle(t *testing.T) {
 // graph degree, tag and entity counts, array lengths. A count that moves is a
 // count of something the caller cannot read.
 func TestLeakprobeCountsDoNotDependOnHiddenOwnedItems(t *testing.T) {
+	t.Parallel()
 	full := seedLeakWorldWith(t, true)
 	control := seedLeakWorldWith(t, false)
 	for _, p := range lpProbes(full) {
@@ -1284,6 +1292,7 @@ func withIncludePrivate(path string) string {
 // Positive controls keep this honest: the owner recalls both facts once she
 // asks, and a forgotten hidden fact still has a receipt she can list.
 func TestLeakprobeHiddenMemoryStaysHidden(t *testing.T) {
+	t.Parallel()
 	w := seedLeakWorld(t)
 	c := lpCanaries
 	priv, sens := c["vis-private"], c["vis-sensitive"]

@@ -22,6 +22,7 @@ import (
 
 // "Key derivation: Argon2id (64 MiB, t=3, p=4)".
 func TestArgon2ParametersMatchTheDocumentedOnes(t *testing.T) {
+	t.Parallel()
 	if crypto.ArgonMemoryKiB != 64*1024 {
 		t.Errorf("Argon2 memory = %d KiB, SECURITY.md says 64 MiB", crypto.ArgonMemoryKiB)
 	}
@@ -41,6 +42,7 @@ func TestArgon2ParametersMatchTheDocumentedOnes(t *testing.T) {
 // whoever asked for the zip. This asserts the encrypted secret store is not
 // among it.
 func TestVaultExportNeverShipsTheSecretStore(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 
 	// a real secret store on disk, plus an ordinary note to prove the export works
@@ -91,6 +93,7 @@ func TestVaultExportNeverShipsTheSecretStore(t *testing.T) {
 
 // "No CORS headers are set → browsers enforce same-origin for API calls."
 func TestNoCORSHeadersAreEverSet(t *testing.T) {
+	t.Parallel()
 	s, _ := testServer(t)
 	h := s.Routes()
 	for _, path := range []string{"/api/health", "/api/notes", "/api/search?q=x",
@@ -111,6 +114,7 @@ func TestNoCORSHeadersAreEverSet(t *testing.T) {
 // "the plaintext never touches disk, the SQLite index, FTS search, the vector
 // store / RAG" — asserted end to end rather than trusting the write path.
 func TestEncryptedNoteBodyReachesNoRetrievalSurface(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	if err := s.Secrets.Initialize("correct horse battery"); err != nil {
 		t.Fatal(err)
@@ -167,6 +171,7 @@ func TestEncryptedNoteBodyReachesNoRetrievalSurface(t *testing.T) {
 // while the code has always written secrets.json. Someone following that
 // guidance literally would have excluded a file that does not exist.
 func TestSecretStoreFilenameIsTheDocumentedOne(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	v := secrets.New(dir)
 	if got := filepath.Base(v.Path); got != "secrets.json" {

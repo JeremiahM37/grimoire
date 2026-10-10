@@ -72,6 +72,7 @@ func indexAs(t *testing.T, h http.Handler, key, path string) *httptest.ResponseR
 }
 
 func TestCodeRoutesRefuseMembersAndAnonymous(t *testing.T) {
+	t.Parallel()
 	_, h, admin, member, extra := codeServer(t)
 	if r := indexAs(t, h, admin, extra); r.Code != http.StatusOK {
 		t.Fatalf("admin index: %d %s", r.Code, r.Body)
@@ -99,6 +100,7 @@ func TestCodeRoutesRefuseMembersAndAnonymous(t *testing.T) {
 }
 
 func TestCodeIndexPathAllowlist(t *testing.T) {
+	t.Parallel()
 	s, h, admin, _, extra := codeServer(t)
 	outside := t.TempDir()
 
@@ -154,6 +156,7 @@ func TestCodeIndexPathAllowlist(t *testing.T) {
 }
 
 func TestCodeGraphRoundTripAndIncrementalReindex(t *testing.T) {
+	t.Parallel()
 	_, h, admin, _, extra := codeServer(t)
 
 	if first := indexAs(t, h, admin, extra); first.Code != http.StatusOK {

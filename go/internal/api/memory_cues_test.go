@@ -36,6 +36,7 @@ func contextFor(t *testing.T, h http.Handler, q string, extra ...string) string 
 const releaseFact = "Deploys switch the web directory in release.conf before restarting"
 
 func TestRetellTeachesACueThatSurfacesTheFact(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	first := remember(t, h, map[string]any{"topic": "deploy", "text": releaseFact})
 	if first["op"] != "ADD" {
@@ -59,6 +60,7 @@ func TestRetellTeachesACueThatSurfacesTheFact(t *testing.T) {
 }
 
 func TestRetellWithoutContextUsesTheAgentsLastPrompt(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "deploy", "text": releaseFact})
 	situation := "please ship the newest grimoire build to the box"
@@ -70,6 +72,7 @@ func TestRetellWithoutContextUsesTheAgentsLastPrompt(t *testing.T) {
 }
 
 func TestAgentCuesAreStoredWithANewFact(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	res := remember(t, h, map[string]any{"topic": "deploy", "infer": false, "text": releaseFact,
 		"cues": []string{"ship the newest build", "/etc/systemd/system/grimoire.service.d/release.conf"}})
@@ -98,6 +101,7 @@ func TestAgentCuesAreStoredWithANewFact(t *testing.T) {
 }
 
 func TestUntrustedWritersDoNotTeachCues(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	res := remember(t, h, map[string]any{"topic": "deploy", "infer": false, "text": releaseFact,
 		"origin": "web:example.com", "cues": []string{"ship the newest build"}})
@@ -108,6 +112,7 @@ func TestUntrustedWritersDoNotTeachCues(t *testing.T) {
 }
 
 func TestCuesEndpointValidates(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	for _, body := range []map[string]any{
 		{"target": "bogus", "cues": []string{"x"}},
@@ -131,6 +136,7 @@ func TestCuesEndpointValidates(t *testing.T) {
 }
 
 func TestCorrectionInTheSameSessionTeachesTheEarlierPrompt(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	do(t, h, "PUT", "/api/notes/Agent%20Memory/feedback_delegation.md",
 		map[string]any{"body": "Use the lead model to coordinate and a cheaper model to implement."})
@@ -155,6 +161,7 @@ func TestCorrectionInTheSameSessionTeachesTheEarlierPrompt(t *testing.T) {
 }
 
 func TestToolCallsNeverEnterRetellPairing(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	do(t, h, "PUT", "/api/notes/Agent%20Memory/feedback_delegation.md",
 		map[string]any{"body": "Use the lead model to coordinate and a cheaper model to implement."})
@@ -171,6 +178,7 @@ func TestToolCallsNeverEnterRetellPairing(t *testing.T) {
 }
 
 func TestJudgedRetellLearnsOnlyOnAConfidentYes(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		verdict float64
 		learns  bool

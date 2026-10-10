@@ -415,6 +415,7 @@ func registeredRoutes(t *testing.T) []string {
 }
 
 func TestEveryRouteIsClassified(t *testing.T) {
+	t.Parallel()
 	routes := registeredRoutes(t)
 	if len(routes) < 50 {
 		t.Fatalf("found only %d routes — did the registration form change?", len(routes))
@@ -440,6 +441,7 @@ func TestEveryRouteIsClassified(t *testing.T) {
 // The public list is the one worth reading twice: everything on it is reachable
 // by anyone who can open the port on a multi-user instance.
 func TestThePublicSurfaceIsSmallAndDeliberate(t *testing.T) {
+	t.Parallel()
 	var pub []string
 	for r, a := range routeAccess {
 		if a == public {
@@ -483,6 +485,7 @@ func TestThePublicSurfaceIsSmallAndDeliberate(t *testing.T) {
 // ever again be reachable by an anonymous caller merely because someone wrote
 // a label next to it.
 func TestNonPublicRoutesRefuseAnonymousCallers(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	adminKey := makeUser(t, s, h, "", "alice", "admin") // accounts exist ⇒ multi-user rules apply
 

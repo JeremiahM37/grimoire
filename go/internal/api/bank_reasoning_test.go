@@ -12,6 +12,7 @@ import (
 )
 
 func TestBankReasoningRoutesWithoutAModel(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	if w := do(t, h, "POST", "/api/banks/b/memories", map[string]any{"items": []map[string]any{
 		{"content": "Alice adopted a beagle named Biscuit. Alice works as a nurse.", "document_id": "d1", "tags": []string{"pets"}}}}); w.Code != 200 {
@@ -138,6 +139,7 @@ func TestBankReasoningRoutesWithoutAModel(t *testing.T) {
 }
 
 func TestAsyncRetainOverHTTPAndOperations(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	if err := s.Banks.StartWorkers(1); err != nil {
 		t.Fatal(err)
@@ -200,6 +202,7 @@ func TestAsyncRetainOverHTTPAndOperations(t *testing.T) {
 }
 
 func TestPatchObservationMakesItAPersons(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	if w := do(t, h, "POST", "/api/banks/b/memories", map[string]any{"items": []map[string]any{
 		{"content": "Alice likes tea.", "document_id": "d1"}}}); w.Code != 200 {

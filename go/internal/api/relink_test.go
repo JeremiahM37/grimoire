@@ -11,6 +11,7 @@ import (
 // loses the edges and backlinks that were there yesterday are gone.
 
 func TestRenameRepointsInboundLinks(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	if _, err := s.WriteNote("deploy.md", "# Deploy\n\nhow to ship\n",
 		map[string]any{"title": "Deploy"}); err != nil {
@@ -49,6 +50,7 @@ func TestRenameRepointsInboundLinks(t *testing.T) {
 // The rewrite must not reach links that never pointed here. It works from the
 // index's resolved targets, so a same-named note elsewhere is untouched.
 func TestRenameLeavesUnrelatedLinksAlone(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	for path, body := range map[string]string{
 		"deploy.md":             "# Deploy\n\nthe one being moved\n",
@@ -82,6 +84,7 @@ func TestRenameLeavesUnrelatedLinksAlone(t *testing.T) {
 
 // Anchors and existing display text are part of the link a person wrote.
 func TestRelinkPreservesAnchorsAndDisplayText(t *testing.T) {
+	t.Parallel()
 	old := map[string]bool{"deploy": true}
 	for _, tc := range []struct{ in, want string }{
 		{"see [[Deploy]]", "see [[shipping|Deploy]]"},
@@ -101,6 +104,7 @@ func TestRelinkPreservesAnchorsAndDisplayText(t *testing.T) {
 // Every spelling that used to reach the note has to be rewritten, or the ones
 // missed stay broken and the rename looks like it worked.
 func TestLinkAliasesCoversEverySpelling(t *testing.T) {
+	t.Parallel()
 	got := linkAliases("projects/deploy-guide.md", "Deploy Guide", []string{"Shipping", "How to Ship"})
 	for _, want := range []string{
 		"projects/deploy-guide.md", "projects/deploy-guide", "deploy-guide",
@@ -113,6 +117,7 @@ func TestLinkAliasesCoversEverySpelling(t *testing.T) {
 }
 
 func TestRelinkIsANoOpWithNothingToDo(t *testing.T) {
+	t.Parallel()
 	body := "no links here at all"
 	got, n := relinkBody(body, map[string]bool{"deploy": true}, "shipping")
 	if got != body || n != 0 {

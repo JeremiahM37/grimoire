@@ -57,6 +57,7 @@ const (
 )
 
 func TestDisputesListBothSidesWithAuthorityAndEvidence(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	contested(t, h)
 
@@ -94,6 +95,7 @@ func TestDisputesListBothSidesWithAuthorityAndEvidence(t *testing.T) {
 // An agent caller is refused before anything is looked up, so the refusal is
 // the same whether or not the id exists.
 func TestAnAgentCannotResolveADispute(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	contested(t, h)
 	open := disputes(t, h)
@@ -120,6 +122,7 @@ func TestAnAgentCannotResolveADispute(t *testing.T) {
 }
 
 func TestKeepRetractsTheChallengerAndConfirmsThePerson(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	contested(t, h)
 	open := disputes(t, h)
@@ -156,6 +159,7 @@ func TestKeepRetractsTheChallengerAndConfirmsThePerson(t *testing.T) {
 }
 
 func TestAcceptChallengerSupersedesTheOriginal(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	contested(t, h)
 	open := disputes(t, h)
@@ -187,6 +191,7 @@ func TestAcceptChallengerSupersedesTheOriginal(t *testing.T) {
 }
 
 func TestMergeWritesAHumanEntryThatReplacesBoth(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	contested(t, h)
 	open := disputes(t, h)
@@ -234,6 +239,7 @@ func TestMergeWritesAHumanEntryThatReplacesBoth(t *testing.T) {
 }
 
 func TestMergeNeedsText(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	contested(t, h)
 	open := disputes(t, h)
@@ -249,6 +255,7 @@ func TestMergeNeedsText(t *testing.T) {
 }
 
 func TestResolveRefusesWhatIsNotDisputed(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	contested(t, h)
 	open := disputes(t, h)
@@ -270,6 +277,7 @@ func TestResolveRefusesWhatIsNotDisputed(t *testing.T) {
 
 // Two contesting claims: accepting one needs the person to say which.
 func TestAcceptNamesTheChallengerWhenSeveralContest(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	contested(t, h)
 	remember(t, h, map[string]any{"text": "Billing Postgres runs on port 5433", "topic": "ops", "agent": "codex"})

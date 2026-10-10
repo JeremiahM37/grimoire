@@ -70,6 +70,7 @@ func dreamVault(t *testing.T) (*Server, http.Handler) {
 }
 
 func TestDreamReportsWithoutChangingAnything(t *testing.T) {
+	t.Parallel()
 	s, _ := dreamVault(t)
 	before := readVaultFile(t, s, "Agent Memory/MEMORY.md")
 
@@ -102,6 +103,7 @@ func TestDreamReportsWithoutChangingAnything(t *testing.T) {
 // The report is a note, and notes sync to other devices: the credential the
 // sweep found must not travel with it, in the note or in the API response.
 func TestDreamNeverRepeatsTheSecretItFound(t *testing.T) {
+	t.Parallel()
 	s, h := dreamVault(t)
 	rec := do(t, h, "POST", "/api/dream", map[string]any{})
 	if rec.Code != http.StatusOK {
@@ -120,6 +122,7 @@ func TestDreamNeverRepeatsTheSecretItFound(t *testing.T) {
 }
 
 func TestDreamApplyRepairsTheIndexOnly(t *testing.T) {
+	t.Parallel()
 	s, _ := dreamVault(t)
 	opsBefore := readVaultFile(t, s, "memory/ops.md")
 
@@ -163,6 +166,7 @@ func TestDreamApplyRepairsTheIndexOnly(t *testing.T) {
 }
 
 func TestScheduledDreamSkipsUnchangedMemory(t *testing.T) {
+	t.Parallel()
 	s, _ := dreamVault(t)
 	if _, err := s.Dream(context.Background(), true, true); err != nil {
 		t.Fatal(err)
@@ -177,6 +181,7 @@ func TestScheduledDreamSkipsUnchangedMemory(t *testing.T) {
 }
 
 func TestDreamRouteNeedsAdmin(t *testing.T) {
+	t.Parallel()
 	s, _ := dreamVault(t)
 	s.AdminToken = "admin-secret"
 	h := s.Routes() // the gate is built with the routes
@@ -189,6 +194,7 @@ func TestDreamRouteNeedsAdmin(t *testing.T) {
 }
 
 func TestApplyFixesChecksTheLineFirst(t *testing.T) {
+	t.Parallel()
 	text := "a\nb\nc\n"
 	out, done := applyFixes(text, []dream.Fix{
 		{Kind: dream.FixReplaceLine, Line: 2, Old: "b", New: ""},

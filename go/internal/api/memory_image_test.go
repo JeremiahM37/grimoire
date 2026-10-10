@@ -79,6 +79,7 @@ func recallEntries(t *testing.T, h http.Handler, q string) []entryOut {
 }
 
 func TestMemoryImageCaptionedPictureIsRecalledByCaption(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	raw := testPNG(t, 10)
 	got := storedImage(t, h, raw, "rack B wiring diagram", "infra")
@@ -116,6 +117,7 @@ func TestMemoryImageCaptionedPictureIsRecalledByCaption(t *testing.T) {
 }
 
 func TestMemoryImageWithoutCaptionIsStoredButNeverRecalled(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	raw := testPNG(t, 40)
 	got := storedImage(t, h, raw, "", "")
@@ -137,6 +139,7 @@ func TestMemoryImageWithoutCaptionIsStoredButNeverRecalled(t *testing.T) {
 }
 
 func TestMemoryImageRejectsWhatIsNotAPicture(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	cases := map[string]map[string]any{
 		"svg":        {"data_base64": base64.StdEncoding.EncodeToString([]byte("<svg xmlns='http://www.w3.org/2000/svg'/>")), "caption": "x"},
@@ -171,6 +174,7 @@ func TestMemoryImageSizeCapIsEnforced(t *testing.T) {
 }
 
 func TestMemoryImageMultipartUpload(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	raw := testPNG(t, 77)
 	var buf bytes.Buffer
@@ -196,6 +200,7 @@ func TestMemoryImageMultipartUpload(t *testing.T) {
 // A picture is served only while a visible, non-private entry refers to it. A
 // hash alone is not a capability.
 func TestMemoryImageHiddenWhenNoVisibleEntryRefersToIt(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	got := storedImage(t, h, testPNG(t, 90), "private floor plan", "secret")
 	get := func() int {
@@ -227,6 +232,7 @@ func TestMemoryImageHiddenWhenNoVisibleEntryRefersToIt(t *testing.T) {
 }
 
 func TestMemoryImageIsCollectedWithItsLastReference(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	raw := testPNG(t, 120)
 	first := storedImage(t, h, raw, "same photo, first note", "dup")
@@ -285,6 +291,7 @@ func exportRecords(t *testing.T, h http.Handler, query string) []map[string]any 
 }
 
 func TestMemoryImageExportsAndImportsItsBytes(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	raw := testPNG(t, 150)
 	got := storedImage(t, h, raw, "whiteboard after the design review", "review")
@@ -334,6 +341,7 @@ func TestMemoryImageExportsAndImportsItsBytes(t *testing.T) {
 }
 
 func TestMemoryImageImportRefusesForgedOrDanglingPictures(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	realPNG := testPNG(t, 160)
 	otherPNG := testPNG(t, 161)
@@ -361,6 +369,7 @@ func TestMemoryImageImportRefusesForgedOrDanglingPictures(t *testing.T) {
 // A fact tagged vis=private or vis=sensitive hides its picture too: the hash
 // must not be a way around the visibility tag.
 func TestMemoryImageHiddenByVisibilityTag(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	got := storedImage(t, h, testPNG(t, 77), "hidden by tag", "vis")
 	get := func() int {

@@ -38,6 +38,7 @@ func put(t *testing.T, h http.Handler, name, value, note string, meta map[string
 }
 
 func TestWritingASecretThroughTheAPIKeepsHistory(t *testing.T) {
+	t.Parallel()
 	_, h := vaultedServer(t)
 	put(t, h, "stripe", "sk_live_ONE", "", nil)
 	put(t, h, "stripe", "sk_live_TWO", "quarterly rotation", nil)
@@ -67,6 +68,7 @@ func TestWritingASecretThroughTheAPIKeepsHistory(t *testing.T) {
 }
 
 func TestRollbackOverHTTP(t *testing.T) {
+	t.Parallel()
 	s, h := vaultedServer(t)
 	put(t, h, "k", "first", "", nil)
 	put(t, h, "k", "second", "", nil)
@@ -90,6 +92,7 @@ func TestRollbackOverHTTP(t *testing.T) {
 }
 
 func TestRestoreDefaultsToTheMostRecentPreviousValue(t *testing.T) {
+	t.Parallel()
 	s, h := vaultedServer(t)
 	put(t, h, "k", "v1", "", nil)
 	put(t, h, "k", "v2", "", nil)
@@ -105,6 +108,7 @@ func TestRestoreDefaultsToTheMostRecentPreviousValue(t *testing.T) {
 }
 
 func TestRestoreNeedsANameAndReportsABadVersion(t *testing.T) {
+	t.Parallel()
 	_, h := vaultedServer(t)
 	put(t, h, "k", "v1", "", nil)
 	if w := do(t, h, "POST", "/api/secrets/restore", map[string]any{}); w.Code != http.StatusBadRequest {
@@ -118,6 +122,7 @@ func TestRestoreNeedsANameAndReportsABadVersion(t *testing.T) {
 }
 
 func TestDetailsDescribeWithoutRevealing(t *testing.T) {
+	t.Parallel()
 	_, h := vaultedServer(t)
 	put(t, h, "billing", "sk_live_SECRETVALUE", "", map[string]any{
 		secrets.MetaNote: "stripe billing", secrets.MetaExpires: "2020-01-01"})
@@ -155,6 +160,7 @@ func TestDetailsDescribeWithoutRevealing(t *testing.T) {
 }
 
 func TestTheOldSecretsListStillReturnsBareNames(t *testing.T) {
+	t.Parallel()
 	_, h := vaultedServer(t)
 	put(t, h, "k", "v", "", map[string]any{secrets.MetaNote: "a note"})
 	w := do(t, h, "GET", "/api/secrets", nil)
@@ -169,6 +175,7 @@ func TestTheOldSecretsListStillReturnsBareNames(t *testing.T) {
 }
 
 func TestScanFindsCredentialsInNotesAndMasksThem(t *testing.T) {
+	t.Parallel()
 	_, h := vaultedServer(t)
 	w := do(t, h, "POST", "/api/notes", map[string]any{
 		"title": "Debugging",
@@ -209,6 +216,7 @@ func TestScanFindsCredentialsInNotesAndMasksThem(t *testing.T) {
 }
 
 func TestACleanVaultScansClean(t *testing.T) {
+	t.Parallel()
 	_, h := vaultedServer(t)
 	do(t, h, "POST", "/api/notes", map[string]any{
 		"title": "Ordinary", "body": "# Ordinary\n\nThe key is in the vault. password: changeme\n"})
@@ -224,6 +232,7 @@ func TestACleanVaultScansClean(t *testing.T) {
 
 // Every one of these routes is part of the administrative surface.
 func TestTheNewCredentialRoutesAreGated(t *testing.T) {
+	t.Parallel()
 	s, h := vaultedServer(t)
 	s.AdminToken = "tok"
 	gated := s.requireAdminToken(h)
@@ -249,6 +258,7 @@ func doOn(t *testing.T, h http.Handler, method, path string) *httptest.ResponseR
 // ------------------------------------------------- namespaces and use limits
 
 func TestDetailsCanBeScopedToANamespace(t *testing.T) {
+	t.Parallel()
 	_, h := vaultedServer(t)
 	for _, n := range []string{"prod/stripe", "prod/github", "dev/stripe", "production/other"} {
 		put(t, h, n, "x", "", nil)
@@ -279,6 +289,7 @@ func TestDetailsCanBeScopedToANamespace(t *testing.T) {
 }
 
 func TestAGrantCanBeLimitedToACountOfUses(t *testing.T) {
+	t.Parallel()
 	s, h := vaultedServer(t)
 	put(t, h, "api", "the-value", "", nil)
 	w := do(t, h, "POST", "/api/secrets/api/grant", map[string]any{
@@ -316,6 +327,7 @@ func TestAGrantCanBeLimitedToACountOfUses(t *testing.T) {
 // An agent that knows it needs one call should be able to ask for one call;
 // the approver is otherwise guessing.
 func TestAnAgentCanBoundItsOwnRequest(t *testing.T) {
+	t.Parallel()
 	s, h := vaultedServer(t)
 	put(t, h, "api", "the-value", "", nil)
 	w := do(t, h, "POST", "/api/secrets/requests", map[string]any{

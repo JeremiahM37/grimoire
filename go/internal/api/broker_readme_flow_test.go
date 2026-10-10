@@ -17,6 +17,7 @@ import (
 // documenting a setting nothing reads, just one a reader hits in thirty
 // seconds instead of never.
 func TestBrokerFlowMatchesTheDocumentedShapes(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	if err := s.Secrets.Initialize("correct horse battery"); err != nil {
 		t.Fatal(err)
@@ -76,6 +77,7 @@ func TestBrokerFlowMatchesTheDocumentedShapes(t *testing.T) {
 // A revoked grant must stop working immediately — the README sells revocation
 // as the alternative to rotating a key.
 func TestRevokingAGrantStopsIt(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	if err := s.Secrets.Initialize("correct horse battery"); err != nil {
 		t.Fatal(err)

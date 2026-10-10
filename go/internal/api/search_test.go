@@ -12,6 +12,7 @@ import (
 // every individual endpoint still "worked", the answers just got half a context.
 
 func TestSearchFallsBackToAnyTermForQuestions(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	do(t, h, "POST", "/api/notes", map[string]any{
 		"path": "trip.md",
@@ -31,6 +32,7 @@ func TestSearchFallsBackToAnyTermForQuestions(t *testing.T) {
 }
 
 func TestSearchFullReturnsBodiesAndExcerptsLongOnes(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	do(t, h, "POST", "/api/notes", map[string]any{
 		"path": "short.md", "body": "# Short\n\nthe gateway is fine\n"})
@@ -74,6 +76,7 @@ func TestSearchFullReturnsBodiesAndExcerptsLongOnes(t *testing.T) {
 }
 
 func TestSearchWithoutFullOmitsBodies(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	do(t, h, "POST", "/api/notes", map[string]any{
 		"path": "gw.md", "body": "# Gateway\n\nthe gateway listens on 8443\n"})
@@ -92,6 +95,7 @@ func TestSearchWithoutFullOmitsBodies(t *testing.T) {
 }
 
 func TestSearchLimitCapsResults(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	for _, p := range []string{"a.md", "b.md", "c.md"} {
 		do(t, h, "POST", "/api/notes", map[string]any{
@@ -105,6 +109,7 @@ func TestSearchLimitCapsResults(t *testing.T) {
 }
 
 func TestSearchOperators(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	do(t, h, "POST", "/api/notes", map[string]any{
 		"path": "infra/gw.md", "body": "# Gateway\n\ngateway notes #infra\n"})
@@ -135,6 +140,7 @@ func TestSearchOperators(t *testing.T) {
 }
 
 func TestSearchKeepsEncryptedBodiesSealed(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	do(t, h, "POST", "/api/notes", map[string]any{
 		"path": "secret.md", "body": "# Secret\n\nthe gateway passphrase is hunter2\n"})
@@ -167,6 +173,7 @@ func TestSearchKeepsEncryptedBodiesSealed(t *testing.T) {
 // field was drawn from the whole links table with no reader filter. A target
 // written in a note the caller cannot read must not appear for that caller.
 func TestGraphUnresolvedTargetsFollowTheirSource(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	adminKey := makeUser(t, s, h, "", "root", "admin")
 	bobKey := makeUser(t, s, h, adminKey, "bob", "member")

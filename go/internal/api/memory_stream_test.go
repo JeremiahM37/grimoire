@@ -348,6 +348,7 @@ func TestServerCloseEndsOpenStreams(t *testing.T) {
 // same-minute event is still delivered, a sent one never is, and older minutes
 // never are.
 func TestAdvanceDeliversLateEventsOfTheSameMinute(t *testing.T) {
+	t.Parallel()
 	ev := func(at, kind, id string) memEvent {
 		return memEvent{At: at, Event: kind, ID: id, Key: eventKey(at, kind, id)}
 	}
@@ -381,6 +382,7 @@ func TestAdvanceDeliversLateEventsOfTheSameMinute(t *testing.T) {
 }
 
 func TestParseEventIDAcceptsOnlyWellFormedIDs(t *testing.T) {
+	t.Parallel()
 	good := eventKey("2026-10-10 14:03", evAdded, "abc123")
 	if at, ok := parseEventID(good); !ok || at != "2026-10-10 14:03" {
 		t.Errorf("parseEventID(%q) = %q, %v", good, at, ok)

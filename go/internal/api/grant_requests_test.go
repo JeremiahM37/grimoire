@@ -23,6 +23,7 @@ func vaultServer(t *testing.T) (*Server, http.Handler) {
 }
 
 func TestAskingReturns202AndNoToken(t *testing.T) {
+	t.Parallel()
 	_, h := vaultServer(t)
 
 	w := do(t, h, "POST", "/api/secrets/requests", map[string]any{
@@ -51,6 +52,7 @@ func TestAskingReturns202AndNoToken(t *testing.T) {
 }
 
 func TestTheApprovalQueueShowsWhatWasAskedAndWhy(t *testing.T) {
+	t.Parallel()
 	_, h := vaultServer(t)
 	do(t, h, "POST", "/api/secrets/requests", map[string]any{
 		"secret": "github-token", "grantee": "claude-4",
@@ -78,6 +80,7 @@ func TestTheApprovalQueueShowsWhatWasAskedAndWhy(t *testing.T) {
 }
 
 func TestApproveThenTheAgentCollectsItsToken(t *testing.T) {
+	t.Parallel()
 	_, h := vaultServer(t)
 	var asked map[string]any
 	decode(t, do(t, h, "POST", "/api/secrets/requests", map[string]any{
@@ -116,6 +119,7 @@ func TestApproveThenTheAgentCollectsItsToken(t *testing.T) {
 }
 
 func TestAnotherAgentCannotCollectTheToken(t *testing.T) {
+	t.Parallel()
 	_, h := vaultServer(t)
 	var asked map[string]any
 	decode(t, do(t, h, "POST", "/api/secrets/requests", map[string]any{
@@ -134,6 +138,7 @@ func TestAnotherAgentCannotCollectTheToken(t *testing.T) {
 }
 
 func TestDenialCarriesAnActionableNote(t *testing.T) {
+	t.Parallel()
 	_, h := vaultServer(t)
 	var asked map[string]any
 	decode(t, do(t, h, "POST", "/api/secrets/requests", map[string]any{
@@ -162,6 +167,7 @@ func TestDenialCarriesAnActionableNote(t *testing.T) {
 }
 
 func TestApprovingAnUnknownRequestIs404(t *testing.T) {
+	t.Parallel()
 	_, h := vaultServer(t)
 	if w := do(t, h, "POST", "/api/secrets/requests/nope/approve", nil); w.Code != http.StatusNotFound {
 		t.Errorf("approve unknown = %d, want 404", w.Code)
@@ -169,6 +175,7 @@ func TestApprovingAnUnknownRequestIs404(t *testing.T) {
 }
 
 func TestApprovingWithALockedVaultIs423(t *testing.T) {
+	t.Parallel()
 	_, h := vaultServer(t)
 	var asked map[string]any
 	decode(t, do(t, h, "POST", "/api/secrets/requests", map[string]any{
@@ -191,6 +198,7 @@ func TestApprovingWithALockedVaultIs423(t *testing.T) {
 }
 
 func TestApprovalShortensTheTTLWhenAsked(t *testing.T) {
+	t.Parallel()
 	_, h := vaultServer(t)
 	var asked map[string]any
 	decode(t, do(t, h, "POST", "/api/secrets/requests", map[string]any{
@@ -207,6 +215,7 @@ func TestApprovalShortensTheTTLWhenAsked(t *testing.T) {
 }
 
 func TestAskingWithNoSecretNameIsRefused(t *testing.T) {
+	t.Parallel()
 	_, h := vaultServer(t)
 	if w := do(t, h, "POST", "/api/secrets/requests",
 		map[string]any{"grantee": "claude-4", "reason": "x"}); w.Code != http.StatusBadRequest {

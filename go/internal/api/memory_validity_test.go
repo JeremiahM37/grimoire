@@ -24,6 +24,7 @@ func setClock(t *testing.T, when string) {
 }
 
 func TestRememberStoresValidityAndRecallReturnsIt(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "office", "text": "the office is on floor three",
 		"valid_from": "2026-03-01", "valid_to": "2026-09-01T00:00:00+02:00"})
@@ -41,6 +42,7 @@ func TestRememberStoresValidityAndRecallReturnsIt(t *testing.T) {
 }
 
 func TestUndatedFactsCarryNoValidityFields(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "misc", "text": "the deploy host is ember"})
 	facts := recallFacts(t, h, "")
@@ -53,6 +55,7 @@ func TestUndatedFactsCarryNoValidityFields(t *testing.T) {
 }
 
 func TestRememberRefusesMalformedOrInvertedValidity(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	cases := map[string]map[string]any{
 		"not a time":     {"text": "x fact", "valid_from": "last tuesday"},
@@ -86,6 +89,7 @@ func TestSupersedingWithValidFromClosesTheOldFactsValidity(t *testing.T) {
 }
 
 func TestSupersedingWithoutValidFromLeavesValidityAlone(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "prefs", "text": "the user prefers spaces"})
 	remember(t, h, map[string]any{"topic": "prefs", "text": "the user prefers tabs"})
@@ -109,6 +113,7 @@ func TestSupersedingNeverOverwritesAHumanSetValidTo(t *testing.T) {
 }
 
 func TestValidAtAndRangeFiltersOverHTTP(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "office", "text": "the office is on floor three",
 		"valid_from": "2026-03-01", "valid_to": "2026-09-01"})
@@ -144,6 +149,7 @@ func TestValidAtAndRangeFiltersOverHTTP(t *testing.T) {
 }
 
 func TestValidityQueriesRejectMalformedInput(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	for _, q := range []string{
 		"?valid_at=last+tuesday",
@@ -183,6 +189,7 @@ func TestAsOfCombinedWithValidAtAnswersTheBitemporalQuestion(t *testing.T) {
 }
 
 func TestAsOfBehaviourIsUnchangedWithoutValidity(t *testing.T) {
+	t.Parallel()
 	// Adding validity must not move the belief-time query for facts that have none.
 	_, h := testServer(t)
 	remember(t, h, map[string]any{"topic": "prefs", "text": "the user prefers spaces"})

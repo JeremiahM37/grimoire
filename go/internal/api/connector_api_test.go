@@ -196,6 +196,7 @@ func TestConnectorSecretsAreNeverReturned(t *testing.T) {
 // ------------------------------------------------------------- web search
 
 func TestWebSearchRoutesReportWhenUnconfigured(t *testing.T) {
+	t.Parallel()
 	_, h := testServer(t)
 	w := do(t, h, "GET", "/api/web/search?q=anything", nil)
 	if w.Code != http.StatusServiceUnavailable {
@@ -207,6 +208,7 @@ func TestWebSearchRoutesReportWhenUnconfigured(t *testing.T) {
 }
 
 func TestAskDoesNotReachTheWebUnlessAsked(t *testing.T) {
+	t.Parallel()
 	s, h := testServer(t)
 	reached := false
 	s.Web = &websearch.Client{
