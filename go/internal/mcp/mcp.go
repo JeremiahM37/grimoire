@@ -782,6 +782,9 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 		if r, handled, err := s.dispatchBank(name, args); handled {
 			return r, err
 		}
+		if r, handled, err := s.dispatchCode(name, args); handled {
+			return r, err
+		}
 		return nil, fmt.Errorf("unknown tool: %s", name)
 	}
 }

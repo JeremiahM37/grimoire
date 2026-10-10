@@ -58,6 +58,9 @@ var behaviour = map[string]annotations{
 	"memory_graph":          {Title: "Read the memory graph", ReadOnlyHint: true, IdempotentHint: true},
 	"memory_scopes":         {Title: "List memory scopes", ReadOnlyHint: true, IdempotentHint: true},
 	"list_grants":           {Title: "List credential grants", ReadOnlyHint: true, IdempotentHint: true},
+	"code_symbol":           {Title: "Find where a symbol is defined", ReadOnlyHint: true, IdempotentHint: true},
+	"code_callers":          {Title: "Find call sites of a name", ReadOnlyHint: true, IdempotentHint: true},
+	"code_outline":          {Title: "Outline a source file", ReadOnlyHint: true, IdempotentHint: true},
 	"knowledge_graph":       {Title: "Explore the knowledge graph", ReadOnlyHint: true, IdempotentHint: true},
 	"query_knowledge":       {Title: "Ask knowledge with evidence", ReadOnlyHint: true, IdempotentHint: true},
 	"read_source":           {Title: "Read a cited source", ReadOnlyHint: true, IdempotentHint: true},
@@ -701,5 +704,5 @@ func Tools() []tool {
 				"id": strProp("the request id returned by request_credential"),
 			}, "id"),
 		},
-	}, append(append(bankTools(), bankReasoningTools()...), sourceTools()...)...))
+	}, append(append(append(bankTools(), bankReasoningTools()...), sourceTools()...), codeTools()...)...))
 }
