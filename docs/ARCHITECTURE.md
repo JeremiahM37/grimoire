@@ -322,6 +322,96 @@ digest of every field the changes feed reads, plus the times at which an answer
 could go stale (an expiry, or a change leaving the window). Responses are cached
 under it, so an unchanged memory answers without rebuilding.
 
+## Agent memory: cascade forgetting and receipts
+
+A plain forget (`DELETE /api/memory/entry`, `grimoire forget`) retracts one
+bullet and leaves it struck through, which is the right default for a belief
+that was merely wrong. It does not reach what was derived from the bullet. A
+bank observation, a mental model, a cached profile, a dream report, or a
+snapshot in history can all still carry the text.
+
+`POST /api/memory/forget` with `cascade=true` (CLI `grimoire forget PATH ID
+--cascade [--dry-run]`, MCP `forget` with `cascade`) reaches those copies. The
+work is split across two packages.
+
+**Bank layers (`bank/forget.go`, `CascadeForget`).** Under the bank lock it
+walks facts, observations, models and proposals in dependency order:
+
+- a fact that carries the text is removed. A person's fact is kept and reported
+  when the forget is agent-initiated;
+- an observation with no support left is retracted. One built partly from
+  forgotten facts is removed, and its surviving facts are reset in
+  `bank_consolidated` so the next consolidation rebuilds it. An observation is a
+  paraphrase, so redacting its words would not make it true;
+- a model whose basis is gone is deleted. A partly derived one has its body
+  cleared, its `scope_sig` dropped and `needs_rederive: true` set, so the next
+  refresh writes it again. Its `body_sum` is recomputed so an agent answer is not
+  reclassified as human-edited;
+- a proposal that carries the text or cites a removed item is dropped.
+
+**Vault layer (`api/memory_cascade.go`).** The memory entries are handled as
+follows:
+
+- an agent's entry that carries the text is redacted in place, with its id
+  re-derived from the new text. A redaction that still carries the text removes
+  the entry. An entry whose id is not re-derived would read as a hand edit, and
+  so be attributed to a person;
+- a person's entry is never altered by an agent-initiated forget. It gets a
+  challenge entry (`chal=`) that disputes it, and a repeat files no second one.
+  A cascade whose target is a person's entry is refused for an agent. A
+  human-initiated forget cascades fully;
+- the target is removed outright, not struck through. A struck bullet keeps its
+  text;
+- entries superseded by the target are relinked to `retracted:cascade`, so
+  nothing is brought back to belief by the removal;
+- `Dreams/` reports have the forgotten lines replaced in place. Other notes a
+  person wrote are never edited. They are reported as residual;
+- snapshot history is rewritten line by line, so no version keeps the text.
+  Snapshots are copies, not live entries, so this applies to every note;
+- the `bank_vec_cache` table is dropped whenever something changed, since its
+  keys are hashes of embedded text that cannot be matched back to the forgotten
+  one; the profile memo is reset.
+
+**What "carries" means.** The forgotten text matches as whole words, or as a
+run of five words of it with at least three content words. A paraphrase is not
+caught by the text rule. The vector check in verification finds one by meaning
+and reports it as residual rather than removing it, because a meaning-level
+match is a judgement and this path makes none about a person's notes. The
+matcher refuses text under 12 characters or fewer than three words.
+
+**Verification and receipts.** After the cascade, verification searches the
+index again: memory entries, entity edges of removed ids, FTS over every note
+(then line-level confirmation), bank units through `bank_units_fts`, bank source
+chunks, snapshot history, and, when an embedder is configured, vector rows at
+cosine 0.9 or more. Residual hits in notes the requester cannot read are counted
+but not named. `status` is `clean` only when nothing is residual; the CLI exits
+non-zero otherwise.
+
+Each real run writes `Memory Receipts/forget-<id>-<ts>.md` and a `.json` copy
+beside it (`GET /api/memory/receipts`, `grimoire memory receipts`). The receipt
+names the target id and its note, a salted SHA-256 of the normalised text with
+the salt that produced it, the word count, every artefact touched with its
+action, and the verification. It does not contain the text. The salt is stored
+too, so the hash can confirm a guess against that one receipt. Add the folder to
+`.stignore` if the receipts should stay off a synced device. A dry run writes
+nothing, not even a receipt. A repeat of a completed forget returns the existing
+receipt with `already_forgotten: true` and changes nothing.
+
+**Initiator.** An agent is any caller that presents an agent identity (the
+`X-Grimoire-Agent` header, or the `agent` query). A caller with none, including
+the CLI, is the person. This is the same trust `forget` already attributes
+retractions by. The request body cannot claim either role.
+
+**Not covered.** Source documents a bank retained (`bank_chunks`) are reported,
+not edited, because they are what the person kept. Human-written facts in bank
+files are kept and reported on an agent forget, with no challenge filed for
+them. Notes outside `Agent Memory/`, `memory/` and `Dreams/` are residual, not
+redacted. Anything outside the vault, such as Syncthing copies on a phone,
+backups, restic snapshots and the git history of a vault, is not touched. The
+`memory_changes` feed and recall caches are computed from the index and carry
+no copy of their own, so they are covered by the verification rather than by
+rewriting.
+
 ## Testing
 
 * `go/internal/*/[_]test.go` — pure logic (renderer, queries, CRDT, crypto…)

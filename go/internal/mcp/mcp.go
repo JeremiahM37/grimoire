@@ -650,6 +650,15 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 		}
 		return s.api("GET", "/api/memory/profile?"+q.Encode(), nil)
 	case "forget":
+		if boolean(args, "cascade") {
+			// The same retraction, reaching every derived copy of the fact and
+			// verified afterwards. The identity header is what makes this an
+			// agent-initiated forget, which challenges a person's own entries
+			// rather than rewriting them.
+			return s.api("POST", "/api/memory/forget", map[string]any{
+				"path": str(args, "path"), "id": str(args, "id"),
+				"cascade": true, "dry_run": boolean(args, "dry_run")})
+		}
 		q := url.Values{}
 		q.Set("path", str(args, "path"))
 		q.Set("id", str(args, "id"))
