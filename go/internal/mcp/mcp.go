@@ -629,6 +629,12 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 			body["session"] = s.Session
 		}
 		return s.api("POST", "/api/memory", body)
+	case "remember_image":
+		// Same attribution rule as remember: the server's configured identity.
+		body := map[string]any{
+			"data_base64": str(args, "data_base64"), "caption": str(args, "caption"),
+			"topic": str(args, "topic"), "agent": s.Agent}
+		return s.api("POST", "/api/memory/image", body)
 	case "recall":
 		q := url.Values{}
 		q.Set("q", str(args, "query"))

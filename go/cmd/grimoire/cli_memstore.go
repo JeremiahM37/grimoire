@@ -26,6 +26,7 @@ const memoryUsage = `usage:
   grimoire memory prefix [--since TOKEN] [--max-tokens N]   durable-memory block for a cached prompt prefix
   grimoire memory disputes                 facts a person recorded that an agent contests
   grimoire memory resolve ID keep|accept|merge [text] [--challenger ID] [--path P]
+  grimoire memory image FILE [--caption TEXT] [--topic T]  store a picture (caption-only retrieval)
   grimoire memory link --agent NAME --path P [--kind dir|file] [--dir STORE] [--merge] [--dry-run]
   grimoire memory unlink --agent NAME [--path P] [--dry-run]
   grimoire memory status [--dir STORE]
@@ -97,6 +98,8 @@ func cmdMemory(args []string) int {
 		return memoryDisputesCmd(e, rest)
 	case "resolve":
 		return memoryResolveCmd(e, rest)
+	case "image":
+		return memoryImageCmd(e, rest)
 	}
 	return fail("unknown memory command %q\n\n%s", args[0], memoryUsage)
 }

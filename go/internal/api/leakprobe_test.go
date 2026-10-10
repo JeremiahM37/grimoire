@@ -501,6 +501,13 @@ func lpProbes(w *lpWorld) []lpProbe {
 		{route: "POST /api/memory/check/accept", path: "/api/memory/check/accept", body: map[string]any{}, kind: lpWrite},
 		{route: "POST /api/memory", path: "/api/memory", body: map[string]any{"text": "x", "target_path": "users/alice/memory.md"}, kind: lpWrite},
 		{route: "POST /api/memory/import", path: "/api/memory/import", body: map[string]any{"facts": []any{}}, kind: lpWrite},
+		// Image memory. Pictures are written to commons memory notes, so a
+		// member may read a picture alice stored and no probe can treat that as
+		// a leak. The probe uses a well-formed hash that nothing references:
+		// it must answer 404 to every non-owner, exactly as it would for a
+		// picture that exists but is hidden (see TestMemoryImageACL).
+		{route: "POST /api/memory/image", path: "/api/memory/image", body: map[string]any{"caption": "x", "data_base64": ""}, kind: lpWrite},
+		{route: "GET /api/memory/image/{sha}", path: "/api/memory/image/" + strings.Repeat("a", 64), kind: lpByID},
 
 		// --- banks: a bank the caller cannot read answers as absent ---
 		{route: "GET /api/banks", path: "/api/banks", kind: lpList},

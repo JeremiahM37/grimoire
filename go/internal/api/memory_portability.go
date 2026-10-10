@@ -1,11 +1,14 @@
 package api
 
 import (
+	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/JeremiahM37/grimoire/go/internal/index"
+	"github.com/JeremiahM37/grimoire/go/internal/memimage"
 	"github.com/JeremiahM37/grimoire/go/internal/memory"
 	"github.com/JeremiahM37/grimoire/go/internal/memport"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
@@ -61,13 +64,28 @@ func (s *Server) exportPortable(w http.ResponseWriter, r *http.Request, format s
 		return
 	}
 	records := make([]memport.Record, 0, len(hits))
+	sentImage := map[string]bool{}
 	for _, h := range hits {
-		records = append(records, memport.Record{
+		rec := memport.Record{
 			ID: h.ID, Text: h.Text, Path: h.Note, Agent: h.Agent, Task: h.Task,
 			Session: h.Session, Category: h.Category, Stamp: h.Stamp,
 			Expires: h.Expires, Immutable: h.Immutable, Authority: h.Authority().String(),
 			Origin: h.Origin, SupersededBy: h.SupersededBy, Challenges: h.Challenges,
-		})
+			Image: h.Image, CaptionBasis: h.CaptionBasis,
+		}
+		// The bytes travel once per picture, on the first fact that uses it.
+		// Nothing is attached if the bytes are missing: the fact is exported
+		// with its reference, and the importer will refuse it rather than
+		// write a dangling picture.
+		if h.Image != "" && !sentImage[h.Image] {
+			if f, p, ok := memimage.Find(s.Vault.Root, h.Image); ok {
+				if data, err := os.ReadFile(p); err == nil {
+					rec.Attachment = &memport.Attachment{SHA: h.Image, MIME: f.MIME, Data: data}
+					sentImage[h.Image] = true
+				}
+			}
+		}
+		records = append(records, rec)
 	}
 	now := vault.Now()
 	if format == "markdown" || format == "md" {
@@ -132,9 +150,23 @@ func (s *Server) importMemory(w http.ResponseWriter, r *http.Request) {
 		rep.Skipped = []memport.Skip{}
 	}
 	rep.Sample = []string{}
+	seenImage := map[string]bool{}
 	for _, it := range res.Items {
 		text := strings.TrimSpace(it.Record.Text)
-		if known[text] {
+		img := it.Record.Image
+		if img != "" {
+			// Two pictures can share a caption, so an image fact is one fact
+			// per picture, not per text.
+			if seenImage[img] {
+				rep.Duplicates++
+				continue
+			}
+			seenImage[img] = true
+			if err := s.restoreImage(it.Record, dry); err != nil {
+				rep.Skipped = append(rep.Skipped, memport.Skip{Index: rep.New, Reason: err.Error()})
+				continue
+			}
+		} else if known[text] {
 			rep.Duplicates++
 			continue
 		}
@@ -146,8 +178,12 @@ func (s *Server) importMemory(w http.ResponseWriter, r *http.Request) {
 		if dry {
 			continue
 		}
+		in := importMemoryIn(it, res.Source)
+		if img != "" {
+			in.imageSHA, in.capBasis = img, it.Record.CaptionBasis
+		}
 		rec := &captureWriter{ResponseWriter: w}
-		s.rememberOne(rec, r, importMemoryIn(it, res.Source))
+		s.rememberOne(rec, r, in)
 		if rec.status >= http.StatusBadRequest {
 			rep.Failed++
 			rep.Errors = append(rep.Errors, memport.Skip{Index: rep.New, Reason: strings.TrimSpace(rec.buf.String())})
@@ -156,6 +192,31 @@ func (s *Server) importMemory(w http.ResponseWriter, r *http.Request) {
 		rep.Written++
 	}
 	writeJSON(w, http.StatusOK, rep)
+}
+
+// restoreImage makes an imported picture available to the bullet that refers to
+// it. The bytes must hash to the address the record claims: a file cannot
+// attach a picture under someone else's name. With no bytes in the export, the
+// picture must already be in this store, otherwise the fact is refused rather
+// than written as a dangling reference.
+func (s *Server) restoreImage(rec memport.Record, dry bool) error {
+	if rec.Attachment == nil {
+		if _, _, ok := memimage.Find(s.Vault.Root, rec.Image); ok {
+			return nil
+		}
+		return fmt.Errorf("image %s is not in the export or the store", rec.Image)
+	}
+	p, err := memimage.Prepare(rec.Attachment.Data, imageMaxBytes())
+	if err != nil {
+		return fmt.Errorf("image %s: %v", rec.Image, err)
+	}
+	if p.SHA != rec.Image || rec.Attachment.SHA != rec.Image {
+		return fmt.Errorf("image %s: bytes do not match their address", rec.Image)
+	}
+	if dry {
+		return nil
+	}
+	return memimage.Store(s.Vault.Root, p)
 }
 
 // importMemoryIn turns one parsed record into the write the normal path takes.

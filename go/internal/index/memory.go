@@ -270,14 +270,14 @@ func (ix *Index) writeMemoryRows(note *vault.Note) error {
 				"expires,immutable,superseded_by,superseded_at,helpful,unhelpful,line,"+
 				"embedding,space,acl,private,origin,human,challenges,"+
 				"fresh,chk,verified,nchange,nverify,since,shape,vol,prate,valid_from,valid_to,"+
-				"importance,hand,evidence)"+
-				" VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+				"importance,hand,evidence,image,capb)"+
+				" VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
 			e.ID, note.Path, e.Text, e.Agent, e.Task, e.Session, e.Stamp, e.Category,
 			e.Expires, immutable, e.SupersededBy, e.SupersededAt, e.Helpful,
 			e.Unhelpful, e.Line, blob, space, acl, private, e.Origin, human, e.Challenges,
 			e.Fresh, e.Check, e.Verified, e.Changes, e.Verifies, e.Since, e.Shape(), e.Vol, e.PriorRate,
 			canonicalValidity(e.ValidFrom), canonicalValidity(e.ValidTo),
-			e.Importance, boolInt(e.HumanAuthored()), e.Evidence,
+			e.Importance, boolInt(e.HumanAuthored()), e.Evidence, e.Image, e.CaptionBasis,
 		); err != nil {
 			return err
 		}
@@ -507,6 +507,9 @@ func (q MemoryQuery) sqlWhere() (string, []any) {
 	if !q.Filter.IncludePrivate {
 		where = append(where, "private=0")
 	}
+	// An image with no caption is stored so the bytes are not lost, but its
+	// placeholder text is not a fact and must never be recalled as one.
+	where = append(where, "capb<>'none'")
 	w, a := q.Filter.sqlVisibility()
 	where = append(where, w...)
 	args = append(args, a...)
@@ -615,7 +618,7 @@ func (ix *Index) overScanLimit(where string, args []any, limit int) (bool, error
 const memoryColumns = "id,note,text,agent,task,session,stamp,category,expires,immutable," +
 	"superseded_by,superseded_at,helpful,unhelpful,line,embedding,space,acl," +
 	"private,origin,human,challenges,fresh,chk,verified,nchange,nverify,since,vol,prate," +
-	"valid_from,valid_to,importance,hand,uses,last_used,evidence"
+	"valid_from,valid_to,importance,hand,uses,last_used,evidence,image,capb"
 
 // scanMemoryRow reads one row selected with memoryColumns. It takes the Scan
 // method rather than the rows, so both the ranked query and the prune query
@@ -629,6 +632,8 @@ func scanMemoryRow(scan func(...any) error) (memoryRow, error) {
 		hand      int
 		blob      []byte
 		evidence  string
+		image     string
+		capb      string
 	)
 	if err := scan(&r.hit.ID, &r.hit.Note, &r.hit.Text, &r.hit.Agent,
 		&r.hit.Task, &r.hit.Session, &r.hit.Stamp, &r.hit.Category,
@@ -638,10 +643,13 @@ func scanMemoryRow(scan func(...any) error) (memoryRow, error) {
 		&r.hit.Fresh, &r.hit.Check, &r.hit.Verified, &r.hit.Changes,
 		&r.hit.Verifies, &r.hit.Since, &r.hit.Vol, &r.hit.PriorRate,
 		&r.hit.ValidFrom, &r.hit.ValidTo,
-		&r.hit.Importance, &hand, &r.hit.Uses, &r.hit.LastUsed, &evidence); err != nil {
+		&r.hit.Importance, &hand, &r.hit.Uses, &r.hit.LastUsed, &evidence,
+		&image, &capb); err != nil {
 		return r, err
 	}
 	r.hit.Evidence = evidence
+	r.hit.Image = image
+	r.hit.CaptionBasis = capb
 	r.hit.Immutable = immutable == 1
 	r.hit.Human = human == 1
 	r.hit.HandWritten = hand == 1

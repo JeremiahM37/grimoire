@@ -81,6 +81,7 @@ var behaviour = map[string]annotations{
 	"update_note":            {Title: "Update a note", DestructiveHint: true},
 	"set_fact":               {Title: "Set an exact value", DestructiveHint: true, IdempotentHint: true},
 	"remember":               {Title: "Record a fact", DestructiveHint: true},
+	"remember_image":         {Title: "Record an image", DestructiveHint: true},
 	"consolidate_memory":     {Title: "Consolidate memory", DestructiveHint: true},
 	"dream":                  {Title: "Dream over memory"},
 	"memory_feedback":        {Title: "Rate a recalled fact", IdempotentHint: true},
@@ -470,6 +471,22 @@ func Tools() []tool {
 					"description": "up to 8 situations in which this should come to mind: a request, " +
 						"a command, or a file path (e.g. 'deploy grimoire', '/etc/lectern.env')"},
 			}, "text"),
+		},
+		{
+			Name: "remember_image",
+			Description: "Store a picture in memory. The picture is kept as a content-addressed " +
+				"attachment (PNG, JPEG, GIF or WebP, identified from its bytes, size-capped) and " +
+				"a memory fact points at it. RETRIEVAL IS BY CAPTION ONLY: recall finds the " +
+				"picture through its caption text, never by looking at pixels. So write the " +
+				"caption as you would want to search for it (what it shows, where it came from, " +
+				"what it is evidence of). Without a caption the picture is stored but is NOT " +
+				"searchable and is never recalled. EXIF metadata (GPS, camera, times) is stripped " +
+				"from JPEG and PNG and the reply says so.",
+			InputSchema: obj(map[string]any{
+				"data_base64": strProp("the image file, base64-encoded (standard alphabet)"),
+				"caption":     strProp("what the picture shows, in words; this is what recall matches"),
+				"topic":       strProp("optional grouping, e.g. 'network-diagrams'"),
+			}, "data_base64"),
 		},
 		{
 			Name: "recall",

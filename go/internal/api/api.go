@@ -273,6 +273,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("PATCH /api/memory/entry", s.patchEntry)
 	mux.HandleFunc("DELETE /api/memory/entry", s.forgetEntry)
 	mux.HandleFunc("POST /api/memory/forget", s.forgetPost)
+	mux.HandleFunc("POST /api/memory/image", s.postImage)
+	mux.HandleFunc("GET /api/memory/image/{sha}", s.getImage)
 	mux.HandleFunc("GET /api/memory/receipts", s.listReceiptsHandler)
 	mux.HandleFunc("GET /api/briefing", s.briefing)
 	mux.HandleFunc("GET /api/trust", s.trustOverview)
