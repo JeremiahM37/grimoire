@@ -2,6 +2,7 @@ package grounded
 
 import (
 	"context"
+	"github.com/JeremiahM37/grimoire/go/internal/bank"
 	"strings"
 	"testing"
 	"time"
@@ -97,5 +98,21 @@ func TestRetrievalSourceAnnotatesPerPassage(t *testing.T) {
 	r, _ := src.Records(context.Background(), "q")
 	if !strings.Contains(r.Text, "yesterday [= Mon 22 May 2023]") || !strings.Contains(r.Text, "## Log — 23 May 2023") {
 		t.Fatal(r.Text)
+	}
+}
+
+func TestTimelineFromBankFacts(t *testing.T) {
+	facts := []bank.RecallFact{
+		{Text: "Ana ran a 5K", Entities: []string{"Ana"}, OccurredStart: "2023-05-20", OccurredEnd: "2023-05-20", MentionedAt: "2023-05-23T10:00:00Z"},
+		{Text: "Ana likes tea", Entities: []string{"Ana"}, MentionedAt: "2023-05-23T10:00:00Z"},
+		{Text: "orphan with no date", Entities: []string{"Ana"}},
+		{Text: "removed", OccurredStart: "2023-01-01", DocRemoved: true},
+	}
+	tl := TimelineFromFacts(facts)
+	if len(tl.Events) != 2 || !tl.Events[0].Dated || tl.Events[0].Text != "Ana ran a 5K" || !tl.Events[1].State {
+		t.Fatalf("%+v", tl.Events)
+	}
+	if !strings.Contains(RenderEvents(tl.Events), "- [2023-05-20] Ana ran a 5K") {
+		t.Fatal(RenderEvents(tl.Events))
 	}
 }
