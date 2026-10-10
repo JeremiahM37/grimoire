@@ -253,3 +253,21 @@ func TestAgentInstallMemoryAlsoInstallsTheOutcomeHook(t *testing.T) {
 		t.Error("uninstall left the outcome hook")
 	}
 }
+
+func TestAgentInstallMemoryOnlyAddsNoSessionHooks(t *testing.T) {
+	home := agentHome(t)
+	_ = os.MkdirAll(filepath.Join(home, ".claude"), 0o755)
+	if code := cmdAgent([]string{"install", "--claude-code", "--memory-only", "--no-mcp"}); code != 0 {
+		t.Fatal("install failed")
+	}
+	all := string(mustJSON(readJSON(t, filepath.Join(home, ".claude", "settings.json"))["hooks"]))
+	if strings.Contains(all, "GRIMOIRE_BANK_SESSIONS") || strings.Contains(all, "grimoire_bank_session") {
+		t.Fatalf("memory-only installed the bank session hooks: %s", all)
+	}
+	if !strings.Contains(all, "grimoire_context.py") || !strings.Contains(all, "grimoire_outcome.py") {
+		t.Fatalf("memory-only lacks the memory or outcome hook: %s", all)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".grimoire", "hooks", "grimoire_bank_session.py")); err == nil {
+		t.Error("memory-only should not install the bank session script")
+	}
+}

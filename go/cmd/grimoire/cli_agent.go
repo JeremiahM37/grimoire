@@ -30,7 +30,7 @@ import (
 const agentUsage = `grimoire agent — wire a coding agent to Grimoire in one command
 
   grimoire agent install [--claude-code] [--codex] [--agent NAME]... [--bank NAME] [--url URL]
-                         [--recall] [--files] [--memory] [--link-memory [--merge] [--dir STORE]]
+                         [--recall] [--files] [--memory | --memory-only] [--link-memory [--merge] [--dir STORE]]
                          [--no-mcp] [--no-tools] [--dry-run]
   grimoire agent uninstall [--claude-code] [--codex] [--agent NAME]... [--dry-run]
   grimoire agent status [--claude-code] [--codex] [--agent NAME]...
@@ -52,6 +52,8 @@ Code only, off by default) adds a PreToolUse hook on Read that injects what the 
 remembers about the file being read. --memory adds the memory hook: the memories that
 bear on each prompt and on each command or edit as it happens (clients/hooks/grimoire_context.py,
 docs/MEMORY_USE.md); it reads the profile written to ~/.grimoire/agents/NAME.json.
+--memory-only installs just the memory hook and its outcome tracking, without the
+bank's session hooks (nothing is retained from the session).
 --link-memory also points the agent's own memory at the canonical store, from the profile's
 memory fields: directories (Claude Code's per-project memory/) become symlinks, instruction
 files (Codex's AGENTS.md) get a managed block; --merge folds a non-empty directory into the
@@ -273,7 +275,7 @@ func cmdAgent(args []string) int {
 	}
 	opts := agentOptions{
 		bank: f.str("--bank", ""), url: f.str("--url", os.Getenv("GRIMOIRE_URL")),
-		recall: f.on["--recall"], files: f.on["--files"], context: f.on["--memory"], noMCP: f.on["--no-mcp"], noTools: f.on["--no-tools"],
+		recall: f.on["--recall"], files: f.on["--files"], context: f.on["--memory"] || f.on["--memory-only"], memoryOnly: f.on["--memory-only"], noMCP: f.on["--no-mcp"], noTools: f.on["--no-tools"],
 		dryRun: f.on["--dry-run"], home: home,
 	}
 	if opts.bank != "" && !bank.ValidID(opts.bank) {
@@ -325,6 +327,7 @@ func cmdAgent(args []string) int {
 type agentOptions struct {
 	bank, url, home                                string
 	recall, files, context, noMCP, noTools, dryRun bool
+	memoryOnly                                     bool // the memory hook alone: no bank session hooks
 }
 
 func agentQuote(s string) string {
@@ -395,15 +398,18 @@ func outcomeCommand(o agentOptions, script string) string {
 
 func installAgent(t *agentTarget, o agentOptions) ([]string, error) {
 	var out []string
-	script := filepath.Join(o.home, ".grimoire", "hooks", agenthook.FileName)
-	msg, err := installScript(script, agenthook.Script, o.dryRun)
-	out = append(out, msg)
-	if err != nil {
-		return out, err
+	var specs []hookSpec
+	var msg string
+	var err error
+	if !o.memoryOnly {
+		script := filepath.Join(o.home, ".grimoire", "hooks", agenthook.FileName)
+		msg, err = installScript(script, agenthook.Script, o.dryRun)
+		out = append(out, msg)
+		if err != nil {
+			return out, err
+		}
+		specs = bankSpecs(t.p, hookCommand(t, o, script), o.recall, !o.noTools, o.files)
 	}
-
-	command := hookCommand(t, o, script)
-	specs := bankSpecs(t.p, command, o.recall, !o.noTools, o.files)
 	if o.context {
 		ctxScript := filepath.Join(o.home, ".grimoire", "hooks", agentprofile.ContextFileName)
 		msg, err := installScript(ctxScript, agentprofile.ContextScript, o.dryRun)
