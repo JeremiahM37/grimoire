@@ -14,6 +14,7 @@ import (
 
 	"github.com/JeremiahM37/grimoire/go/internal/bank"
 	"github.com/JeremiahM37/grimoire/go/internal/index"
+	"github.com/JeremiahM37/grimoire/go/internal/memory"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
 )
 
@@ -68,10 +69,13 @@ var sectionOrder = []string{secHuman, secPreferences, secConstraints, secStandin
 
 // profileEntry is one rendered line, with what it was built from.
 type profileEntry struct {
-	ID         string `json:"id"`
-	Section    string `json:"section"`
-	Text       string `json:"text"`
-	Human      bool   `json:"human,omitempty"`
+	ID      string `json:"id"`
+	Section string `json:"section"`
+	Text    string `json:"text"`
+	Human   bool   `json:"human,omitempty"`
+	// Basis is how the fact came to be on file; it is rendered as a tag so a
+	// reader can tell a stated preference from an inference at a glance.
+	Basis      string `json:"basis"`
 	Importance int    `json:"importance"`
 	Stamp      string `json:"stamp,omitempty"`
 	Path       string `json:"path,omitempty"`
@@ -131,8 +135,8 @@ func buildProfile(hits []index.MemoryHit, subject, agent string, budget int, now
 		}
 		cands = append(cands, cand{
 			row: profileEntry{ID: h.ID, Section: section, Text: oneLineText(h.Text),
-				Human: human, Importance: h.EffectiveImportance(), Stamp: h.Stamp,
-				Path: h.Note, Agent: h.Agent},
+				Human: human, Basis: string(h.Basis()), Importance: h.EffectiveImportance(),
+				Stamp: h.Stamp, Path: h.Note, Agent: h.Agent},
 			key: sortKey{human: human, importance: h.EffectiveImportance(), stamp: h.Stamp, id: h.ID},
 		})
 	}
@@ -153,7 +157,7 @@ func buildProfile(hits []index.MemoryHit, subject, agent string, budget int, now
 			continue
 		}
 		row := profileEntry{ID: c.ID, Section: secRecent, Text: oneLineText(c.Text),
-			Stamp: c.At, Path: c.Path, Agent: c.Agent}
+			Basis: string(h.Basis()), Stamp: c.At, Path: c.Path, Agent: c.Agent}
 		switch c.Kind {
 		case changeChanged:
 			row.Change = "changed"
@@ -244,15 +248,19 @@ func sectionFor(h index.MemoryHit) string {
 
 func renderLine(row profileEntry) string {
 	cite := "[mem:" + row.ID + "]"
+	tag := ""
+	if row.Basis != "" {
+		tag = "[" + row.Basis + "] "
+	}
 	switch row.Change {
 	case "changed":
-		return "- Changed: " + row.Text + " " + cite + " [mem:" + row.ReplacesID + "]"
+		return "- " + tag + "Changed: " + row.Text + " " + cite + " [mem:" + row.ReplacesID + "]"
 	case "forgotten":
-		return "- Forgotten: " + row.Text + " " + cite
+		return "- " + tag + "Forgotten: " + row.Text + " " + cite
 	case "expired":
-		return "- Expired: " + row.Text + " " + cite
+		return "- " + tag + "Expired: " + row.Text + " " + cite
 	}
-	return "- " + row.Text + " " + cite
+	return "- " + tag + row.Text + " " + cite
 }
 
 // renderMarkdown lays the kept rows out by section, in section order and then
@@ -297,7 +305,7 @@ func profileCursor(hits []index.MemoryHit, now time.Time) (string, time.Time) {
 		parts = append(parts, strings.Join([]string{h.ID, h.Note, h.Stamp, h.SupersededBy,
 			h.SupersededAt, h.Challenges, h.Expires, strconv.Itoa(h.EffectiveImportance()),
 			strconv.FormatBool(h.HumanAuthored()), h.Text, h.Origin, h.Agent, h.Category,
-			h.Fresh, h.Verified}, "\x00"))
+			h.Fresh, h.Verified, h.Evidence}, "\x00"))
 		if exp, err := time.Parse(time.RFC3339, h.Expires); err == nil {
 			consider(exp)
 		}
@@ -469,6 +477,11 @@ func (s *Server) memoryProfile(w http.ResponseWriter, r *http.Request) {
 		budget = n
 	}
 	synth := boolParam(r, "synthesize")
+	// exclude_personal keeps stored preferences, personas and the like out of
+	// the profile. A profile is standing context for a factual task as much as
+	// a personal one, and a preference that leaks into it is the contamination
+	// the mode parameter exists to stop.
+	excludePersonal := boolParam(r, "exclude_personal")
 
 	now := vault.Now()
 	f := filterFor(r, true)
@@ -483,8 +496,22 @@ func (s *Server) memoryProfile(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	if excludePersonal {
+		personal := map[string]bool{}
+		for _, c := range memory.PersonalCategories() {
+			personal[c] = true
+		}
+		kept := hits[:0]
+		for _, h := range hits {
+			if !personal[strings.ToLower(strings.TrimSpace(h.Category))] {
+				kept = append(kept, h)
+			}
+		}
+		hits = kept
+	}
 	cursor, until := profileCursor(hits, now)
 	key := strings.Join([]string{subject, agent, strconv.Itoa(budget), strconv.FormatBool(synth),
+		strconv.FormatBool(excludePersonal),
 		fmt.Sprint(f.User, f.Spaces, f.IgnoreACLs, f.IncludePrivate), cursor}, "|")
 	if resp, ok := s.profileMemo.get(key, now); ok {
 		resp.Cached = true

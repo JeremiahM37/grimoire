@@ -86,6 +86,12 @@ func (s *Server) memoryContext(w http.ResponseWriter, r *http.Request) {
 	budget := clampLimit(r.URL.Query().Get("max_bytes"), 2400, 8000)
 	limit := clampLimit(r.URL.Query().Get("limit"), 5, 10)
 	paths := r.URL.Query()["path"]
+	// recall_mode is the factual/personal narrowing of recall (see
+	// memory.RecallMode). It is named apart from scope, which is about paths.
+	if _, err := memory.ParseRecallMode(r.URL.Query().Get("recall_mode")); err != nil {
+		writeErr(w, http.StatusBadRequest, "recall_mode must be factual, personal or all")
+		return
+	}
 	mode := r.URL.Query().Get("scope")
 	if mode == "" {
 		mode = "all"
@@ -161,7 +167,7 @@ func (s *Server) memoryContext(w http.ResponseWriter, r *http.Request) {
 	if (len(terms) > 0 || (mode == "scoped" && query == "")) && mode != "manual" && mode != "off" {
 		hits, err := s.Index.MemoryEntries(index.MemoryQuery{Filter: filterFor(r, false),
 			Query: strings.Join(terms, " "), LexicalOnly: true, AcceptedOnly: true,
-			Paths: paths, Limit: 100, Now: vault.Now()})
+			Paths: paths, Limit: 100, Now: vault.Now(), Mode: recallModeOf(r)})
 		if err != nil {
 			writeErr(w, http.StatusInternalServerError, err.Error())
 			return
@@ -436,6 +442,13 @@ func (s *Server) rerankContext(r *http.Request, query string, items []contextIte
 	return out
 }
 
+// recallModeOf reads recall_mode for the context endpoint. The value was
+// validated at the top of memoryContext, so an unknown one cannot reach here.
+func recallModeOf(r *http.Request) memory.RecallMode {
+	m, _ := memory.ParseRecallMode(r.URL.Query().Get("recall_mode"))
+	return m
+}
+
 // inScope reports whether a note path is under one of the scoped prefixes.
 func inScope(notePath string, prefixes []string) bool {
 	if len(prefixes) == 0 {
@@ -460,7 +473,8 @@ func (s *Server) hybridContext(r *http.Request, query string, terms, paths []str
 	}
 	var items []contextItem
 	facts, err := s.Index.MemoryEntries(index.MemoryQuery{Filter: filterFor(r, false),
-		Query: query, AcceptedOnly: true, Paths: paths, Limit: 40, Now: vault.Now()})
+		Query: query, AcceptedOnly: true, Paths: paths, Limit: 40, Now: vault.Now(),
+		Mode: recallModeOf(r)})
 	if err != nil {
 		return nil, err
 	}
@@ -583,7 +597,7 @@ func cueRelevance(r *http.Request, cosine, overlap float64) float64 {
 func (s *Server) cueTargetItem(r *http.Request, target string, paths []string) (contextItem, bool) {
 	if id, ok := strings.CutPrefix(target, "fact:"); ok {
 		hits, err := s.Index.MemoryEntries(index.MemoryQuery{Filter: filterFor(r, false), ID: id,
-			AcceptedOnly: true, Paths: paths, Limit: 1, Now: vault.Now()})
+			AcceptedOnly: true, Paths: paths, Limit: 1, Now: vault.Now(), Mode: recallModeOf(r)})
 		if err != nil || len(hits) == 0 || hits[0].Untrusted() {
 			return contextItem{}, false
 		}
