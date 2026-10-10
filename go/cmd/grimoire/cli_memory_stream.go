@@ -122,6 +122,59 @@ func formatWatchLine(event, data string) string {
 	return fmt.Sprintf("%s  %-18s %s  %s  %s", ev.At, event, ev.ID, strings.TrimSpace(who), detail)
 }
 
+// memoryPrefixCmd prints the durable-memory block for a system prompt. The
+// block goes to stdout alone so it can be redirected into a file. --since
+// passes back the token from an earlier run: the footer says whether anything
+// changed, and a delta prints only the new lines.
+func memoryPrefixCmd(e *env, args []string) int {
+	q := url.Values{}
+	if v, ok := flagValue(args, "--since"); ok {
+		q.Set("since", v)
+	}
+	if v, ok := flagValue(args, "--max-tokens"); ok {
+		q.Set("max_tokens", v)
+	}
+	status, raw := e.call("GET", "/api/memory/prefix?"+q.Encode())
+	if status != http.StatusOK {
+		return fail("prefix failed: %s", raw)
+	}
+	if hasFlag(args, "--json") {
+		fmt.Println(raw)
+		return 0
+	}
+	var p struct {
+		Version         string `json:"version"`
+		AppendOnlySince string `json:"append_only_since"`
+		Block           string `json:"block"`
+		Delta           string `json:"delta"`
+		Bytes           int    `json:"bytes"`
+		Tokens          int    `json:"tokens"`
+		Entries         int    `json:"entries"`
+		Total           int    `json:"total"`
+		Omitted         int    `json:"omitted"`
+		Unchanged       bool   `json:"unchanged"`
+		Rewritten       bool   `json:"rewritten"`
+		Appended        int    `json:"appended"`
+	}
+	if err := json.Unmarshal([]byte(raw), &p); err != nil {
+		return fail("%v", err)
+	}
+	switch {
+	case p.Unchanged:
+		fmt.Fprintln(os.Stderr, "unchanged")
+	case p.Delta != "":
+		fmt.Print(p.Delta)
+	default:
+		fmt.Print(p.Block)
+	}
+	if p.Rewritten {
+		fmt.Fprintln(os.Stderr, "rewritten: an earlier entry changed; replace the cached block")
+	}
+	fmt.Fprintf(os.Stderr, "%d of %d entries, %d tokens, %d bytes, %d omitted\nsince=%s\n",
+		p.Entries, p.Total, p.Tokens, p.Bytes, p.Omitted, p.AppendOnlySince)
+	return 0
+}
+
 // memoryProfileCmd prints the profile. The markdown is what an agent reads; the
 // footer says when a model rewrite was asked for and not used, and why.
 func memoryProfileCmd(e *env, args []string) int {

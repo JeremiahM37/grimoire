@@ -700,6 +700,15 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 			q.Set("exclude_personal", "true")
 		}
 		return s.api("GET", "/api/memory/profile?"+q.Encode(), nil)
+	case "memory_prefix":
+		q := url.Values{}
+		if v := str(args, "since"); v != "" {
+			q.Set("since", v)
+		}
+		if n := num(args, "max_tokens", 0); n > 0 {
+			q.Set("max_tokens", fmt.Sprint(n))
+		}
+		return s.api("GET", "/api/memory/prefix?"+q.Encode(), nil)
 	case "forget":
 		if boolean(args, "cascade") {
 			// The same retraction, reaching every derived copy of the fact and
