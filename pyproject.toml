@@ -39,5 +39,5 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 # One-off research scripts written in a dense, star-import style; they are kept
-# as the record of how the gate defaults were measured, not as maintained code.
-"benchmarks/memory_use/round2/gate_*.py" = ["E", "F", "B", "I", "UP"]
+# as the record of how the round-2 defaults were measured, not as maintained code.
+"benchmarks/memory_use/round2/*.py" = ["E", "F", "B", "I", "UP"]

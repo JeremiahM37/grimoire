@@ -84,7 +84,7 @@ def test_context_hook_stores_only_hashes_and_validates(tmp_path):
     inject(tmp_path, tokens=["other.sh"])
     assert len(json.loads(raw := (tmp_path / ("fp-" + SID + ".json")).read_text())["items"]) == 1
     for i in range(40):
-        inject(tmp_path, tag="%04x" % i, tokens=["tok%d.sh" % i])
+        inject(tmp_path, tag=f"{i:04x}", tokens=[f"tok{i}.sh"])
     assert len(json.loads((tmp_path / ("fp-" + SID + ".json")).read_text())["items"]) <= 24
 
 

@@ -216,7 +216,7 @@ def fp_read(path):
 
 
 def fp_write(path, state):
-    temporary = "%s.%d.tmp" % (path, os.getpid())
+    temporary = f"{path}.{os.getpid()}.tmp"
     try:
         descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         with os.fdopen(descriptor, "w") as output:
