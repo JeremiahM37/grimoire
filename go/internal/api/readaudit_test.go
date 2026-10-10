@@ -826,6 +826,12 @@ func TestNoGetRouteLeaksARestrictedNote(t *testing.T) {
 		if pattern == "/metrics" { // route classes and counts, never content
 			continue
 		}
+		// A stream never ends by itself, so an in-process call cannot read it to
+		// the end. Its access rule is tested over a real connection instead:
+		// TestStreamNeverLeaksAFactTheCallerCannotRead in memory_stream_test.go.
+		if pattern == "/api/memory/stream" {
+			continue
+		}
 		path := fillWildcards(pattern)
 		for _, q := range []string{"", "?q=kestrel&k=20", "?q=kestrel&full=true", "?include_private=true"} {
 			w := asKey(t, h, bobKey, "GET", path+q, nil)

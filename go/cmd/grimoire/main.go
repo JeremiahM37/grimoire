@@ -317,6 +317,9 @@ func run(args []string) error {
 		<-sig
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
+		// Open memory streams never finish on their own; end them first, or
+		// Shutdown would sit out its whole deadline waiting for them.
+		e.server.Close()
 		for _, ts := range tlsSrvs {
 			_ = ts.Shutdown(ctx)
 		}

@@ -114,6 +114,9 @@ type Server struct {
 	fpDF      fpCache
 
 	replay replayState
+
+	// Open memory streams, and the signal that ends them; see memory_stream.go.
+	streamState
 }
 
 // Routes builds the mux. Specific paths are registered before the catch-all
@@ -228,6 +231,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/memory/export", s.exportMemory)
 	mux.HandleFunc("POST /api/memory/import", s.userOnly(s.importMemory))
 	mux.HandleFunc("GET /api/memory/changes", s.memoryChanges)
+	mux.HandleFunc("GET /api/memory/stream", s.userOnly(s.memoryStream))
 	mux.HandleFunc("GET /api/memory/facets", s.memoryFacets)
 	mux.HandleFunc("GET /api/memory/graph", s.memoryGraph)
 	mux.HandleFunc("POST /api/memory/search", s.searchMemoryByVector)
