@@ -14,6 +14,8 @@ func agentHome(t *testing.T) string {
 	t.Helper()
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	// Profiles live under XDG_CONFIG_HOME when it is set (CI runners set it).
+	t.Setenv("XDG_CONFIG_HOME", "")
 	bin := t.TempDir()
 	if err := os.WriteFile(filepath.Join(bin, "grimoire-mcp"), []byte("#!/bin/sh\n"), 0o755); err != nil {
 		t.Fatal(err)

@@ -88,6 +88,7 @@ func TestNoClearDifferenceWhenNothingMoved(t *testing.T) {
 
 func TestCollectReadsProfilesMemoriesAndSkills(t *testing.T) {
 	home := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", "")
 	// A user profile for a generic JSONL agent, with a skills dir.
 	cfg := filepath.Join(home, ".config", "grimoire", "agents")
 	os.MkdirAll(cfg, 0o755)

@@ -13,6 +13,8 @@ func TestMemoryImpactEndpointAndRetells(t *testing.T) {
 	s, h := testServer(t)
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	// Profiles live under XDG_CONFIG_HOME when it is set (CI runners set it).
+	t.Setenv("XDG_CONFIG_HOME", "")
 	cfg := filepath.Join(home, ".config", "grimoire", "agents")
 	os.MkdirAll(cfg, 0o755)
 	os.MkdirAll(filepath.Join(home, "logs"), 0o755)
