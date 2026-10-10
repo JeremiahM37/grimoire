@@ -58,15 +58,23 @@ func bankFor(w http.ResponseWriter, r *http.Request) (string, bool) {
 }
 
 // bankReadable answers 404 for a bank the caller may not see — the same
-// answer as for one that does not exist, so a bank's name is not confirmed to
-// someone outside it.
+// answer, body included, as for one that does not exist, so a bank's name is
+// not confirmed to someone outside it.
 func (s *Server) bankReadable(w http.ResponseWriter, r *http.Request) (string, bool) {
 	id, ok := bankFor(w, r)
 	if !ok {
 		return "", false
 	}
 	if !s.canRead(r, bank.ProfilePath(id)) {
-		writeErr(w, http.StatusNotFound, "no such bank")
+		writeErr(w, http.StatusNotFound, "not found") // the same answer as an absent bank: see bankReadable
+		return "", false
+	}
+	// A name in the commons is readable whether or not a bank sits behind it,
+	// so existence is confirmed here, for every read route at once. Without
+	// it, sessions answered 200 empty for an absent bank and 404 for a hidden
+	// one: the difference was an oracle on bank names.
+	if _, err := s.Banks.Profile(id); err != nil {
+		writeErr(w, http.StatusNotFound, "not found")
 		return "", false
 	}
 	return id, true
@@ -82,7 +90,7 @@ func (s *Server) bankWritable(w http.ResponseWriter, r *http.Request) (string, b
 	}
 	if !s.canWrite(r, bank.ProfilePath(id)) {
 		if !s.canRead(r, bank.ProfilePath(id)) {
-			writeErr(w, http.StatusNotFound, "no such bank")
+			writeErr(w, http.StatusNotFound, "not found") // the same answer as an absent bank: see bankReadable
 		} else {
 			writeErr(w, http.StatusForbidden, "you have read-only access to that bank")
 		}

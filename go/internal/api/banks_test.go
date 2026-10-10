@@ -454,3 +454,38 @@ func TestFileMemoryAndDuplicateRoutes(t *testing.T) {
 		t.Errorf("merge unknown = %d", w.Code)
 	}
 }
+
+// A bank name that does not exist and one that exists but is hidden from the
+// caller must answer identically on every bank route. The sessions and
+// webhook lists answered 200 with an empty list for an absent bank in the
+// commons and 404 for a hidden bank, which told a caller which bank names were
+// real.
+func TestBankRoutesGiveTheSameAnswerForAbsentAndHiddenBanks(t *testing.T) {
+	s, h := testServer(t)
+	adminKey := makeUser(t, s, h, "", "root", "admin")
+	aliceKey := makeUser(t, s, h, adminKey, "alice", "member")
+	bobKey := makeUser(t, s, h, adminKey, "bob", "member")
+	alice, err := s.Auth.ByName("alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sp struct {
+		ID string `json:"id"`
+	}
+	decode(t, asKey(t, h, adminKey, "POST", "/api/spaces", map[string]any{"Name": "alice bank", "Prefix": "banks/alicebank"}), &sp)
+	if w := asKey(t, h, adminKey, "POST", "/api/spaces/"+sp.ID+"/members", map[string]any{"User": alice.ID, "Role": "writer"}); w.Code >= 300 {
+		t.Fatalf("member = %d %s", w.Code, w.Body)
+	}
+	if w := asKey(t, h, aliceKey, "POST", "/api/banks", map[string]any{"bank_id": "alicebank"}); w.Code != http.StatusCreated {
+		t.Fatalf("create = %d %s", w.Code, w.Body)
+	}
+
+	for _, route := range []string{"/sessions", "/webhooks", "/entities", "/stats", "/documents", "/observations", "/mental-models", "/directives", "/operations", "/memories", "/timeline"} {
+		hidden := asKey(t, h, bobKey, "GET", "/api/banks/alicebank"+route, nil)
+		absent := asKey(t, h, bobKey, "GET", "/api/banks/nothere"+route, nil)
+		if hidden.Code != absent.Code || hidden.Body.String() != absent.Body.String() {
+			t.Errorf("%s: hidden bank answers %d %s, an absent one %d %s — the difference names the bank",
+				route, hidden.Code, hidden.Body, absent.Code, absent.Body)
+		}
+	}
+}

@@ -643,6 +643,12 @@ func (s *Server) listBankWebhooks(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	// A name in the commons passes the write check whether or not the bank
+	// exists, so the list must confirm existence itself. Otherwise an absent
+	// bank answered 200 with an empty list while a hidden one answered 404.
+	if !s.bankExists(w, id) {
+		return
+	}
 	s.listWebhooksFor(w, id)
 }
 
