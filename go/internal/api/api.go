@@ -101,6 +101,7 @@ type Server struct {
 
 	adhOnce  sync.Once
 	adhStore *adherence.Store
+	fpDF     fpCache
 }
 
 // Routes builds the mux. Specific paths are registered before the catch-all

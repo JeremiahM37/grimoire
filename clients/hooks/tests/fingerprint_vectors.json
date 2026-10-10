@@ -1,0 +1,117 @@
+[
+ {
+  "text": "Run ~/tailscale-helpers/snapshot.sh first, then POST /tailnet/-/keys with expirySeconds:600.",
+  "candidates": [
+   "run",
+   "~/tailscale-helpers/snapshot.sh",
+   "tailscale-helpers",
+   "snapshot.sh",
+   "first",
+   "then",
+   "post",
+   "/tailnet/-/keys",
+   "tailnet",
+   "keys",
+   "with",
+   "expiryseconds:600",
+   "expiryseconds",
+   "600"
+  ]
+ },
+ {
+  "text": "curl https://user:pw@Docs.Example.com:8443/a/b/Config.yaml?x=1 --max-time=30 -s",
+  "candidates": [
+   "curl",
+   "https://user:pw@docs.example.com:8443/a/b/config.yaml",
+   "docs.example.com:8443",
+   "docs.example.com",
+   "config.yaml",
+   "x=1",
+   "--max-time=30",
+   "--max-time"
+  ]
+ },
+ {
+  "text": "export GRIMOIRE_URL=http://127.0.0.1:9111 and read $GRIMOIRE_AUTH_TOKEN, not ${HOME}",
+  "candidates": [
+   "export",
+   "grimoire_url=http://127.0.0.1:9111",
+   "grimoire_url",
+   "http://127.0.0.1:9111",
+   "127.0.0.1:9111",
+   "127.0.0.1",
+   "and",
+   "read",
+   "$grimoire_auth_token",
+   "grimoire_auth_token",
+   "not",
+   "home"
+  ]
+ },
+ {
+  "text": "ssh root@100.104.116.16 \"pct exec 200 -- bash -c 'docker compose up -d'\"",
+  "candidates": [
+   "ssh",
+   "root@100.104.116.16",
+   "pct",
+   "exec",
+   "200",
+   "bash",
+   "docker",
+   "compose"
+  ]
+ },
+ {
+  "text": "Pin ollama v0.20.5, not 0.34.0; qwen3.6:35b-a3b stays; `OLLAMA_KEEP_ALIVE=5m` (see /etc/default/ollama).",
+  "candidates": [
+   "pin",
+   "ollama",
+   "v0.20.5",
+   "not",
+   "0.34.0",
+   "qwen3.6:35b-a3b",
+   "qwen3.6",
+   "35b-a3b",
+   "stays",
+   "ollama_keep_alive=5m",
+   "ollama_keep_alive",
+   "see",
+   "/etc/default/ollama",
+   "etc",
+   "default"
+  ]
+ },
+ {
+  "text": "Naïve CAFÉ ünïcode: K (Kelvin) and ß are separators; tag:claude host:port a.b",
+  "candidates": [
+   "caf",
+   "code",
+   "kelvin",
+   "and",
+   "are",
+   "separators",
+   "tag:claude",
+   "tag",
+   "claude",
+   "host:port",
+   "host",
+   "port",
+   "a.b"
+  ]
+ },
+ {
+  "text": "..trailing.. ::lead -- --flag-name -x ab /a /ab /abc",
+  "candidates": [
+   "..trailing",
+   "lead",
+   "--flag-name",
+   "/ab",
+   "/abc",
+   "abc"
+  ]
+ },
+ {
+  "text": "",
+  "candidates": []
+ }
+]

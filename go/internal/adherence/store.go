@@ -34,8 +34,14 @@ const (
 	Contradicted = "contradicted"
 	Cited        = "cited"
 	Followed     = "followed"
-	Ignored      = "ignored"
-	Pending      = "pending"
+	// Used: a distinctive token of the memory (a fingerprint) showed up in what
+	// the agent did or said, with no tag cited (fingerprint.go).
+	Used = "used"
+	// Ignored: injected, fingerprintable, and neither cited nor matched.
+	Ignored = "ignored"
+	// Unknown: no fingerprint, so nothing could have shown use. Not ignored.
+	Unknown = "unknown"
+	Pending = "pending"
 )
 
 // Store is the adherence database.
@@ -61,6 +67,10 @@ func Open(dir string) (*Store, error) {
 			db.Close()
 			return nil, fmt.Errorf("adherence schema: %w", err)
 		}
+	}
+	if err := migrateFingerprints(db); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("adherence schema: %w", err)
 	}
 	return &Store{db: db}, nil
 }
@@ -99,6 +109,11 @@ var schema = []string{
 type Injection struct {
 	Session, Tag, Key, Target, Path, FactID, Stage string
 	Relevance                                      float64
+	// FPKnown says fingerprints were computed; FPN is how many the memory
+	// had when injected (0: unfingerprintable). Without FPKnown the row is
+	// classified as before fingerprints existed.
+	FPKnown bool
+	FPN     int
 }
 
 // Tags returns the shortest hex prefix of each key (at least min characters)
@@ -159,8 +174,11 @@ func (s *Store) Log(items []Injection, now time.Time) error {
 		return err
 	}
 	for _, it := range items {
-		if _, err := tx.Exec(`INSERT INTO injections(session,tag,key,target,path,fact_id,stage,relevance,ts) VALUES(?,?,?,?,?,?,?,?,?)`,
-			it.Session, it.Tag, it.Key, it.Target, it.Path, it.FactID, it.Stage, it.Relevance, now.Unix()); err != nil {
+		if !it.FPKnown {
+			it.FPN = -1
+		}
+		if _, err := tx.Exec(`INSERT INTO injections(session,tag,key,target,path,fact_id,stage,relevance,ts,fp_n) VALUES(?,?,?,?,?,?,?,?,?,?)`,
+			it.Session, it.Tag, it.Key, it.Target, it.Path, it.FactID, it.Stage, it.Relevance, now.Unix(), it.FPN); err != nil {
 			tx.Rollback()
 			return err
 		}
@@ -185,6 +203,9 @@ type Row struct {
 	Cited                            bool
 	CheckResult                      string
 	Contradicted, Finalized, Counted bool
+	// FPN is the number of fingerprints at injection (-1: not computed, 0:
+	// none) and FPHit the most the client reported matched.
+	FPN, FPHit int
 }
 
 // Outcome is the final classification of a row.
@@ -198,13 +219,17 @@ func (r Row) Outcome() string {
 		return Cited
 	case r.CheckResult == Followed:
 		return Followed
+	case r.FPHit >= UsedMin:
+		return Used
+	case r.Finalized && r.FPN == 0:
+		return Unknown
 	case r.Finalized:
 		return Ignored
 	}
 	return Pending
 }
 
-const rowCols = `id,session,tag,key,target,path,fact_id,stage,relevance,ts,tools,cited,check_result,contradicted,finalized,counted`
+const rowCols = `id,session,tag,key,target,path,fact_id,stage,relevance,ts,tools,cited,check_result,contradicted,finalized,counted,fp_n,fp_hit`
 
 func scanRows(rs *sql.Rows) ([]Row, error) {
 	defer rs.Close()
@@ -213,7 +238,7 @@ func scanRows(rs *sql.Rows) ([]Row, error) {
 		var r Row
 		var c, ct, f, n int
 		if err := rs.Scan(&r.ID, &r.Session, &r.Tag, &r.Key, &r.Target, &r.Path, &r.FactID, &r.Stage,
-			&r.Relevance, &r.TS, &r.Tools, &c, &r.CheckResult, &ct, &f, &n); err != nil {
+			&r.Relevance, &r.TS, &r.Tools, &c, &r.CheckResult, &ct, &f, &n, &r.FPN, &r.FPHit); err != nil {
 			return nil, err
 		}
 		r.Cited, r.Contradicted, r.Finalized, r.Counted = c != 0, ct != 0, f != 0, n != 0
@@ -327,16 +352,21 @@ type Stats struct {
 	Target                                                              string
 	Path, FactID                                                        string
 	Injected, Cited, Followed, Violated, Ignored, Contradicted, Pending int
+	Used, Unknown                                                       int
+	// Fingerprint coverage: injections that were fingerprintable, how many
+	// of those have finished, and how many of the finished ones matched.
+	FPKnown, FPCovered, FPDone, FPHit int
 }
 
-// Rate is the share of finished injections that were acted on (cited or
-// followed).
+// Rate is the share of finished injections that were acted on (cited,
+// followed or used). Injections that could not be told either way
+// (unfingerprintable and unchecked) are left out: they say nothing.
 func (s Stats) Rate() float64 {
-	done := s.Injected - s.Pending
+	done := s.Injected - s.Pending - s.Unknown
 	if done <= 0 {
 		return 0
 	}
-	return float64(s.Cited+s.Followed) / float64(done)
+	return float64(s.Cited+s.Followed+s.Used) / float64(done)
 }
 
 // Report summarises outcomes since the cutoff, per target and overall.
@@ -361,6 +391,7 @@ func (s *Store) Report(since time.Time) (map[string]*Stats, Stats, error) {
 		}
 		for _, x := range []*Stats{st, &all} {
 			x.Injected++
+			x.addFingerprint(r)
 			switch r.Outcome() {
 			case Violated:
 				x.Violated++
@@ -370,8 +401,12 @@ func (s *Store) Report(since time.Time) (map[string]*Stats, Stats, error) {
 				x.Cited++
 			case Followed:
 				x.Followed++
+			case Used:
+				x.Used++
 			case Ignored:
 				x.Ignored++
+			case Unknown:
+				x.Unknown++
 			default:
 				x.Pending++
 			}

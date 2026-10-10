@@ -12,9 +12,23 @@ import (
 	"testing"
 	"time"
 
+	fpr "github.com/JeremiahM37/grimoire/go/internal/fingerprint"
 	"github.com/JeremiahM37/grimoire/go/internal/index"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
 )
+
+// zebraFact has a distinctive token (a config path), so it is fingerprintable.
+const zebraFact = "Zebra feeding schedule runs at dawn, edit /srv/zebra/feeder-quokka.yaml to change it"
+
+// fillStore remembers n unrelated facts so rarity across the store means
+// something.
+func fillStore(t *testing.T, h http.Handler, n int) {
+	t.Helper()
+	for i := 0; i < n; i++ {
+		remember(t, h, map[string]any{"topic": fmt.Sprintf("filler%d", i),
+			"text": fmt.Sprintf("Filler%d notes the colour palette%d and nothing else about gadget%d", i, i*7, i*13)})
+	}
+}
 
 const pushRule = "Never run git push on the kestrel repository without being asked"
 
@@ -65,6 +79,7 @@ func TestInjectedItemsCarryTagsAndJSONStaysUnchanged(t *testing.T) {
 
 func TestOutcomeCitedFollowedViolatedIgnored(t *testing.T) {
 	s, h := testServer(t)
+	fillStore(t, h, 80) // rarity across the store needs a store
 	fact := remember(t, h, map[string]any{"topic": "kestrel", "text": pushRule})
 	target := "fact:" + fact["id"].(string)
 	rec := do(t, h, "POST", "/api/memory/check", map[string]any{"target": target, "forbid": `\bgit\s+push\b`})
@@ -113,7 +128,7 @@ func TestOutcomeCitedFollowedViolatedIgnored(t *testing.T) {
 	}
 
 	// An item with no check and no citation is ignored, and moves no counter.
-	other := remember(t, h, map[string]any{"topic": "zebra", "text": "Zebra feeding schedule runs at dawn"})
+	other := remember(t, h, map[string]any{"topic": "zebra", "text": zebraFact})
 	ctxJSON(t, h, "zebra feeding schedule", "session", "sess-cccc-3333")
 	res = postOutcome(t, h, map[string]any{"session": "sess-cccc-3333", "stop": true})
 	for _, v := range res["outcomes"].(map[string]any) {
@@ -211,7 +226,8 @@ func TestEnforceAskReturnsPermissionAtActionStage(t *testing.T) {
 
 func TestIgnoredInjectionsAreDownRankedForInjectionOnly(t *testing.T) {
 	_, h := testServer(t)
-	remember(t, h, map[string]any{"topic": "zebra", "text": "Zebra feeding schedule runs at dawn"})
+	fillStore(t, h, 80)
+	remember(t, h, map[string]any{"topic": "zebra", "text": zebraFact})
 	score := func() float64 {
 		rec := do(t, h, "GET", "/api/memory/context?rank=hybrid&min_rel=0&q=zebra+feeding+schedule", nil)
 		_ = rec
@@ -338,4 +354,144 @@ func TestProposeChecksStoresSuggestionsNeverApplies(t *testing.T) {
 
 func indexQueryForID(id string) index.MemoryQuery {
 	return index.MemoryQuery{ID: id, Limit: 1, Now: vault.Now()}
+}
+
+func fpItems(t *testing.T, out map[string]any) (map[string]any, []any, string) {
+	t.Helper()
+	fp, ok := out["fp"].(map[string]any)
+	if !ok {
+		t.Fatalf("no fp in %v", out)
+	}
+	return fp["items"].(map[string]any), fp["none"].([]any), fp["salt"].(string)
+}
+
+func TestContextCarriesSaltedFingerprintsNotText(t *testing.T) {
+	_, h := testServer(t)
+	fillStore(t, h, 80)
+	remember(t, h, map[string]any{"topic": "zebra", "text": zebraFact})
+	remember(t, h, map[string]any{"topic": "tidy", "text": "Prefer tidy small commits with plain words"})
+	out := ctxJSON(t, h, "zebra feeding schedule", "session", "sess-fp00-0001")
+	items, none, salt := fpItems(t, out)
+	body, _ := json.Marshal(out["fp"])
+	for _, leak := range []string{"zebra", "quokka", "feeder"} {
+		if strings.Contains(strings.ToLower(string(body)), leak) {
+			t.Fatalf("fp carries memory text %q: %s", leak, body)
+		}
+	}
+	if len(items) != 1 || len(none) != 0 || len(salt) != 16 {
+		t.Fatalf("want one fingerprintable item: %s", body)
+	}
+	for tag, hs := range items {
+		if !strings.Contains(out["context"].(string), "m:"+tag+" ") {
+			t.Fatalf("fp tag %s is not a marker", tag)
+		}
+		want := fpr.Hash(salt, "feeder-quokka.yaml")
+		found := false
+		for _, x := range hs.([]any) {
+			found = found || x == want
+		}
+		if !found {
+			t.Fatalf("basename hash missing: %v want %s", hs, want)
+		}
+	}
+	// A memory with nothing distinctive is listed as unfingerprintable.
+	items, none, _ = fpItems(t, ctxJSON(t, h, "tidy small commits plain words", "session", "sess-fp00-0004"))
+	if len(items) != 0 || len(none) != 1 {
+		t.Fatalf("plain memory must be unfingerprintable: %v %v", items, none)
+	}
+	// A fresh salt on every response.
+	_, _, salt2 := fpItems(t, ctxJSON(t, h, "zebra feeding schedule", "session", "sess-fp00-0002"))
+	if salt2 == salt {
+		t.Fatal("salt reused")
+	}
+	// format=json is unchanged.
+	if js := ctxJSON(t, h, "zebra feeding schedule", "format", "json"); js["fp"] != nil {
+		t.Fatalf("json format changed: %v", js)
+	}
+}
+
+func TestSituationTokensAreNotFingerprints(t *testing.T) {
+	_, h := testServer(t)
+	fillStore(t, h, 80)
+	remember(t, h, map[string]any{"topic": "zebra", "text": zebraFact})
+	out := ctxJSON(t, h, "zebra feeding schedule feeder-quokka.yaml", "session", "sess-fp00-0003")
+	items, none, _ := fpItems(t, out)
+	// The path (and its pieces) were in the prompt; nothing else in the fact
+	// is distinctive, so the memory has no fingerprint left.
+	if len(items) != 0 || len(none) != 1 {
+		t.Fatalf("situation token survived: %v %v", items, none)
+	}
+}
+
+func TestOutcomeUsedUnknownAndLateUpgrade(t *testing.T) {
+	s, h := testServer(t)
+	fillStore(t, h, 80)
+	fact := remember(t, h, map[string]any{"topic": "zebra", "text": zebraFact})
+	remember(t, h, map[string]any{"topic": "tidy", "text": "Prefer tidy small commits with plain words"})
+	sess := "sess-fp00-0010"
+	items, _, _ := fpItems(t, ctxJSON(t, h, "zebra feeding schedule", "session", sess))
+	var tag string
+	for t := range items {
+		tag = t
+	}
+	// A memory with no fingerprint, injected in the same session.
+	_, none, _ := fpItems(t, ctxJSON(t, h, "tidy small commits plain words", "session", sess))
+	// The hook found a match while the turn ran, with no tag cited.
+	postOutcome(t, h, map[string]any{"session": sess, "tool": "Bash", "target": "ls", "fp": map[string]int{tag: 1}})
+	res := postOutcome(t, h, map[string]any{"session": sess, "stop": true})
+	oc := res["outcomes"].(map[string]any)
+	if oc[tag] != "used" || oc[none[0].(string)] != "unknown" {
+		t.Fatalf("outcomes %v (tag %s none %v)", oc, tag, none)
+	}
+	if got := factCounts(t, s, fact); got != [2]int{1, 0} {
+		t.Fatalf("used did not count as helpful: %v", got)
+	}
+
+	// Next session: the turn closes as ignored, then the window's second turn
+	// shows a match, which upgrades the row once and counts once.
+	sess2 := "sess-fp00-0011"
+	items, _, _ = fpItems(t, ctxJSON(t, h, "zebra feeding schedule", "session", sess2))
+	for t := range items {
+		tag = t
+	}
+	res = postOutcome(t, h, map[string]any{"session": sess2, "stop": true})
+	if res["outcomes"].(map[string]any)[tag] != "ignored" {
+		t.Fatalf("want ignored first: %v", res)
+	}
+	postOutcome(t, h, map[string]any{"session": sess2, "fp": map[string]int{tag: 1}, "stop": true})
+	postOutcome(t, h, map[string]any{"session": sess2, "fp": map[string]int{tag: 1}})
+	if got := factCounts(t, s, fact); got != [2]int{2, 0} {
+		t.Fatalf("late upgrade counted wrongly: %v", got)
+	}
+
+	var rep struct {
+		Overall map[string]any `json:"overall"`
+	}
+	decode(t, do(t, h, "GET", "/api/memory/adherence", nil), &rep)
+	o := rep.Overall
+	if o["used"] != float64(2) || o["unknown"] != float64(1) || o["ignored"] != float64(0) ||
+		o["fingerprint_coverage"].(float64) < 0.6 || o["used_rate"] != float64(1) {
+		t.Fatalf("report %v", o)
+	}
+}
+
+func TestOutcomeFingerprintInputIsValidated(t *testing.T) {
+	_, h := testServer(t)
+	for _, fp := range []map[string]int{{"zz": 1}, {"3e99": 0}, {"3e99": 7}} {
+		if rec := do(t, h, "POST", "/api/memory/outcome", map[string]any{"session": "sess-fp00-0020", "fp": fp}); rec.Code != 400 {
+			t.Fatalf("%v accepted: %d", fp, rec.Code)
+		}
+	}
+	// A client cannot claim more matches than fingerprints were sent.
+	fillStore(t, h, 80)
+	remember(t, h, map[string]any{"topic": "zebra", "text": zebraFact})
+	sess := "sess-fp00-0021"
+	items, _, _ := fpItems(t, ctxJSON(t, h, "zebra feeding schedule", "session", sess))
+	for tag, hs := range items {
+		postOutcome(t, h, map[string]any{"session": sess, "fp": map[string]int{tag: 6}})
+		res := postOutcome(t, h, map[string]any{"session": sess, "stop": true})
+		if res["outcomes"].(map[string]any)[tag] != "used" || len(hs.([]any)) > 6 {
+			t.Fatalf("%v", res)
+		}
+	}
 }

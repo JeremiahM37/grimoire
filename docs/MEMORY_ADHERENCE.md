@@ -33,16 +33,20 @@ as exactly one of:
 | `contradicted` | a later re-tell of the same memory arrived: the user had to say it again |
 | `cited` | the agent cited its tag |
 | `followed` | its check passed (the forbidden pattern never appeared across a turn with tool calls, or the required one did) |
-| `ignored` | none of the above by the end of the turn |
+| `used` | one of the memory's fingerprints appeared in what the agent did or said, with no tag cited (see Fingerprints) |
+| `ignored` | injected, fingerprintable, and none of the above by the end of the window |
+| `unknown` | the memory has no fingerprint, so nothing could show use. Not `ignored` |
 
 Contradiction hooks into the existing re-tell paths (`learnFromRetell`,
 `learnFromPrompt`), so it fires on a `remember` that turns out to be on file
 and on a prompt the re-tell judge calls a restatement.
 
 Request bodies: `{session, tool, target}` for a tool call, and
-`{session, cited:[tags], stop:true}` at the end of a turn. `{..., pre:true}`
+`{session, cited:[tags], fp:{tag:n}, stop:true}` at the end of a turn (`fp`
+may also ride on a tool call). `{..., pre:true}`
 computes a permission decision and records nothing. The hook never sends
-transcript text; only tags, tool names and targets leave the machine.
+transcript text; only tags, tool names, targets and fingerprint match counts
+leave the machine.
 
 ### The hook
 
@@ -50,8 +54,112 @@ transcript text; only tags, tool names and targets leave the machine.
 claude-json-style events (register it beside `grimoire_context.py`; the
 session hash it sends is the same one the context hook sends). On `Stop` it
 reads `transcript_path`, takes the assistant text since the last real user
-prompt, and extracts only the `m:` tags. It fails silently.
+prompt, and extracts only the `m:` tags and fingerprint match counts. It fails
+silently.
 `GRIMOIRE_OUTCOME=0` turns it off.
+
+## Fingerprints: use without a tag
+
+Agents rarely write the `(m:3e99)` tag (qwen 14% of the time even when asked), so
+a tag cannot be the main signal. The memory's own content is: if the memory says
+to run `~/tailscale-helpers/snapshot.sh` and the agent's next command contains
+`snapshot.sh`, it used the memory.
+
+**Selection (server, at injection).** For each injected item
+(`go/internal/fingerprint`): take its distinctive tokens, namely paths and their
+components, URLs and hosts, IPs and ports, `--flags`, ENV_VARS, versions,
+code-ish identifiers (`snake_case`, camelCase, letters+digits, `file.ext`),
+hyphenated names, and plain words inside backticks. Score each by rarity across
+the whole memory store (idf of its document frequency, times a weight per kind:
+backticked plain words and hyphenated compounds weigh least, because `read-only`
+is English and `tailscale-helpers` is a name). Drop a token that is too common
+(in more than 2% of memories, between 2 and 12), generic (`home`, `config`,
+`return`...), or **already present in the situation** (the prompt or command that
+triggered the injection, or a distinctive piece of the token, such as the file
+name of a path): an answer repeating the prompt proves nothing. Keep at most 6,
+at most 2 from the same run of text. A memory left with none is
+**unfingerprintable**; nothing is guessed. Document frequencies are cached for 10
+minutes.
+
+**Wire.** The hybrid directive response gains, beside `tags`:
+
+```json
+"fp": {"v": 1, "spec": "<normalisation text>", "salt": "<16 hex, fresh per response>",
+       "items": {"3e99": ["2bba5360fd", "db783cf87a"]}, "none": ["a1b2"]}
+```
+
+`items` maps a tag to `sha256(salt NUL token)[:10]` for each fingerprint; `none`
+lists the unfingerprintable tags. No token or memory text is in it. The context
+hook stores it per session (`fp-<session hash>.json` beside its other state: at
+most 24 items, 8 hashes each, hashes only).
+
+**Normalisation spec (v1)**, shared by server and hook: lowercase ASCII letters
+only; runs of `[a-z0-9_./:~@%+#$=-]`; strip leading `[:=+#%@]` and trailing
+`[.:=-/+#%@]`; keep runs of 3 to 160 characters; also emit the run without a
+leading `$`, pieces split on `=`, for a URL its host and `host:port` and path
+components, for a path every component of 3+ characters, for `a:b` the pieces of
+3+ characters. `clients/hooks/tests/fingerprint_vectors.json` is run by both the
+Go and Python suites, so the two implementations cannot drift; bump
+`SpecVersion` if it ever changes.
+
+**Matching (hook).** `grimoire_outcome.py` normalises the tool target on
+`PostToolUse` and the assistant text since the last prompt on `Stop` (read from
+`transcript_path` locally), hashes every candidate with each item's salt, and
+compares. It sends **only `fp: {tag: distinct fingerprints matched so far}`**,
+never text, tokens or hashes. The server clamps a count to the number of
+fingerprints it sent. A match is `used` (`adherence.UsedMin = 1`).
+
+**Window.** A memory is watched through the turn it was injected in and one turn
+after (`GRIMOIRE_FP_WINDOW_TURNS`, default 1; `GRIMOIRE_FP_WINDOW_TOOLS=N`
+optionally also stops after N tool calls). The hook counts turns at `Stop`. A
+match in the second turn upgrades an injection the first `Stop` closed as
+`ignored` (counted helpful once). `GRIMOIRE_FINGERPRINTS=0` turns it off. Only
+prompt-stage injections are logged today, so action-stage injections carry no
+fingerprints until they are.
+
+**Report.** `GET /api/memory/adherence` adds `used`, `unknown`, `used_rate` (share
+of finished fingerprintable injections that matched) and `fingerprint_coverage`
+(share of injections that were fingerprintable), overall and per memory.
+
+### Measured offline (no model calls)
+
+`benchmarks/memory_use/round2/fp_eval.py` runs the production Go selector
+(`go/cmd/fpdump`) and the production hook matcher, with the salted hashes of the
+wire, over the 101 adherence cases (corpus: 349 memory texts, situation = the
+task text; memories as shown, first 900 characters):
+
+* **Coverage: 78.2%** of memories are fingerprintable (79/101); 15 have the full
+  6. The 22 that are not are advice in plain words ("prefer small commits").
+* **False positives, answers produced without the memory** (should not match):
+  **2.1%** of 240 qwen no-memory answers (0.0% at 2 matches), **7.5%** of 80 Haiku
+  no-memory answers (1.2% at 2). Among no-memory answers that follow the rule anyway
+  (they land on the same path or command), `used` fires on 33%, which is expected;
+  on those that do not follow, 2.5%.
+* **Agreement of `used` with the follow labels** (precision = P(follows | used),
+  recall = P(used | follows), at one match):
+
+| Answers | n | precision | recall | used rate vs follow rate |
+|---|---|---|---|---|
+| qwen, memory arms A-D (deterministic follow) | 348 | 57.1% | 68.2% | 50.9% vs 42.5% |
+| Haiku marker runs A+B | 52 | 64.3% | 81.8% | 80.8% vs 63.5% |
+| Haiku adherence: current + directive + recheck (LLM-graded) | 240 | 82.2% | 67.7% | 56.2% vs 68.3% |
+| Haiku directive arm alone | 80 | 89.1% | 81.7% | 68.8% vs 75.0% |
+| Haiku long-horizon (start + action) | 104 | 75.0% | 63.6% | 53.8% vs 63.5% |
+
+* **Agreement with right-cites** (qwen arms B-D, 720 answers): recall 54.7% (of
+  answers that cited the right tag, 55% also show a fingerprint), precision 24.2%,
+  because qwen cites the tag in only 18% of answers while using the content in 40%.
+  For Haiku arm B, 21 of 26 right-cites also matched (recall 80.8%), and no
+  answer matched without having cited.
+* **Two matches instead of one** trades recall for precision: qwen A-D precision
+  54.7% recall 31.8%; Haiku current+directive+recheck 85.3% / 35.4%. One match is
+  the default because a fingerprint is already rare in the store.
+
+`used` is not `followed`: it says the memory's content showed up in the action
+(the agent touched the path, ran the command, named the host), not that the
+action was right. It is the evidence that an injected memory was read and acted
+on, which is what the injection-usefulness counters need; `followed` and
+`violated` remain the checks' verdicts.
 
 ## Checks
 
@@ -114,16 +222,18 @@ regex over a tool call cannot see them.
 
 ## Usefulness
 
-Outcomes feed the existing feedback counters of a fact: cited or followed
-counts helpful; a contradiction counts unhelpful once. Violated and ignored
+Outcomes feed the existing feedback counters of a fact: cited, followed or
+used counts helpful; a contradiction counts unhelpful once. Violated, ignored and unknown
 move no counter (a violation says the agent erred, not that the memory is
 wrong). A memory ignored five or more times with under 20% of its finished
-injections acted on is down-ranked for **injection only**, by a factor
+injections acted on (cited, followed or used; unfingerprintable injections are
+left out of the denominator) is down-ranked for **injection only**, by a factor
 falling from 0.9 to 0.6 at twenty ignores. Recall and search are untouched.
 
 `GET /api/memory/adherence?days=30` reports per memory and overall:
-injected, cited, followed, violated, ignored, contradicted, pending, the
-acted-on rate and any injection penalty, plus the gate's latency.
+injected, cited, followed, used, violated, ignored, unknown, contradicted,
+pending, the acted-on rate, the used rate and fingerprint coverage, and any
+injection penalty, plus the gate's latency.
 
 ## Gate: when not to inject
 

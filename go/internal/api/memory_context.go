@@ -13,6 +13,7 @@ import (
 
 	"github.com/JeremiahM37/grimoire/go/internal/adherence"
 	"github.com/JeremiahM37/grimoire/go/internal/cues"
+	fpr "github.com/JeremiahM37/grimoire/go/internal/fingerprint"
 	"github.com/JeremiahM37/grimoire/go/internal/fts"
 	"github.com/JeremiahM37/grimoire/go/internal/index"
 	"github.com/JeremiahM37/grimoire/go/internal/memory"
@@ -143,7 +144,7 @@ func (s *Server) memoryContext(w http.ResponseWriter, r *http.Request) {
 			minRel = 0
 		}
 		s.writeContext(w, items, excluded, budget, limit, minRel, "hybrid", r.URL.Query().Get("format") != "json",
-			ctxLog{session: r.URL.Query().Get("session"), stage: r.URL.Query().Get("stage"), log: true, permission: perm})
+			ctxLog{session: r.URL.Query().Get("session"), stage: r.URL.Query().Get("stage"), query: query, log: true, permission: perm})
 		return
 	}
 	if (len(terms) > 0 || (mode == "scoped" && query == "")) && mode != "manual" && mode != "off" {
@@ -223,6 +224,7 @@ func (s *Server) memoryContext(w http.ResponseWriter, r *http.Request) {
 // a session is logged (docs/MEMORY_ADHERENCE.md).
 type ctxLog struct {
 	session, stage string
+	query          string // the situation: what triggered the injection
 	log            bool
 	permission     map[string]any
 }
@@ -296,14 +298,19 @@ func (s *Server) writeContext(w http.ResponseWriter, items []contextItem, exclud
 	}
 	out := map[string]any{"context": context, "keys": keys,
 		"bytes": len(context), "max_bytes": budget, "mode": mode, "model_calls": 0}
+	var fps [][]fpr.Fingerprint
 	if directive && lg.log {
 		out["tags"] = tags
+		if lg.session != "" && len(picked) > 0 {
+			fps = s.itemFingerprints(picked, lg.query)
+			out["fp"] = fingerprintWire(tags, fps)
+		}
 	}
 	if lg.permission != nil {
 		out["permission"] = lg.permission
 	}
 	if lg.log && lg.session != "" && len(picked) > 0 {
-		s.logInjections(lg, picked, tags)
+		s.logInjections(lg, picked, tags, fps)
 	}
 	writeJSON(w, http.StatusOK, out)
 }

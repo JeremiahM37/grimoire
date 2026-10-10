@@ -39,6 +39,40 @@ def read_state(path):
         return {}
 
 
+FP_SPEC = 1
+FP_MAX_ITEMS = 24
+
+
+def store_fingerprints(directory, sid, result):
+    """Keep the salted fingerprint hashes the server sent with an injection, so
+    grimoire_outcome.py can tell whether the agent used each memory without a
+    tag. Only hashes are stored, never memory text. The file also carries the
+    turn counter that hook advances at every Stop."""
+    fp = result.get("fp")
+    if not isinstance(fp, dict) or fp.get("v") != FP_SPEC or not isinstance(fp.get("salt"), str):
+        return
+    items = fp.get("items")
+    if not isinstance(items, dict) or not items or len(items) > 10:
+        return
+    path = directory / ("fp-" + sid + ".json")
+    state = read_state(path)
+    if state.get("v") != FP_SPEC or not isinstance(state.get("items"), list):
+        state = {"v": FP_SPEC, "turn": 0, "items": []}
+    keep = [item for item in state["items"] if isinstance(item, dict) and item.get("tag") not in items]
+    for tag, hashes in items.items():
+        if (not isinstance(tag, str) or not re.fullmatch(r"[0-9a-f]{4,8}", tag) or not isinstance(hashes, list)
+                or not hashes or len(hashes) > 8
+                or any(not isinstance(h, str) or not re.fullmatch(r"[0-9a-f]{10}", h) for h in hashes)):
+            continue
+        keep.append({"tag": tag, "salt": fp["salt"][:32], "hashes": hashes,
+                     "turn": state.get("turn", 0), "tools": 0, "m": []})
+    state["items"] = keep[-FP_MAX_ITEMS:]
+    try:
+        write_state(path, state)
+    except OSError:
+        pass
+
+
 def write_state(path, state):
     temporary = path.with_suffix(f".{os.getpid()}.tmp")
     descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -276,6 +310,8 @@ def run(event, environment=None, fetch=fetch_context, now=None, profile=None, ki
             return None
         for key in keys:
             seen[key] = now
+        if environment.get("GRIMOIRE_FINGERPRINTS", "1") != "0":
+            store_fingerprints(directory, extra["session"], result)
         seen = dict(list(seen.items())[-256:])
         state.update({"query": query_hash, "checked": now, "seen": seen})
         write_state(state_path, state)

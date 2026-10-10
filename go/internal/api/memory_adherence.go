@@ -15,6 +15,7 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/adherence"
 	"github.com/JeremiahM37/grimoire/go/internal/cues"
 	"github.com/JeremiahM37/grimoire/go/internal/decide"
+	fpr "github.com/JeremiahM37/grimoire/go/internal/fingerprint"
 	"github.com/JeremiahM37/grimoire/go/internal/index"
 	"github.com/JeremiahM37/grimoire/go/internal/memory"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
@@ -49,7 +50,7 @@ func itemTarget(it contextItem) string {
 }
 
 // logInjections records what a response injected.
-func (s *Server) logInjections(lg ctxLog, picked []contextItem, tags []string) {
+func (s *Server) logInjections(lg ctxLog, picked []contextItem, tags []string, fps [][]fpr.Fingerprint) {
 	st := s.adh()
 	if st == nil {
 		return
@@ -58,6 +59,9 @@ func (s *Server) logInjections(lg ctxLog, picked []contextItem, tags []string) {
 	for i, it := range picked {
 		rows[i] = adherence.Injection{Session: lg.session, Tag: tags[i], Key: it.Key, Target: itemTarget(it),
 			Path: it.Path, FactID: it.ID, Stage: lg.stage, Relevance: it.score}
+		if fps != nil {
+			rows[i].FPKnown, rows[i].FPN = true, len(fps[i])
+		}
 	}
 	if err := st.Log(rows, time.Now()); err != nil {
 		log.Printf("adherence: log: %v", err)
@@ -159,9 +163,14 @@ type outcomeIn struct {
 	Tool    string   `json:"tool"`
 	Target  string   `json:"target"`
 	Cited   []string `json:"cited"`
-	Stop    bool     `json:"stop"`
-	Pre     bool     `json:"pre"` // only compute the permission decision; record nothing
+	// FP is {tag: fingerprints matched} computed by the hook from salted
+	// hashes; the server never sees what matched, or any text.
+	FP   map[string]int `json:"fp"`
+	Stop bool           `json:"stop"`
+	Pre  bool           `json:"pre"` // only compute the permission decision; record nothing
 }
+
+var tagRE = regexp.MustCompile(`^[0-9a-f]{4,8}$`)
 
 var sessionRE = regexp.MustCompile(`^[A-Za-z0-9_\-]{8,128}$`)
 
@@ -181,8 +190,18 @@ func (s *Server) memoryOutcome(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, t := range in.Cited {
-		if !regexp.MustCompile(`^[0-9a-f]{4,8}$`).MatchString(t) {
+		if !tagRE.MatchString(t) {
 			writeErr(w, http.StatusBadRequest, "cited tags are 4-8 hex characters")
+			return
+		}
+	}
+	if len(in.FP) > 16 {
+		writeErr(w, http.StatusBadRequest, "fp has at most 16 tags")
+		return
+	}
+	for t, n := range in.FP {
+		if !tagRE.MatchString(t) || n < 1 || n > fpr.MaxPerMemory {
+			writeErr(w, http.StatusBadRequest, "fp is {tag: 1..6}")
 			return
 		}
 	}
@@ -223,6 +242,9 @@ func (s *Server) memoryOutcome(w http.ResponseWriter, r *http.Request) {
 		n, _ := st.MarkCited(in.Session, in.Cited, since)
 		resp["cited"] = n
 	}
+	if len(in.FP) > 0 {
+		resp["fp"] = s.recordFingerprintCounts(r, st, in.Session, in.FP, since)
+	}
 	if in.Stop {
 		rows, err := st.Finalize(in.Session, since)
 		if err != nil {
@@ -252,7 +274,7 @@ func (s *Server) memoryOutcome(w http.ResponseWriter, r *http.Request) {
 }
 
 // applyOutcome feeds a finished injection into the memory's feedback counters:
-// acted-on (cited or followed) counts as helpful. Ignored and violated move no
+// acted-on (cited, followed or used) counts as helpful. Ignored and violated move no
 // counter; ignored injections are down-ranked for injection only, and a
 // violation says the agent erred, not that the memory is wrong. The counter
 // changes only for facts the caller may write, like POST /api/memory/feedback.
@@ -261,7 +283,7 @@ func (s *Server) applyOutcome(r *http.Request, row adherence.Row) {
 		return
 	}
 	o := row.Outcome()
-	if o != adherence.Cited && o != adherence.Followed {
+	if o != adherence.Cited && o != adherence.Followed && o != adherence.Used {
 		return
 	}
 	if r != nil && !s.canWrite(r, row.Path) {
@@ -310,11 +332,15 @@ func (s *Server) adherenceReport(w http.ResponseWriter, r *http.Request) {
 		Injected     int     `json:"injected"`
 		Cited        int     `json:"cited"`
 		Followed     int     `json:"followed"`
+		Used         int     `json:"used"`
 		Violated     int     `json:"violated"`
 		Ignored      int     `json:"ignored"`
+		Unknown      int     `json:"unknown"`
 		Contradicted int     `json:"contradicted"`
 		Pending      int     `json:"pending"`
 		Rate         float64 `json:"rate"`
+		UsedRate     float64 `json:"used_rate"`
+		Coverage     float64 `json:"fingerprint_coverage"`
 		Penalty      float64 `json:"injection_penalty,omitempty"`
 	}
 	list := []item{}
@@ -323,7 +349,9 @@ func (s *Server) adherenceReport(w http.ResponseWriter, r *http.Request) {
 		if v.Path != "" && !s.canRead(r, v.Path) {
 			continue
 		}
-		it := item{v.Target, v.Injected, v.Cited, v.Followed, v.Violated, v.Ignored, v.Contradicted, v.Pending, v.Rate(), 0}
+		it := item{Target: v.Target, Injected: v.Injected, Cited: v.Cited, Followed: v.Followed, Used: v.Used,
+			Violated: v.Violated, Ignored: v.Ignored, Unknown: v.Unknown, Contradicted: v.Contradicted,
+			Pending: v.Pending, Rate: v.Rate(), UsedRate: v.UsedRate(), Coverage: v.Coverage()}
 		if p := adherence.Penalty(*v); p < 1 {
 			it.Penalty = p
 		}
@@ -332,8 +360,9 @@ func (s *Server) adherenceReport(w http.ResponseWriter, r *http.Request) {
 	sort.Slice(list, func(a, b int) bool { return list[a].Injected > list[b].Injected })
 	gate, _ := st.Gate(since)
 	writeJSON(w, http.StatusOK, map[string]any{"days": days, "overall": map[string]any{
-		"injected": all.Injected, "cited": all.Cited, "followed": all.Followed, "violated": all.Violated,
-		"ignored": all.Ignored, "contradicted": all.Contradicted, "pending": all.Pending, "rate": all.Rate()},
+		"injected": all.Injected, "cited": all.Cited, "followed": all.Followed, "used": all.Used, "violated": all.Violated,
+		"ignored": all.Ignored, "unknown": all.Unknown, "contradicted": all.Contradicted, "pending": all.Pending,
+		"rate": all.Rate(), "used_rate": all.UsedRate(), "fingerprint_coverage": all.Coverage()},
 		"memories": list, "gate": gate})
 }
 
