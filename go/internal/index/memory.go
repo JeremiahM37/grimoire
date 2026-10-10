@@ -90,6 +90,13 @@ type MemoryQuery struct {
 	LexicalOnly  bool
 	AcceptedOnly bool
 
+	// Mode narrows by what the fact is ABOUT: factual drops the personal
+	// categories, personal keeps only them, and the zero value keeps all. It is
+	// applied in SQL, before the scan bound, like the validity filters.
+	Mode memory.RecallMode
+	// Basis, when non-empty, keeps only facts whose derived basis is listed.
+	Basis []memory.Basis
+
 	// QueryVector ranks by a vector the caller already computed, for a
 	// framework that owns its embedding step. It must be in THIS server's
 	// embedding space — the caller gets it from /api/embed — because a cosine
@@ -248,14 +255,14 @@ func (ix *Index) writeMemoryRows(note *vault.Note) error {
 				"expires,immutable,superseded_by,superseded_at,helpful,unhelpful,line,"+
 				"embedding,space,acl,private,origin,human,challenges,"+
 				"fresh,chk,verified,nchange,nverify,since,shape,vol,prate,valid_from,valid_to,"+
-				"importance,hand)"+
-				" VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+				"importance,hand,evidence)"+
+				" VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
 			e.ID, note.Path, e.Text, e.Agent, e.Task, e.Session, e.Stamp, e.Category,
 			e.Expires, immutable, e.SupersededBy, e.SupersededAt, e.Helpful,
 			e.Unhelpful, e.Line, blob, space, acl, private, e.Origin, human, e.Challenges,
 			e.Fresh, e.Check, e.Verified, e.Changes, e.Verifies, e.Since, e.Shape(), e.Vol, e.PriorRate,
 			canonicalValidity(e.ValidFrom), canonicalValidity(e.ValidTo),
-			e.Importance, boolInt(e.HumanAuthored()),
+			e.Importance, boolInt(e.HumanAuthored()), e.Evidence,
 		); err != nil {
 			return err
 		}
@@ -378,6 +385,20 @@ func (ix *Index) MemoryEntries(q MemoryQuery) ([]MemoryHit, error) {
 		where = append(where, "category=?")
 		args = append(args, q.Category)
 	}
+	switch q.Mode {
+	case memory.RecallFactual, memory.RecallPersonal:
+		personal := memory.PersonalCategories()
+		marks := make([]string, len(personal))
+		for i, c := range personal {
+			marks[i] = "?"
+			args = append(args, c)
+		}
+		op := " NOT IN "
+		if q.Mode == memory.RecallPersonal {
+			op = " IN "
+		}
+		where = append(where, "lower(category)"+op+"("+strings.Join(marks, ",")+")")
+	}
 	if !q.IncludeSuperseded && q.AsOf.IsZero() {
 		where = append(where, "superseded_by=''")
 	}
@@ -470,7 +491,7 @@ func (ix *Index) MemoryEntries(q MemoryQuery) ([]MemoryHit, error) {
 const memoryColumns = "id,note,text,agent,task,session,stamp,category,expires,immutable," +
 	"superseded_by,superseded_at,helpful,unhelpful,line,embedding,space,acl," +
 	"private,origin,human,challenges,fresh,chk,verified,nchange,nverify,since,vol,prate," +
-	"valid_from,valid_to,importance,hand,uses,last_used"
+	"valid_from,valid_to,importance,hand,uses,last_used,evidence"
 
 // scanMemoryRow reads one row selected with memoryColumns. It takes the Scan
 // method rather than the rows, so both the ranked query and the prune query
@@ -483,6 +504,7 @@ func scanMemoryRow(scan func(...any) error) (memoryRow, error) {
 		private   int
 		hand      int
 		blob      []byte
+		evidence  string
 	)
 	if err := scan(&r.hit.ID, &r.hit.Note, &r.hit.Text, &r.hit.Agent,
 		&r.hit.Task, &r.hit.Session, &r.hit.Stamp, &r.hit.Category,
@@ -492,9 +514,10 @@ func scanMemoryRow(scan func(...any) error) (memoryRow, error) {
 		&r.hit.Fresh, &r.hit.Check, &r.hit.Verified, &r.hit.Changes,
 		&r.hit.Verifies, &r.hit.Since, &r.hit.Vol, &r.hit.PriorRate,
 		&r.hit.ValidFrom, &r.hit.ValidTo,
-		&r.hit.Importance, &hand, &r.hit.Uses, &r.hit.LastUsed); err != nil {
+		&r.hit.Importance, &hand, &r.hit.Uses, &r.hit.LastUsed, &evidence); err != nil {
 		return r, err
 	}
+	r.hit.Evidence = evidence
 	r.hit.Immutable = immutable == 1
 	r.hit.Human = human == 1
 	r.hit.HandWritten = hand == 1
@@ -536,7 +559,19 @@ func (q MemoryQuery) allows(r memoryRow) bool {
 	if !q.Filter.IgnoreACLs && !aclAllows(r.acl, q.Filter.User) {
 		return false
 	}
+	if len(q.Basis) > 0 && !hasBasis(q.Basis, r.hit.Basis()) {
+		return false
+	}
 	return true
+}
+
+func hasBasis(want []memory.Basis, b memory.Basis) bool {
+	for _, w := range want {
+		if w == b {
+			return true
+		}
+	}
+	return false
 }
 
 // entKey identifies one entry's stored entity list. Note and id together,

@@ -106,6 +106,14 @@ type Entry struct {
 	// that the deploy key is X" exploits.
 	Origin string
 
+	// Evidence is what an agent says it read the fact FROM when it wrote it:
+	// note paths, urls or entry ids, joined with EvidenceSep in the order
+	// given. A string rather than a slice so Entry stays comparable. Present
+	// evidence is what makes an agent-authored fact `observed` rather than
+	// `inferred` (see basis.go). It is declared in the trailer as ev=a,b and
+	// never changes the id, which hashes only the stamp, agent and text.
+	Evidence string
+
 	// Freshness — see fresh.go. Fresh is the declared tier ("stable",
 	// "volatile", a TTL like "7d", or empty for the learned rate), Check how
 	// to verify the value, Verified the last time an agent confirmed it.
@@ -334,6 +342,8 @@ func parseTrailer(s string) Entry {
 			e.Immutable = v == "1" || v == "true"
 		case "org":
 			e.Origin = v
+		case "ev":
+			e.Evidence = v
 		case "by":
 			e.Human = v == "human"
 		case "chal":
@@ -414,6 +424,9 @@ func (e Entry) trailer() string {
 	}
 	if e.Origin != "" {
 		fields = append(fields, "org="+escapeField(e.Origin))
+	}
+	if e.Evidence != "" {
+		fields = append(fields, "ev="+escapeField(e.Evidence))
 	}
 	if e.Challenges != "" {
 		fields = append(fields, "chal="+escapeField(e.Challenges))
