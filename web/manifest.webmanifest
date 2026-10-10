@@ -2,7 +2,7 @@
   "name": "Grimoire",
   "short_name": "Grimoire",
   "id": "/",
-  "description": "Self-hosted personal context server \u2014 one knowledge and trust boundary shared by you and your AI agents",
+  "description": "Self-hosted personal context server",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -33,14 +33,5 @@
       "type": "image/png",
       "purpose": "maskable"
     }
-  ],
-  "share_target": {
-    "action": "/",
-    "method": "GET",
-    "params": {
-      "title": "title",
-      "text": "text",
-      "url": "url"
-    }
-  }
+  ]
 }

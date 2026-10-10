@@ -1,0 +1,45 @@
+/* Approvals panel. Colours come from the app's tokens (see web/style.css). */
+.approvals-box { max-width: 680px; width: min(680px, calc(100vw - 32px)); max-height: 86vh; overflow: hidden; display: flex; flex-direction: column; }
+#approvals-title { margin: 0 0 8px; font-size: 18px; }
+.ap-tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--line, #ddd); margin-bottom: 10px; }
+.ap-tabs button { border: 0; background: none; padding: 8px 12px; color: var(--ink-soft, #667); font: inherit; cursor: pointer; border-bottom: 2px solid transparent; display: inline-flex; align-items: center; gap: 6px; }
+.ap-tabs button.on { color: var(--ink, #111); border-bottom-color: var(--accent, #2f6fdb); font-weight: 600; }
+.ap-body { overflow: auto; -webkit-overflow-scrolling: touch; padding-bottom: 8px; min-height: 120px; }
+.ap-count { display: inline-block; min-width: 18px; padding: 0 6px; border-radius: 9px; background: var(--accent, #2f6fdb); color: #fff; font-size: 11px; line-height: 18px; text-align: center; font-weight: 600; }
+.ap-empty { color: var(--ink-soft, #667); padding: 18px 4px; }
+.ap-error { color: #b3261e; border: 1px solid #b3261e; border-radius: 8px; padding: 8px 10px; margin: 0 0 10px; }
+.ap-latest { display: grid; gap: 6px; margin-bottom: 10px; }
+.ap-result { margin: 0; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line, #ddd); font-size: 14px; }
+.ap-result-executed { border-color: #2e7d32; }
+.ap-result-failed { border-color: #b3261e; color: #b3261e; }
+.ap-card { border: 1px solid var(--line, #ddd); border-radius: 12px; padding: 12px 14px; margin: 0 0 12px; background: var(--paper2, #fff); }
+.ap-head { display: flex; flex-direction: column; gap: 2px; }
+.ap-title { margin: 0; font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
+.ap-kind, .ap-meta, .ap-outcome { color: var(--ink-soft, #667); font-size: 13px; margin: 6px 0 0; overflow-wrap: anywhere; }
+.ap-outcome { color: var(--ink, #111); }
+.ap-state { align-self: flex-start; font-size: 12px; padding: 1px 8px; border-radius: 9px; border: 1px solid var(--line, #ddd); color: var(--ink-soft, #667); }
+.ap-state-executed { border-color: #2e7d32; color: #2e7d32; }
+.ap-state-failed, .ap-state-denied { border-color: #b3261e; color: #b3261e; }
+.ap-expand { margin-top: 8px; border: 0; background: none; padding: 4px 0; color: var(--link, var(--accent, #2f6fdb)); font: inherit; font-size: 13px; cursor: pointer; }
+/* Parameters are text. white-space keeps line breaks; nothing is parsed as markup. */
+.ap-params { white-space: pre-wrap; overflow-wrap: anywhere; font: 12.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--paper, #f6f6f6); border: 1px solid var(--line, #ddd); border-radius: 8px; padding: 8px 10px; max-height: 260px; overflow: auto; margin: 4px 0 0; }
+.ap-actions { display: flex; gap: 10px; margin-top: 12px; }
+.ap-actions button, .ap-confirm button { flex: 1; min-height: 46px; border-radius: 10px; border: 1px solid var(--line, #ccc); background: var(--paper, #fff); color: var(--ink, #111); font: inherit; font-weight: 600; cursor: pointer; }
+.ap-actions button:disabled, .ap-confirm button:disabled { opacity: .5; cursor: default; }
+.ap-approve { background: #2e7d32 !important; border-color: transparent !important; color: #fff !important; }
+.ap-deny { border-color: #b3261e !important; color: #b3261e !important; }
+.ap-confirm { margin-top: 12px; padding: 10px; border-radius: 10px; border: 1px solid #2e7d32; }
+.ap-confirm p { margin: 0 0 10px; font-size: 14px; overflow-wrap: anywhere; }
+.ap-confirm .ap-actions { margin-top: 0; }
+.ap-card a { color: var(--link, var(--accent, #2f6fdb)); }
+.side-tool { position: relative; }
+.side-tool .ap-count { position: absolute; top: -4px; right: -4px; }
+
+@media (max-width: 780px) {
+  .approvals-box { width: 100%; max-width: none; max-height: calc(var(--visible-height, 100dvh) - 24px); border-radius: 16px 16px 0 0; padding-bottom: env(safe-area-inset-bottom); }
+  .ap-actions { flex-direction: column; }
+  .ap-actions button, .ap-confirm button { min-height: 52px; font-size: 16px; }
+  .ap-card { padding: 14px; }
+  .ap-title { font-size: 17px; }
+  .ap-tabs button { min-height: 44px; }
+}
