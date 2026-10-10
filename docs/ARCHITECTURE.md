@@ -194,6 +194,58 @@ as `as_of` itself, so it is exact below `DefaultScanLimit` facts.
 validity parameters yet. Editing the bounds through `PATCH /api/memory` is not
 supported; change the trailer or write a corrected fact instead.
 
+## Agent memory: recall expansion and the entity graph
+
+Two opt-in stages extend `recall` (`GET /api/memory`, the MCP `recall` tool and
+`grimoire recall --expand --hops N`). Both are off by default, and with them off
+the response is byte-identical to a plain recall. Neither calls a model; both
+are built on the ordinary recall path so every access rule is applied in one
+place (`index.MemoryEntries`).
+
+**Expansion (`expand=true`, or `GRIMOIRE_RECALL_EXPAND=1` for default-on; an
+explicit `expand` parameter always wins).** The literal query is searched with
+up to three more phrasings, each deduplicated against the others:
+
+* `entity`: the query's entities alone;
+* `keyword`: the content words, with question words removed;
+* `alias`: the query with each word that is a known alias rewritten to its full
+  name, plus the suffix-stripped forms of its content words (`owns` also
+  searches `own`).
+
+Aliases follow the bank rule (`bank/entity.go`): a name resolves when exactly
+one longer visible entity starts with it. A query word that is only a first
+name resolves the same way (`memory.FirstNameAliases`). The alias map is drawn
+from the caller's visible entries, so it cannot reveal a name they cannot see.
+
+Each variant runs through `MemoryEntries` with a pool of twice the limit, and
+the rankings are merged by reciprocal rank fusion with k=60. The fused score
+is scaled into (0, 1], so a fact first under every variant scores 1. The raw
+RRF sum is reported as `fused` under `explain`.
+
+**Graph walk (`hops=1|2`, default 0).** The entities of the top five hits seed
+a walk over the same visible entries. A fact that shares an entity with a seed
+is hop 1; a fact that shares an entity with a hop-1 fact is hop 2. Each reached
+fact scores `0.5^hop` times its source's score, carries `via: "graph"`, and
+names the entity that linked it in `connect`. At most 20 are added, after the
+direct hits. Graph-added facts pass the same filters as direct hits: the walk's
+universe is built with the caller's own `Filter` and query filters, so the
+reader list, private, superseded, expired and validity rules are not repeated.
+
+**Explain.** Each expanded hit lists the `variants` that returned it, its
+`hop` and `via`/`connect` if it was reached by the walk, and under `explain`
+the raw fused score. The component scores come from the variant that ranked
+the fact highest.
+
+**Cost.** Expansion runs up to four ranked scans and four query embeddings per
+recall, plus one unranked universe scan that is shared with the walk and the
+alias map. `BenchmarkRecallExpand` (1,000 facts, median of seven runs) measured
+about 31 ms for a plain recall and about 117 ms with expansion. The walk itself
+was within noise of that.
+
+**Not covered.** Bank recall (`POST /api/banks/{bank}/memories/recall`) has its
+own retrieval path and does not take these parameters yet. Vector search does
+not expand.
+
 ## Testing
 
 * `go/internal/*/[_]test.go` — pure logic (renderer, queries, CRDT, crypto…)
