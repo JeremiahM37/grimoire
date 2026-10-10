@@ -118,10 +118,8 @@ func (b *bws) run(ctx context.Context, args ...string) (string, error) {
 	}
 	out, err := runCLI(ctx, b.cfg, setting(b.cfg, "bin", "bws"), args,
 		[]string{"BWS_ACCESS_TOKEN=" + b.cfg.Secrets["access_token"]}, "")
-	if err != nil {
-		if _, ok := err.(*cliError); ok {
-			return "", unavailable("%v", err)
-		}
+	if _, ok := err.(*cliError); ok {
+		return "", unavailable("%v", err)
 	}
 	return out, err
 }

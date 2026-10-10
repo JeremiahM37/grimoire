@@ -550,7 +550,7 @@ func TestLiveSearchIsFencedAndCannotCloseItsFence(t *testing.T) {
 }
 
 func TestActionNeedsAnEnabledClassThenApprovalAndRunsTheStoredParams(t *testing.T) {
-	svc, _, posts := serviceFixture(t, nil)
+	svc, _, _ := serviceFixture(t, nil)
 	ctx := context.Background()
 	params := map[string]any{"channel": "C1", "text": "hello"}
 
@@ -558,7 +558,7 @@ func TestActionNeedsAnEnabledClassThenApprovalAndRunsTheStoredParams(t *testing.
 		t.Fatalf("disabled class: %v", err)
 	}
 
-	svc, _, posts = serviceFixture(t, Config{"actions": "post_message"})
+	svc, _, posts := serviceFixture(t, Config{"actions": "post_message"})
 	rec, err := svc.Act(ctx, "s1", "post_message", params, "claude-code")
 	if err != nil || rec.State != ActionPending || *posts != 0 {
 		t.Fatalf("%+v %v posts=%d", rec, err, *posts)

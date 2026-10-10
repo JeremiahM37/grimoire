@@ -456,7 +456,6 @@ type imapMsg struct {
 	msgID  string
 	root   string
 	ids    map[string]bool // every id this message names: its own, References, In-Reply-To
-	body   string
 }
 
 var imapIDRE = regexp.MustCompile(`<[^<>\s]+>`)

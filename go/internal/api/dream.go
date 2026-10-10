@@ -255,19 +255,14 @@ func sortFindings(f []dream.Finding) {
 	})
 }
 
-// applyDreamFixes makes the mechanical repairs. Each document is re-read and
+// applyDreamFixesGated makes the mechanical repairs. Each document is re-read and
 // every fix re-checked against its current text, so a fix computed before an
 // agent's write is skipped rather than applied to the wrong line. Fixes to
 // one file are applied bottom-up, so deleting a line never shifts the line
 // another fix refers to. The pre-fix text goes to history first, as with any
 // other edit.
-func (s *Server) applyDreamFixes(findings []dream.Finding) []dream.Fix {
-	applied, _ := s.applyDreamFixesGated(findings)
-	return applied
-}
-
-// applyDreamFixesGated is applyDreamFixes with memory replay in front of every
-// document: a document whose fixes would stop a useful memory from firing in
+//
+// Memory replay runs in front of every document: a document whose fixes would stop a useful memory from firing in
 // past situations is left as it is and reported as held. Each document is
 // judged against the store as the earlier ones left it.
 func (s *Server) applyDreamFixesGated(findings []dream.Finding) ([]dream.Fix, []dream.Held) {
