@@ -41,6 +41,17 @@ type MemoryHit struct {
 	Entity   float64
 	Recency  float64
 	Useful   float64
+
+	// ImportanceFactor is the multiplier the fact's importance applied to its
+	// score: exactly 1 for an unrated agent fact, so an unrated store is
+	// unchanged. (The declared value is Entry.Importance.)
+	ImportanceFactor float64
+	// Reuse is the bonus earned by being used (see reuseBonus), and Uses and
+	// LastUsed are the derived counts behind it. They live in the index only:
+	// a reindex resets them, and the markdown never carries them.
+	Reuse    float64
+	Uses     int
+	LastUsed string
 }
 
 // DefaultScanLimit bounds how many stored facts one recall may score.
@@ -131,16 +142,63 @@ const (
 	// directly, which is a reason to keep its authority low.
 	wUseful = 0.08
 
+	// wReuse caps the bonus a fact earns from being used (reuseBonus). It is
+	// below wUseful's total, so use can reorder facts that are already close
+	// but never lifts an irrelevant fact over a relevant one.
+	wReuse = 0.05
+	// reuseScale is how many uses reach about two thirds of the bonus. Use is
+	// saturating for the same reason feedback is: the tenth use says less than
+	// the first.
+	reuseScale = 3.0
+
 	// recencyHalfLife is how long a fact takes to lose half its recency
 	// component. Ninety days: long enough that last quarter's facts still
 	// compete, short enough that "what am I working on" surfaces this week's.
 	recencyHalfLife = 90 * 24 * time.Hour
 )
 
+// importanceFactor scales a fact's whole score by how much it matters. It is
+// 1 at the neutral rank (3), so an unrated fact is never reweighted, and it is
+// bounded to 0.8..1.2 so importance reorders facts without being able to bury
+// or lift one by more than a fifth.
+func importanceFactor(effective int) float64 {
+	return 1 + 0.1*float64(effective-3)
+}
+
+// halfLifeFor stretches the recency half-life for facts that matter and shrinks
+// it for facts that do not: an important decision should still be recalled
+// after a quarter, trivia should yield to this week's facts sooner.
+func halfLifeFor(effective int) time.Duration {
+	switch {
+	case effective >= 4:
+		return 2 * recencyHalfLife
+	case effective <= 2:
+		return recencyHalfLife / 2
+	default:
+		return recencyHalfLife
+	}
+}
+
+// reuseBonus is the bounded ranking bonus for a fact that has been used. Zero
+// for a fact never used, so the bonus cannot change an unused store.
+func reuseBonus(uses int) float64 {
+	if uses <= 0 {
+		return 0
+	}
+	return wReuse * (1 - math.Exp(-float64(uses)/reuseScale))
+}
+
 // writeMemoryRows re-derives one note's entries. The caller holds the write
 // lock; rows for the note are deleted first, so this is idempotent and a
 // reindex converges.
 func (ix *Index) writeMemoryRows(note *vault.Note) error {
+	// Use counts are derived index state, but a note is rewritten every time
+	// one of its facts changes. Carrying them across that rewrite is what makes
+	// them mean anything; a full reindex is the one thing allowed to reset them.
+	uses, err := ix.memoryUses(note.Path)
+	if err != nil {
+		return err
+	}
 	if err := ix.deleteMemoryRows(note.Path); err != nil {
 		return err
 	}
@@ -189,15 +247,24 @@ func (ix *Index) writeMemoryRows(note *vault.Note) error {
 			"INSERT OR IGNORE INTO memory_entries(id,note,text,agent,task,session,stamp,category,"+
 				"expires,immutable,superseded_by,superseded_at,helpful,unhelpful,line,"+
 				"embedding,space,acl,private,origin,human,challenges,"+
-				"fresh,chk,verified,nchange,nverify,since,shape,vol,prate,valid_from,valid_to)"+
-				" VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+				"fresh,chk,verified,nchange,nverify,since,shape,vol,prate,valid_from,valid_to,"+
+				"importance,hand)"+
+				" VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
 			e.ID, note.Path, e.Text, e.Agent, e.Task, e.Session, e.Stamp, e.Category,
 			e.Expires, immutable, e.SupersededBy, e.SupersededAt, e.Helpful,
 			e.Unhelpful, e.Line, blob, space, acl, private, e.Origin, human, e.Challenges,
 			e.Fresh, e.Check, e.Verified, e.Changes, e.Verifies, e.Since, e.Shape(), e.Vol, e.PriorRate,
 			canonicalValidity(e.ValidFrom), canonicalValidity(e.ValidTo),
+			e.Importance, boolInt(e.HumanAuthored()),
 		); err != nil {
 			return err
+		}
+		if n, ok := uses[e.ID]; ok {
+			if err := ix.DB.Exec(
+				"UPDATE memory_entries SET uses=?, last_used=? WHERE note=? AND id=?",
+				n.uses, n.lastUsed, note.Path, e.ID); err != nil {
+				return err
+			}
 		}
 		for _, ent := range memory.Entities(e.Text) {
 			if err := ix.DB.Exec(
@@ -208,6 +275,47 @@ func (ix *Index) writeMemoryRows(note *vault.Note) error {
 		}
 	}
 	return nil
+}
+
+func boolInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}
+
+// memoryUse is one fact's derived usage.
+type memoryUse struct {
+	uses     int
+	lastUsed string
+}
+
+// memoryUses reads the usage counts of one note's facts, so a rewrite can put
+// them back. Only facts that were ever used are returned.
+func (ix *Index) memoryUses(rel string) (map[string]memoryUse, error) {
+	rows, err := ix.DB.Query("SELECT id,uses,last_used FROM memory_entries WHERE note=? AND uses>0", rel)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]memoryUse{}
+	for rows.Next() {
+		var id string
+		var u memoryUse
+		if err := rows.Scan(&id, &u.uses, &u.lastUsed); err != nil {
+			return nil, err
+		}
+		out[id] = u
+	}
+	return out, rows.Err()
+}
+
+// RecordUse counts one use of a fact: it was recalled and then reported
+// helpful. The count is index state only (see writeMemoryRows).
+func (ix *Index) RecordUse(rel, id string, at time.Time) error {
+	return ix.DB.Exec(
+		"UPDATE memory_entries SET uses=uses+1, last_used=? WHERE note=? AND id=?",
+		at.UTC().Format(time.RFC3339), rel, id)
 }
 
 func (ix *Index) deleteMemoryRows(rel string) error {
@@ -312,11 +420,7 @@ func (ix *Index) MemoryEntries(q MemoryQuery) ([]MemoryHit, error) {
 	// ranking behaviour changes at all. Above it, the newest scanLimit facts are
 	// scored — which is the right tail to keep, because superseded facts are
 	// already excluded and what remains is a current belief set.
-	sql := "SELECT id,note,text,agent,task,session,stamp,category,expires,immutable," +
-		"superseded_by,superseded_at,helpful,unhelpful,line,embedding,space,acl," +
-		"private,origin,human,challenges,fresh,chk,verified,nchange,nverify,since,vol,prate," +
-		"valid_from,valid_to" +
-		" FROM memory_entries WHERE " +
+	sql := "SELECT " + memoryColumns + " FROM memory_entries WHERE " +
 		strings.Join(where, " AND ")
 	limit := q.ScanLimit
 	if limit <= 0 {
@@ -332,27 +436,10 @@ func (ix *Index) MemoryEntries(q MemoryQuery) ([]MemoryHit, error) {
 
 	var cands []memoryRow
 	for rows.Next() {
-		var (
-			r         memoryRow
-			immutable int
-			human     int
-			private   int
-			blob      []byte
-		)
-		if err := rows.Scan(&r.hit.ID, &r.hit.Note, &r.hit.Text, &r.hit.Agent,
-			&r.hit.Task, &r.hit.Session, &r.hit.Stamp, &r.hit.Category,
-			&r.hit.Expires, &immutable, &r.hit.SupersededBy, &r.hit.SupersededAt,
-			&r.hit.Helpful, &r.hit.Unhelpful, &r.hit.Line, &blob, &r.sp, &r.acl,
-			&private, &r.hit.Origin, &human, &r.hit.Challenges,
-			&r.hit.Fresh, &r.hit.Check, &r.hit.Verified, &r.hit.Changes,
-			&r.hit.Verifies, &r.hit.Since, &r.hit.Vol, &r.hit.PriorRate,
-			&r.hit.ValidFrom, &r.hit.ValidTo); err != nil {
+		r, err := scanMemoryRow(rows.Scan)
+		if err != nil {
 			return nil, err
 		}
-		r.hit.Immutable = immutable == 1
-		r.hit.Human = human == 1
-		r.priv = private == 1
-		r.vec = Unpack(blob)
 		if !q.allows(r) {
 			continue
 		}
@@ -376,6 +463,44 @@ func (ix *Index) MemoryEntries(q MemoryQuery) ([]MemoryHit, error) {
 		return nil, err
 	}
 	return ix.rankMemory(cands, q), nil
+}
+
+// memoryColumns is the select list every memoryRow is scanned from. It must
+// match scanMemoryRow's order.
+const memoryColumns = "id,note,text,agent,task,session,stamp,category,expires,immutable," +
+	"superseded_by,superseded_at,helpful,unhelpful,line,embedding,space,acl," +
+	"private,origin,human,challenges,fresh,chk,verified,nchange,nverify,since,vol,prate," +
+	"valid_from,valid_to,importance,hand,uses,last_used"
+
+// scanMemoryRow reads one row selected with memoryColumns. It takes the Scan
+// method rather than the rows, so both the ranked query and the prune query
+// can share it.
+func scanMemoryRow(scan func(...any) error) (memoryRow, error) {
+	var (
+		r         memoryRow
+		immutable int
+		human     int
+		private   int
+		hand      int
+		blob      []byte
+	)
+	if err := scan(&r.hit.ID, &r.hit.Note, &r.hit.Text, &r.hit.Agent,
+		&r.hit.Task, &r.hit.Session, &r.hit.Stamp, &r.hit.Category,
+		&r.hit.Expires, &immutable, &r.hit.SupersededBy, &r.hit.SupersededAt,
+		&r.hit.Helpful, &r.hit.Unhelpful, &r.hit.Line, &blob, &r.sp, &r.acl,
+		&private, &r.hit.Origin, &human, &r.hit.Challenges,
+		&r.hit.Fresh, &r.hit.Check, &r.hit.Verified, &r.hit.Changes,
+		&r.hit.Verifies, &r.hit.Since, &r.hit.Vol, &r.hit.PriorRate,
+		&r.hit.ValidFrom, &r.hit.ValidTo,
+		&r.hit.Importance, &hand, &r.hit.Uses, &r.hit.LastUsed); err != nil {
+		return r, err
+	}
+	r.hit.Immutable = immutable == 1
+	r.hit.Human = human == 1
+	r.hit.HandWritten = hand == 1
+	r.priv = private == 1
+	r.vec = Unpack(blob)
+	return r, nil
 }
 
 // canonicalValidity is the form a validity bound takes in the index: canonical
@@ -500,13 +625,19 @@ func (ix *Index) rankMemory(cands []memoryRow, q MemoryQuery) []MemoryHit {
 	out := make([]MemoryHit, 0, len(cands))
 	for _, c := range cands {
 		h := c.hit
+		eff := h.EffectiveImportance()
 		h.Semantic = clamp01(cosineNorm(qVec, qNorm, c.vec))
 		h.Keyword = keywordScore(qTokens, c.hit.Text, idf)
 		h.Entity = memory.EntityOverlap(qEntities, ents[entKey{c.hit.Note, c.hit.ID}])
-		h.Recency = recencyScore(c.hit.Stamp, q.Now)
+		h.Recency = recencyScoreWith(c.hit.Stamp, q.Now, halfLifeFor(eff))
 		h.Useful = c.hit.Usefulness()
-		h.Score = wSemantic*h.Semantic + wKeyword*h.Keyword +
+		h.ImportanceFactor = importanceFactor(eff)
+		h.Reuse = reuseBonus(h.Uses)
+		base := wSemantic*h.Semantic + wKeyword*h.Keyword +
 			wEntity*h.Entity + wRecency*h.Recency + wUseful*h.Useful
+		// An unrated agent fact has factor 1 and no reuse, so its score is the
+		// pre-importance score bit for bit (x*1 and x+0 are exact).
+		h.Score = base*h.ImportanceFactor + h.Reuse
 		out = append(out, h)
 	}
 	sort.SliceStable(out, func(i, j int) bool {
@@ -572,6 +703,11 @@ func keywordScore(qTokens []string, text string, idf map[string]float64) float64
 // unparseable or missing timestamp scores neutral rather than zero: an entry
 // written before stamps existed should not be pushed to the bottom.
 func recencyScore(stamp string, now time.Time) float64 {
+	return recencyScoreWith(stamp, now, recencyHalfLife)
+}
+
+// recencyScoreWith is recencyScore with the half-life chosen by the caller.
+func recencyScoreWith(stamp string, now time.Time, halfLife time.Duration) float64 {
 	if stamp == "" {
 		return 0.5
 	}
@@ -585,7 +721,7 @@ func recencyScore(stamp string, now time.Time) float64 {
 	if age < 0 {
 		return 1
 	}
-	return math.Exp2(-float64(age) / float64(recencyHalfLife))
+	return math.Exp2(-float64(age) / float64(halfLife))
 }
 
 func setOf(words []string) map[string]bool {
@@ -670,4 +806,47 @@ func (ix *Index) FreshnessEvidence() (changes, exposureDays [2]float64, err erro
 		}
 	}
 	return changes, exposureDays, rows.Err()
+}
+
+// PruneCandidates lists the facts eviction may retract: agent-written, not
+// immutable, not human-authored, not challenged, never voted helpful or used,
+// explicitly rated at or below `below`, and last written before `cutoff`.
+//
+// Each of those is a condition, not a preference, and the query is the only
+// place they are stated. Anything that fails one is never a candidate — in
+// particular an unrated fact (importance 0) is not, because nobody has said it
+// is low value; it only ranks as one. Oldest first, so a capped run retracts
+// the stalest facts before anything newer.
+func (ix *Index) PruneCandidates(below int, cutoff time.Time, limit int) ([]MemoryHit, error) {
+	if below < memory.MinImportance {
+		below = memory.MinImportance
+	}
+	if below > memory.DefaultImportance {
+		// A rating of 4 or 5 is a person's or an operator's judgement that the
+		// fact matters, and neither is ever a candidate.
+		below = memory.DefaultImportance
+	}
+	if limit <= 0 {
+		limit = 50
+	}
+	rows, err := ix.DB.Query(
+		"SELECT "+memoryColumns+" FROM memory_entries WHERE"+
+			" superseded_by='' AND immutable=0 AND human=0 AND hand=0 AND challenges=''"+
+			" AND helpful=0 AND uses=0 AND last_used='' AND agent<>'' AND stamp<>''"+
+			" AND stamp<? AND importance BETWEEN ? AND ?"+
+			" ORDER BY stamp ASC, id ASC LIMIT ?",
+		cutoff.In(time.Local).Format(memory.StampFormat), memory.MinImportance, below, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []MemoryHit
+	for rows.Next() {
+		r, err := scanMemoryRow(rows.Scan)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, r.hit)
+	}
+	return out, rows.Err()
 }

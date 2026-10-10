@@ -48,6 +48,12 @@ type Entry struct {
 	Immutable    bool   // reconciliation may not supersede or delete it
 	SupersededBy string // ID of the entry that replaced this one
 
+	// Importance is how much the writer said this fact matters, 1 (trivia) to
+	// 5 (load-bearing). Zero means unrated, which is not stored, and ranks as
+	// 3 — or as 4 when a person wrote it (see EffectiveImportance). It is
+	// declared in the trailer as imp=N and only ever set by a caller.
+	Importance int
+
 	// Challenges is the ID of an entry this fact contradicts but was not
 	// allowed to supersede, because that entry outranks this one's writer. It
 	// rides in the bullet like everything else, so an open disagreement is
@@ -332,6 +338,10 @@ func parseTrailer(s string) Entry {
 			e.Human = v == "human"
 		case "chal":
 			e.Challenges = v
+		case "imp":
+			if n := atoiSafe(v); n >= MinImportance && n <= MaxImportance {
+				e.Importance = n
+			}
 		case "fresh":
 			e.Fresh = v
 		case "check":
@@ -408,6 +418,9 @@ func (e Entry) trailer() string {
 	if e.Challenges != "" {
 		fields = append(fields, "chal="+escapeField(e.Challenges))
 	}
+	if e.Importance >= MinImportance && e.Importance <= MaxImportance {
+		fields = append(fields, "imp="+strconv.Itoa(e.Importance))
+	}
 	if e.Human || e.HandWritten {
 		// Written for BOTH, so an inferred hand-edit becomes declared the
 		// first time the line is rewritten. Otherwise the inference has to
@@ -470,6 +483,42 @@ func atoiSafe(s string) int {
 		return 0
 	}
 	return n
+}
+
+// Importance bounds. Zero is "unrated", not a rating, so it is never written.
+const (
+	MinImportance = 1
+	MaxImportance = 5
+	// unratedImportance is what an agent's unrated fact ranks as. It is the
+	// neutral midpoint, so an unrated store ranks exactly as it did before
+	// importance existed.
+	unratedImportance = 3
+	// DefaultImportance is the rank of an unrated agent fact, exported so the
+	// index can say "at or below neutral" without restating the number.
+	DefaultImportance = unratedImportance
+	// humanImportance is what an unrated fact a person wrote ranks as: a
+	// person's own assertion is presumed to matter more than an agent's guess.
+	humanImportance = 4
+)
+
+// HumanAuthored reports whether a person asserted this fact, by any of the
+// three routes the authority lattice honours: the trailer, the absence of one,
+// or an id that no longer matches its text.
+func (e Entry) HumanAuthored() bool {
+	return e.Human || e.HandWritten || e.handEdited()
+}
+
+// EffectiveImportance is the rank-time importance: the declared value when there
+// is one, otherwise 4 for a person's fact and 3 for an agent's. It is computed,
+// never stored, so an unrated fact stays unrated in the file.
+func (e Entry) EffectiveImportance() int {
+	if e.Importance >= MinImportance && e.Importance <= MaxImportance {
+		return e.Importance
+	}
+	if e.HumanAuthored() {
+		return humanImportance
+	}
+	return unratedImportance
 }
 
 // Usefulness scores the feedback a fact has collected, 0..1, neutral at 0.5.

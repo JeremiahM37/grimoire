@@ -503,6 +503,18 @@ var addedColumns = []struct{ table, column, decl string }{
 	// columns existed keeps its meaning.
 	{"memory_entries", "valid_from", "TEXT NOT NULL DEFAULT ''"},
 	{"memory_entries", "valid_to", "TEXT NOT NULL DEFAULT ''"},
+	// How much the writer said a fact matters (1-5; 0 is unrated and is never
+	// stored in the bullet as anything but absence), and whether a person wrote
+	// it. Both are indexed so ranking and eviction can read them without
+	// parsing the note. `hand` is HumanAuthored, which also covers a bullet
+	// with no trailer and an id that no longer matches its text.
+	{"memory_entries", "importance", "INTEGER NOT NULL DEFAULT 0"},
+	{"memory_entries", "hand", "INTEGER NOT NULL DEFAULT 0"},
+	// Derived usage: how often a recalled fact was reported helpful, and when
+	// last. Index-only by design — a reindex resets it, the markdown never
+	// carries it — see index.RecordUse.
+	{"memory_entries", "uses", "INTEGER NOT NULL DEFAULT 0"},
+	{"memory_entries", "last_used", "TEXT NOT NULL DEFAULT ''"},
 	// Which agent read, as distinct from which account. On a single-user
 	// deployment there is no account, so without this the trail can say a
 	// restricted note was read and not by what — which is most of the question.
