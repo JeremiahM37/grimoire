@@ -692,6 +692,14 @@ func noteAuthor(path, fmJSON string) string {
 	return ""
 }
 
+// pulledLast orders what a connector pulled in after everything written here.
+// One mailbox sync lands a thousand "just updated" items, and a list capped by
+// recency would then show nothing but mail: the notes a person or an agent
+// wrote must not be the ones the cap drops.
+func pulledLast(column string) string {
+	return "(" + column + " LIKE 'connectors/%')"
+}
+
 func (s *Server) listNotes(w http.ResponseWriter, r *http.Request) {
 	limit := 500
 	if v := r.URL.Query().Get("limit"); v != "" {
@@ -707,13 +715,13 @@ func (s *Server) listNotes(w http.ResponseWriter, r *http.Request) {
 	where, spaceArgs := s.whereSpace(r, "space", "")
 	query := "SELECT path, title, updated, private, frontmatter_json, acl, " +
 		"COALESCE(untrusted,0) FROM notes" +
-		where + " ORDER BY updated DESC, path LIMIT ?"
+		where + " ORDER BY " + pulledLast("path") + ", updated DESC, path LIMIT ?"
 	args := append(append([]any{}, spaceArgs...), limit)
 	if tag != "" {
 		nWhere, nSpaceArgs := s.whereSpace(r, "n.space", " WHERE t.tag=?")
 		query = "SELECT n.path, n.title, n.updated, n.private, n.frontmatter_json, n.acl, " +
 			"COALESCE(n.untrusted,0) FROM notes n " +
-			"JOIN tags t ON t.note=n.path" + nWhere + " ORDER BY n.updated DESC, n.path LIMIT ?"
+			"JOIN tags t ON t.note=n.path" + nWhere + " ORDER BY " + pulledLast("n.path") + ", n.updated DESC, n.path LIMIT ?"
 		args = append(append([]any{tag}, nSpaceArgs...), limit)
 	}
 	rows, err := s.Index.DB.Query(query, args...)
