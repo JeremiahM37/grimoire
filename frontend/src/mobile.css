@@ -30,7 +30,7 @@
   .react-app #search { min-height: 46px; border-radius: 12px; }
   .react-app #search-clear { width: 44px; height: 44px; right: 12px; top: 4px; }
   .react-app #note-list { padding: 0 8px 12px; overscroll-behavior: contain; }
-  .react-app .note-row { min-height: 60px; padding-top: 10px; padding-bottom: 10px; border-radius: 12px; }
+  .react-app .note-row { min-height: 44px; padding-top: 10px; padding-bottom: 10px; border-radius: 12px; font-size: 15px; }
   .react-app .note-row:active { background: var(--hover, var(--paper)); }
   .react-app .library-heading { padding: 6px 16px; }
   .react-app #tag-filter-bar button { min-height: 44px; }
