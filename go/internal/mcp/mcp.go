@@ -572,6 +572,9 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 		if boolean(args, "immutable") {
 			body["immutable"] = true
 		}
+		if n := num(args, "importance", 0); n > 0 {
+			body["importance"] = n
+		}
 		// Provenance, like the agent above: the launcher's session wins over
 		// anything the caller supplied.
 		if s.Session != "" {

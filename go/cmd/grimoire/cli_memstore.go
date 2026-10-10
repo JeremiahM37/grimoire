@@ -31,6 +31,7 @@ const memoryUsage = `usage:
   grimoire memory impact [--since 90d] [--agent NAME] [--min N] [--json]
   grimoire memory trace [--target fact:ID|note:PATH] [--days 30] [--json]
   grimoire memory impact --retells [--cutoff 2026-10-09] [--budget 2000] [--since D] [--all-sessions] [--json]
+  grimoire memory prune [--dry-run | --apply] [--max N] [--below 1-3] [--json]
 
 A directory memory (Claude Code's memory/) becomes a symlink to the store; a
 single file (AGENTS.md, GEMINI.md) gets a managed block holding the core.
@@ -71,6 +72,8 @@ func cmdMemory(args []string) int {
 		return memoryTraceCmd(e, rest)
 	case "replay":
 		return memoryReplayCmd(e, rest)
+	case "prune":
+		return memoryPruneCmd(e, rest)
 	}
 	return fail("unknown memory command %q\n\n%s", args[0], memoryUsage)
 }

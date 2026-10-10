@@ -449,6 +449,10 @@ func Tools() []tool {
 				"valid_to": strProp("optional: when it stopped being true in the world, RFC3339 or YYYY-MM-DD"),
 				"immutable": map[string]any{"type": "boolean",
 					"description": "pin this fact: reconciliation may never supersede or retract it"},
+				"importance": map[string]any{"type": "integer", "minimum": 1, "maximum": 5,
+					"description": "how much this matters: 1 trivia, 3 ordinary, 5 load-bearing. " +
+						"Omit it to leave the fact unrated; important facts are recalled for longer " +
+						"and trivia yields sooner. Use 5 only for things that would hurt to forget"},
 				"fresh": strProp("how it goes stale: 'stable', 'volatile', or a re-check interval like '7d'"),
 				"check": strProp("read-only way to verify it: a command, file or URL"),
 				"context": strProp("what you were asked to do when you learned this. If the user " +

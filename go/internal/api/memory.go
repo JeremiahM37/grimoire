@@ -94,6 +94,11 @@ type memoryIn struct {
 	// and it is never offered to the model as a target.
 	Immutable bool `json:"immutable"`
 
+	// Importance is 1 (trivia) to 5 (load-bearing). Zero leaves the fact
+	// unrated, which ranks neutrally and is not written to the bullet. See
+	// memory.Entry.Importance.
+	Importance int `json:"importance"`
+
 	// Human says a PERSON is asserting this, not an agent. It puts the write on
 	// the top rung of the authority lattice, where an agent's later write may
 	// not silently supersede it — the correction is durable rather than
@@ -251,6 +256,10 @@ func (s *Server) rememberOne(w http.ResponseWriter, r *http.Request, m memoryIn)
 	}
 	if err := validateFresh(m); err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if m.Importance != 0 && (m.Importance < memory.MinImportance || m.Importance > memory.MaxImportance) {
+		writeErr(w, http.StatusBadRequest, "importance must be 1 to 5, or omitted")
 		return
 	}
 	expires, err := resolveExpiry(m.Expires, m.ExpiresIn)
@@ -550,11 +559,18 @@ func (s *Server) appendEntryChallenging(w http.ResponseWriter, r *http.Request, 
 		Origin: strings.TrimSpace(m.Origin), Human: m.Human,
 		Challenges: challenges,
 		ValidFrom:  m.ValidFrom, ValidTo: m.ValidTo,
-		Fresh: memory.NormFresh(m.Fresh),
-		Check: strings.TrimSpace(m.Check),
+		Fresh:      memory.NormFresh(m.Fresh),
+		Check:      strings.TrimSpace(m.Check),
+		Importance: m.Importance,
 	}
 	if m.inherit != nil {
 		inheritFreshness(&e, *m.inherit)
+		// A replacement keeps the rating its predecessor earned unless the
+		// writer says otherwise: re-stating a fact should not quietly make a
+		// load-bearing decision trivia.
+		if e.Importance == 0 {
+			e.Importance = m.inherit.Importance
+		}
 	}
 	// A fact with no declared tier and no inherited verdict is the one whose
 	// prior a decision model can improve. Never for an untrusted fact: its
@@ -1264,14 +1280,21 @@ func (s *Server) forgetEntry(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "invalid agent name")
 		return
 	}
-	if err := s.mutateEntry(note, id, func(e *memory.Entry) {
-		e.SupersededBy = "retracted:" + who
-		e.SupersededAt = vault.Now().Format(memory.StampFormat)
-	}); err != nil {
+	if err := s.retractEntry(note, id, who); err != nil {
 		writeErr(w, statusForEntryErr(err), entryErrMsg(err))
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"path": note, "id": id, "retracted": true})
+}
+
+// retractEntry is the soft forget: the fact is struck through, attributed to
+// who, and so appears in the belief-change digest. Every removal that is not a
+// hard delete goes through here, so the audit trail has one shape.
+func (s *Server) retractEntry(note, id, who string) error {
+	return s.mutateEntry(note, id, func(e *memory.Entry) {
+		e.SupersededBy = "retracted:" + who
+		e.SupersededAt = vault.Now().Format(memory.StampFormat)
+	})
 }
 
 // removeEntry deletes the bullet outright.
@@ -1352,7 +1375,8 @@ func (s *Server) feedback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var out memory.Entry
-	err := s.mutateEntry(note, strings.TrimSpace(in.ID), func(e *memory.Entry) {
+	id := strings.TrimSpace(in.ID)
+	err := s.mutateEntry(note, id, func(e *memory.Entry) {
 		if *in.Helpful {
 			e.Helpful++
 		} else {
@@ -1363,6 +1387,15 @@ func (s *Server) feedback(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeErr(w, statusForEntryErr(err), entryErrMsg(err))
 		return
+	}
+	// A helpful vote is the use signal ranking reinforces. It is recorded in the
+	// index, after the write, because the count is derived state and must not
+	// make the note itself change.
+	if *in.Helpful {
+		if err := s.Index.RecordUse(note, id, vault.Now()); err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"path": note, "id": out.ID, "helpful": out.Helpful,
