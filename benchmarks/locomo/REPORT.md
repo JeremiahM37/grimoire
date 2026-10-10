@@ -11,23 +11,26 @@ disclosed ingestion detail (dated note titles — see PROTOCOL.md). `none` and
 `full` do not touch Grimoire code, so their reader answers are shared across
 rounds.
 
-## Round 11 — grounded answers, Sonnet reader (2026-10-09, in progress)
+## Round 11 — grounded answers, Sonnet reader (2026-10-09)
 
-Method changed in the answer step only, developed on dev questions and frozen before this run
-(protocol: `/mnt/bulk/memory-use-research/locomo95/PROTOCOL.md`, summarised here): relative times are annotated with
-absolute dates at ingestion, a per-person event timeline is extracted, and answers go gather → answer → self-check
-(complete lists, date arithmetic, speaker, best-supported inference instead of "not stated"). Code: `grimoire ground`
-(`go/internal/grounded`). Reader `claude-sonnet-5-5`; judges `claude-sonnet-5-5` strict (v2) and the Mem0 paper's
-lenient "J" prompt. Same frozen 500.
+Method changed in the answer step only, developed on dev questions (never the frozen 500) and frozen before this run:
+relative times are annotated with absolute dates at ingestion, a per-person event timeline is extracted, and answers go
+gather → answer → self-check (complete lists, date arithmetic, speaker, best-supported inference instead of "not
+stated"). Code: `grimoire ground` (`go/internal/grounded`). Reader `claude-sonnet-5-5`. Same frozen 500, one run.
 
-| category | strict | lenient (J) |
-|---|---|---|
-| multi-hop (n=92, complete) | **84.8%** (78/92) | **89.1%** (82/92) |
-| overall | running | running |
+| judge | multi-hop | temporal | open-domain | single-hop | **overall** | audited subset* |
+|---|---|---|---|---|---|---|
+| strict v2 (`claude-sonnet-5-5`) | 84.8% | 88.5% | 87.1% | 95.2% | **91.4%** | 94.1% |
+| lenient "J", Mem0 paper prompt (`claude-sonnet-5-5`) | 89.1% | 90.4% | 87.1% | 95.2% | **92.6%** | 94.3% |
+| strict v2, cross-family judge (`claude-haiku-5-5`) | 80.4% | 82.7% | 80.6% | 93.4% | **88.0%** | 90.5% |
 
-For comparison: this report's earlier multi-hop numbers used a `claude-haiku-4-5` reader (full context 66.3%,
-corpus-fits 68.5%). Published systems mostly report the lenient J judge; LoCoMo's answer key is audited at 6.4% wrong
-(dial481/locomo-audit), so a perfect system scores about 93.6% on the raw key.
+\* excluding the 26 of these 500 questions that dial481/locomo-audit flags as having a wrong gold answer.
+LoCoMo's answer key is audited at 6.4% wrong overall, so a perfect system scores about 93.6% on the raw key.
+
+Caveats: the reader and the main judge are the same model family, and the cross-family judge scores 3.4 points lower,
+so some self-preference is possible; both are reported. Earlier rounds used a `claude-haiku-4-5` reader (full context
+82.4%), so the jump combines the method and a stronger reader; on fresh dev questions with the same cheaper reader
+(`claude-haiku-5-5`) the method alone moved overall 77.3% → 86.0% strict (exact McNemar p < 0.001).
 
 ## Round 1 — Grimoire as shipped (v1.0.0)
 

@@ -13,6 +13,7 @@
   <img alt="Go 1.26+" src="https://img.shields.io/badge/Go-1.26%2B-00add8">
   <img alt="license MIT" src="https://img.shields.io/badge/license-MIT-97ca00">
   <img alt="MCP server" src="https://img.shields.io/badge/MCP-server-8b5cf6">
+  <a href="benchmarks/locomo/"><img alt="LoCoMo 92.6% (lenient J judge)" src="https://img.shields.io/badge/LoCoMo%20(J)-92.6%25-e3b341"></a>
   <a href="benchmarks/locomo/"><img alt="LoCoMo multi-hop 89.1% (lenient J judge)" src="https://img.shields.io/badge/LoCoMo%20multi--hop%20(J)-89.1%25-e3b341"></a>
 </p>
 
