@@ -146,6 +146,54 @@ until explicitly enabled. Full contract in [PLUGINS.md](PLUGINS.md).
   read from the facts file itself (no trailer, `by=human`, or text that no
   longer matches its hash) and survive every rewrite.
 
+## Agent memory: two time axes
+
+Every memory fact is bi-temporal. The two axes answer different questions, and
+a query can ask about both at once.
+
+| Axis | Fields | Meaning |
+|------|--------|---------|
+| Belief time | `stamp`, `supat` (`superseded_at`) | When the store came to believe the fact, and when a later fact replaced it |
+| Validity (event) time | `valid_from`, `valid_to` | When the fact was true in the world |
+
+Both live in the bullet trailer (`internal/memory/entry.go`), and the markdown
+stays the source of truth. A bullet with no validity fields is unchanged and
+round-trips byte-identically, so existing notes need no migration. A bound is
+RFC3339 or `YYYY-MM-DD`. Stored bounds are canonical RFC3339 UTC, and a date is
+midnight UTC so the answer does not depend on the server's timezone. Intervals
+are half-open: a fact is true on `[valid_from, valid_to)`.
+
+**Supersession closes validity.** When a new fact with a `valid_from` replaces
+an old one, the old fact's `valid_to` is set to that instant, but only if it
+has none. A `valid_to` a person set is never overwritten, and a replacement
+that starts before the old fact did closes nothing (that is a history
+correction, and it should be made explicitly).
+
+**Query surface.** `recall` (and `GET /api/memory`, and the MCP `recall` tool)
+take:
+
+* `as_of`: what was believed at an instant (unchanged)
+* `valid_at`: facts true in the world at an instant
+* `valid_since` / `valid_until`: facts true at some point in a closed range
+
+A fact with no validity is always valid. Combined, `as_of` and `valid_at` answer
+"what did we believe on A about what was true on B". The belief axis also
+governs validity: a closure is written into the old bullet with no time of its
+own, so under `as_of` a `valid_to` is only applied if the fact had been
+superseded by then; otherwise the closure would answer an earlier question with
+a bound learned later (`memory.Entry.ValidAtAsOf`).
+
+**Where it is evaluated.** The index stores both bounds as canonical text
+columns, added through the conditional column migration. `valid_at` and the
+ranges are SQL predicates, applied before the scan bound. Under `as_of` they are
+applied in Go, because the belief rule compares local stamps, which the
+canonical columns cannot express. That path is subject to the same scan bound
+as `as_of` itself, so it is exact below `DefaultScanLimit` facts.
+
+**Not covered.** Vector search (`POST /api/memory/search-vector`) does not take
+validity parameters yet. Editing the bounds through `PATCH /api/memory` is not
+supported; change the trailer or write a corrected fact instead.
+
 ## Testing
 
 * `go/internal/*/[_]test.go` — pure logic (renderer, queries, CRDT, crypto…)
