@@ -278,6 +278,50 @@ was within noise of that.
 own retrieval path and does not take these parameters yet. Vector search does
 not expand.
 
+## Agent memory: the change stream and profiles
+
+**One event source.** The belief-change digest (`GET /api/memory/changes`) and
+the realtime stream (`GET /api/memory/stream`) both classify with
+`beliefChanges` in `api/memory_changes.go`, so they cannot disagree about what
+happened. There is no second log: the stream reads the index and remembers what
+it has sent.
+
+**Stream (`api/memory_stream.go`).** Server-Sent Events, authenticated like the
+other writes (`userOnly`). Events are `memory.added`, `memory.superseded` (one
+row per correction, carrying both texts), `memory.forgotten` (with `reason`
+`retracted` or `expired`), `memory.challenged` (an agent's refused claim) and
+`memory.disputed` (the fact being contested). Access is decided per event at
+emit time: the query runs through the caller's filter and each event is checked
+with `canRead` again. An event the caller may not read is dropped whole, since
+its path would reveal that the note exists. `?agent=` and `?session=` narrow
+the feed. A 25 s heartbeat comment keeps proxies open. The poll runs once a
+second and each connection clears its write deadline, since the server's
+five-minute `WriteTimeout` would otherwise cut it. `Server.Close` ends every
+open stream, and the command calls it before `Shutdown`.
+
+The SSE `id` is `<stamp>|<event>|<entry id>`. `Last-Event-ID` resumes from the
+start of the minute it names, so nothing is skipped and a few events may repeat;
+clients dedupe by id. Known limits: the stream reads state rather than a log, so
+a fact added and superseded between two polls appears only as superseded, and
+events older than the 2,000-fact scan limit are not replayed.
+
+**Profiles (`api/memory_profile.go`).** `GET /api/memory/profile?subject=user|agent`
+returns a compact portrait built from existing entries, with no model in the
+default path. Live facts only: superseded, expired, disputed and pulled-from-outside
+facts are excluded. Human-written facts come first, then importance, recency
+and id. Recent changes from the last seven days go last. Output is markdown in
+fixed sections, and every line ends with `[mem:ID]`, so any line can be recalled
+and checked. The budget (`budget`, default 400 tokens) is counted by
+`bank.CountTokens`.
+
+`synthesize=true` asks the configured model to rewrite the same selection as
+prose. The rewrite is kept only if every line cites an offered id and it fits
+the budget. Otherwise the response carries `fallback` and the reason, and the
+deterministic text in `deterministic` is always present. The memory cursor is a
+digest of every field the changes feed reads, plus the times at which an answer
+could go stale (an expiry, or a change leaving the window). Responses are cached
+under it, so an unchanged memory answers without rebuilding.
+
 ## Testing
 
 * `go/internal/*/[_]test.go` — pure logic (renderer, queries, CRDT, crypto…)
