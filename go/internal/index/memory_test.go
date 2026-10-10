@@ -610,8 +610,9 @@ func TestScanLimitDoesNotChangeResultsBelowTheBound(t *testing.T) {
 	}
 }
 
-// When the bound DOES bind it must keep the newest facts, because superseded
-// ones are already excluded and what remains is a current belief set.
+// When the bound DOES bind, the newest facts must still take part: they are the
+// first arm of candidate generation, so a recent answer is never out-scanned
+// by older matches. The candidate set is bounded at four pools.
 func TestScanLimitKeepsTheNewestFacts(t *testing.T) {
 	ix := testIndex(t)
 	var entries []memory.Entry
@@ -627,14 +628,16 @@ func TestScanLimitKeepsTheNewestFacts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(hits) == 0 || len(hits) > 5 {
-		t.Fatalf("scan limit not applied: got %d hits", len(hits))
+	if len(hits) == 0 || len(hits) > 4*minPool {
+		t.Fatalf("candidate bound not applied: got %d hits, max %d", len(hits), 4*minPool)
 	}
-	// Every survivor must be from the newest end, not an arbitrary five.
+	newest := false
 	for _, h := range hits {
-		if h.Stamp < "2026-08-20" {
-			t.Errorf("kept an old fact %q (%s) while newer ones existed — the "+
-				"bound must drop the tail, not a random slice", h.ID, h.Stamp)
+		if h.Stamp == "2026-08-28 09:00" {
+			newest = true
 		}
+	}
+	if !newest {
+		t.Errorf("the newest fact was dropped by the bound: %v", ids(hits))
 	}
 }

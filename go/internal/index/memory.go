@@ -2,7 +2,9 @@ package index
 
 import (
 	"math"
+	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -54,13 +56,22 @@ type MemoryHit struct {
 	LastUsed string
 }
 
-// DefaultScanLimit bounds how many stored facts one recall may score.
+// DefaultScanLimit bounds how many stored facts one recall may score. It is
+// read once from GRIMOIRE_SCAN_LIMIT so a test can put a small corpus over the
+// bound; the default is far above any personal vault.
 //
-// Chosen to sit far above any personal vault — this project's own has two — so
-// that in practice the bound never binds and ranking is unchanged. It exists
-// for the tail: without it a recall is O(every fact ever recorded), which is
-// fine at a hundred and 762ms at fifty thousand.
-const DefaultScanLimit = 20000
+// Below the bound a recall scores the newest facts and the result is unchanged
+// by the bound. Above it, a recall with text or a vector draws candidates from
+// the whole store (memory_candidates.go), so the bound no longer decides
+// whether an old fact can be found.
+var DefaultScanLimit = scanLimitFromEnv()
+
+func scanLimitFromEnv() int {
+	if n, err := strconv.Atoi(strings.TrimSpace(os.Getenv("GRIMOIRE_SCAN_LIMIT"))); err == nil && n > 0 {
+		return n
+	}
+	return 20000
+}
 
 // MemoryQuery selects and ranks entries.
 type MemoryQuery struct {
@@ -354,6 +365,63 @@ func (ix *Index) MemoryEntries(q MemoryQuery) ([]MemoryHit, error) {
 	if q.Limit <= 0 {
 		q.Limit = 20
 	}
+	where, args := q.sqlWhere()
+	limit := q.scanLimit()
+
+	// Above the bound, a query with text or a vector cannot be answered from
+	// the newest facts alone: the answer may be an old one. Those queries take
+	// the candidate path (memory_candidates.go). Everything else — a store
+	// under the bound, or a query that is only a filter — keeps the window,
+	// which is the same answer it always gave.
+	if q.hasContent() {
+		over, err := ix.overScanLimit(where, args, limit)
+		if err != nil {
+			return nil, err
+		}
+		if over {
+			return ix.memoryEntriesCandidates(q, where, args, limit)
+		}
+	}
+
+	// The window: the newest facts that pass every check, up to the bound. It
+	// streams in recency order and stops once the bound is full, so a Go-side
+	// check (expiry, a reader list the SQL cannot express exactly) removes
+	// rows without shrinking the answer below the bound. Ranking scores at most
+	// limit rows, which is what the bound promises.
+	//
+	// Below the bound every row is accepted or rejected, the stream ends
+	// first, and the result is byte-identical to the unbounded query; that is
+	// what memory_scan_test.go pins against a golden file.
+	sql := "SELECT " + memoryColumns + " FROM memory_entries WHERE " + where +
+		" ORDER BY stamp DESC, id DESC"
+	rows, err := ix.DB.Query(sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var cands []memoryRow
+	for rows.Next() && len(cands) < limit {
+		r, err := scanMemoryRow(rows.Scan)
+		if err != nil {
+			return nil, err
+		}
+		if q.accept(r) {
+			cands = append(cands, r)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return ix.rankMemory(cands, q), nil
+}
+
+// sqlWhere is every predicate that can be decided in SQL, joined with AND. It
+// runs before the scan bound, so the bound counts only rows that can answer
+// the question. Each predicate is either exact or a superset of the Go check
+// in accept, which then decides; a superset is safe because accept still runs
+// on every row that comes back.
+func (q MemoryQuery) sqlWhere() (string, []any) {
 	where := []string{"1=1"}
 	var args []any
 	if q.Note != "" {
@@ -410,10 +478,8 @@ func (ix *Index) MemoryEntries(q MemoryQuery) ([]MemoryHit, error) {
 	// are fixed-width UTC, so text comparison is time comparison. Empty
 	// means unbounded on that side.
 	//
-	// With AsOf set they are applied in Go instead: whether a valid_to was
-	// known depends on when the fact was superseded, which is a comparison of
-	// local belief stamps that the canonical columns cannot express. See
-	// memory.Entry.ValidAtAsOf.
+	// With AsOf set, the SQL is a superset of the belief-dependent rule (see
+	// asOfWhere) and accept applies the exact one.
 	if q.AsOf.IsZero() && !q.ValidAt.IsZero() {
 		at := memory.FormatValidity(q.ValidAt)
 		where = append(where, "(valid_from='' OR valid_from<=?) AND (valid_to='' OR valid_to>?)")
@@ -429,61 +495,115 @@ func (ix *Index) MemoryEntries(q MemoryQuery) ([]MemoryHit, error) {
 		where = append(where, "(valid_from='' OR valid_from<=?)")
 		args = append(args, memory.FormatValidity(q.ValidUntil))
 	}
+	if !q.AsOf.IsZero() {
+		w, a := q.asOfWhere()
+		where = append(where, w...)
+		args = append(args, a...)
+	}
 	if !q.Filter.IncludePrivate {
 		where = append(where, "private=0")
 	}
-	// Bound the scan. Ranking scores every row this returns, so an unbounded
-	// query makes a recall cost O(every fact ever recorded): measured at 762ms
-	// over 50k entries, and a benchmark like BEAM runs at 1M tokens and up.
-	//
-	// The bound is deliberately generous and ordered by recency, so for any
-	// vault below it the result is byte-identical to the unbounded query and no
-	// ranking behaviour changes at all. Above it, the newest scanLimit facts are
-	// scored — which is the right tail to keep, because superseded facts are
-	// already excluded and what remains is a current belief set.
-	sql := "SELECT " + memoryColumns + " FROM memory_entries WHERE " +
-		strings.Join(where, " AND ")
-	limit := q.ScanLimit
-	if limit <= 0 {
-		limit = DefaultScanLimit
-	}
-	sql += " ORDER BY stamp DESC, id DESC LIMIT ?"
-	args = append(args, limit)
-	rows, err := ix.DB.Query(sql, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+	w, a := q.Filter.sqlVisibility()
+	where = append(where, w...)
+	args = append(args, a...)
+	return strings.Join(where, " AND "), args
+}
 
-	var cands []memoryRow
-	for rows.Next() {
-		r, err := scanMemoryRow(rows.Scan)
-		if err != nil {
-			return nil, err
-		}
-		if !q.allows(r) {
-			continue
-		}
-		if !q.AsOf.IsZero() {
-			if !r.hit.BelievedAt(q.AsOf) {
-				continue
-			}
-			if !q.ValidAt.IsZero() && !r.hit.ValidAtAsOf(q.ValidAt, q.AsOf) {
-				continue
-			}
-			if (!q.ValidSince.IsZero() || !q.ValidUntil.IsZero()) &&
-				!r.hit.ValidDuringAsOf(q.ValidSince, q.ValidUntil, q.AsOf) {
-				continue
-			}
-		} else if !q.IncludeExpired && r.hit.ExpiredAt(q.Now) {
-			continue
-		}
-		cands = append(cands, r)
+// asOfWhere is the belief check at q.AsOf and the validity bounds as they were
+// known at that instant, expressed in SQL exactly rather than as a superset.
+// It must be exact: the window takes LIMIT rows before accept runs, so a
+// predicate that admits extra rows would leave the window short of the bound
+// and change which facts it holds.
+//
+// Stamps have minute precision and are local wall-clock strings in a fixed
+// width, so comparing a stamp with stampBound(AsOf) is the same comparison as
+// comparing the instants: a stamp of 10:30 is not after 10:30:45, and 10:31 is.
+func (q MemoryQuery) asOfWhere() ([]string, []any) {
+	at := stampBound(q.AsOf)
+	where := []string{
+		// Written by then (BelievedAt: written.After(t) excludes).
+		"(stamp='' OR stamp<=?)",
+		// Not replaced by then. A replacement after AsOf keeps the fact; an
+		// empty or unparsable one does not (BelievedAt returns false).
+		"(superseded_by='' OR superseded_at>?)",
 	}
-	if err := rows.Err(); err != nil {
-		return nil, err
+	args := []any{at, at}
+	if !q.ValidAt.IsZero() {
+		v := memory.FormatValidity(q.ValidAt)
+		where = append(where,
+			"(valid_from='' OR valid_from<=?)",
+			// valid_to does not apply when the supersession that closes it
+			// happened after AsOf (validTo ignores it then). That is the
+			// third arm below; otherwise the bound must lie after the instant.
+			"(valid_to='' OR valid_to>? OR (superseded_by<>'' AND superseded_at>?))")
+		args = append(args, v, v, at)
 	}
-	return ix.rankMemory(cands, q), nil
+	if !q.ValidUntil.IsZero() {
+		where = append(where, "(valid_from='' OR valid_from<=?)")
+		args = append(args, memory.FormatValidity(q.ValidUntil))
+	}
+	if !q.ValidSince.IsZero() {
+		v := memory.FormatValidity(q.ValidSince)
+		where = append(where,
+			"(valid_to='' OR valid_to>? OR (superseded_by<>'' AND superseded_at>?))")
+		args = append(args, v, at)
+	}
+	return where, args
+}
+
+// stampBound renders an instant in the form bullet stamps are stored in.
+func stampBound(t time.Time) string {
+	return t.In(time.Local).Format(memory.StampFormat)
+}
+
+// scanLimit is the bound on rows ranking may score.
+func (q MemoryQuery) scanLimit() int {
+	if q.ScanLimit > 0 {
+		return q.ScanLimit
+	}
+	return DefaultScanLimit
+}
+
+// hasContent reports whether the query asks for something a candidate can
+// match: words, or a vector. A pure filter has neither, and is answered by the
+// window, because a filter alone has no reason to prefer an old fact.
+func (q MemoryQuery) hasContent() bool {
+	return strings.TrimSpace(q.Query) != "" || len(q.QueryVector) > 0
+}
+
+// accept applies the checks that cannot be decided in SQL, and the same
+// space and reader-list rules that sqlVisibility pushes down. It is the
+// authoritative check: whatever SQL let through is decided here.
+func (q MemoryQuery) accept(r memoryRow) bool {
+	if !q.allows(r) {
+		return false
+	}
+	if !q.AsOf.IsZero() {
+		if !r.hit.BelievedAt(q.AsOf) {
+			return false
+		}
+		if !q.ValidAt.IsZero() && !r.hit.ValidAtAsOf(q.ValidAt, q.AsOf) {
+			return false
+		}
+		if (!q.ValidSince.IsZero() || !q.ValidUntil.IsZero()) &&
+			!r.hit.ValidDuringAsOf(q.ValidSince, q.ValidUntil, q.AsOf) {
+			return false
+		}
+		return true
+	}
+	return q.IncludeExpired || !r.hit.ExpiredAt(q.Now)
+}
+
+// overScanLimit reports whether more than limit rows pass the SQL predicates.
+// It counts at most limit+1 rows, so the probe costs no more than the window.
+func (ix *Index) overScanLimit(where string, args []any, limit int) (bool, error) {
+	n, err := ix.DB.Count(
+		"SELECT COUNT(*) FROM (SELECT 1 FROM memory_entries WHERE "+where+" LIMIT ?)",
+		append(args, limit+1)...)
+	if err != nil {
+		return false, err
+	}
+	return n > limit, nil
 }
 
 // memoryColumns is the select list every memoryRow is scanned from. It must

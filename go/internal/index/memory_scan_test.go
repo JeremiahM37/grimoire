@@ -15,8 +15,9 @@ import (
 // deterministic slice of them is superseded, expiring or time-bounded so that
 // every filter path has rows to exclude. Stamps run across 2026 so "newest"
 // and "old" are both well defined.
-func scanCorpus(t *testing.T, ix *Index, notes, perNote int) {
+func scanCorpus(t *testing.T, ix *Index, notes, perNote int) []memory.Entry {
 	t.Helper()
+	var all []memory.Entry
 	subjects := []string{"Priya", "Marcus", "the AIServer", "the MediaServer", "Dana", "the backup job", "Grafana"}
 	verbs := []string{"restarted", "prefers", "migrated", "reviewed", "deployed"}
 	objects := []string{"the disk alert", "dark mode", "the sonarr stack", "the restic repo",
@@ -48,7 +49,9 @@ func scanCorpus(t *testing.T, ix *Index, notes, perNote int) {
 			entries = append(entries, e)
 		}
 		memNote(t, ix, fmt.Sprintf("memory/topic%03d.md", n), entries...)
+		all = append(all, entries...)
 	}
+	return all
 }
 
 // goldenHit is the subset of a hit that the golden file pins. Scores are

@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/JeremiahM37/grimoire/go/internal/index"
 	"github.com/JeremiahM37/grimoire/go/internal/mcp"
 )
 
@@ -1138,5 +1139,39 @@ func TestLeakprobeCountsDoNotDependOnHiddenOwnedItems(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// Recall above the scan bound takes its candidates from the FTS table and the
+// vector and entity arms, not from the newest rows. Those arms read the whole
+// store, so each must apply the caller's visibility before it ranks; otherwise a
+// hidden fact could take a candidate slot from a visible one. The bound is
+// forced to 3 here so that the small seeded world takes the candidate path for
+// alice, and both candidate and window paths are probed for bob and anonymous.
+func TestLeakprobeMemoryRecallOverScanBound(t *testing.T) {
+	saved := index.DefaultScanLimit
+	index.DefaultScanLimit = 3
+	t.Cleanup(func() { index.DefaultScanLimit = saved })
+
+	w := seedLeakWorld(t)
+	paths := []string{
+		"/api/memory?q=vendor",
+		"/api/memory?q=diary+private+vendor",
+		"/api/memory?q=agent+memory+vendor",
+		"/api/memory/context?q=vendor",
+	}
+	for _, path := range paths {
+		for _, who := range w.who() {
+			code, body := w.fetch(who, "GET", path, nil)
+			if hits := lpLeaked(body, lpRequestText(path, nil), lpAllowed(who, "GET /api/memory")); len(hits) > 0 {
+				t.Fatalf("LEAK: GET %s over the scan bound answered %s (status %d) with canaries %v",
+					path, who.name, code, hits)
+			}
+		}
+	}
+	// The probe is meaningless if alice's own recall stops finding her memory
+	// on the candidate path.
+	if code, body := w.as(w.alice, "GET", "/api/memory?q=vendor", nil); code != 200 || !strings.Contains(body, lpCanaries["memory"]) {
+		t.Fatalf("alice cannot recall her own memory over the scan bound (%d): the probe proves nothing", code)
 	}
 }
