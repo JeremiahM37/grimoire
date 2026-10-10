@@ -1,0 +1,4 @@
+{"text": "Deploys go through the staging tag first", "category": "procedure", "agent": "ops"}
+{"memory": "Backups run at 03:00", "task": "backup review"}
+{"fact": "Gamarr is on port 5057", "stamp": "2026-04-04 12:30"}
+{"note": "no text field here"}

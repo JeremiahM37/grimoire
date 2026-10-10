@@ -1,0 +1,7 @@
+{"results": [
+  {"id": "m-1", "memory": "Prefers dark mode in every editor", "user_id": "jeremiah",
+   "metadata": {"category": "preference"}, "created_at": "2026-03-02T10:15:00Z"},
+  {"id": "m-2", "memory": "Runs the media stack on LXC 200", "user_id": "jeremiah",
+   "run_id": "run-42", "created_at": "2026-03-03T08:00:00Z"},
+  {"id": "m-3", "memory": "   ", "user_id": "jeremiah"}
+]}
