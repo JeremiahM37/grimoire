@@ -39,7 +39,7 @@ can use but never see. One self-hosted Go binary, mounted over MCP.
 - **Credentials it can use but never read.** Agents call APIs through Grimoire with scoped, time-boxed grants; the secret never enters their context. Keep secrets in Grimoire's vault or in Bitwarden, 1Password, KeePassXC or HashiCorp Vault.
 - **Your notes always win.** Agents propose; they never overwrite what you wrote.
 - **It dreams.** Overnight it merges duplicates, fixes broken links, re-checks procedures and sweeps for leaked secrets.
-- **One memory for every agent,** in an Obsidian-style editor with a live graph. Claude Code, Codex or any MCP client reads the same vault.
+- **One memory for every agent, wired into your stuff.** Claude Code, Codex or any MCP client reads the same vault, in an Obsidian-style editor with a live graph (or Obsidian itself, via the plugin). It pulls in Google Drive and Docs, Gmail, Calendar, Slack, GitHub, Notion, Jira, Confluence and Outlook, and agents can search them live.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/JeremiahM37/grimoire/main/install.sh | sh   # Linux, macOS
