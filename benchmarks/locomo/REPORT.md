@@ -11,6 +11,24 @@ disclosed ingestion detail (dated note titles — see PROTOCOL.md). `none` and
 `full` do not touch Grimoire code, so their reader answers are shared across
 rounds.
 
+## Round 11 — grounded answers, Sonnet reader (2026-10-09, in progress)
+
+Method changed in the answer step only, developed on dev questions and frozen before this run
+(protocol: `/mnt/bulk/memory-use-research/locomo95/PROTOCOL.md`, summarised here): relative times are annotated with
+absolute dates at ingestion, a per-person event timeline is extracted, and answers go gather → answer → self-check
+(complete lists, date arithmetic, speaker, best-supported inference instead of "not stated"). Code: `grimoire ground`
+(`go/internal/grounded`). Reader `claude-sonnet-5-5`; judges `claude-sonnet-5-5` strict (v2) and the Mem0 paper's
+lenient "J" prompt. Same frozen 500.
+
+| category | strict | lenient (J) |
+|---|---|---|
+| multi-hop (n=92, complete) | **84.8%** (78/92) | **89.1%** (82/92) |
+| overall | running | running |
+
+For comparison: this report's earlier multi-hop numbers used a `claude-haiku-4-5` reader (full context 66.3%,
+corpus-fits 68.5%). Published systems mostly report the lenient J judge; LoCoMo's answer key is audited at 6.4% wrong
+(dial481/locomo-audit), so a perfect system scores about 93.6% on the raw key.
+
 ## Round 1 — Grimoire as shipped (v1.0.0)
 
 | condition | multi-hop | temporal | open-domain | single-hop | **overall** | context tokens* |
