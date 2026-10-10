@@ -594,6 +594,18 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 				q.Set(k, "1")
 			}
 		}
+		// expand is sent whenever the caller set it, so an explicit false
+		// overrides GRIMOIRE_RECALL_EXPAND=1 on the server.
+		if _, set := args["expand"]; set {
+			if boolean(args, "expand") {
+				q.Set("expand", "1")
+			} else {
+				q.Set("expand", "0")
+			}
+		}
+		if n := num(args, "hops", 0); n > 0 {
+			q.Set("hops", fmt.Sprint(n))
+		}
 		return s.api("GET", "/api/memory?"+q.Encode(), nil)
 	case "stale_notes":
 		q := url.Values{}

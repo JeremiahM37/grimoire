@@ -823,7 +823,7 @@ func (s *Server) recall(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	hits, err := s.Index.MemoryEntries(index.MemoryQuery{
+	mq := index.MemoryQuery{
 		Filter:            filterFor(r, true),
 		Query:             q,
 		ValidAt:           validAt,
@@ -840,7 +840,17 @@ func (s *Server) recall(w http.ResponseWriter, r *http.Request) {
 		AsOf:              asOf,
 		Now:               vault.Now(),
 		Limit:             limit,
-	})
+	}
+	opt, err := recallExpandOptions(r)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if opt.Expand || opt.Hops > 0 {
+		s.recallExpanded(w, r, mq, opt)
+		return
+	}
+	hits, err := s.Index.MemoryEntries(mq)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
