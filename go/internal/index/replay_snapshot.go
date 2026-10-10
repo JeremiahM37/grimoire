@@ -24,7 +24,7 @@ type ReplayChunk struct {
 // context, with the embeddings kept.
 func (ix *Index) ReplayFacts(now time.Time) ([]ReplayFact, error) {
 	rows, err := ix.DB.Query(`SELECT id,note,text,expires,origin,embedding FROM memory_entries
-		WHERE superseded_by='' AND challenges='' AND private=0 ORDER BY stamp DESC, id DESC LIMIT ?`, DefaultScanLimit)
+		WHERE superseded_by='' AND challenges='' AND private=0 AND visibility='' ORDER BY stamp DESC, id DESC LIMIT ?`, DefaultScanLimit)
 	if err != nil {
 		return nil, err
 	}

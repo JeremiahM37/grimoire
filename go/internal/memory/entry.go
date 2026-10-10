@@ -18,6 +18,7 @@ package memory
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"math"
 	"regexp"
 	"sort"
@@ -53,6 +54,14 @@ type Entry struct {
 	// 3 — or as 4 when a person wrote it (see EffectiveImportance). It is
 	// declared in the trailer as imp=N and only ever set by a caller.
 	Importance int
+
+	// Visibility is whether recall, profile, context, changes and explain may
+	// show this fact. Empty is normal, which is not stored. VisPrivate hides it
+	// from every default read; VisSensitive hides it the same way and also has
+	// its text redacted wherever an explanation or receipt would repeat it. It
+	// is declared in the trailer as vis= and only set by a caller. See
+	// MEMORY-PRIVACY.md: this is a retrieval filter, not an owner boundary.
+	Visibility string
 
 	// Challenges is the ID of an entry this fact contradicts but was not
 	// allowed to supersede, because that entry outranks this one's writer. It
@@ -352,6 +361,8 @@ func parseTrailer(s string) Entry {
 			if n := atoiSafe(v); n >= MinImportance && n <= MaxImportance {
 				e.Importance = n
 			}
+		case "vis":
+			e.Visibility = parseVisibility(v)
 		case "fresh":
 			e.Fresh = v
 		case "check":
@@ -434,6 +445,9 @@ func (e Entry) trailer() string {
 	if e.Importance >= MinImportance && e.Importance <= MaxImportance {
 		fields = append(fields, "imp="+strconv.Itoa(e.Importance))
 	}
+	if e.Visibility == VisPrivate || e.Visibility == VisSensitive {
+		fields = append(fields, "vis="+e.Visibility)
+	}
 	if e.Human || e.HandWritten {
 		// Written for BOTH, so an inferred hand-edit becomes declared the
 		// first time the line is rewritten. Otherwise the inference has to
@@ -513,6 +527,52 @@ const (
 	// person's own assertion is presumed to matter more than an agent's guess.
 	humanImportance = 4
 )
+
+// Visibility values. The empty string is normal and is never written.
+const (
+	VisNormal    = "normal"
+	VisPrivate   = "private"
+	VisSensitive = "sensitive"
+)
+
+// parseVisibility reads a vis= value. Anything that is not normal, private or
+// sensitive is treated as private: a hand-edited typo must hide a fact, not
+// publish it, so the unknown case fails closed.
+func parseVisibility(v string) string {
+	switch v {
+	case VisNormal, "":
+		return ""
+	case VisSensitive:
+		return VisSensitive
+	default:
+		return VisPrivate
+	}
+}
+
+// NormVisibility validates a visibility a caller asked for. Empty and normal
+// both mean normal, which is stored as nothing.
+func NormVisibility(v string) (string, error) {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "", VisNormal:
+		return "", nil
+	case VisPrivate:
+		return VisPrivate, nil
+	case VisSensitive:
+		return VisSensitive, nil
+	}
+	return "", fmt.Errorf("visibility must be normal, private or sensitive")
+}
+
+// Hidden reports whether default reads must leave this fact out: private and
+// sensitive facts are both hidden, and differ only in redaction.
+func (e Entry) Hidden() bool { return e.Visibility == VisPrivate || e.Visibility == VisSensitive }
+
+// Redacted reports whether this fact's text must not appear in an explanation
+// or a receipt, even to a caller that asked for hidden facts.
+func (e Entry) Redacted() bool { return e.Visibility == VisSensitive }
+
+// RedactedText stands in for the text of a sensitive fact.
+const RedactedText = "[redacted: sensitive]"
 
 // HumanAuthored reports whether a person asserted this fact, by any of the
 // three routes the authority lattice honours: the trailer, the absence of one,
@@ -600,4 +660,22 @@ func SortByRecency(entries []Entry) {
 		}
 		return entries[i].ID < entries[j].ID
 	})
+}
+
+// DropHidden removes the bullet lines of hidden facts from a note body. Every
+// other line, including a bullet with no trailer, is kept byte for byte, so a
+// body with no private facts comes back unchanged.
+func DropHidden(body string) string {
+	if !strings.Contains(body, "vis=") {
+		return body
+	}
+	lines := strings.Split(body, "\n")
+	out := lines[:0]
+	for _, line := range lines {
+		if e, ok := ParseLine(line); ok && e.Hidden() {
+			continue
+		}
+		out = append(out, line)
+	}
+	return strings.Join(out, "\n")
 }

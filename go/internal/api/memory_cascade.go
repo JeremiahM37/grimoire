@@ -270,6 +270,7 @@ func (s *Server) cascadeForget(w http.ResponseWriter, r *http.Request, note, id 
 	// may not write is reported and left; verification counts it if it stays.
 	hits, err := s.Index.MemoryEntries(index.MemoryQuery{
 		Filter:            index.Filter{IncludePrivate: true, IgnoreACLs: true},
+		IncludePrivate:    true,
 		IncludeSuperseded: true, IncludeExpired: true, Now: now,
 		Limit: index.DefaultScanLimit,
 	})
@@ -472,7 +473,7 @@ func (s *Server) cascadeForget(w http.ResponseWriter, r *http.Request, note, id 
 	s.profileMemo.reset()
 
 	ver := s.verifyForget(r, match, target.Text, removed)
-	receipt, err := s.writeReceipt(now, id, note, match, target.Text, who, acts, ver)
+	receipt, err := s.writeReceipt(now, id, note, match, target.Text, target.Visibility, who, acts, ver)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -537,6 +538,7 @@ func (s *Server) verifyForget(r *http.Request, m *forgetMatch, text string, remo
 	ver.Checked = append(ver.Checked, "memory")
 	all, err := s.Index.MemoryEntries(index.MemoryQuery{
 		Filter:            index.Filter{IncludePrivate: true, IgnoreACLs: true},
+		IncludePrivate:    true,
 		IncludeSuperseded: true, IncludeExpired: true, Now: vault.Now(),
 		Limit: index.DefaultScanLimit,
 	})
@@ -709,9 +711,12 @@ func saltedHash(salt, text string) string {
 // the target is identified by its id and a salted hash, and every artefact by
 // its path and id.
 type receiptDoc struct {
-	ID           string             `json:"id"`
-	TargetID     string             `json:"target_id"`
-	TargetPath   string             `json:"target_path"`
+	ID         string `json:"id"`
+	TargetID   string `json:"target_id"`
+	TargetPath string `json:"target_path"`
+	// Visibility is the forgotten fact's visibility. A hidden fact's receipt is
+	// listed only to a caller that asked for hidden facts.
+	Visibility   string             `json:"visibility,omitempty"`
 	TargetHash   string             `json:"target_hash"`
 	Salt         string             `json:"salt"`
 	TargetTokens int                `json:"target_tokens"`
@@ -738,7 +743,7 @@ func (s *Server) receiptDir() string { return filepath.Join(s.Vault.Root, receip
 
 // writeReceipt writes the markdown note and the JSON copy, and returns the
 // vault path of the note.
-func (s *Server) writeReceipt(now time.Time, targetID, note string, m *forgetMatch, text, who string,
+func (s *Server) writeReceipt(now time.Time, targetID, note string, m *forgetMatch, text, vis, who string,
 	acts []forgetAction, ver forgetVerification) (string, error) {
 	var sb [16]byte
 	if _, err := rand.Read(sb[:]); err != nil {
@@ -758,7 +763,14 @@ func (s *Server) writeReceipt(now time.Time, targetID, note string, m *forgetMat
 		TargetHash: saltedHash(salt, text), Salt: salt,
 		TargetTokens: len(strings.Fields(memory.Normalize(text))),
 		Initiator:    who, At: now.Format(memory.StampFormat), Actions: acts,
-		Verification: ver, Status: status}
+		Verification: ver, Status: status, Visibility: vis}
+	if vis == memory.VisSensitive {
+		// A salted hash of a short sensitive text, kept beside its salt, is a
+		// guess target: anyone can test candidate wordings against it. The
+		// receipt of a sensitive fact therefore keeps no hash, no salt and no
+		// word count, only that the forget happened.
+		doc.TargetHash, doc.Salt, doc.TargetTokens = "", "", 0
+	}
 	b, err := json.MarshalIndent(doc, "", "  ")
 	if err != nil {
 		return "", err
@@ -790,8 +802,12 @@ func receiptMarkdown(d receiptDoc) string {
 	fmt.Fprintf(&b, "# Forget receipt %s\n\n", d.TargetID)
 	fmt.Fprintf(&b, "- **Status:** %s\n- **At:** %s\n- **Initiated by:** %s\n", d.Status, d.At, d.Initiator)
 	fmt.Fprintf(&b, "- **Forgotten entry:** %s in `%s`\n", d.TargetID, d.TargetPath)
-	fmt.Fprintf(&b, "- **Forgotten text:** %d word(s), salted sha256 `%s` (salt `%s`); the text is not kept here\n\n",
-		d.TargetTokens, d.TargetHash, d.Salt)
+	if d.Visibility == memory.VisSensitive {
+		b.WriteString("- **Forgotten text:** " + memory.RedactedText + "; the text is not kept here\n\n")
+	} else {
+		fmt.Fprintf(&b, "- **Forgotten text:** %d word(s), salted sha256 `%s` (salt `%s`); the text is not kept here\n\n",
+			d.TargetTokens, d.TargetHash, d.Salt)
+	}
 	b.WriteString("## Actions\n\n")
 	if len(d.Actions) == 0 {
 		b.WriteString("None.\n\n")
@@ -845,6 +861,11 @@ func (s *Server) listReceipts(r *http.Request) []receiptRef {
 			continue
 		}
 		if r != nil && !s.canRead(r, d.TargetPath) {
+			continue
+		}
+		// A receipt for a hidden fact is a hidden fact's existence, so it is
+		// listed only to a caller that asked for hidden facts.
+		if (memory.Entry{Visibility: d.Visibility}).Hidden() && (r == nil || !boolParam(r, "include_private")) {
 			continue
 		}
 		out = append(out, receiptRef{Receipt: receiptsDir + "/" + d.ID + ".md", ID: d.ID,

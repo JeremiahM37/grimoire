@@ -113,8 +113,11 @@ func (s *Server) dreamDocs() ([]dream.Doc, []string, error) {
 		if err != nil || n.Encrypted {
 			continue // sealed text is already protected; unreadable is not a finding
 		}
+		// A dream reads the memory it is asked to check, but never a fact that
+		// is private or sensitive: its findings are written into a report note,
+		// and an excerpt of a hidden fact would publish it there.
 		docs = append(docs, dream.Doc{
-			Path: p, Body: n.Raw, Kind: kind,
+			Path: p, Body: memory.DropHidden(n.Raw), Kind: kind,
 			Mtime: time.Unix(0, int64(n.MTime*1e9)),
 		})
 	}

@@ -458,6 +458,10 @@ func Tools() []tool {
 					"description": "how much this matters: 1 trivia, 3 ordinary, 5 load-bearing. " +
 						"Omit it to leave the fact unrated; important facts are recalled for longer " +
 						"and trivia yields sooner. Use 5 only for things that would hurt to forget"},
+				"visibility": strProp("optional: normal (default), private, or sensitive. A private fact " +
+					"is left out of recall, profile, context and changes unless the reader asks for hidden " +
+					"facts, and is never exported or streamed. A sensitive fact is hidden the same way and " +
+					"is also redacted from explanations and receipts"),
 				"fresh": strProp("how it goes stale: 'stable', 'volatile', or a re-check interval like '7d'"),
 				"check": strProp("read-only way to verify it: a command, file or URL"),
 				"context": strProp("what you were asked to do when you learned this. If the user " +
@@ -497,6 +501,8 @@ func Tools() []tool {
 					"description": "also return disputed claims awaiting review; excluded from current beliefs by default"},
 				"explain": map[string]any{"type": "boolean",
 					"description": "include why each fact ranked where it did"},
+				"include_private": map[string]any{"type": "boolean",
+					"description": "also return private facts (sensitive text stays redacted in explain)"},
 				"expand": map[string]any{"type": "boolean",
 					"description": "also search by entities, keywords and aliases, and fuse the rankings; each fact lists the variants that found it"},
 				"hops":  intProp("also add facts that share an entity with the top hits, out to this many hops (0, 1 or 2; at most 20 added, each marked via 'graph')"),
@@ -535,6 +541,8 @@ func Tools() []tool {
 				"agent":   strProp("optional: only this agent's beliefs"),
 				"session": strProp("optional: only what one run wrote, by its session id"),
 				"limit":   intProp("max rows (default 100)"),
+				"include_private": map[string]any{"type": "boolean",
+					"description": "also report changes to private facts"},
 			}),
 		},
 		{
@@ -556,6 +564,8 @@ func Tools() []tool {
 						"describes facts rather than how the user wants to be addressed"},
 				"synthesize": map[string]any{"type": "boolean",
 					"description": "rewrite the selection as prose; falls back to the deterministic text if the citations do not check out"},
+				"include_private": map[string]any{"type": "boolean",
+					"description": "also draw on private facts"},
 			}),
 		},
 		{

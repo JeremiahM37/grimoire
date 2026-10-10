@@ -588,7 +588,7 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 		body := map[string]any{
 			"text": str(args, "text"), "topic": str(args, "topic"),
 			"task": str(args, "task"), "agent": s.Agent}
-		for _, k := range []string{"session", "category", "kind", "expires_in", "origin", "target_id", "target_path", "expected_text", "fresh", "check", "context", "valid_from", "valid_to"} {
+		for _, k := range []string{"session", "category", "kind", "expires_in", "origin", "target_id", "target_path", "expected_text", "fresh", "check", "context", "valid_from", "valid_to", "visibility"} {
 			if v := str(args, k); v != "" {
 				body[k] = v
 			}
@@ -640,7 +640,7 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 				q.Set(k, v)
 			}
 		}
-		for _, k := range []string{"include_superseded", "include_challenges", "explain"} {
+		for _, k := range []string{"include_superseded", "include_challenges", "explain", "include_private"} {
 			if boolean(args, k) {
 				q.Set(k, "1")
 			}
@@ -681,6 +681,9 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 		if n := num(args, "limit", 0); n > 0 {
 			q.Set("limit", fmt.Sprint(n))
 		}
+		if boolean(args, "include_private") {
+			q.Set("include_private", "1")
+		}
 		return s.api("GET", "/api/memory/changes?"+q.Encode(), nil)
 	case "memory_profile":
 		q := url.Values{}
@@ -695,6 +698,9 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 		}
 		if boolean(args, "synthesize") {
 			q.Set("synthesize", "true")
+		}
+		if boolean(args, "include_private") {
+			q.Set("include_private", "1")
 		}
 		if boolean(args, "exclude_personal") {
 			q.Set("exclude_personal", "true")
