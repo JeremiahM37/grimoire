@@ -135,8 +135,12 @@ func (s *Server) memoryContext(w http.ResponseWriter, r *http.Request) {
 			writeErr(w, http.StatusInternalServerError, err.Error())
 			return
 		}
-		if prev := s.recent.swapSession(r.URL.Query().Get("session"), query); prev != "" {
-			s.learnFromPrompt(prev, query, items)
+		// Re-tells pair consecutive prompts; a tool call is not a prompt, so
+		// the action stage logs its injections but never enters the pairing.
+		if r.URL.Query().Get("stage") != "action" {
+			if prev := s.recent.swapSession(r.URL.Query().Get("session"), query); prev != "" {
+				s.learnFromPrompt(prev, query, items)
+			}
 		}
 		items, perm := s.adherenceFilter(r, query, items, minRel)
 		if r.URL.Query().Get("rerank") == "1" {

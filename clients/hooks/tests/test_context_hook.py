@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -193,3 +194,14 @@ def test_edits_need_a_closer_match_than_commands(environment):
 
     hook.run(tool_event("Edit", {"file_path": "/project/main.go"}), environment, fetch, now=100)
     assert seen["min_rel"] == "0.8"
+
+
+def test_action_stage_sends_the_session_hash_for_outcome_logging(environment):
+    seen = {}
+
+    def fetch(base, token, query, excluded, budget, mode, paths, extra=None):
+        seen.update(extra)
+        return {"context": "", "keys": []}
+
+    hook.run(tool_event(session="s1"), environment, fetch, now=100)
+    assert re.fullmatch(r"[a-f0-9]{32}", seen["session"])

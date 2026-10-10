@@ -385,6 +385,11 @@ def action_context(norm, environment, fetch, now, state, state_path, base, token
         if tool.lower() not in {"bash", "shell"} and tool not in profile.get("delegation_tools", []):
             extra["min_rel"] = environment.get("GRIMOIRE_EDIT_MIN_REL", "0.8")
     extra.update({"limit": 2, "stage": "action"})
+    # The session hash lets the server log action-stage injections, so their
+    # fingerprints and outcomes count too; the server keeps tool calls out of
+    # its prompt pairing.
+    if norm.get("session"):
+        extra["session"] = fingerprint("session\0" + norm["session"])[:32]
     result = fetch(base, token, query, list(recent)[-128:], budget, mode, paths, extra)
     context = result.get("context", "")
     keys = result.get("keys", [])
@@ -396,6 +401,8 @@ def action_context(norm, environment, fetch, now, state, state_path, base, token
         recent[key] = now
     state["actions"] = dict(list(recent.items())[-128:])
     write_state(state_path, state)
+    if extra.get("session") and environment.get("GRIMOIRE_FINGERPRINTS", "1") != "0":
+        store_fingerprints(state_path.parent, extra["session"], result)
     ask = ask_reason(result)
     if not context and not ask:
         return None

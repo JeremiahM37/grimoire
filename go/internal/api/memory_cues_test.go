@@ -154,6 +154,22 @@ func TestCorrectionInTheSameSessionTeachesTheEarlierPrompt(t *testing.T) {
 	}
 }
 
+func TestToolCallsNeverEnterRetellPairing(t *testing.T) {
+	_, h := testServer(t)
+	do(t, h, "PUT", "/api/notes/Agent%20Memory/feedback_delegation.md",
+		map[string]any{"body": "Use the lead model to coordinate and a cheaper model to implement."})
+	task := "redo the phone layout of the sessions page"
+	contextFor(t, h, task, "session", "s1")
+	// A tool call between the prompt and the correction must not become the
+	// "previous prompt" that the correction teaches.
+	contextFor(t, h, "Bash npm run build", "session", "s1", "stage", "action")
+	contextFor(t, h, "use the lead model to coordinate and a cheaper model to implement, I told you", "session", "s1")
+	body := do(t, h, "GET", "/api/memory/cues?target="+url.QueryEscape("note:Agent Memory/feedback_delegation.md"), nil).Body.String()
+	if strings.Contains(body, "npm run build") || !strings.Contains(body, task) {
+		t.Fatalf("tool call entered the pairing: %s", body)
+	}
+}
+
 func TestJudgedRetellLearnsOnlyOnAConfidentYes(t *testing.T) {
 	for _, tc := range []struct {
 		verdict float64
