@@ -116,3 +116,30 @@ func TestTimelineFromBankFacts(t *testing.T) {
 		t.Fatal(RenderEvents(tl.Events))
 	}
 }
+
+// The procedure must tell the reader to infer rather than decline, to date
+// vague times, and to carry every list item into FINAL.
+func TestProcedureRulesInCheckAndGather(t *testing.T) {
+	llm := &scripted{}
+	a := &Answerer{LLM: llm, Opt: Options{Procedure: true}}
+	if _, err := a.Answer(context.Background(), "What would A likely enjoy?", WholeSource{P: corpus()}); err != nil {
+		t.Fatal(err)
+	}
+	gather, check := llm.prompts[0], llm.prompts[1]
+	for _, want := range []string{
+		`never answer "not stated"`,
+		"most plausible inference",
+		"best-supported date or month",
+		"every distinct item",
+	} {
+		if !strings.Contains(check, want) {
+			t.Errorf("check prompt missing %q", want)
+		}
+	}
+	if !strings.Contains(gather, "For an inference question (TYPE: inference)") {
+		t.Error("gather prompt missing inference guidance")
+	}
+	if strings.Contains(check, "{evidence}") || strings.Contains(check, "{context}") {
+		t.Error("placeholders left unfilled")
+	}
+}

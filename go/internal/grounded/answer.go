@@ -180,6 +180,7 @@ Rules:
 - Be exhaustive. For a question asking for all / every / which ones / what kinds / how many / how often, scan the whole of the records and list every matching item or occurrence separately, including minor ones and ones mentioned only in passing. Do not stop at the first few.
 - Give each item's own date: resolve relative expressions from the date of the record that contains them (use a bracketed absolute date when one is given); otherwise give the record's date.
 - Say who spoke and who the item is about; they can differ.
+- For an inference question (TYPE: inference), also list the passages that show the person's interests, habits, situation, goals or stated plans, even when they do not answer the question directly.
 - Include passages that seem to disagree with each other, marked as such.
 - Output only the TYPE line and the list.`
 
@@ -203,7 +204,9 @@ Step 3: check the draft against the records and fix it if any check fails:
 (a) Completeness: if the question asks for a list or a count, scan the records again for items or occurrences the evidence missed, and add them. Count only distinct occurrences.
 (b) Dates: recompute every date, duration and "how long ago" from the dates of the records involved, and show the arithmetic briefly. A relative expression is relative to the record it appears in.
 (c) Attribution: confirm who said or did it. Answer about the person asked about, not the other speaker.
-(d) Commitment: if the records strongly imply an answer without stating it, give the best-supported answer rather than saying it is unknown.
+(d) Commitment: never answer "not stated", "not mentioned", "unknown", "cannot be determined" or "the records do not say" when a passage in the evidence bears on the question. Give the best-supported answer. If the question asks what someone would, might or likely do, prefer, feel or be, or what can be inferred, answer with the most plausible inference from what the records show about that person (their interests, actions, stated plans and reasons). An inference is expected; a missing exact statement is not a reason to decline. Say "unknown" only when no passage bears on the question at all. For a yes/no question, answer yes or no from the passages, not from whether the exact wording appears.
+(e) Timing: when the question asks when and the records give a vague or relative time, give the best-supported date or month, written as a date, rather than a phrase such as "recently" or "not stated exactly".
+(f) Lists: the FINAL line must contain every distinct item from the evidence and from your re-scan in (a), each named once. Do not stop at the first few or summarise a list into a category.
 
 Write your brief working first. Then end with one final line of the form
 FINAL: <the answer>
