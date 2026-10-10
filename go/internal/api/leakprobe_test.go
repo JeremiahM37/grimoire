@@ -477,6 +477,8 @@ func lpProbes(w *lpWorld) []lpProbe {
 		{route: "GET /api/memory/stream", path: "/api/memory/stream", kind: lpList},
 		{route: "GET /api/memory/profile", path: "/api/memory/profile?subject=alice", kind: lpList},
 		{route: "GET /api/memory/profile", path: "/api/memory/profile?subject=alice&synthesize=true", kind: lpList},
+		{route: "GET /api/memory/prefix", path: "/api/memory/prefix", kind: lpList},
+		{route: "GET /api/memory/prefix", path: "/api/memory/prefix?since=grimoire-prefix-v1&max_tokens=200", kind: lpList},
 		{route: "GET /api/memory/facets", path: "/api/memory/facets", kind: lpList},
 		{route: "GET /api/memory/graph", path: "/api/memory/graph", kind: lpList},
 		{route: "GET /api/memory/challenges", path: "/api/memory/challenges", kind: lpList},

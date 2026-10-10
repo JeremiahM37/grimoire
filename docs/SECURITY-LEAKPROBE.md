@@ -84,6 +84,16 @@ an `X-Grimoire-Agent` header, an agent with no grant of its own) and
     publish allowance, MCP as bob reaching bob's note). A probe that reaches an
     empty channel would pass for the wrong reason.
 
+## Routes added after the first review
+
+- `GET /api/memory/prefix` (`memory_prefix.go`): the durable-memory log. It
+  filters with `filterFor` like recall, and it never lists private facts
+  (`IncludePrivate` is fixed false). Its `total`, `entries` and `omitted` counts
+  come only from the caller's visible set, so the differential count test covers
+  it. It has two `lpList` probes (plain, and `since`/`max_tokens` set). It has no
+  control query, because the response carries counts rather than a filtered
+  list; the count test is what checks them.
+
 ## Findings
 
 Fixed, each in its own commit with a regression test that fails before the fix.

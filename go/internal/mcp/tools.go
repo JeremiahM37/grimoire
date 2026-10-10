@@ -55,6 +55,7 @@ var behaviour = map[string]annotations{
 	"recall":                {Title: "Recall what is believed", ReadOnlyHint: true, IdempotentHint: true},
 	"memory_changes":        {Title: "Read belief changes", ReadOnlyHint: true, IdempotentHint: true},
 	"memory_profile":        {Title: "Read a memory profile", ReadOnlyHint: true, IdempotentHint: true},
+	"memory_prefix":         {Title: "Read the durable memory prefix", ReadOnlyHint: true, IdempotentHint: true},
 	"memory_graph":          {Title: "Read the memory graph", ReadOnlyHint: true, IdempotentHint: true},
 	"memory_scopes":         {Title: "List memory scopes", ReadOnlyHint: true, IdempotentHint: true},
 	"list_grants":           {Title: "List credential grants", ReadOnlyHint: true, IdempotentHint: true},
@@ -556,6 +557,21 @@ func Tools() []tool {
 						"describes facts rather than how the user wants to be addressed"},
 				"synthesize": map[string]any{"type": "boolean",
 					"description": "rewrite the selection as prose; falls back to the deterministic text if the citations do not check out"},
+			}),
+		},
+		{
+			Name: "memory_prefix",
+			Description: "The durable memories as a cache-stable, append-only log: live, " +
+				"not disputed, human-written or importance 3+, in a fixed order. Put `block` at " +
+				"the start of a system prompt and mark it as a cache breakpoint; the bytes only " +
+				"change when memory changes. Pass back `append_only_since` as `since` on later " +
+				"calls: the reply is `unchanged`, or `delta` holds only the new lines, or " +
+				"`rewritten` is true and `block` must replace what you cached. Recall results do " +
+				"not belong in this block; add them after it.",
+			InputSchema: obj(map[string]any{
+				"since": strProp("the append_only_since token from your previous call, if any"),
+				"max_tokens": intProp("token budget for the block (default 2000, 50..20000); " +
+					"the block is cut from the end, so its head stays byte-identical"),
 			}),
 		},
 		{

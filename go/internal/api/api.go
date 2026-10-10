@@ -235,6 +235,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/memory/changes", s.memoryChanges)
 	mux.HandleFunc("GET /api/memory/stream", s.userOnly(s.memoryStream))
 	mux.HandleFunc("GET /api/memory/profile", s.memoryProfile)
+	mux.HandleFunc("GET /api/memory/prefix", s.memoryPrefix)
 	mux.HandleFunc("GET /api/memory/facets", s.memoryFacets)
 	mux.HandleFunc("GET /api/memory/graph", s.memoryGraph)
 	mux.HandleFunc("POST /api/memory/search", s.searchMemoryByVector)

@@ -88,7 +88,7 @@ func TestToolsListIsComplete(t *testing.T) {
 		"get_briefing", "kb_info", "search_notes", "ask_notes", "read_note",
 		"list_notes", "create_note", "update_note", "append_daily", "backlinks",
 		"list_tags", "get_fact", "set_fact", "remember", "recall", "forget",
-		"memory_scopes", "memory_feedback", "memory_graph", "memory_profile", "consolidate_memory", "list_grants",
+		"memory_scopes", "memory_feedback", "memory_graph", "memory_profile", "memory_prefix", "consolidate_memory", "list_grants",
 		"use_credential",
 	} {
 		if !got[want] {
@@ -121,6 +121,7 @@ func TestToolCallsHitTheExpectedEndpoints(t *testing.T) {
 		{"memory_scopes", nil, "GET /api/memory/facets"},
 		{"memory_graph", map[string]any{"entity": "priya"}, "GET /api/memory/graph"},
 		{"memory_profile", map[string]any{"subject": "agent", "agent": "claude-code", "budget": 300}, "GET /api/memory/profile"},
+		{"memory_prefix", map[string]any{"since": "abc", "max_tokens": 500}, "GET /api/memory/prefix"},
 		{"memory_feedback", map[string]any{"id": "a1", "path": "memory/x.md",
 			"helpful": true}, "POST /api/memory/feedback"},
 		{"knowledge_graph", map[string]any{"seed": "ops", "depth": 2}, "GET /api/knowledge/graph"},
