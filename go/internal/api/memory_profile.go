@@ -431,6 +431,14 @@ func (m *profileMemo) get(key string, now time.Time) (profileResponse, bool) {
 	return e.resp, true
 }
 
+// reset drops every cached profile. A cascade calls it after it has rewritten
+// memory, so no profile built from the forgotten text is served again.
+func (m *profileMemo) reset() {
+	m.memoMu.Lock()
+	defer m.memoMu.Unlock()
+	m.memo = nil
+}
+
 func (m *profileMemo) put(key string, resp profileResponse, until time.Time) {
 	m.memoMu.Lock()
 	defer m.memoMu.Unlock()

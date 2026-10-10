@@ -179,6 +179,7 @@ var routeAccess = map[string]access{
 	"POST /api/memory/replay/seed":                               admin,  // loads seed situations
 	"GET /api/memory/export":                                     scoped, // every fact the caller may read
 	"POST /api/memory/import":                                    authed, // each fact goes through the write path, which checks the note's write access
+	"GET /api/memory/receipts":                                   scoped, // receipts are listed only for entries the caller may read
 	"GET /api/memory/changes":                                    scoped, // fact text, so the same filter as recall
 	"GET /api/memory/stream":                                     authed, // SSE of the changes feed; text per event passes canRead at emit time
 	"GET /api/memory/profile":                                    scoped, // synthesized from facts the caller may read
@@ -265,6 +266,7 @@ var routeAccess = map[string]access{
 	"POST /api/memory/prune":        authed,
 	"PATCH /api/memory/entry":       authed,
 	"DELETE /api/memory/entry":      authed,
+	"POST /api/memory/forget":       authed, // a write; cascade reads are filtered by the caller's own rights
 	"POST /api/facts":               authed,
 	"POST /api/capture":             authed,
 	"POST /api/attach":              authed,
