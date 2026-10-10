@@ -381,3 +381,35 @@ func TestCreateNoteSendsTheAgentName(t *testing.T) {
 		t.Fatalf("X-Grimoire-Agent = %q, want the server's configured identity", agent)
 	}
 }
+
+func TestRememberForwardsValidity(t *testing.T) {
+	var body map[string]any
+	s := stubAPI(t, func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&body)
+		w.Write([]byte(`{"ok":true}`))
+	})
+	call(t, s, map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+		"params": map[string]any{"name": "remember", "arguments": map[string]any{
+			"text": "x", "valid_from": "2026-03-01", "valid_to": "2026-09-01"}}})
+	if body["valid_from"] != "2026-03-01" || body["valid_to"] != "2026-09-01" {
+		t.Errorf("validity not forwarded: %v / %v", body["valid_from"], body["valid_to"])
+	}
+}
+
+func TestRecallForwardsTheBitemporalWindow(t *testing.T) {
+	var query string
+	s := stubAPI(t, func(w http.ResponseWriter, r *http.Request) {
+		query = r.URL.RawQuery
+		w.Write([]byte(`[]`))
+	})
+	call(t, s, map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+		"params": map[string]any{"name": "recall", "arguments": map[string]any{
+			"query": "x", "as_of": "2026-08-13T09:00:00Z", "valid_at": "2026-03-15",
+			"valid_since": "2026-01-01", "valid_until": "2026-06-30"}}})
+	for _, want := range []string{"as_of=2026-08-13T09%3A00%3A00Z", "valid_at=2026-03-15",
+		"valid_since=2026-01-01", "valid_until=2026-06-30"} {
+		if !strings.Contains(query, want) {
+			t.Errorf("query %q missing %q", query, want)
+		}
+	}
+}

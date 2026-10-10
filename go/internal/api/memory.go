@@ -76,6 +76,14 @@ type memoryIn struct {
 	// the category when no category is given.
 	Kind string `json:"kind"`
 
+	// ValidFrom and ValidTo say when the fact was true IN THE WORLD, which is
+	// a different question from when the store learned it. Either may be an
+	// RFC3339 instant or a YYYY-MM-DD date, and both are stored canonical. A
+	// new fact with a ValidFrom also ends the validity of the fact it replaces
+	// (memory.CloseValidity), unless that fact already has a ValidTo.
+	ValidFrom string `json:"valid_from"`
+	ValidTo   string `json:"valid_to"`
+
 	// Expires is an absolute RFC3339 instant; ExpiresIn is a duration from now
 	// ("72h"), which is what a caller usually has. Either one makes the fact
 	// stop being recalled without anyone having to remember to delete it.
@@ -247,6 +255,10 @@ func (s *Server) rememberOne(w http.ResponseWriter, r *http.Request, m memoryIn)
 	}
 	expires, err := resolveExpiry(m.Expires, m.ExpiresIn)
 	if err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if m.ValidFrom, m.ValidTo, err = normValidityPair(m.ValidFrom, m.ValidTo); err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -486,6 +498,11 @@ func (s *Server) applySupersession(w http.ResponseWriter, r *http.Request,
 	if err := s.mutateEntry(target.Note, target.ID, func(e *memory.Entry) {
 		e.SupersededBy = newID
 		e.SupersededAt = vault.Now().Format(memory.StampFormat)
+		// The old fact stopped being true when the new one started, if the new
+		// one says when that was. CloseValidity leaves a human-set bound alone.
+		if d.Op == memory.OpUpdate && m.ValidFrom != "" {
+			memory.CloseValidity(e, m.ValidFrom)
+		}
 	}); err != nil {
 		writeErr(w, statusForVaultErr(err), err.Error())
 		return memoryResult{}, err
@@ -532,8 +549,9 @@ func (s *Server) appendEntryChallenging(w http.ResponseWriter, r *http.Request, 
 		Immutable: m.Immutable, SupersededBy: supersededBy,
 		Origin: strings.TrimSpace(m.Origin), Human: m.Human,
 		Challenges: challenges,
-		Fresh:      memory.NormFresh(m.Fresh),
-		Check:      strings.TrimSpace(m.Check),
+		ValidFrom:  m.ValidFrom, ValidTo: m.ValidTo,
+		Fresh: memory.NormFresh(m.Fresh),
+		Check: strings.TrimSpace(m.Check),
 	}
 	if m.inherit != nil {
 		inheritFreshness(&e, *m.inherit)
@@ -626,6 +644,33 @@ func (s *Server) mutateEntry(note, id string, mutate func(*memory.Entry)) error 
 	return err
 }
 
+// normValidityPair canonicalises a fact's validity and refuses an interval
+// that ends before it starts. Writing one would store a fact no query can ever
+// return, and the caller meant a bound, so it is an error rather than a
+// silently-dropped field.
+func normValidityPair(from, to string) (string, string, error) {
+	nf, err := memory.NormValidity(from)
+	if err != nil {
+		return "", "", errBadValidity("valid_from: " + err.Error())
+	}
+	nt, err := memory.NormValidity(to)
+	if err != nil {
+		return "", "", errBadValidity("valid_to: " + err.Error())
+	}
+	if f, ok := memory.ParseValidity(nf); ok {
+		if t, ok := memory.ParseValidity(nt); ok && t.Before(f) {
+			return "", "", errBadValidity("valid_to is before valid_from")
+		}
+	}
+	return nf, nt, nil
+}
+
+type validityError string
+
+func (e validityError) Error() string { return string(e) }
+
+func errBadValidity(msg string) error { return validityError(msg) }
+
 // resolveExpiry turns either form of time-to-live into a stored instant.
 func resolveExpiry(absolute, relative string) (string, error) {
 	absolute, relative = strings.TrimSpace(absolute), strings.TrimSpace(relative)
@@ -667,21 +712,25 @@ type memoryOut struct {
 
 // entryOut is one recalled fact.
 type entryOut struct {
-	ID           string  `json:"id"`
-	Text         string  `json:"text"`
-	Path         string  `json:"path"`
-	Agent        string  `json:"agent,omitempty"`
-	Task         string  `json:"task,omitempty"`
-	Session      string  `json:"session,omitempty"`
-	Category     string  `json:"category,omitempty"`
-	Stamp        string  `json:"stamp,omitempty"`
-	Expires      string  `json:"expires,omitempty"`
-	Immutable    bool    `json:"immutable,omitempty"`
-	SupersededBy string  `json:"superseded_by,omitempty"`
-	Challenges   string  `json:"challenges,omitempty"`
-	Helpful      int     `json:"helpful,omitempty"`
-	Unhelpful    int     `json:"unhelpful,omitempty"`
-	Score        float64 `json:"score"`
+	ID           string `json:"id"`
+	Text         string `json:"text"`
+	Path         string `json:"path"`
+	Agent        string `json:"agent,omitempty"`
+	Task         string `json:"task,omitempty"`
+	Session      string `json:"session,omitempty"`
+	Category     string `json:"category,omitempty"`
+	Stamp        string `json:"stamp,omitempty"`
+	Expires      string `json:"expires,omitempty"`
+	Immutable    bool   `json:"immutable,omitempty"`
+	SupersededBy string `json:"superseded_by,omitempty"`
+	Challenges   string `json:"challenges,omitempty"`
+	// ValidFrom and ValidTo are when the fact was true in the world; empty
+	// means unbounded on that side.
+	ValidFrom string  `json:"valid_from,omitempty"`
+	ValidTo   string  `json:"valid_to,omitempty"`
+	Helpful   int     `json:"helpful,omitempty"`
+	Unhelpful int     `json:"unhelpful,omitempty"`
+	Score     float64 `json:"score"`
 
 	// Where the fact came from, and the verdict derived from it. An agent
 	// deciding whether to ACT on a recalled fact needs this as much as a
@@ -728,7 +777,8 @@ func entriesOut(hits []index.MemoryHit, explain bool) []entryOut {
 			Expires: h.Expires, Immutable: h.Immutable,
 			SupersededBy: h.SupersededBy, Helpful: h.Helpful,
 			Challenges: h.Challenges,
-			Unhelpful:  h.Unhelpful, Score: h.Score,
+			ValidFrom:  h.ValidFrom, ValidTo: h.ValidTo,
+			Unhelpful: h.Unhelpful, Score: h.Score,
 			Origin: h.Origin, Trust: trust.FromOrigin(h.Origin).String(),
 			Authority: h.Authority().String(),
 		}
@@ -768,9 +818,17 @@ func (s *Server) recall(w http.ResponseWriter, r *http.Request) {
 		}
 		asOf = t
 	}
+	validAt, validSince, validUntil, err := validityParams(r)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
 	hits, err := s.Index.MemoryEntries(index.MemoryQuery{
 		Filter:            filterFor(r, true),
 		Query:             q,
+		ValidAt:           validAt,
+		ValidSince:        validSince,
+		ValidUntil:        validUntil,
 		Agent:             strings.TrimSpace(r.URL.Query().Get("agent")),
 		Task:              strings.TrimSpace(r.URL.Query().Get("task")),
 		Session:           strings.TrimSpace(r.URL.Query().Get("session")),
@@ -788,6 +846,36 @@ func (s *Server) recall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, s.markProcedures(s.assessHits(hits, entriesOut(hits, boolParam(r, "explain")))))
+}
+
+// validityParams reads valid_at, valid_since and valid_until. Like as_of, a
+// malformed instant is refused rather than ignored: a question about the past
+// answered about the present is a wrong answer that looks right.
+func validityParams(r *http.Request) (at, since, until time.Time, err error) {
+	parse := func(name string) (time.Time, error) {
+		raw := strings.TrimSpace(r.URL.Query().Get(name))
+		if raw == "" {
+			return time.Time{}, nil
+		}
+		t, ok := memory.ParseValidity(raw)
+		if !ok {
+			return time.Time{}, fmt.Errorf("%s must be RFC3339 or YYYY-MM-DD", name)
+		}
+		return t, nil
+	}
+	if at, err = parse("valid_at"); err != nil {
+		return
+	}
+	if since, err = parse("valid_since"); err != nil {
+		return
+	}
+	if until, err = parse("valid_until"); err != nil {
+		return
+	}
+	if !since.IsZero() && !until.IsZero() && until.Before(since) {
+		err = errBadValidity("valid_until is before valid_since")
+	}
+	return
 }
 
 func boolParam(r *http.Request, name string) bool {
@@ -1136,7 +1224,8 @@ func deref(p *string) string {
 func entryOf(e memory.Entry, note string) entryOut {
 	return entryOut{ID: e.ID, Text: e.Text, Path: note, Agent: e.Agent, Task: e.Task,
 		Session: e.Session, Category: e.Category, Stamp: e.Stamp, Expires: e.Expires,
-		Immutable: e.Immutable, SupersededBy: e.SupersededBy}
+		Immutable: e.Immutable, SupersededBy: e.SupersededBy,
+		ValidFrom: e.ValidFrom, ValidTo: e.ValidTo}
 }
 
 // forgetEntry retracts one fact. By default it is struck through and kept, the

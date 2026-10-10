@@ -444,6 +444,9 @@ func Tools() []tool {
 				"kind":     strProp("rule | procedure | preference | fact | reference — what sort of memory this is"),
 				"expires_in": strProp("optional time-to-live, e.g. '72h' — for something " +
 					"true only for now, so it stops being recalled instead of going stale"),
+				"valid_from": strProp("optional: when this became true in the world, RFC3339 or YYYY-MM-DD " +
+					"(not when you learned it). A fact it replaces has its valid_to closed here"),
+				"valid_to": strProp("optional: when it stopped being true in the world, RFC3339 or YYYY-MM-DD"),
 				"immutable": map[string]any{"type": "boolean",
 					"description": "pin this fact: reconciliation may never supersede or retract it"},
 				"fresh": strProp("how it goes stale: 'stable', 'volatile', or a re-check interval like '7d'"),
@@ -480,6 +483,11 @@ func Tools() []tool {
 					"description": "also return disputed claims awaiting review; excluded from current beliefs by default"},
 				"explain": map[string]any{"type": "boolean",
 					"description": "include why each fact ranked where it did"},
+				"as_of": strProp("what was believed at this instant (RFC3339), rather than what is believed now"),
+				"valid_at": strProp("only facts that were true in the world at this instant (RFC3339 or YYYY-MM-DD). " +
+					"Combine with as_of to ask what was believed then about a past date"),
+				"valid_since": strProp("facts true at some point on or after this instant"),
+				"valid_until": strProp("facts true at some point on or before this instant"),
 			}),
 		},
 		{

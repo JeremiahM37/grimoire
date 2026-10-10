@@ -553,7 +553,7 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 		body := map[string]any{
 			"text": str(args, "text"), "topic": str(args, "topic"),
 			"task": str(args, "task"), "agent": s.Agent}
-		for _, k := range []string{"session", "category", "kind", "expires_in", "origin", "target_id", "target_path", "expected_text", "fresh", "check", "context"} {
+		for _, k := range []string{"session", "category", "kind", "expires_in", "origin", "target_id", "target_path", "expected_text", "fresh", "check", "context", "valid_from", "valid_to"} {
 			if v := str(args, k); v != "" {
 				body[k] = v
 			}
@@ -582,7 +582,9 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 		q := url.Values{}
 		q.Set("q", str(args, "query"))
 		q.Set("limit", fmt.Sprint(num(args, "limit", 10)))
-		for _, k := range []string{"agent", "session", "category"} {
+		// as_of and the valid_* window are passed through verbatim: the server
+		// parses them and refuses a malformed one, so the client never guesses.
+		for _, k := range []string{"agent", "session", "category", "as_of", "valid_at", "valid_since", "valid_until"} {
 			if v := str(args, k); v != "" {
 				q.Set(k, v)
 			}

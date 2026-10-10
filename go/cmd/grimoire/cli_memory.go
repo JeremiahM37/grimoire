@@ -95,7 +95,8 @@ func cmdRecall(args []string) int {
 	}
 	for flag, param := range map[string]string{
 		"--agent": "agent", "--session": "session", "--category": "category",
-		"--as-of": "as_of",
+		"--as-of": "as_of", "--valid-at": "valid_at",
+		"--valid-since": "valid_since", "--valid-until": "valid_until",
 	} {
 		if v, ok := flagValue(args, flag); ok {
 			q.Set(param, v)
