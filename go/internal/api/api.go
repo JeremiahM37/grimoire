@@ -268,6 +268,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/usage/agents", s.agentActivity)
 	mux.HandleFunc("GET /api/memory/challenges", s.challenges)
 	mux.HandleFunc("POST /api/memory/challenge", s.resolveChallenge)
+	mux.HandleFunc("GET /api/memory/disputes", s.listDisputes)
+	mux.HandleFunc("POST /api/memory/disputes/resolve", s.resolveDispute)
 	mux.HandleFunc("PATCH /api/memory/entry", s.patchEntry)
 	mux.HandleFunc("DELETE /api/memory/entry", s.forgetEntry)
 	mux.HandleFunc("POST /api/memory/forget", s.forgetPost)

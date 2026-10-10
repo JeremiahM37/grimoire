@@ -94,6 +94,22 @@ an `X-Grimoire-Agent` header, an agent with no grant of its own) and
   control query, because the response carries counts rather than a filtered
   list; the count test is what checks them.
 
+## Dispute routes
+
+`GET /api/memory/disputes` is probed with `lpList`: its rows carry fact text
+from both sides of a disagreement, so it is read through the same visibility
+filter as recall (`filterFor(r, true)`), and an anonymous or bob request must
+not see alice's canaries in it.
+
+`POST /api/memory/disputes/resolve` is probed with `lpWrite` and a missing id.
+A non-owner gets 404 (the id is not visible to them) and nothing is written, so
+the probe proves refusal by absence. It does not prove refusal of a real hidden
+dispute: the fixture does not yet seed a contested entry (see Deferred). That
+case is covered by the handler itself, which applies the same visibility filter
+before looking for the id and then `requireWrite` on every note the resolution
+touches, and by `memory_disputes_test.go`, which checks that an agent caller is
+refused for every resolution before any lookup happens.
+
 ## Findings
 
 Fixed, each in its own commit with a regression test that fails before the fix.
@@ -136,7 +152,9 @@ They conflict with the premise that agent memory and uploads are per-owner.
   differential test; a timing-oracle check needs a controlled benchmark.
 - **Challenged and disputed entries** are seeded as plain commons memories. The
   suite does not yet create a real challenge object through
-  `POST /api/memory/challenge`.
+  `POST /api/memory/challenge` or `POST /api/memory/disputes/resolve` against a
+  contested, owner-only entry. Adding that fixture would turn the dispute
+  write probe from refusal-by-absence into refusal-of-a-real-target.
 - **Untrusted origin.** The imported document is the untrusted-origin item. The
   `trusted=1` filter is ranking-side and is not a privacy control, so it is not
   probed as one.

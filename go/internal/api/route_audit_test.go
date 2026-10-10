@@ -196,7 +196,9 @@ var routeAccess = map[string]access{
 	"GET /api/usage/agents": scoped,
 	// Fact text on both sides of the disagreement, so the same filter as recall.
 	"GET /api/memory/challenges": scoped,
-	"GET /api/briefing":          scoped,
+	// Both sides of each dispute are fact text, so the same filter as recall.
+	"GET /api/memory/disputes": scoped,
+	"GET /api/briefing":        scoped,
 	// Counts per origin, filtered per caller. It says how much of the corpus
 	// came from where — never which notes, so it cannot be used to enumerate
 	// content the caller could not already list.
@@ -259,9 +261,12 @@ var routeAccess = map[string]access{
 	"DELETE /api/bookmarks":          authed,
 	"POST /api/memory/batch":         authed,
 	// Settling a challenge supersedes a fact either way, so it is a write.
-	"POST /api/memory/challenge":   authed,
-	"POST /api/memory/feedback":    authed,
-	"POST /api/memory/consolidate": authed,
+	"POST /api/memory/challenge": authed,
+	// Settling a dispute writes a human-authority entry and supersedes the
+	// facts it contests. The handler refuses agent callers outright.
+	"POST /api/memory/disputes/resolve": authed,
+	"POST /api/memory/feedback":         authed,
+	"POST /api/memory/consolidate":      authed,
 	// Prune is a dry run unless asked to apply, and an apply is a retraction
 	// through the forget path, so it is a user write like consolidate.
 	"POST /api/memory/prune":        authed,

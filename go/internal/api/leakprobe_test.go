@@ -491,6 +491,8 @@ func lpProbes(w *lpWorld) []lpProbe {
 		{route: "PATCH /api/memory/entry", path: "/api/memory/entry", method: "PATCH", body: map[string]any{"text": "x"}, kind: lpWrite},
 		{route: "DELETE /api/memory/entry", path: "/api/memory/entry?id=x", method: "DELETE", kind: lpWrite},
 		{route: "POST /api/memory/challenge", path: "/api/memory/challenge", body: map[string]any{"note": "memory/infra.md", "id": "x", "resolution": "concede"}, kind: lpWrite},
+		{route: "GET /api/memory/disputes", path: "/api/memory/disputes", kind: lpList},
+		{route: "POST /api/memory/disputes/resolve", path: "/api/memory/disputes/resolve", body: map[string]any{"id": "x", "resolution": "keep"}, kind: lpWrite},
 		{route: "POST /api/memory/consolidate", path: "/api/memory/consolidate", body: map[string]any{"path": "users/alice/memory.md"}, kind: lpWrite},
 		{route: "POST /api/memory/outcome", path: "/api/memory/outcome", body: map[string]any{"text": "x"}, kind: lpWrite},
 		{route: "POST /api/memory/cues", path: "/api/memory/cues", body: map[string]any{"target_path": "users/alice/memory.md"}, kind: lpWrite},
