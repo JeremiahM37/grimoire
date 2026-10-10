@@ -2,7 +2,13 @@
 import re
 
 import pytest
-from conftest import DESKTOP, PHONE, answer_panel, reload_ready  # conftest dir is on sys.path
+from conftest import (  # conftest dir is on sys.path
+    DESKTOP,
+    PHONE,
+    answer_panel,
+    open_related_notes,
+    reload_ready,
+)
 from playwright.sync_api import expect
 
 VAULT_PASS = "mypassphrase123"
@@ -90,6 +96,7 @@ def test_wikilink_backlink_and_navigation(page, server):
     expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
     # open Target → its backlinks show Source
     page.click(".note-row .t >> text=Target Note")
+    open_related_notes(page)
     expect(page.locator("#backlinks a", has_text="Source Note")).to_be_visible(timeout=8000)
     # clicking the backlink navigates
     page.click("#backlinks a >> text=Source Note")
@@ -616,6 +623,7 @@ def test_unlinked_mentions_show_and_link(page, server):
     expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
     # open the target — Widget Report shows as an unlinked mention
     page.click(".note-row .t >> text=Widget Factory")
+    open_related_notes(page)
     expect(page.locator("#unlinked")).to_contain_text("Widget Report", timeout=8000)
     # one-click link → becomes a backlink, leaves the unlinked list
     page.locator("#unlinked .link-btn").first.click()
@@ -1212,6 +1220,7 @@ def test_outgoing_panel_survives_autosave(page, server):
     expect(page.locator("#title")).to_have_value("Stay Source", timeout=8000)
     page.fill("#content", "links to [[Stay Target]]")
     expect(page.locator("#save-state")).to_have_text("saved", timeout=6000)
+    open_related_notes(page)
     expect(page.locator(".outgoing", has_text="Stay Target")).to_be_visible(timeout=6000)
     # edit again — the panel must survive the SECOND save too
     page.fill("#content", "links to [[Stay Target]] more words")
@@ -1279,15 +1288,24 @@ def test_related_notes_leave_room_to_write_and_can_collapse(browser, server):
     pg = ctx.new_page()
     try:
         pg.request.post(server + "/api/notes", data={"path": "related-room.md", "body": "# Related room\n"})
+        pg.request.post(server + "/api/notes", data={"path": "related-other.md", "body": "# Related other\n\nRelated room is mentioned here.\n"})
         pg.goto(server)
         pg.wait_for_selector("body[data-ready]", timeout=10000)
         pg.locator(".note-row[data-path=\"related-room.md\"]").click()  # the phone lands on the list; open a note first
+        bar = pg.locator("#note-connections")
+        expect(bar.locator("summary")).to_contain_text("mention", timeout=8000)
+        assert bar.get_attribute("open") is None  # collapsed by default: the note keeps the screen
+        assert pg.locator(".connections-body").is_hidden()
         pg.locator("#unlinked").evaluate("e=>e.innerHTML='<p>Related context</p>'.repeat(50)")
         before = pg.locator("#ed-body").bounding_box()["height"]
         assert before >= 400
-        assert pg.locator(".connections-body").bounding_box()["height"] <= 160
-        pg.locator("#note-connections summary").click()
-        assert pg.locator("#ed-body").bounding_box()["height"] > before
+        assert bar.bounding_box()["height"] < 44
+        bar.locator("summary").click()
+        expect(pg.locator(".connections-body")).to_be_visible()
+        assert pg.locator(".connections-body").bounding_box()["height"] <= 0.3 * pg.viewport_size["height"]
+        opened = pg.locator("#ed-body").bounding_box()["height"]
+        bar.locator("summary").click()
+        assert pg.locator("#ed-body").bounding_box()["height"] > opened
         assert pg.evaluate("document.documentElement.scrollWidth <= innerWidth")
     finally:
         ctx.close()

@@ -54,7 +54,8 @@
   .react-app #ed-head .icon { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
   .react-app #menu-open { font-size: 30px; line-height: 1; padding-bottom: 4px; }
   .react-app #title { min-height: 44px; font-size: 18px !important; }
-  .react-app #note-connections > summary { min-height: 48px; display: flex; align-items: center; }
+  .react-app #note-connections > summary { min-height: 42px; padding: 0 16px; }
+  .react-app .connections-body { max-height: calc(30vh - 30px); padding: 4px 16px 12px; grid-template-columns: minmax(0, 1fr); }
   .react-app .workspace-empty .btn { min-height: 46px; }
   #ed-toolbar { display: none; }
   body.editing #ed-toolbar { display: flex; position: fixed; left: 0; right: 0; bottom: var(--kb, 0px); z-index: 28; margin: 0; padding: 6px 8px calc(6px + env(safe-area-inset-bottom)) !important;

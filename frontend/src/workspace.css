@@ -112,8 +112,20 @@
 .react-app .md ul, .react-app .md ol { margin: .45em 0; }
 .react-app #live-editor .cm-content { padding: 32px 0; }
 .react-app #live-editor .cm-scroller { padding: 0 24px 0 0; }
-.react-app #note-connections { background: var(--paper); border-top: 1px solid var(--line); }
-.react-app #note-connections > summary { padding: 12px 24px; font-size: 11px; color: var(--ink-soft); }
+/* Related notes is a slim bar at the foot of the note. Expanding it is capped at 40vh, scrolls inside itself, and
+   keeps the text column centred on the note body. */
+.react-app #note-connections { flex: none; background: var(--paper); border-top: 1px solid var(--line); font-size: 12px; }
+.react-app #note-connections > summary { list-style: none; display: flex; align-items: center; gap: 6px; min-height: 32px; box-sizing: border-box; padding: 0 var(--editor-pad); font-size: 12px; color: var(--ink-soft); cursor: pointer; user-select: none; }
+.react-app #note-connections > summary::-webkit-details-marker { display: none; }
+.react-app #note-connections > summary:hover { color: var(--ink); }
+.react-app #note-connections > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.react-app .rel-caret { display: inline-block; width: 8px; font-size: 10px; transition: transform .15s; }
+.react-app #note-connections[open] > summary .rel-caret { transform: rotate(90deg); }
+.react-app .connections-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 4px 28px; align-items: start; box-sizing: border-box;
+  max-width: var(--readable-width); margin: 0 auto; padding: 4px 24px 14px; max-height: calc(40vh - 32px); overflow-y: auto; overscroll-behavior: contain; }
+.react-app .connections-body > p { grid-column: 1 / -1; margin: 4px 0; }
+.react-app .connections-body h4 { margin: 8px 0 4px; font-size: 11px; font-weight: 650; color: var(--ink-soft); }
+.react-app .connections-body #backlinks > div, .react-app .connections-body .outgoing > div { min-width: 0; overflow-wrap: anywhere; padding: 1px 0; }
 .workspace-empty { display: grid; place-items: center; padding: 32px; text-align: center; }
 .workspace-empty > div { max-width: 420px; margin-top: -6vh; }
 .empty-mark { font-size: 48px; color: var(--accent); }

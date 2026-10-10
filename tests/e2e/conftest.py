@@ -158,6 +158,15 @@ def reload_ready(page, timeout=10000):
     page.wait_for_selector("body[data-ready]", timeout=timeout)
 
 
+def open_related_notes(page):
+    """Expand the Related notes bar, which starts collapsed. Waits for its counts
+    (the bar is only rendered once a note has connections) and does nothing if it is open."""
+    summary = page.locator("#note-connections > summary")
+    summary.wait_for(state="visible", timeout=8000)
+    if page.locator("#note-connections").get_attribute("open") is None:
+        summary.click()
+
+
 def answer_panel(page, value=None):
     panel = page.locator(".form-panel").last
     panel.wait_for(state="visible")

@@ -2,7 +2,7 @@
 (extract/merge), folder tree, outgoing links, slides, canvas."""
 import re
 
-from conftest import answer_panel, reload_ready
+from conftest import answer_panel, open_related_notes, reload_ready
 from playwright.sync_api import expect
 
 
@@ -112,6 +112,7 @@ def test_outgoing_links_panel(page, server):
     expect(page.locator("#save-state")).to_have_text("saved", timeout=5000)
     page.goto(server + "/#out-source.md")
     reload_ready(page)
+    open_related_notes(page)
     out = page.locator(".outgoing")
     expect(out).to_be_visible(timeout=8000)
     expect(out.locator("a.wikilink", has_text="Out Target")).to_be_visible()
