@@ -248,9 +248,44 @@ func (s *Server) callTool(rc callCtx, req request, ok func(any) *response) *resp
 		})
 	}
 	body, _ := json.MarshalIndent(result, "", "  ")
-	return ok(map[string]any{
-		"content": []map[string]string{{"type": "text", "text": string(body)}},
-	})
+	content := []map[string]string{{"type": "text", "text": string(body)}}
+	// The JSON stays the first block, which is what every existing reader
+	// parses. A compact list follows it so a model can read each fact's basis
+	// at a glance, without parsing the JSON to find the tag.
+	if params.Name == "recall" {
+		if text := recallLines(result); text != "" {
+			content = append(content, map[string]string{"type": "text", "text": text})
+		}
+	}
+	return ok(map[string]any{"content": content})
+}
+
+// recallLines renders recalled facts one per line, led by their basis tag:
+//
+//   - [stated] the user prefers tabs (3e99c0ab12f4)
+//
+// It returns "" for anything that is not a list of facts, so a recall that
+// failed or came back empty adds nothing.
+func recallLines(result any) string {
+	items, ok := result.([]any)
+	if !ok {
+		return ""
+	}
+	var b strings.Builder
+	for _, item := range items {
+		m, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		basis, _ := m["basis"].(string)
+		if basis == "" {
+			basis = "unknown"
+		}
+		text, _ := m["text"].(string)
+		id, _ := m["id"].(string)
+		fmt.Fprintf(&b, "- [%s] %s (%s)\n", basis, strings.Join(strings.Fields(text), " "), id)
+	}
+	return strings.TrimRight(b.String(), "\n")
 }
 
 // ---------------------------------------------------------------- HTTP bridge
@@ -558,6 +593,19 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 				body[k] = v
 			}
 		}
+		// evidence is what the agent read the fact from; the server decides
+		// whether it makes the fact observed, so only the list is passed through.
+		if raw, ok := args["evidence"].([]any); ok {
+			var ev []string
+			for _, item := range raw {
+				if t, ok := item.(string); ok {
+					ev = append(ev, t)
+				}
+			}
+			if len(ev) > 0 {
+				body["evidence"] = ev
+			}
+		}
 		if raw, ok := args["cues"].([]any); ok {
 			var cs []string
 			for _, c := range raw {
@@ -587,7 +635,7 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 		q.Set("limit", fmt.Sprint(num(args, "limit", 10)))
 		// as_of and the valid_* window are passed through verbatim: the server
 		// parses them and refuses a malformed one, so the client never guesses.
-		for _, k := range []string{"agent", "session", "category", "as_of", "valid_at", "valid_since", "valid_until"} {
+		for _, k := range []string{"agent", "session", "category", "as_of", "valid_at", "valid_since", "valid_until", "mode", "basis"} {
 			if v := str(args, k); v != "" {
 				q.Set(k, v)
 			}
@@ -647,6 +695,9 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 		}
 		if boolean(args, "synthesize") {
 			q.Set("synthesize", "true")
+		}
+		if boolean(args, "exclude_personal") {
+			q.Set("exclude_personal", "true")
 		}
 		return s.api("GET", "/api/memory/profile?"+q.Encode(), nil)
 	case "forget":

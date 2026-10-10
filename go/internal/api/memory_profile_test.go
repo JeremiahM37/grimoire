@@ -131,7 +131,7 @@ func TestProfileLeavesOutSupersededDisputedExpiredAndPulledFacts(t *testing.T) {
 	if standing["old"] {
 		t.Errorf("a superseded fact was listed as standing: %v", ids(doc))
 	}
-	if !strings.Contains(doc.Markdown, "- Changed: the team uses postgres (was: the team uses mysql) [mem:new] [mem:old]") {
+	if !strings.Contains(doc.Markdown, "- [inferred] Changed: the team uses postgres (was: the team uses mysql) [mem:new] [mem:old]") {
 		t.Errorf("the recent change is missing or uncited:\n%s", doc.Markdown)
 	}
 	if !strings.Contains(doc.Markdown, "## "+secRecent) {

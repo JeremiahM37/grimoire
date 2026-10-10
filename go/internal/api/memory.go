@@ -120,6 +120,12 @@ type memoryIn struct {
 	// the caller knows what it was reading.
 	Origin string `json:"origin"`
 
+	// Evidence is what the agent read the fact FROM: note paths, urls or entry
+	// ids. An agent-authored fact that carries it is `observed`; one that does
+	// not is `inferred`. It never changes the fact's id or how it reconciles,
+	// so it cannot be used to route around the authority lattice.
+	Evidence []string `json:"evidence"`
+
 	// Context is what the agent was doing when it wrote this: the request it
 	// was working on. When the fact turns out to be on file already, that
 	// moment is one where the memory should have reached the agent and did
@@ -264,6 +270,12 @@ func (s *Server) rememberOne(w http.ResponseWriter, r *http.Request, m memoryIn)
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	evidence, err := memory.NormalizeEvidence(m.Evidence)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	m.Evidence = evidence
 	if m.Importance != 0 && (m.Importance < memory.MinImportance || m.Importance > memory.MaxImportance) {
 		writeErr(w, http.StatusBadRequest, "importance must be 1 to 5, or omitted")
 		return
@@ -574,6 +586,7 @@ func (s *Server) appendEntryChallenging(w http.ResponseWriter, r *http.Request, 
 		Category: strings.TrimSpace(m.Category), Expires: expires,
 		Immutable: m.Immutable, SupersededBy: supersededBy,
 		Origin: strings.TrimSpace(m.Origin), Human: m.Human,
+		Evidence:   strings.Join(m.Evidence, memory.EvidenceSep),
 		Challenges: challenges,
 		ValidFrom:  m.ValidFrom, ValidTo: m.ValidTo,
 		Fresh:      memory.NormFresh(m.Fresh),
@@ -777,6 +790,13 @@ type entryOut struct {
 	Origin string `json:"origin,omitempty"`
 	Trust  string `json:"trust"`
 
+	// Basis is how the fact came to be on file: stated, observed, inferred,
+	// imported or pulled. Derived at read time (memory.Entry.Basis). Always
+	// present, like authority, because a missing basis reads as unknown.
+	Basis string `json:"basis"`
+	// Evidence is what an agent said it read the fact from, when it said.
+	Evidence []string `json:"evidence,omitempty"`
+
 	// Who asserted it: human, agent or pulled. Same argument as Trust — an
 	// agent about to overwrite a fact needs to know it is a person's
 	// correction, and a person reading two facts that disagree needs to know
@@ -818,6 +838,7 @@ func entriesOut(hits []index.MemoryHit, explain bool) []entryOut {
 			Unhelpful: h.Unhelpful, Score: h.Score,
 			Origin: h.Origin, Trust: trust.FromOrigin(h.Origin).String(),
 			Authority: h.Authority().String(),
+			Basis:     string(h.Basis()), Evidence: memory.SplitEvidence(h.Evidence),
 		}
 		if explain {
 			e.Scores = &scoreBreakdown{Semantic: h.Semantic, Keyword: h.Keyword,
@@ -860,7 +881,14 @@ func (s *Server) recall(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	mode, bases, err := recallFilters(r)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
 	mq := index.MemoryQuery{
+		Mode:              mode,
+		Basis:             bases,
 		Filter:            filterFor(r, true),
 		Query:             q,
 		ValidAt:           validAt,
@@ -893,6 +921,20 @@ func (s *Server) recall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, s.markProcedures(s.assessHits(hits, entriesOut(hits, boolParam(r, "explain")))))
+}
+
+// recallFilters reads mode and basis. Both are refused when malformed, for the
+// reason as_of is: a narrowed answer that silently narrows nothing looks right.
+func recallFilters(r *http.Request) (memory.RecallMode, []memory.Basis, error) {
+	mode, err := memory.ParseRecallMode(r.URL.Query().Get("mode"))
+	if err != nil {
+		return "", nil, err
+	}
+	bases, err := memory.ParseBases(r.URL.Query().Get("basis"))
+	if err != nil {
+		return "", nil, err
+	}
+	return mode, bases, nil
 }
 
 // validityParams reads valid_at, valid_since and valid_until. Like as_of, a
@@ -1272,7 +1314,8 @@ func entryOf(e memory.Entry, note string) entryOut {
 	return entryOut{ID: e.ID, Text: e.Text, Path: note, Agent: e.Agent, Task: e.Task,
 		Session: e.Session, Category: e.Category, Stamp: e.Stamp, Expires: e.Expires,
 		Immutable: e.Immutable, SupersededBy: e.SupersededBy,
-		ValidFrom: e.ValidFrom, ValidTo: e.ValidTo}
+		ValidFrom: e.ValidFrom, ValidTo: e.ValidTo,
+		Basis: string(e.Basis()), Evidence: memory.SplitEvidence(e.Evidence)}
 }
 
 // forgetEntry retracts one fact. By default it is struck through and kept, the

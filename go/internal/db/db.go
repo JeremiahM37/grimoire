@@ -515,6 +515,10 @@ var addedColumns = []struct{ table, column, decl string }{
 	// carries it — see index.RecordUse.
 	{"memory_entries", "uses", "INTEGER NOT NULL DEFAULT 0"},
 	{"memory_entries", "last_used", "TEXT NOT NULL DEFAULT ''"},
+	// What an agent said it read the fact from (memory.Entry.Evidence), comma
+	// separated. It is what makes an agent's write `observed` rather than
+	// `inferred` at read time, so the index has to carry it.
+	{"memory_entries", "evidence", "TEXT NOT NULL DEFAULT ''"},
 	// Which agent read, as distinct from which account. On a single-user
 	// deployment there is no account, so without this the trail can say a
 	// restricted note was read and not by what — which is most of the question.

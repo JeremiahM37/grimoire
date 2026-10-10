@@ -434,6 +434,10 @@ func Tools() []tool {
 				"target_path":   strProp("note path of the fact being corrected"),
 				"expected_text": strProp("exact previously recalled text; stale corrections are rejected; supply one complete replacement fact as text"),
 				"topic":         strProp("optional grouping, e.g. 'deploy'"),
+				"evidence": map[string]any{"type": "array", "items": map[string]any{"type": "string"},
+					"description": "what you read this FROM: note paths, urls or entry ids. " +
+						"With evidence an agent's fact is recorded as observed; without it, as inferred. " +
+						"Give it whenever a tool result, document or transcript backs the fact"},
 				"origin": strProp("REQUIRED when you learned this from a document rather " +
 					"than from the user or your own work: the source you read it in " +
 					"(e.g. 'connector:slack:C123', 'web:example.com', or the note path). " +
@@ -482,6 +486,11 @@ func Tools() []tool {
 				"agent":    strProp("optional: only what this agent recorded"),
 				"session":  strProp("optional: only what was learned in this run"),
 				"category": strProp("optional: only this bucket"),
+				"mode": strProp("factual: leave out stored preferences, personas and style " +
+					"(the personal categories), so a factual question is answered from facts; " +
+					"personal: only those; all (default)"),
+				"basis": strProp("optional comma list of stated, observed, inferred, imported, pulled: " +
+					"only facts that came to be on file that way. stated = a person said it"),
 				"include_superseded": map[string]any{"type": "boolean",
 					"description": "also return beliefs that were later replaced, and what replaced them"},
 				"include_challenges": map[string]any{"type": "boolean",
@@ -542,6 +551,9 @@ func Tools() []tool {
 				"subject": strProp("`user` (default) or `agent`"),
 				"agent":   strProp("for subject=agent: whose profile (defaults to you)"),
 				"budget":  intProp("token budget for the markdown (default 400, 50..4000)"),
+				"exclude_personal": map[string]any{"type": "boolean",
+					"description": "leave out stored preferences, personas and style, so the profile " +
+						"describes facts rather than how the user wants to be addressed"},
 				"synthesize": map[string]any{"type": "boolean",
 					"description": "rewrite the selection as prose; falls back to the deterministic text if the citations do not check out"},
 			}),
