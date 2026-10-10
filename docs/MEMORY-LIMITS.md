@@ -23,6 +23,10 @@ it fixes is advertising.
 | 11 | Skills learned from failures can compound the failure | Mined skill candidates are drafts in a review queue; nothing enters memory until a person accepts one. There is no automated test gate on promotion | design; review-gated, not test-gated |
 | 12 | Portability: memory trapped in one product | Open JSONL/markdown export; importers for three other systems' formats | **measured here** (round-trip tests) |
 | 13 | Private facts reach default reads, exports and explanations | A `vis=private`/`sensitive` tag: hidden in SQL from every default read, never in export or the stream, sensitive text redacted from explain and receipts | **measured here** (`TestLeakprobeHiddenMemoryStaysHidden`). A retrieval filter, not an owner boundary or encryption; the note file, raw note reads and full-text search still carry the text (`MEMORY-PRIVACY.md`) |
+| 14 | Context caches miss because recalled memory reorders every turn | `GET /api/memory/prefix`: a deterministic, append-mostly block with a hash chain, so a caller can send only the delta or learn the prefix was rewritten (`PROMPT-CACHE.md`) | **measured here** (byte-stability tests); the cache-hit saving depends on the provider and is not measured here |
+| 15 | Contradictions are flagged but nobody can settle them | `GET /api/memory/disputes` and a resolve call (keep, accept challenger, merge) that writes a human-authority entry; agents are refused (`DISPUTES.md`) | **measured here** (tests); the write-path leak probe proves refusal by absence only |
+| 16 | Agents cannot ask where code lives or who calls it | A symbol/call graph for Go, Python and TS/JS, admin-only, path-allowlisted (`CODE-GRAPH.md`) | **measured here** (fixtures). Call edges are Go-only and name-based, with no type resolution, so callers is approximate |
+| 17 | Memory is text-only | Pictures stored content-addressed and retrieved by caption (`IMAGE-MEMORY.md`) | **measured here** (tests). Caption-only: nothing embeds pixels, and nothing captions automatically |
 
 ## Still open
 
@@ -50,3 +54,10 @@ it fixes is advertising.
   does not encrypt the file or stop raw note reads and full-text search. Single-user
   deployments are unaffected; multi-user ones should read
   `MEMORY-PRIVACY.md` and `SECURITY-LEAKPROBE.md` before relying on isolation.
+- **BEAM is a harness, not a result.** `benchmarks/beam` loads the real
+  dataset and runs offline against a fixture, but no model-judged run has been
+  recorded, so no BEAM number is claimed.
+- **Images are found by caption only.** There is no pixel embedding and no
+  automatic captioning, so an uncaptioned picture is stored but not recalled.
+- **Code call edges are approximate.** Python and TS/JS yield declarations and
+  imports but no callers.
