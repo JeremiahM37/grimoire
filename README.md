@@ -34,7 +34,7 @@ can use but never see. One self-hosted Go binary, mounted over MCP.
 
 </div>
 
-- **Jev-checked memory, now running locally on Laya.** Laya is a 1 GB model fine-tuned from Jev's judgements. It flags facts that have probably gone stale before an agent relies on them, and on held-out facts it ties its teacher (AUC 0.94 vs 0.90). [Open weights](https://huggingface.co/allnamestaken177/grimoire-volatility-laya).
+- **Jev-checked memory, now running locally on Laya.** We fine-tuned Laya (421M parameters, runs on CPU) on Jev's judgements. It flags facts that have probably gone stale before an agent relies on them, and on held-out real facts it ties its teacher (AUC 0.92 vs 0.90). [Open weights](https://huggingface.co/allnamestaken177/grimoire-volatility-laya).
 - **Memory that fires when it matters.** The right memory is injected with each prompt and again right before a risky command. Rule violations fell from 26 to 11 in 101 cases, and from 10 to 3 in long sessions. When you repeat yourself, Jev spots it and the memory learns that situation.
 - **Your notes always win.** Agents propose; they never overwrite what you wrote.
 - **It dreams.** Overnight it merges duplicates, fixes broken links, re-checks procedures and sweeps for leaked secrets.
