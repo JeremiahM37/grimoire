@@ -76,7 +76,8 @@ func gateBand(v string) (float64, float64) {
 // then keeps its score-rule fate. Gate latency is recorded.
 func (s *Server) applyGate(ctx context.Context, query string, items []contextItem, minRel float64) []contextItem {
 	client := s.gateClient()
-	if client == nil {
+	local := s.gateLocalModel()
+	if client == nil && local == nil {
 		return items
 	}
 	lo, hi := gateBand(s.setting("context_gate_band"))
@@ -100,6 +101,10 @@ func (s *Server) applyGate(ctx context.Context, query string, items []contextIte
 	started := time.Now()
 	gctx, cancel := context.WithTimeout(ctx, gateBudget)
 	defer cancel()
+	if client == nil {
+		s.applyLocalGate(gctx, query, items, idx, started)
+		return items
+	}
 	verdict := make([]float64, len(idx))
 	for i := range verdict {
 		verdict[i] = -1

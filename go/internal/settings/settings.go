@@ -129,6 +129,12 @@ var Fields = map[string]Field{
 	// probabilities run low; 0.5 would drop 44% of the right memories).
 	"context_gate_max":       {"GRIMOIRE_CONTEXT_GATE_MAX", "3"},
 	"context_gate_threshold": {"GRIMOIRE_CONTEXT_GATE_THRESHOLD", "0.16"},
+	// Local gate: a fine-tuned cross-encoder run in-process (used when
+	// context_gate_url is empty). Value is a model directory or a name under
+	// <vault>/.grimoire/models; empty is off. The threshold is on the raw
+	// logit (docs/MEMORY_ADHERENCE.md).
+	"context_gate_local":           {"GRIMOIRE_CONTEXT_GATE_LOCAL", ""},
+	"context_gate_local_threshold": {"GRIMOIRE_CONTEXT_GATE_LOCAL_THRESHOLD", "-0.3"},
 	// Optional: an agent's per-project directory (e.g. ~/.claude/projects) and
 	// the memory directory every project is meant to share. When both are
 	// set, a dream reports projects whose memory/ is a separate real
