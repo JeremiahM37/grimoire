@@ -309,6 +309,119 @@ export class Grimoire {
   }
 }
 
+// ---- pre-request context ------------------------------------------------
+//
+// The same read path and rules as the Claude Code / Codex hook
+// (clients/hooks/grimoire_context.py) and grimoire_client.context in Python:
+// GET /api/memory/context, lexical, no model calls. The hook is a standalone
+// script, so its rules are mirrored here rather than imported.
+
+const ACKNOWLEDGEMENT = /^(?:thanks?|thank you|ok(?:ay)?|yes|no|continue|proceed|hi|hello)[.!\s]*$/i
+const FACT_KEY = /^[a-f0-9]{32}$/
+const encoder = new TextEncoder()
+
+function cleanPrompt(prompt) {
+  if (typeof prompt !== 'string' || encoder.encode(prompt).length > 8000) return ''
+  const trimmed = prompt.trim()
+  return !trimmed || ACKNOWLEDGEMENT.test(trimmed) ? '' : trimmed
+}
+
+/** `{context, keys}`; `context` is null when no lookup succeeded. */
+async function lookup(prompt, options = {}) {
+  const query = cleanPrompt(prompt)
+  if (!query) return { context: null, keys: [] }
+  const client = options.client ?? new Grimoire(
+    globalThis.process?.env?.GRIMOIRE_URL ?? 'http://localhost:9111',
+    { token: globalThis.process?.env?.GRIMOIRE_AUTH_TOKEN, agent: 'context' })
+  const paths = [...(options.paths ?? [])]
+  const mode = options.mode ?? (paths.length ? 'scoped' : 'all')
+  // Scoped needs paths, all takes none; an empty scope never widens.
+  if (!['all', 'scoped'].includes(mode) || paths.length > 32
+    || paths.some((p) => typeof p !== 'string' || p.length > 512)
+    || (mode === 'scoped') !== (paths.length > 0)) {
+    return { context: null, keys: [] }
+  }
+  const budget = Math.max(128, Math.min(8000, Math.trunc(options.budget ?? 2400)))
+  const params = new URLSearchParams({
+    q: query,
+    exclude: [...(options.exclude ?? [])].slice(-256).join(','),
+    max_bytes: String(budget),
+    limit: '5',
+    scope: mode,
+  })
+  for (const path of paths) params.append('path', path)
+  const headers = { Accept: 'application/json' }
+  if (client.token) headers.Authorization = `Bearer ${client.token}`
+  try {
+    const response = await client._fetch(`${client.url}/api/memory/context?${params}`, {
+      method: 'GET', headers, redirect: 'error', signal: AbortSignal.timeout(1500),
+    })
+    if (!response.ok) return { context: null, keys: [] }
+    const text = await response.text()
+    if (text.length > 64000) return { context: null, keys: [] }
+    const result = JSON.parse(text)
+    const { context, keys } = result ?? {}
+    if (typeof context !== 'string' || encoder.encode(context).length > budget
+      || !Array.isArray(keys) || keys.length > 10
+      || keys.some((k) => typeof k !== 'string' || !FACT_KEY.test(k))) {
+      return { context: null, keys: [] }
+    }
+    return { context, keys }
+  } catch {
+    return { context: null, keys: [] }
+  }
+}
+
+/**
+ * Bounded reference context for a prompt, or `''` when nothing is relevant,
+ * the prompt is trivial ("thanks"), or the server is unavailable. Never throws.
+ * Stateless; use `ContextSession` to deduplicate across a conversation.
+ *
+ * @param {string} prompt
+ * @param {{client?: Grimoire, budget?: number, mode?: 'all'|'scoped',
+ *   paths?: string[], exclude?: string[]}} [options]
+ */
+export async function contextFor(prompt, options = {}) {
+  return (await lookup(prompt, options)).context ?? ''
+}
+
+/**
+ * Per-conversation deduplication with the hook's rules: no request for
+ * acknowledgements, an identical query is skipped for 30 seconds, and a fact
+ * is not repeated for 30 minutes. In memory only; `reset()` after a compaction.
+ */
+export class ContextSession {
+  constructor(options = {}) {
+    this.options = options
+    this.now = options.now ?? Date.now
+    this.reset()
+  }
+
+  reset() {
+    this.seen = new Map()
+    this.query = ''
+    this.checked = 0
+  }
+
+  async contextFor(prompt) {
+    const query = cleanPrompt(prompt)
+    if (!query) return ''
+    const now = this.now()
+    if (this.query === query && now - this.checked < 30_000) return ''
+    for (const [key, stamp] of this.seen) {
+      if (now - stamp >= 1_800_000) this.seen.delete(key)
+    }
+    const { context, keys } = await lookup(query, { ...this.options, exclude: [...this.seen.keys()] })
+    // A failed lookup is not remembered, so the next turn tries again.
+    if (context === null) return ''
+    this.query = query
+    this.checked = now
+    for (const key of keys) this.seen.set(key, now)
+    while (this.seen.size > 256) this.seen.delete(this.seen.keys().next().value)
+    return context
+  }
+}
+
 /** Percent-encode a note path without destroying its separators. */
 function encodePath(path) {
   return path.split('/').map(encodeURIComponent).join('/')

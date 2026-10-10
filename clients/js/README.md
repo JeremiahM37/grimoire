@@ -133,6 +133,27 @@ competing with the old one.
 dependencies. Leave it out and `inputSchema` stays a plain JSON Schema object,
 which most other frameworks accept as-is.
 
+## Context before a request
+
+For a host with no hook, `contextFor` returns the same bounded, model-free
+reference context the Claude Code / Codex hook injects — `''` for
+acknowledgements, no match, or an unreachable server; it never throws:
+
+```js
+import Grimoire, { contextFor, ContextSession } from '@jeremiahm37/grimoire'
+
+const client = new Grimoire('http://localhost:9111')
+const reference = await contextFor('how does kestrel deploy?', {
+  client, paths: ['memory/kestrel.md'],      // scoped; omit for the whole vault
+})
+
+const session = new ContextSession({ client }) // skips repeats, dedups for 30 minutes
+const next = await session.contextFor(userMessage)
+```
+
+See [docs/INTEGRATIONS.md](../../docs/INTEGRATIONS.md) for what this does and
+does not guarantee.
+
 ## Knowing when the notes don't say
 
 `ask` returns a `supported` verdict alongside the answer:

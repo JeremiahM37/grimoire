@@ -590,6 +590,8 @@ one that cost a feature its default. Full methods and per-question data in
 - **Architecture** — [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) ·
   **design decisions** — [DESIGN.md](DESIGN.md) ·
   **plugins** — [docs/PLUGINS.md](docs/PLUGINS.md)
+- **Integrations** — which runtimes are supported, what is automatic versus
+  agent-initiated, and what is not measured: [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md).
 - **Diagnosing** — `grimoire doctor` compares the vault, the index and what an
   agent can actually reach, and names the fix for whatever disagrees. Exits
   non-zero, so it works from a healthcheck too.

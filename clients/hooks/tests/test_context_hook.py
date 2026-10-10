@@ -205,3 +205,20 @@ def test_action_stage_sends_the_session_hash_for_outcome_logging(environment):
 
     hook.run(tool_event(session="s1"), environment, fetch, now=100)
     assert re.fullmatch(r"[a-f0-9]{32}", seen["session"])
+
+
+@pytest.mark.parametrize("event_name", ["UserPromptSubmit"])
+def test_output_matches_codex_and_claude_hook_protocol(environment, event_name):
+    """Documented in docs/AUTOMATIC_MEMORY.md: stdin fields in, additionalContext out."""
+    stdin = {"hook_event_name": event_name, "session_id": "s", "cwd": "/p",
+             "transcript_path": None, "model": "m", "permission_mode": "default",
+             "turn_id": "t", "prompt": "How does kestrel deployment work?"}
+    out = hook.run(stdin, environment, lambda *a: {"context": "reference", "keys": [KEY]})
+    assert out == {"hookSpecificOutput": {"hookEventName": event_name,
+                                          "additionalContext": "reference"}}
+
+
+@pytest.mark.parametrize("source", ["startup", "resume", "clear", "compact"])
+def test_every_codex_session_start_source_is_accepted(environment, source):
+    start = {"hook_event_name": "SessionStart", "session_id": "s", "cwd": "/p", "source": source}
+    assert hook.run(start, environment, lambda *a: pytest.fail("no fetch at start")) is None

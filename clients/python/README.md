@@ -184,6 +184,51 @@ are removed before the request reaches the model. A failed recall never breaks
 the call; background retain errors are kept in `llm.pending_errors()`, and
 `llm.flush()` waits for them. Streams are retained once exhausted.
 
+## Context before a request
+
+Hosts with no hook can fetch the same bounded, model-free reference context the
+Claude Code / Codex hook injects. It returns `""` for acknowledgements, when
+nothing is relevant, or when the server is unreachable, and never raises:
+
+```python
+from grimoire_client import Grimoire
+from grimoire_client.context import ContextSession, context_for
+
+client = Grimoire("http://localhost:9111")
+reference = context_for("how does kestrel deploy?", client=client,
+                        paths=["memory/kestrel.md"])   # scoped; omit for the whole vault
+
+session = ContextSession(client)        # skips repeats, dedups facts for 30 minutes
+reference = session.context_for(user_message)
+```
+
+`budget` is a UTF-8 byte ceiling (default 2400). The model may still ignore it;
+see [docs/INTEGRATIONS.md](../../docs/INTEGRATIONS.md).
+
+## OpenAI Agents SDK
+
+```bash
+pip install 'grimoire-client[openai-agents]'
+```
+
+```python
+from agents import Agent
+from grimoire_client import Grimoire
+from grimoire_client.openai_agents import grimoire_instructions, grimoire_tools
+
+client = Grimoire("http://localhost:9111", agent="support-bot")
+agent = Agent(
+    name="support",
+    instructions=grimoire_instructions("You answer support questions.", client=client),
+    tools=grimoire_tools(client),            # recall, remember, search_notes
+)
+```
+
+`grimoire_instructions` appends context for the user's latest message on each
+model call (it reads the run's `turn_input`; pass `get_input=` on an SDK that
+does not populate it). The tools return errors as text, so a server outage
+costs a turn, not the run. Both are independent; use either.
+
 ## Knowing when the notes don't say
 
 `ask` returns a `supported` verdict alongside the answer:
