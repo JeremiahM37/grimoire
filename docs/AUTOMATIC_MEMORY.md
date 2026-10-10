@@ -99,14 +99,11 @@ codex-cli 0.161.0. This is a documentation check, not a recorded live Codex run.
 | | Codex sends / accepts | This hook |
 |---|---|---|
 | stdin | one JSON object with `session_id`, `transcript_path`, `cwd`, `hook_event_name`, `model`; `SessionStart` adds `permission_mode`, `source` (`startup`/`resume`/`clear`/`compact`); `UserPromptSubmit` adds `permission_mode`, `turn_id`, `prompt` | reads `hook_event_name`, `session_id`, `cwd`, `prompt`, `source`; other fields ignored |
-| stdout | `{"hookSpecificOutput": {"hookEventName": ..., "additionalContext": ...}}` (plain text on stdout is also added as context) | emits exactly that JSON, with `hookEventName` taken from the event |
+| stdout | `{"hookSpecificOutput": {"hookEventName": ..., "additionalContext": ...}}` (plain text on stdout is also added as context) | emits exactly that JSON (`UserPromptSubmit` for prompts, `PreToolUse` for action-time context) |
 | empty result | exit 0 with no output is success | prints nothing, exits 0 |
 | file shape | `hooks` keyed by event, matcher groups containing `hooks: [{type, command, timeout}]`, timeout in seconds | the installer writes that shape |
 
-Differences found: none that break the exchange. The hook previously always
-reported `hookEventName: "UserPromptSubmit"`; it only ever emits for that event,
-so behaviour was unchanged, but it now echoes the incoming event name so the
-two cannot drift. Codex has `additionalContextLimit` as a handler option and
+Differences found: none that break the exchange. The hook only injects for `UserPromptSubmit` and, where the host sends it, `PreToolUse`, and reports the matching `hookEventName`. Codex has `additionalContextLimit` as a handler option and
 `SessionStart` `matcher` values; the hook uses neither (it self-limits by
 byte budget and ignores `SessionStart` for injection). Not verified: that a
 live Codex session applies the injected context exactly as documented, and how
