@@ -58,6 +58,10 @@ type Estimate struct {
 // ErrNoEstimator is returned when no estimator is installed.
 var ErrNoEstimator = errors.New("no causal estimator installed")
 
+// ErrInsufficient wraps an estimator's refusal to put a number on too little
+// data; the trace shows it as "insufficient data", not as an error.
+var ErrInsufficient = errors.New("insufficient data")
+
 // Estimator turns decision records into an effect with an interval.
 // Implementations must not assume equal arm sizes and must use PWithhold.
 type Estimator interface {

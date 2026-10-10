@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/JeremiahM37/grimoire/go/internal/utilization/estimate"
 	"log"
 	"net"
 	"net/http"
@@ -123,13 +124,14 @@ func newEnv(fetchModel bool) (*env, error) {
 	syncer := gsync.New(ix, v, crdt)
 
 	srv := &api.Server{
-		Index:    ix,
-		Vault:    v,
-		Settings: store,
-		History:  history.New(grimoireDir),
-		Secrets:  vaultSecrets,
-		Broker:   secrets.NewBroker(vaultSecrets, database),
-		CRDT:     crdt,
+		Estimator: estimate.NewCausal(),
+		Index:     ix,
+		Vault:     v,
+		Settings:  store,
+		History:   history.New(grimoireDir),
+		Secrets:   vaultSecrets,
+		Broker:    secrets.NewBroker(vaultSecrets, database),
+		CRDT:      crdt,
 		// The index is the usage store: a model-call row is derived data about
 		// this vault and should vanish with a rebuild rather than become a
 		// second database to back up and migrate.

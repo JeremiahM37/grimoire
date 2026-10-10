@@ -3,7 +3,6 @@ package grounded
 import (
 	"context"
 	"errors"
-	"regexp"
 	"strings"
 	"time"
 
@@ -211,8 +210,6 @@ Step 3: check the draft against the records and fix it if any check fails:
 Write your brief working first. Then end with one final line of the form
 FINAL: <the answer>
 The answer is as short as the question allows: a few words, "yes"/"no", a date written like "7 May 2023", or the complete list of items. Give no justification or restatement of the question in the FINAL line, and nothing after it.`
-
-var finalRE = regexp.MustCompile(`(?is)FINAL\s*:\s*(.+)$`)
 
 // ErrEmpty is returned when the model gave no usable answer.
 var ErrEmpty = errors.New("empty answer")

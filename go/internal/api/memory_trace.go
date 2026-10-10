@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"log"
 	"math/rand/v2"
 	"net/http"
@@ -307,6 +308,8 @@ func (s *Server) causal(recs []utilization.Record) causalView {
 		switch {
 		case err == utilization.ErrNoEstimator:
 			v.Status = "estimator not installed"
+		case errors.Is(err, utilization.ErrInsufficient):
+			v.Status, v.Note = "insufficient data", err.Error()
 		case err != nil:
 			v.Status = "estimator error"
 			v.Note = err.Error()
