@@ -311,11 +311,11 @@ func TestNoteDedupesAndResolvesOutcomes(t *testing.T) {
 	st := openStore(t, Limits{})
 	t0 := time.Now().Add(-time.Hour)
 	for i := 0; i < 3; i++ {
-		if err := st.Note("s1", "push the branch", "prompt", 0.5, 5, []Fire{{"fact:a", 0.8}, {"fact:b", 0.6}}, t0.Add(time.Duration(i)*time.Minute)); err != nil {
+		if err := st.Note("s1", "push the branch", "prompt", 0.5, 5, 0, []Fire{{"fact:a", 0.8}, {"fact:b", 0.6}}, t0.Add(time.Duration(i)*time.Minute)); err != nil {
 			t.Fatal(err)
 		}
 	}
-	st.Note("s1", "quiet request", "prompt", 0.5, 5, nil, t0)
+	st.Note("s1", "quiet request", "prompt", 0.5, 5, 0, nil, t0)
 	stats, _ := st.Stats()
 	if stats.Live != 2 {
 		t.Fatalf("same text and stage is one situation: %+v", stats)
@@ -345,10 +345,10 @@ func TestNoteDedupesAndResolvesOutcomes(t *testing.T) {
 func TestRetentionAndSizeBounds(t *testing.T) {
 	st := openStore(t, Limits{MaxLive: 10, MaxSeed: 5, Retention: 24 * time.Hour})
 	now := time.Now()
-	st.Note("s", "ancient", "prompt", 0.5, 5, []Fire{{"fact:a", 1}}, now.Add(-48*time.Hour))
+	st.Note("s", "ancient", "prompt", 0.5, 5, 0, []Fire{{"fact:a", 1}}, now.Add(-48*time.Hour))
 	for i := 0; i < 30; i++ {
 		st.last = time.Time{} // let the prune run
-		st.Note("s", "request number "+time.Duration(i).String(), "prompt", 0.5, 5, nil, now.Add(time.Duration(i)*time.Second))
+		st.Note("s", "request number "+time.Duration(i).String(), "prompt", 0.5, 5, 0, nil, now.Add(time.Duration(i)*time.Second))
 	}
 	var seeds []Seed
 	for i := 0; i < 12; i++ {
@@ -401,8 +401,8 @@ func (f *fakeEmb) Signature() string { return "fake" }
 
 func TestSituationVectorsAreCached(t *testing.T) {
 	st := openStore(t, Limits{})
-	st.Note("s", "one", "prompt", 0.5, 5, nil, time.Now())
-	st.Note("s", "two", "prompt", 0.5, 5, nil, time.Now())
+	st.Note("s", "one", "prompt", 0.5, 5, 0, nil, time.Now())
+	st.Note("s", "two", "prompt", 0.5, 5, 0, nil, time.Now())
 	e := &fakeEmb{}
 	sits, _ := st.Situations(e, "")
 	if len(sits) != 2 || e.calls != 2 || len(sits[0].Vec) != 3 {
@@ -411,5 +411,105 @@ func TestSituationVectorsAreCached(t *testing.T) {
 	sits, _ = st.Situations(e, "")
 	if e.calls != 2 || len(sits[0].Vec) != 3 {
 		t.Fatalf("second load must come from the cache: %d calls", e.calls)
+	}
+}
+
+func TestSeedsFromBenchmark(t *testing.T) {
+	raw := []byte(`[
+	 {"mem_id":"am:feedback_x#1","kind":"pos_prompt","prompt":"push it"},
+	 {"mem_id":"cm:abc","kind":"pos_action","tool":"Bash","input":"git push"},
+	 {"mem_id":"gm:77","kind":"neg_prompt","prompt":"lunch"},
+	 {"mem_id":"gm:78","kind":"other","prompt":"skipped"}]`)
+	seeds, err := SeedsFromBenchmark(raw)
+	if err != nil || len(seeds) != 3 {
+		t.Fatalf("%v %v", seeds, err)
+	}
+	if seeds[0].Expect[0] != "note:Agent Memory/feedback_x.md" || seeds[1].Stage != "action" ||
+		seeds[1].Expect[0] != "note:Instructions/cm_abc.md" || seeds[1].MinRel != 0.7 || seeds[2].Avoid[0] != "fact:77" {
+		t.Fatalf("seeds: %+v", seeds)
+	}
+	if _, err := SeedsFromBenchmark([]byte(`[]`)); err == nil {
+		t.Fatal("an empty suite is an error")
+	}
+}
+
+func TestASituationsOwnCueDoesNotVouchForTheMemory(t *testing.T) {
+	d := 8
+	a := fact("a", "rule a", vec(d, 0))
+	text := "deploy the staging cluster after the freeze lifts on friday"
+	own := NewCue(cues.Cue{Target: "fact:a", Kind: cues.Request, Text: text}, vec(d, 4))
+	other := NewCue(cues.Cue{Target: "fact:a", Kind: cues.Request, Text: "ship staging once the freeze is over"}, vec(d, 4))
+	s := Situation{ID: "s", Text: text, Vec: vec(d, 4), Expect: map[string]float64{}}
+	if rp := NewReplayer(NewSnapshot([]*Item{a}, []CueRec{own}), []Situation{s}); len(rp.fire[0]) != 0 {
+		t.Fatalf("the situation's own cue must not make the memory fire: %v", rp.fire[0])
+	}
+	if rp := NewReplayer(NewSnapshot([]*Item{a}, []CueRec{own, other}), []Situation{s}); len(rp.fire[0]) != 1 {
+		t.Fatalf("a cue taught by another situation must still count: %v", rp.fire[0])
+	}
+}
+
+func TestNotesAreCandidatesOnlyThroughTheirStrongestChunks(t *testing.T) {
+	d := 64
+	var items []*Item
+	for i := 0; i < noteCandidates+10; i++ {
+		// Note i is closer to the query the smaller i is.
+		v := make([]float32, d)
+		v[0] = 1
+		v[1+i] = float32(i) * 0.05
+		items = append(items, NewItem("note:n"+time.Duration(i).String(), "note text "+time.Duration(i).String(),
+			[]string{"note text " + time.Duration(i).String()}, [][]float32{v}))
+	}
+	q := make([]float32, d)
+	q[0] = 1
+	p := Prepare(Situation{Text: "zzz", Vec: q, MinRel: 0.1, Limit: 100, Budget: 1 << 20})
+	sn := NewSnapshot(items, nil)
+	fired := sn.Fire(p, sn.Score(p, nil))
+	if len(fired) != noteCandidates {
+		t.Fatalf("only the %d strongest chunks are candidates, got %d", noteCandidates, len(fired))
+	}
+	// A cue rescues a note that text alone would have left out.
+	last := items[len(items)-1].Target
+	rescue := NewCue(cues.Cue{Target: last, Kind: cues.Request, Text: "something else entirely"}, q)
+	sn2 := NewSnapshot(items, []CueRec{rescue})
+	fired = sn2.Fire(p, sn2.Score(p, nil))
+	found := false
+	for _, f := range fired {
+		if f.Target == last {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("a cue match is a candidate whatever its text rank")
+	}
+}
+
+func TestByteBudgetSkipsALargeItemAndKeepsLookingDown(t *testing.T) {
+	d := 8
+	big := fact("big", strings.Repeat("alpha ", 400), vec(d, 0))
+	small := fact("small", "alpha short", vec(d, 0, 1))
+	sn := NewSnapshot([]*Item{big, small}, nil)
+	p := Prepare(Situation{Text: "q", Vec: vec(d, 0), Budget: 300})
+	fired := sn.Fire(p, sn.Score(p, nil))
+	if len(fired) != 1 || fired[0].Target != "fact:small" {
+		t.Fatalf("the big item does not fit and must be skipped: %v", fired)
+	}
+}
+
+func TestAtRiskFlagsAUsefulMemoryThatNearlyFellOut(t *testing.T) {
+	d := 8
+	// The memory's similarity to the situation drops, but not below the floor.
+	a := NewItem("fact:a", "never push", []string{"never push"}, [][]float32{vec(d, 0)})
+	q := Unit([]float32{1, 0.55, 0, 0, 0, 0, 0, 0}) // cosine ~0.88 -> relevance 1
+	base := NewSnapshot([]*Item{a}, nil)
+	s := Situation{ID: "s", Text: "alpha beta gamma", Vec: q, Expect: map[string]float64{"fact:a": 1}}
+	rp := NewReplayer(base, []Situation{s})
+	slightly := NewItem("fact:a", "never push", []string{"never push"}, [][]float32{Unit([]float32{1, 5, 0, 0, 0, 0, 0, 0})})
+	rep, _ := rp.Diff(Change{Upsert: []*Item{slightly}})
+	if rep.LostMemories != 0 || rep.AtRisk != 1 {
+		t.Fatalf("expected one at-risk recall and no loss: %+v", rep)
+	}
+	harmless := NewItem("fact:a", "never push", []string{"never push"}, [][]float32{vec(d, 0)})
+	if rep, _ = rp.Diff(Change{Upsert: []*Item{harmless}}); rep.AtRisk != 0 {
+		t.Fatalf("an unchanged score is not at risk: %+v", rep)
 	}
 }

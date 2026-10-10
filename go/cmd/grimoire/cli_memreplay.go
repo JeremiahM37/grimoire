@@ -16,7 +16,8 @@ const replayUsage = `usage:
   grimoire memory replay --diff --note PATH --with FILE   replay a note becoming FILE
   grimoire memory replay --diff --change FILE.json        replay {notes,edits,remove,merge,remap}
   grimoire memory replay --diff --index [--dir STORE]     replay a regenerated MEMORY.md
-  grimoire memory replay seed FILE.json                   load seed cases ({"cases":[...]})
+  grimoire memory replay seed FILE.json                   load seed cases: {"cases":[...]} or the
+                                                          memory-use benchmark's cases.json
   add --json for the raw report, --brief for counts only
 
 Replays past context requests (docs/MEMORY_REPLAY.md) against the store as it
@@ -34,6 +35,19 @@ func memoryReplayCmd(e *env, args []string) int {
 		var body any
 		if json.Unmarshal(raw, &body) != nil {
 			return fail("%s is not JSON", args[1])
+		}
+		// The benchmark's own case file (a JSON array) is accepted as is.
+		if _, isList := body.([]any); isList {
+			seeds, err := replay.SeedsFromBenchmark(raw)
+			if err != nil {
+				return fail("%v", err)
+			}
+			cases := make([]map[string]any, 0, len(seeds))
+			for _, sd := range seeds {
+				cases = append(cases, map[string]any{"text": sd.Text, "stage": sd.Stage, "min_rel": sd.MinRel,
+					"limit": sd.Limit, "budget": sd.Budget, "expect": sd.Expect, "avoid": sd.Avoid})
+			}
+			body = map[string]any{"cases": cases}
 		}
 		status, out := e.callBody("POST", "/api/memory/replay/seed", body)
 		if status != http.StatusOK {

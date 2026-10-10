@@ -21,6 +21,8 @@ type Situation struct {
 	Stage  string
 	MinRel float64
 	Limit  int
+	// Budget is the response byte budget (0 = the stage's default).
+	Budget int
 	Source string // "live" or "seed"
 	N      int    // times seen
 	First  int64
@@ -66,6 +68,10 @@ type SituationDiff struct {
 	Lost   []Move `json:"lost,omitempty"`
 	Gained []Move `json:"gained,omitempty"`
 	Moved  []Move `json:"moved,omitempty"`
+	// AtRisk lists useful memories that still fire but whose relevance fell
+	// by RiskDrop or more and now sits within RiskBand of the floor: the next
+	// request worded a little differently will miss.
+	AtRisk []Move `json:"at_risk,omitempty"`
 	// FalseFire marks gained memories that fire where nothing useful fired
 	// before, or that a seed case says must not fire.
 	FalseFire []string `json:"false_fire,omitempty"`
@@ -84,6 +90,7 @@ type Report struct {
 	Gained         int             `json:"gained"`
 	NewFalseFires  int             `json:"new_false_fires"`
 	Moved          int             `json:"moved"`
+	AtRisk         int             `json:"at_risk"`
 	UsefulBefore   float64         `json:"useful_before"` // weight of useful recalls that fired before
 	UsefulKept     float64         `json:"useful_kept"`
 	Score          float64         `json:"score"` // kept / before, 1 when nothing was at stake
@@ -91,6 +98,13 @@ type Report struct {
 	DiffsTruncated bool            `json:"diffs_truncated,omitempty"`
 	Millis         int64           `json:"ms"`
 }
+
+// A useful memory that still fires is "at risk" when its relevance fell by
+// RiskDrop or more and now sits within RiskBand above min_rel.
+const (
+	RiskDrop = 0.08
+	RiskBand = 0.10
+)
 
 // MaxDiffs bounds the per-situation detail in a report.
 const MaxDiffs = 200
@@ -210,6 +224,7 @@ func (r *Replayer) Diff(c Change) (*Report, *Snapshot) {
 		rep.Gained += len(d.Gained)
 		rep.NewFalseFires += len(d.FalseFire)
 		rep.Moved += len(d.Moved)
+		rep.AtRisk += len(d.AtRisk)
 		rep.Diffs = append(rep.Diffs, *d)
 	}
 	rep.Score = 1
@@ -285,6 +300,10 @@ func compare(before, after *Snapshot, p *Prepared, rankA []Scored, fireA []Score
 	for _, f := range fireB {
 		firedB[f.Target] = true
 	}
+	afterScore := map[string]float64{}
+	for _, f := range fireB {
+		afterScore[f.Target] = f.Score
+	}
 	firedA := map[string]bool{} // by identity in the new store
 	for _, f := range fireA {
 		firedA[mapped(f.Target)] = true
@@ -299,6 +318,9 @@ func compare(before, after *Snapshot, p *Prepared, rankA []Scored, fireA []Score
 		nt := mapped(f.Target)
 		if firedB[nt] {
 			v.kept += w
+			if a := afterScore[nt]; f.Score-a >= RiskDrop && a < p.MinRel+RiskBand {
+				d.AtRisk = append(d.AtRisk, Move{Target: f.Target, Was: rankOf(fireA, f.Target), Now: rankOf(fireB, nt), Before: f.Score, After: a, Weight: w})
+			}
 			continue
 		}
 		v.lost = true
@@ -340,7 +362,7 @@ func compare(before, after *Snapshot, p *Prepared, rankA []Scored, fireA []Score
 			d.FalseFire = append(d.FalseFire, f.Target)
 		}
 	}
-	if len(d.Lost) == 0 && len(d.Gained) == 0 && len(d.Moved) == 0 {
+	if len(d.Lost) == 0 && len(d.Gained) == 0 && len(d.Moved) == 0 && len(d.AtRisk) == 0 {
 		return nil, v
 	}
 	return d, v
@@ -364,4 +386,27 @@ func usefulWeightFor(p *Prepared, newTarget string, c Change) float64 {
 		}
 	}
 	return best
+}
+
+// FireTargets returns, per situation id, the memories that fire on the base
+// snapshot. It exists for evaluation and tests.
+func (r *Replayer) FireTargets() map[string][]string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	out := make(map[string][]string, len(r.sits))
+	for i, p := range r.sits {
+		for _, f := range r.fire[i] {
+			out[p.ID] = append(out[p.ID], f.Target)
+		}
+		if _, ok := out[p.ID]; !ok {
+			out[p.ID] = nil
+		}
+	}
+	return out
+}
+
+// Cosine is the cosine similarity of two vectors (unit length not required).
+func Cosine(a, b []float32) float64 {
+	na, nb := Unit(a), Unit(b)
+	return dot(na, nb)
 }

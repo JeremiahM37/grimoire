@@ -278,6 +278,14 @@ Settings added by the agent-memory work, plus the hook-side variables read by th
 | `GRIMOIRE_MEMORY_VERIFY_PORTS` | *(empty)* | Comma-separated ports a procedure check may probe; empty probes none |
 | `GRIMOIRE_MEMORY_OTHER_HOSTS` | *(empty)* | Other hosts a procedure check may probe on those ports |
 | `GRIMOIRE_MEMORY_VERIFY_PER_DREAM` | `3` | How many due procedures one dream verifies |
+| `GRIMOIRE_REPLAY_LOG` | `1` | `0` stops recording context requests as replay situations ([MEMORY_REPLAY.md](MEMORY_REPLAY.md)); nothing else changes |
+| `GRIMOIRE_REPLAY_GATE` | `1` | `0` stops replaying automated memory edits (dream fixes, consolidation, index regeneration) and stops warnings on manual edits |
+| `GRIMOIRE_REPLAY_MAX_SITUATIONS` | `5000` | Most live situations kept (oldest dropped); seed cases are capped separately at 5,000 |
+| `GRIMOIRE_REPLAY_RETENTION_DAYS` | `60` | Days a live situation survives without being seen again; seeds do not age |
+| `GRIMOIRE_REPLAY_MAX_LOST` | `0` | Useful recalls a change may lose before an automated edit is held |
+| `GRIMOIRE_REPLAY_MAX_FALSE` | `-1` | New false fires that hold an automated edit; `-1` reports them without holding |
+| `GRIMOIRE_REPLAY_MAX_RISK` | `-1` | Useful recalls a change may leave "at risk" (still firing, but 0.08 lower and within 0.10 of the floor) before an automated edit is held; `-1` reports them without holding |
+| `GRIMOIRE_REPLAY_MIN_USEFUL` | `3` | Situations with a useful recall the corpus needs before a verdict is acted on; below it a change is reported "not checked" and applied |
 | `GRIMOIRE_DREAM_REPORT_DIR` | `Dreams` | Vault folder the dream report note is written to |
 | `GRIMOIRE_DREAM_PROJECTS_DIR` | *(empty)* | An agent's per-project directory (e.g. `~/.claude/projects`); with the canonical memory directory, a dream reports projects whose `memory/` is a separate real directory |
 | `GRIMOIRE_DREAM_CANONICAL_MEMORY` | *(empty)* | The memory directory every project is meant to share |

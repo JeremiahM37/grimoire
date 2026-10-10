@@ -36,6 +36,8 @@ type replayState struct {
 	resolved time.Time
 }
 
+func init() { replay.PreambleBytes = len(directivePreamble) }
+
 // replayTTL is how long a replayer built for a preview (a warning on a manual
 // edit) is reused. Gates build a fresh one.
 const replayTTL = 20 * time.Second
@@ -70,7 +72,7 @@ func (s *Server) replayNote(lg ctxLog, picked []contextItem) {
 	for i, it := range picked {
 		fired[i] = replay.Fire{Target: itemTarget(it), Relevance: it.score}
 	}
-	if err := st.Note(lg.session, lg.query, lg.stage, lg.minRel, lg.limit, fired, time.Now()); err != nil {
+	if err := st.Note(lg.session, lg.query, lg.stage, lg.minRel, lg.limit, lg.budget, fired, time.Now()); err != nil {
 		log.Printf("replay: note: %v", err)
 	}
 }
@@ -118,7 +120,7 @@ func (s *Server) replaySnapshot() (*replay.Snapshot, error) {
 	}
 	var items []*replay.Item
 	for _, f := range facts {
-		items = append(items, replay.NewItem(cues.FactTarget(f.ID), f.Text, []string{f.Text}, [][]float32{f.Vec}))
+		items = append(items, replay.NewItemAt(cues.FactTarget(f.ID), f.Note, f.Text, []string{f.Text}, [][]float32{f.Vec}))
 	}
 	for i := 0; i < len(chunks); {
 		j := i
@@ -131,6 +133,22 @@ func (s *Server) replaySnapshot() (*replay.Snapshot, error) {
 			j++
 		}
 		items = append(items, replay.NewItem(cues.NoteTarget(chunks[i].Note), texts[0], texts, vecs))
+		i = j
+	}
+	ghosts, err := s.Index.ReplayMemoryChunks()
+	if err != nil {
+		return nil, err
+	}
+	for i := 0; i < len(ghosts); {
+		j := i
+		var texts []string
+		var vecs [][]float32
+		for j < len(ghosts) && ghosts[j].Note == ghosts[i].Note {
+			texts = append(texts, ghosts[j].Text)
+			vecs = append(vecs, ghosts[j].Vec)
+			j++
+		}
+		items = append(items, replay.NewItemAt("ghost:"+ghosts[i].Note, ghosts[i].Note, texts[0], texts, vecs))
 		i = j
 	}
 	var recs []replay.CueRec
@@ -188,13 +206,21 @@ type replayBuilder struct {
 }
 
 type pendingItem struct {
-	target, text string
-	texts        []string
-	vecAt        int // index of the first text in the batch
+	target, path, text string
+	texts              []string
+	vecAt              int // index of the first text in the batch
 }
 
 func (b *replayBuilder) want(target, text string, parts []string) {
-	b.pending = append(b.pending, pendingItem{target: target, text: text, texts: parts})
+	path := ""
+	if it := b.snap.Item(target); it != nil {
+		path = it.Path
+	}
+	b.pending = append(b.pending, pendingItem{target: target, path: path, text: text, texts: parts})
+}
+
+func (b *replayBuilder) wantAt(target, path, text string, parts []string) {
+	b.pending = append(b.pending, pendingItem{target: target, path: path, text: text, texts: parts})
 }
 
 // embedAll embeds every pending text in one call and turns them into items.
@@ -215,7 +241,7 @@ func (b *replayBuilder) embedAll() {
 				vs = append(vs, vecs[p.vecAt+k])
 			}
 		}
-		b.change.Upsert = append(b.change.Upsert, replay.NewItem(p.target, p.text, p.texts, vs))
+		b.change.Upsert = append(b.change.Upsert, replay.NewItemAt(p.target, p.path, p.text, p.texts, vs))
 	}
 	b.pending = nil
 }
@@ -296,13 +322,13 @@ func (b *replayBuilder) memoryNoteChange(rel, oldBody, newBody string) {
 			continue
 		}
 		if o.Text != e.Text {
-			b.want(cues.FactTarget(e.ID), e.Text, []string{e.Text})
+			b.wantAt(cues.FactTarget(e.ID), rel, e.Text, []string{e.Text})
 		}
 	}
 	for _, p := range pairByWords(lostOld, freshNew) {
 		if p.to >= 0 {
 			nw := freshNew[p.to]
-			b.want(cues.FactTarget(nw.ID), nw.Text, []string{nw.Text})
+			b.wantAt(cues.FactTarget(nw.ID), rel, nw.Text, []string{nw.Text})
 			b.remap(cues.FactTarget(lostOld[p.from].ID), cues.FactTarget(nw.ID))
 		} else {
 			b.remove(cues.FactTarget(lostOld[p.from].ID))
@@ -316,7 +342,7 @@ func (b *replayBuilder) memoryNoteChange(rel, oldBody, newBody string) {
 	}
 	for i, e := range freshNew {
 		if !paired[i] {
-			b.want(cues.FactTarget(e.ID), e.Text, []string{e.Text})
+			b.wantAt(cues.FactTarget(e.ID), rel, e.Text, []string{e.Text})
 		}
 	}
 }
@@ -431,6 +457,13 @@ func (s *Server) replayJudge(rep *replay.Report) ReplayVerdict {
 			v.Reason += "; "
 		}
 		v.Reason += fmt.Sprintf("would add %d false fire(s)", rep.NewFalseFires)
+	}
+	if f, err := strconv.Atoi(s.setting("replay_max_risk")); err == nil && f >= 0 && rep.AtRisk > f {
+		v.Hold = true
+		if v.Reason != "" {
+			v.Reason += "; "
+		}
+		v.Reason += fmt.Sprintf("%d useful recall(s) would be left at risk", rep.AtRisk)
 	}
 	return v
 }
@@ -730,6 +763,8 @@ func (s *Server) replaySeed(w http.ResponseWriter, r *http.Request) {
 			Text   string   `json:"text"`
 			Stage  string   `json:"stage"`
 			MinRel float64  `json:"min_rel"`
+			Limit  int      `json:"limit"`
+			Budget int      `json:"budget"`
 			Expect []string `json:"expect"`
 			Avoid  []string `json:"avoid"`
 		} `json:"cases"`
@@ -740,7 +775,7 @@ func (s *Server) replaySeed(w http.ResponseWriter, r *http.Request) {
 	}
 	seeds := make([]replay.Seed, 0, len(in.Cases))
 	for _, c := range in.Cases {
-		seeds = append(seeds, replay.Seed{Text: c.Text, Stage: c.Stage, MinRel: c.MinRel, Expect: c.Expect, Avoid: c.Avoid})
+		seeds = append(seeds, replay.Seed{Text: c.Text, Stage: c.Stage, MinRel: c.MinRel, Limit: c.Limit, Budget: c.Budget, Expect: c.Expect, Avoid: c.Avoid})
 	}
 	added, err := st.AddSeeds(seeds, time.Now())
 	if err != nil {

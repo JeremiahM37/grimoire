@@ -50,8 +50,23 @@ func (ix *Index) ReplayFacts(now time.Time) ([]ReplayFact, error) {
 // ReplayChunks returns the embedded chunks of public, trusted notes outside
 // the memory directory, in note and chunk order.
 func (ix *Index) ReplayChunks() ([]ReplayChunk, error) {
+	return ix.replayChunks(false)
+}
+
+// ReplayMemoryChunks returns the chunks of memory notes. Retrieval ranks them
+// with everything else before injection drops them, so they take slots in its
+// top results; replay needs them to count the same slots.
+func (ix *Index) ReplayMemoryChunks() ([]ReplayChunk, error) {
+	return ix.replayChunks(true)
+}
+
+func (ix *Index) replayChunks(memory bool) ([]ReplayChunk, error) {
+	op := "NOT LIKE"
+	if memory {
+		op = "LIKE"
+	}
 	rows, err := ix.DB.Query(`SELECT note,chunk,embedding FROM vectors
-		WHERE private=0 AND COALESCE(untrusted,0)=0 AND note NOT LIKE ? ORDER BY note, chunk_idx`, MemoryPrefix+"%")
+		WHERE private=0 AND COALESCE(untrusted,0)=0 AND note `+op+` ? ORDER BY note, chunk_idx`, MemoryPrefix+"%")
 	if err != nil {
 		return nil, err
 	}

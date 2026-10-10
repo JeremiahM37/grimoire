@@ -29,6 +29,8 @@ type Part struct {
 	Text  string
 	Vec   []float32
 	terms map[string]struct{}
+	// size is the bytes this part would take in an injected response.
+	size int
 }
 
 // Item is one injectable memory. Target is "fact:<id>" or "note:<path>", the
@@ -37,6 +39,8 @@ type Item struct {
 	Target string
 	Text   string // what injection shows; used to drop duplicates
 	Parts  []Part
+	// Path is the note the memory lives in (the source shown after the text).
+	Path string
 }
 
 // CueRec is a cue with its unit vector.
@@ -44,14 +48,62 @@ type CueRec struct {
 	cues.Cue
 	Vec   []float32
 	terms map[string]struct{}
+	key   string // normalised text, for telling a situation's own cue
+}
+
+// textKey collapses case and whitespace.
+func textKey(s string) string { return strings.ToLower(strings.Join(strings.Fields(s), " ")) }
+
+// sameSituation reports whether a cue is the situation it is being matched
+// against: the same words, allowing for the cue having been cut shorter.
+func sameSituation(cue, sit string) bool {
+	if cue == sit {
+		return true
+	}
+	short, long := cue, sit
+	if len(short) > len(long) {
+		short, long = long, short
+	}
+	return len(short) >= 40 && strings.HasPrefix(long, short)
 }
 
 // NewItem builds an item from texts and their (not necessarily normalised)
 // vectors. A part with no vector can only match on cues.
 func NewItem(target, text string, texts []string, vecs [][]float32) *Item {
-	it := &Item{Target: target, Text: text}
+	return NewItemAt(target, "", text, texts, vecs)
+}
+
+// markerRoom mirrors internal/api: the most a "m:<tag> " marker adds.
+const markerRoom = 11
+
+// PreambleBytes is the size of the directive preamble, charged to the first
+// item of a response. internal/api sets it.
+var PreambleBytes = 0
+
+// MaxInjectedRunes is how much of a note chunk injection shows.
+const MaxInjectedRunes = 600
+
+// NewItemAt is NewItem with the source path, which injection shows and which
+// counts against the byte budget.
+func NewItemAt(target, path, text string, texts []string, vecs [][]float32) *Item {
+	it := &Item{Target: target, Text: text, Path: path}
+	if path == "" {
+		if rest, ok := strings.CutPrefix(target, "note:"); ok {
+			it.Path = rest
+		}
+	}
+	id := ""
+	if rest, ok := strings.CutPrefix(target, "fact:"); ok {
+		id = "#" + rest
+	}
 	for i, t := range texts {
-		p := Part{Text: t, terms: termSet(t)}
+		shown := strings.Join(strings.Fields(t), " ")
+		if strings.HasPrefix(target, "note:") {
+			if r := []rune(shown); len(r) > MaxInjectedRunes {
+				shown = string(r[:MaxInjectedRunes]) + "…"
+			}
+		}
+		p := Part{Text: t, terms: termSet(t), size: len(shown) + len(it.Path) + len(id) + 7 + markerRoom}
 		if i < len(vecs) {
 			p.Vec = Unit(vecs[i])
 		}
@@ -62,7 +114,7 @@ func NewItem(target, text string, texts []string, vecs [][]float32) *Item {
 
 // NewCue wraps a cue and its vector.
 func NewCue(c cues.Cue, vec []float32) CueRec {
-	return CueRec{Cue: c, Vec: Unit(vec), terms: termSet(c.Text)}
+	return CueRec{Cue: c, Vec: Unit(vec), terms: termSet(c.Text), key: textKey(c.Text)}
 }
 
 // Unit returns v scaled to length 1 (a copy). An empty or zero vector comes
@@ -338,6 +390,7 @@ type Prepared struct {
 	Situation
 	terms []string
 	vec   []float32
+	key   string
 }
 
 // Prepare readies a situation. A situation without a vector can only match on
@@ -346,29 +399,49 @@ func Prepare(s Situation) *Prepared {
 	if s.MinRel <= 0 {
 		s.MinRel = DefaultMinRel(s.Stage)
 	}
-	return &Prepared{Situation: s, terms: Terms(s.Text), vec: Unit(s.Vec)}
+	return &Prepared{Situation: s, terms: Terms(s.Text), vec: Unit(s.Vec), key: textKey(s.Text)}
 }
 
-// score is the context relevance of one memory for one situation: the best of
-// its own text and its cues, exactly as the context endpoint takes the larger.
-func (sn *Snapshot) score(it *Item, p *Prepared, triggered map[string]bool) float64 {
-	best := 0.0
+// score is the context relevance of one memory for one situation. The text
+// and cue scores are kept apart: the endpoint only considers the strongest
+// text matches as candidates, but every cue match.
+func (sn *Snapshot) score(it *Item, p *Prepared, triggered map[string]bool) Scored {
+	sc := Scored{Target: it.Target}
+	isNote := strings.HasPrefix(it.Target, "note:") || strings.HasPrefix(it.Target, "ghost:")
 	for i := range it.Parts {
 		pt := &it.Parts[i]
 		cos := clamp01(dot(p.vec, pt.Vec))
-		if r := Relevance(cos, overlap(p.terms, pt.terms)); r > best {
-			best = r
+		r := Relevance(cos, overlap(p.terms, pt.terms))
+		if r > sc.Text || i == 0 {
+			sc.Text, sc.Size = r, pt.size
+		}
+		if isNote && r >= floorFor(p) {
+			sc.Chunks = append(sc.Chunks, chunkScore{r, pt.size})
 		}
 	}
+	if len(sc.Chunks) > 1 {
+		sort.Slice(sc.Chunks, func(a, b int) bool { return sc.Chunks[a].S > sc.Chunks[b].S })
+	}
+	if len(sc.Chunks) > maxChunks {
+		sc.Chunks = sc.Chunks[:maxChunks]
+	}
 	for _, c := range sn.cues[it.Target] {
-		if r := CueRelevance(dot(p.vec, c.Vec), overlap(p.terms, c.terms), CueLow); r > best {
-			best = r
+		// A cue learned from this very situation would make it pass whatever
+		// happens to the memory's text. Leave it out, as in leave-one-out
+		// validation: the replay asks whether the memory still fires through
+		// its text and the cues taught by other situations.
+		if sameSituation(c.key, p.key) {
+			continue
+		}
+		if r := CueRelevance(dot(p.vec, c.Vec), overlap(p.terms, c.terms), CueLow); r > sc.Cue {
+			sc.Cue = r
 		}
 	}
 	if triggered[it.Target] {
-		best = 1
+		sc.Cue = 1
 	}
-	return best
+	sc.Score = math.Max(sc.Text, sc.Cue)
+	return sc
 }
 
 func (sn *Snapshot) triggered(p *Prepared) map[string]bool {
@@ -389,8 +462,23 @@ func (sn *Snapshot) triggered(p *Prepared) map[string]bool {
 // Scored is one memory's relevance for a situation.
 type Scored struct {
 	Target string
-	Score  float64
+	Score  float64 // the larger of Text and Cue
+	Text   float64 // relevance of the memory's own text
+	Cue    float64 // relevance of its best cue (1 when an action cue names the path)
+	Size   int     // bytes it takes when injected
+	// Chunks are a note's strongest chunk scores, best first: retrieval takes
+	// the top chunks of the whole corpus, so a note's text score depends on
+	// which of its chunks made that cut.
+	Chunks []chunkScore
 }
+
+type chunkScore struct {
+	S    float64
+	Size int
+}
+
+// maxChunks is how many chunk scores are kept per note.
+const maxChunks = 8
 
 // floorFor is the lowest score worth keeping for a situation: anything under
 // it cannot fire at the situation's min_rel.
@@ -412,15 +500,15 @@ func (sn *Snapshot) Score(p *Prepared, only map[string]bool) []Scored {
 	if only != nil {
 		for t := range only {
 			if it, ok := sn.items[t]; ok {
-				if s := sn.score(it, p, trig); s >= floor {
-					out = append(out, Scored{t, s})
+				if sc := sn.score(it, p, trig); sc.Score >= floor {
+					out = append(out, sc)
 				}
 			}
 		}
 	} else {
 		for _, it := range sn.items {
-			if s := sn.score(it, p, trig); s >= floor {
-				out = append(out, Scored{it.Target, s})
+			if sc := sn.score(it, p, trig); sc.Score >= floor {
+				out = append(out, sc)
 			}
 		}
 	}
@@ -449,15 +537,95 @@ func (p *Prepared) limit() int {
 	return 5
 }
 
-// Fire picks what the context endpoint would inject: strongest first, at or
-// above min_rel, no two with the same text, at most the limit.
+// How many text matches the endpoint considers: stored facts by their own
+// ranking (Limit 40), notes by fused retrieval (30 chunks, one per note).
+const (
+	factCandidates = 40
+	noteCandidates = 30
+)
+
+// DefaultBudget is the byte budget of one response.
+func DefaultBudget(stage string) int {
+	if stage == "action" {
+		return 1200
+	}
+	return 2400
+}
+
+// Fire picks what the context endpoint would inject: only the strongest text
+// matches are candidates (plus every cue match), strongest first, at or above
+// min_rel, no two with the same text, within the byte budget, at most the
+// limit.
 func (sn *Snapshot) Fire(p *Prepared, ranked []Scored) []Scored {
+	// Facts: the strongest factCandidates by their own text.
+	var facts []int
+	type chunkRef struct {
+		i int
+		c chunkScore
+	}
+	var chunks []chunkRef
+	for i := range ranked {
+		switch {
+		case strings.HasPrefix(ranked[i].Target, "fact:"):
+			facts = append(facts, i)
+		default:
+			for _, c := range ranked[i].Chunks {
+				chunks = append(chunks, chunkRef{i, c})
+			}
+		}
+	}
+	sort.SliceStable(facts, func(a, b int) bool { return ranked[facts[a]].Text > ranked[facts[b]].Text })
+	candidate := make(map[int]bool, len(ranked))
+	for k, i := range facts {
+		if k < factCandidates {
+			candidate[i] = true
+		}
+	}
+	// Notes: retrieval returns the best chunks of the whole corpus, then keeps
+	// each note's strongest. A note is a candidate only through a chunk that
+	// made the cut, and its text score is that chunk's.
+	sort.SliceStable(chunks, func(a, b int) bool { return chunks[a].c.S > chunks[b].c.S })
+	if len(chunks) > noteCandidates {
+		chunks = chunks[:noteCandidates]
+	}
+	noteText := map[int]chunkScore{}
+	for _, ch := range chunks {
+		if _, ok := noteText[ch.i]; !ok {
+			noteText[ch.i] = ch.c
+		}
+	}
+	ranked = append([]Scored(nil), ranked...)
+	for i := range ranked {
+		if strings.HasPrefix(ranked[i].Target, "fact:") {
+			continue
+		}
+		if ch, ok := noteText[i]; ok && !strings.HasPrefix(ranked[i].Target, "ghost:") {
+			candidate[i] = true
+			ranked[i].Text, ranked[i].Size = ch.S, ch.Size
+		}
+	}
+	eff := make([]Scored, 0, len(ranked))
+	for i, sc := range ranked {
+		if !candidate[i] {
+			sc.Score = sc.Cue
+		} else if sc.Cue > sc.Text {
+			sc.Score = sc.Cue
+		} else {
+			sc.Score = sc.Text
+		}
+		if sc.Score >= p.MinRel {
+			eff = append(eff, sc)
+		}
+	}
+	sortScored(eff)
+	budget := p.Budget
+	if budget <= 0 {
+		budget = DefaultBudget(p.Stage)
+	}
 	var out []Scored
 	seen := map[string]bool{}
-	for _, sc := range ranked {
-		if sc.Score < p.MinRel {
-			break
-		}
+	used := 0
+	for _, sc := range eff {
 		it := sn.items[sc.Target]
 		if it == nil {
 			continue
@@ -466,6 +634,14 @@ func (sn *Snapshot) Fire(p *Prepared, ranked []Scored) []Scored {
 		if seen[norm] {
 			continue
 		}
+		prefix := 0
+		if len(out) == 0 {
+			prefix = PreambleBytes
+		}
+		if used+prefix+sc.Size > budget {
+			continue
+		}
+		used += prefix + sc.Size
 		seen[norm] = true
 		out = append(out, sc)
 		if len(out) == p.limit() {

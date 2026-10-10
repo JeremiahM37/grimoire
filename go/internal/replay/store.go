@@ -84,7 +84,7 @@ type Store struct {
 var schema = []string{
 	`CREATE TABLE IF NOT EXISTS situations (
 		id TEXT PRIMARY KEY, text TEXT NOT NULL, stage TEXT NOT NULL DEFAULT '',
-		min_rel REAL NOT NULL DEFAULT 0, lim INTEGER NOT NULL DEFAULT 0,
+		min_rel REAL NOT NULL DEFAULT 0, lim INTEGER NOT NULL DEFAULT 0, bud INTEGER NOT NULL DEFAULT 0,
 		source TEXT NOT NULL DEFAULT 'live', n INTEGER NOT NULL DEFAULT 1,
 		first_ts INTEGER NOT NULL, last_ts INTEGER NOT NULL,
 		avoid TEXT NOT NULL DEFAULT '', vec BLOB, vec_sig TEXT NOT NULL DEFAULT '')`,
@@ -158,7 +158,7 @@ type Fire struct {
 // Note records a context request and what fired for it. It is called for every
 // hybrid request that carries a session, including those that fired nothing
 // (those are the situations that prove a change added noise).
-func (s *Store) Note(session, text, stage string, minRel float64, limit int, fired []Fire, now time.Time) error {
+func (s *Store) Note(session, text, stage string, minRel float64, limit, budget int, fired []Fire, now time.Time) error {
 	text = Clean(text)
 	if text == "" {
 		return nil
@@ -171,13 +171,13 @@ func (s *Store) Note(session, text, stage string, minRel float64, limit int, fir
 		return err
 	}
 	defer tx.Rollback()
-	res, err := tx.Exec(`UPDATE situations SET n=n+1, last_ts=?, min_rel=?, lim=? WHERE id=?`, now.Unix(), minRel, limit, id)
+	res, err := tx.Exec(`UPDATE situations SET n=n+1, last_ts=?, min_rel=?, lim=?, bud=? WHERE id=?`, now.Unix(), minRel, limit, budget, id)
 	if err != nil {
 		return err
 	}
 	if c, _ := res.RowsAffected(); c == 0 {
-		if _, err := tx.Exec(`INSERT INTO situations(id,text,stage,min_rel,lim,source,n,first_ts,last_ts) VALUES(?,?,?,?,?,'live',1,?,?)`,
-			id, text, stage, minRel, limit, now.Unix(), now.Unix()); err != nil {
+		if _, err := tx.Exec(`INSERT INTO situations(id,text,stage,min_rel,lim,bud,source,n,first_ts,last_ts) VALUES(?,?,?,?,?,?,'live',1,?,?)`,
+			id, text, stage, minRel, limit, budget, now.Unix(), now.Unix()); err != nil {
 			return err
 		}
 	}
@@ -297,6 +297,8 @@ type Seed struct {
 	Text   string
 	Stage  string
 	MinRel float64
+	Limit  int
+	Budget int
 	// Expect are memories that must fire; Avoid ones that must not.
 	Expect []string
 	Avoid  []string
@@ -320,9 +322,9 @@ func (s *Store) AddSeeds(seeds []Seed, now time.Time) (int, error) {
 		}
 		id := ID(text, sd.Stage)
 		avoid, _ := json.Marshal(sd.Avoid)
-		res, err := tx.Exec(`INSERT INTO situations(id,text,stage,min_rel,lim,source,n,first_ts,last_ts,avoid)
-			VALUES(?,?,?,?,0,'seed',1,?,?,?) ON CONFLICT(id) DO NOTHING`,
-			id, text, sd.Stage, sd.MinRel, now.Unix(), now.Unix(), string(avoid))
+		res, err := tx.Exec(`INSERT INTO situations(id,text,stage,min_rel,lim,bud,source,n,first_ts,last_ts,avoid)
+			VALUES(?,?,?,?,?,?,'seed',1,?,?,?) ON CONFLICT(id) DO NOTHING`,
+			id, text, sd.Stage, sd.MinRel, sd.Limit, sd.Budget, now.Unix(), now.Unix(), string(avoid))
 		if err != nil {
 			return added, err
 		}
@@ -380,7 +382,7 @@ type Embedder interface {
 func (s *Store) Situations(emb Embedder, source string) ([]Situation, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	q := `SELECT id,text,stage,min_rel,lim,source,n,first_ts,last_ts,avoid,vec,vec_sig FROM situations`
+	q := `SELECT id,text,stage,min_rel,lim,bud,source,n,first_ts,last_ts,avoid,vec,vec_sig FROM situations`
 	var args []any
 	if source != "" {
 		q += ` WHERE source=?`
@@ -401,7 +403,7 @@ func (s *Store) Situations(emb Embedder, source string) ([]Situation, error) {
 		var sit Situation
 		var avoid, vsig string
 		var blob []byte
-		if err := rs.Scan(&sit.ID, &sit.Text, &sit.Stage, &sit.MinRel, &sit.Limit, &sit.Source, &sit.N,
+		if err := rs.Scan(&sit.ID, &sit.Text, &sit.Stage, &sit.MinRel, &sit.Limit, &sit.Budget, &sit.Source, &sit.N,
 			&sit.First, &sit.Last, &avoid, &blob, &vsig); err != nil {
 			rs.Close()
 			return nil, err
@@ -460,11 +462,13 @@ func (s *Store) Situations(emb Embedder, source string) ([]Situation, error) {
 
 // Stats summarises the corpus.
 type Stats struct {
-	Live, Seed     int // situations
-	WithUseful     int // situations with a useful expected memory
-	Unresolved     int // firings waiting for an outcome
-	Expectations   int
-	Oldest, Newest int64
+	Live         int   `json:"live"`         // live situations
+	Seed         int   `json:"seed"`         // seed situations
+	WithUseful   int   `json:"with_useful"`  // situations with a useful expected memory
+	Unresolved   int   `json:"unresolved"`   // firings waiting for an outcome
+	Expectations int   `json:"expectations"` // remembered (situation, memory) pairs
+	Oldest       int64 `json:"oldest"`       // unix seconds
+	Newest       int64 `json:"newest"`
 }
 
 // Stats counts the corpus.

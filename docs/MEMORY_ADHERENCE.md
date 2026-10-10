@@ -53,6 +53,10 @@ reads `transcript_path`, takes the assistant text since the last real user
 prompt, and extracts only the `m:` tags. It fails silently.
 `GRIMOIRE_OUTCOME=0` turns it off.
 
+The outcomes also build the corpus for [memory replay](MEMORY_REPLAY.md): a
+memory that was cited or followed in a situation is one a later change to the
+store must keep firing there.
+
 ## Checks
 
 A memory can carry a check, stored beside the adherence log (not in the

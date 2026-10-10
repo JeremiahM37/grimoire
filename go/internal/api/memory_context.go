@@ -145,7 +145,7 @@ func (s *Server) memoryContext(w http.ResponseWriter, r *http.Request) {
 		}
 		s.writeContext(w, items, excluded, budget, limit, minRel, "hybrid", r.URL.Query().Get("format") != "json",
 			ctxLog{session: r.URL.Query().Get("session"), stage: r.URL.Query().Get("stage"), log: true, permission: perm,
-				query: query, minRel: replayMinRel, limit: limit})
+				query: query, minRel: replayMinRel, limit: limit, budget: budget})
 		return
 	}
 	if (len(terms) > 0 || (mode == "scoped" && query == "")) && mode != "manual" && mode != "off" {
@@ -231,6 +231,7 @@ type ctxLog struct {
 	query  string
 	minRel float64
 	limit  int
+	budget int
 }
 
 // markerRoom is the most a "m:<tag> " marker adds to a line.

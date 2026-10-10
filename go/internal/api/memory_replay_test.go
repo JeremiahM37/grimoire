@@ -227,3 +227,44 @@ func TestReplayIsOffWhenDisabledAndSkipsSessionlessRequests(t *testing.T) {
 	}
 	_ = url.Values{}
 }
+
+func TestReplayAcceptsAbsoluteNotePathsAndScoresNoteEdits(t *testing.T) {
+	s, h := testServer(t)
+	for _, p := range []string{"Agent Memory/kestrel.md", "Agent Memory/kitchen.md"} {
+		body := map[string]string{"Agent Memory/kestrel.md": "Never push to the kestrel repository without being asked.",
+			"Agent Memory/kitchen.md": "The kitchen cupboards are painted purple."}[p]
+		if r := do(t, h, "POST", "/api/notes", map[string]any{"path": p, "body": body}); r.Code != 201 {
+			t.Fatal(r.Body.String())
+		}
+	}
+	t.Setenv("GRIMOIRE_REPLAY_MIN_USEFUL", "1")
+	seeds := []map[string]any{}
+	for _, q := range []string{"should I push the kestrel repository", "can I push to kestrel now"} {
+		seeds = append(seeds, map[string]any{"text": q, "min_rel": 0.3, "expect": []string{"note:Agent Memory/kestrel.md"}})
+	}
+	if r := do(t, h, "POST", "/api/memory/replay/seed", map[string]any{"cases": seeds}); r.Code != 200 {
+		t.Fatal(r.Body.String())
+	}
+	abs := s.Vault.Root + "/Agent Memory/kestrel.md"
+	var gate ReplayGate
+	r := do(t, h, "POST", "/api/memory/replay", map[string]any{"notes": []map[string]string{{"path": abs, "text": "Invoices are reconciled on Tuesdays."}}})
+	if r.Code != 200 {
+		t.Fatal(r.Body.String())
+	}
+	decode(t, r, &gate)
+	if !gate.Verdict.Hold || gate.Report.LostMemories != 2 {
+		t.Fatalf("a rewrite of the note must lose both recalls: %+v %+v", gate.Verdict, gate.Report)
+	}
+	r = do(t, h, "POST", "/api/memory/replay", map[string]any{"notes": []map[string]string{{"path": "Agent Memory/nonexistent-elsewhere.md", "text": "x"}, {"path": "/etc/passwd", "text": "x"}}})
+	if r.Code != 400 {
+		t.Fatalf("an unknown absolute path must be refused, got %d", r.Code)
+	}
+	// Corpus-less servers answer plainly, and the endpoint is admin-only by route class.
+	_, h2 := testServer(t)
+	r = do(t, h2, "POST", "/api/memory/replay", map[string]any{"edits": []map[string]string{}})
+	var empty ReplayGate
+	decode(t, r, &empty)
+	if r.Code != 200 || empty.Verdict.Hold || empty.Verdict.Checked {
+		t.Fatalf("no corpus must never hold: %s", r.Body)
+	}
+}
