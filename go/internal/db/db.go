@@ -497,6 +497,12 @@ var addedColumns = []struct{ table, column, decl string }{
 	{"memory_entries", "shape", "INTEGER NOT NULL DEFAULT 0"},
 	{"memory_entries", "vol", "REAL NOT NULL DEFAULT 0"},
 	{"memory_entries", "prate", "REAL NOT NULL DEFAULT 0"},
+	// When the fact was true in the world (memory/validity.go), in canonical
+	// RFC3339 UTC so that valid_at and range queries compare as text. Empty is
+	// unbounded. Both default to unbounded, so every fact written before these
+	// columns existed keeps its meaning.
+	{"memory_entries", "valid_from", "TEXT NOT NULL DEFAULT ''"},
+	{"memory_entries", "valid_to", "TEXT NOT NULL DEFAULT ''"},
 	// Which agent read, as distinct from which account. On a single-user
 	// deployment there is no account, so without this the trail can say a
 	// restricted note was read and not by what — which is most of the question.

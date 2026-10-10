@@ -100,6 +100,16 @@ type MemoryQuery struct {
 	// replaces cannot reconstruct a belief it no longer holds.
 	AsOf time.Time
 
+	// ValidAt answers "what was true at this instant in the world": a fact
+	// with valid_from <= t and (no valid_to or t < valid_to). Facts with no
+	// validity are always valid. It composes with AsOf: "what did we believe on
+	// A about what was true on B" is AsOf=A, ValidAt=B.
+	ValidAt time.Time
+	// ValidSince and ValidUntil select facts whose validity overlaps the closed
+	// range [ValidSince, ValidUntil]. Either may be zero, which is open.
+	ValidSince time.Time
+	ValidUntil time.Time
+
 	Now   time.Time
 	Limit int
 }
@@ -179,12 +189,13 @@ func (ix *Index) writeMemoryRows(note *vault.Note) error {
 			"INSERT OR IGNORE INTO memory_entries(id,note,text,agent,task,session,stamp,category,"+
 				"expires,immutable,superseded_by,superseded_at,helpful,unhelpful,line,"+
 				"embedding,space,acl,private,origin,human,challenges,"+
-				"fresh,chk,verified,nchange,nverify,since,shape,vol,prate)"+
-				" VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+				"fresh,chk,verified,nchange,nverify,since,shape,vol,prate,valid_from,valid_to)"+
+				" VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
 			e.ID, note.Path, e.Text, e.Agent, e.Task, e.Session, e.Stamp, e.Category,
 			e.Expires, immutable, e.SupersededBy, e.SupersededAt, e.Helpful,
 			e.Unhelpful, e.Line, blob, space, acl, private, e.Origin, human, e.Challenges,
 			e.Fresh, e.Check, e.Verified, e.Changes, e.Verifies, e.Since, e.Shape(), e.Vol, e.PriorRate,
+			canonicalValidity(e.ValidFrom), canonicalValidity(e.ValidTo),
 		); err != nil {
 			return err
 		}
@@ -265,6 +276,30 @@ func (ix *Index) MemoryEntries(q MemoryQuery) ([]MemoryHit, error) {
 	if q.AcceptedOnly {
 		where = append(where, "challenges=''")
 	}
+	// Validity is compared in SQL, before the scan bound, so a historical
+	// question is not answered from only the newest facts. Canonical strings
+	// are fixed-width UTC, so text comparison is time comparison. Empty
+	// means unbounded on that side.
+	//
+	// With AsOf set they are applied in Go instead: whether a valid_to was
+	// known depends on when the fact was superseded, which is a comparison of
+	// local belief stamps that the canonical columns cannot express. See
+	// memory.Entry.ValidAtAsOf.
+	if q.AsOf.IsZero() && !q.ValidAt.IsZero() {
+		at := memory.FormatValidity(q.ValidAt)
+		where = append(where, "(valid_from='' OR valid_from<=?) AND (valid_to='' OR valid_to>?)")
+		args = append(args, at, at)
+	}
+	if q.AsOf.IsZero() && !q.ValidSince.IsZero() {
+		// Overlap: the fact must end after the range starts...
+		where = append(where, "(valid_to='' OR valid_to>?)")
+		args = append(args, memory.FormatValidity(q.ValidSince))
+	}
+	if q.AsOf.IsZero() && !q.ValidUntil.IsZero() {
+		// ...and start no later than the range ends.
+		where = append(where, "(valid_from='' OR valid_from<=?)")
+		args = append(args, memory.FormatValidity(q.ValidUntil))
+	}
 	if !q.Filter.IncludePrivate {
 		where = append(where, "private=0")
 	}
@@ -279,7 +314,8 @@ func (ix *Index) MemoryEntries(q MemoryQuery) ([]MemoryHit, error) {
 	// already excluded and what remains is a current belief set.
 	sql := "SELECT id,note,text,agent,task,session,stamp,category,expires,immutable," +
 		"superseded_by,superseded_at,helpful,unhelpful,line,embedding,space,acl," +
-		"private,origin,human,challenges,fresh,chk,verified,nchange,nverify,since,vol,prate" +
+		"private,origin,human,challenges,fresh,chk,verified,nchange,nverify,since,vol,prate," +
+		"valid_from,valid_to" +
 		" FROM memory_entries WHERE " +
 		strings.Join(where, " AND ")
 	limit := q.ScanLimit
@@ -309,7 +345,8 @@ func (ix *Index) MemoryEntries(q MemoryQuery) ([]MemoryHit, error) {
 			&r.hit.Helpful, &r.hit.Unhelpful, &r.hit.Line, &blob, &r.sp, &r.acl,
 			&private, &r.hit.Origin, &human, &r.hit.Challenges,
 			&r.hit.Fresh, &r.hit.Check, &r.hit.Verified, &r.hit.Changes,
-			&r.hit.Verifies, &r.hit.Since, &r.hit.Vol, &r.hit.PriorRate); err != nil {
+			&r.hit.Verifies, &r.hit.Since, &r.hit.Vol, &r.hit.PriorRate,
+			&r.hit.ValidFrom, &r.hit.ValidTo); err != nil {
 			return nil, err
 		}
 		r.hit.Immutable = immutable == 1
@@ -323,6 +360,13 @@ func (ix *Index) MemoryEntries(q MemoryQuery) ([]MemoryHit, error) {
 			if !r.hit.BelievedAt(q.AsOf) {
 				continue
 			}
+			if !q.ValidAt.IsZero() && !r.hit.ValidAtAsOf(q.ValidAt, q.AsOf) {
+				continue
+			}
+			if (!q.ValidSince.IsZero() || !q.ValidUntil.IsZero()) &&
+				!r.hit.ValidDuringAsOf(q.ValidSince, q.ValidUntil, q.AsOf) {
+				continue
+			}
 		} else if !q.IncludeExpired && r.hit.ExpiredAt(q.Now) {
 			continue
 		}
@@ -332,6 +376,16 @@ func (ix *Index) MemoryEntries(q MemoryQuery) ([]MemoryHit, error) {
 		return nil, err
 	}
 	return ix.rankMemory(cands, q), nil
+}
+
+// canonicalValidity is the form a validity bound takes in the index: canonical
+// RFC3339 UTC, or empty for unbounded and for a bound nothing could parse. The
+// index is derived, so this never rejects a write; the API validates input.
+func canonicalValidity(s string) string {
+	if t, ok := memory.ParseValidity(s); ok {
+		return memory.FormatValidity(t)
+	}
+	return ""
 }
 
 func MemoryPathClause(column string, paths []string) (string, []any) {

@@ -84,6 +84,12 @@ type Entry struct {
 	// about whether it was still standing then.
 	SupersededAt string
 
+	// ValidFrom and ValidTo are when the fact was true in the world (see
+	// validity.go). They are the event-time axis; SupersededAt and Stamp are
+	// the belief-time axis. Empty means unbounded on that side.
+	ValidFrom string
+	ValidTo   string
+
 	// Origin is where the fact CAME FROM, when the agent knew: a note it read,
 	// a connector document, a web page. Empty means the agent asserted it
 	// itself, which is the ordinary case and the trusted one.
@@ -310,6 +316,10 @@ func parseTrailer(s string) Entry {
 			e.SupersededBy = v
 		case "supat":
 			e.SupersededAt = v
+		case "valid_from":
+			e.ValidFrom = v
+		case "valid_to":
+			e.ValidTo = v
 		case "up":
 			e.Helpful = atoiSafe(v)
 		case "down":
@@ -417,6 +427,12 @@ func (e Entry) trailer() string {
 	}
 	if e.SupersededAt != "" {
 		fields = append(fields, "supat="+escapeField(e.SupersededAt))
+	}
+	if e.ValidFrom != "" {
+		fields = append(fields, "valid_from="+escapeField(e.ValidFrom))
+	}
+	if e.ValidTo != "" {
+		fields = append(fields, "valid_to="+escapeField(e.ValidTo))
 	}
 	if e.Fresh != "" {
 		fields = append(fields, "fresh="+escapeField(e.Fresh))

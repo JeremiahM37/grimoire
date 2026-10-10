@@ -122,3 +122,34 @@ func TestOpenIsIdempotent(t *testing.T) {
 		t.Errorf("notes = %d (err %v), want 3 across reopens", n, err)
 	}
 }
+
+func TestValidityColumnsAreAddedToAnOlderIndex(t *testing.T) {
+	// An index built before validity existed has memory_entries without
+	// valid_from/valid_to. Opening it must add them, and must do so again on a
+	// reopen without failing on a duplicate column.
+	path := filepath.Join(t.TempDir(), "index.db")
+	d, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, col := range []string{"valid_from", "valid_to"} {
+		if _, err := d.conn.Exec("ALTER TABLE memory_entries DROP COLUMN " + col); err != nil {
+			t.Fatalf("could not simulate an old schema: %v", err)
+		}
+	}
+	d.Close()
+
+	for pass := 0; pass < 2; pass++ {
+		d, err := Open(path)
+		if err != nil {
+			t.Fatalf("open pass %d: %v", pass, err)
+		}
+		for _, col := range []string{"valid_from", "valid_to"} {
+			has, err := hasColumn(d.conn, "memory_entries", col)
+			if err != nil || !has {
+				t.Fatalf("pass %d: column %s missing (err %v)", pass, col, err)
+			}
+		}
+		d.Close()
+	}
+}
