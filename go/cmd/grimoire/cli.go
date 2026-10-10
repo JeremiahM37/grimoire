@@ -34,8 +34,11 @@ import (
 
 const usage = `grimoire — local-first AI-native notes
 
-  grimoire new "Title" [body...]      create a note (body from args or stdin)
-  grimoire daily [text...]            append to today's daily note (or open it)
+  grimoire new "Title" [body...] [--edit]
+                                      create a note (body from args or stdin); --edit opens it
+  grimoire daily [text...] [--edit]   append to today's daily note (or open it); --edit opens it
+  grimoire edit [PATH|TITLE]          open a note in $VISUAL/$EDITOR (default: today's daily note)
+                                      and re-index it afterwards
   grimoire capture [text...]          quick capture → inbox + daily link
   grimoire search QUERY               full-text search the vault
   grimoire query [QUESTION...]        ask knowledge with citations (interactive if omitted)
@@ -140,7 +143,7 @@ const usage = `grimoire — local-first AI-native notes
   grimoire code outline FILE          what one source file declares and imports
   grimoire version                    print the build version
 
-Env: GRIMOIRE_VAULT (default ~/notes)`
+Env: GRIMOIRE_VAULT (default ~/notes); VISUAL or EDITOR for edit`
 
 // commands is the table that turns a word into a call.
 //
@@ -150,7 +153,7 @@ Env: GRIMOIRE_VAULT (default ~/notes)`
 // documented in the help — and simply never added here.
 func commands() map[string]func([]string) int {
 	return map[string]func([]string) int{
-		"new": cmdNew, "daily": cmdDaily, "capture": cmdCapture,
+		"new": cmdNew, "daily": cmdDaily, "capture": cmdCapture, "edit": cmdEdit,
 		"search": cmdSearch, "ls": cmdLs, "open": cmdOpen,
 		"query": cmdKnowledgeQuery, "graph": cmdKnowledgeGraph, "source": cmdKnowledgeSource,
 		"knowledge": cmdKnowledge,
@@ -354,8 +357,10 @@ func (e *env) callBody(method, path string, body any) (int, string) {
 // ---- commands ---------------------------------------------------------------
 
 func cmdNew(args []string) int {
+	edit := hasFlag(args, "--edit")
+	args = withoutFlag(args, "--edit")
 	if len(args) == 0 {
-		return fail(`usage: grimoire new "Title" [body...]`)
+		return fail(`usage: grimoire new "Title" [body...] [--edit]`)
 	}
 	e, err := openEnv()
 	if err != nil {
@@ -378,10 +383,15 @@ func cmdNew(args []string) int {
 		return fail("%v", err)
 	}
 	fmt.Println(rel)
+	if edit {
+		return editNote(e, rel)
+	}
 	return 0
 }
 
 func cmdDaily(args []string) int {
+	edit := hasFlag(args, "--edit")
+	args = withoutFlag(args, "--edit")
 	e, err := openEnv()
 	if err != nil {
 		return fail("%v", err)
@@ -402,6 +412,9 @@ func cmdDaily(args []string) int {
 	}
 	text := stdinOrArgs(args)
 	if text == "" {
+		if edit {
+			return editNote(e, rel)
+		}
 		p, _ := e.vault.SafePath(rel)
 		fmt.Println(p)
 		return 0
@@ -418,6 +431,9 @@ func cmdDaily(args []string) int {
 		return fail("%v", err)
 	}
 	fmt.Printf("appended to %s\n", rel)
+	if edit {
+		return editNote(e, rel)
+	}
 	return 0
 }
 
