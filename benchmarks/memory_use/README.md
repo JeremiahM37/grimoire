@@ -29,6 +29,15 @@ hardcoded paths under that directory on purpose.
    the arm provides. `adherence_long.py` imports helpers from `adherence.py`,
    so keep both files together.
 
+11. Memory replay (`docs/MEMORY_REPLAY.md`): the benchmark's `cases.json` /
+   `cases2.json` seed the situation corpus (`grimoire memory replay seed`),
+   and the Go test `TestReplayEval` in `go/internal/api/memory_replay_eval_test.go`
+   measures the replay gate against the real endpoint: it simulates dream-style
+   merges and wording edits on a copy of the vault and compares the gate's hold
+   with whether the real `/api/memory/context` loses the gold memory (round 1
+   in-sample, round 2 held out). Env vars are listed at the top of that file;
+   it is skipped unless `REPLAY_EVAL_VAULT` names a copy of the benchmark vault.
+
 ## Notes
 
 - Most scripts make live calls (Grimoire, Ollama, `claude -p`) and cost time

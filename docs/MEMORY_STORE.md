@@ -70,8 +70,10 @@ store. `grimoire memory index` builds:
 It fits 200 lines and 25 KB (`--budget` to change); pointers get up to 55% of the
 budget, surplus rules collapse into "N more rules not shown". Without `--write`
 it prints. `--write` backs up the old `MEMORY.md` first and refreshes linked file
-blocks. The index is generated, the notes are the truth: nothing is edited or
-deleted, and the dream's "note not linked" check is skipped for a generated
+blocks. `--write` first replays the regenerated index against past context requests
+and refuses (exit status 2) if it would stop a useful memory from firing;
+`--force` writes it anyway ([MEMORY_REPLAY.md](MEMORY_REPLAY.md)). The index is
+generated, the notes are the truth: nothing is edited or deleted, and the dream's "note not linked" check is skipped for a generated
 index (it starts with `<!-- grimoire:generated-index -->`).
 
 `GET /api/memory/core?budget=BYTES&format=md|text` returns the same core as JSON

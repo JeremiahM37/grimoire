@@ -103,3 +103,26 @@ func TestTriggers(t *testing.T) {
 		}
 	}
 }
+
+func TestTriggerIndexMatchesStore(t *testing.T) {
+	s, err := Open(t.TempDir(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	all := []Cue{
+		{Target: "fact:a", Kind: Action, Text: "edit ~/x/grimoire.service.d/release.conf"},
+		{Target: "fact:b", Kind: Action, Text: "docker-compose.yml"},
+		{Target: "fact:c", Kind: Action, Text: "docker-compose.yml"},
+		{Target: "fact:d", Kind: Action, Text: "docker-compose.yml"},
+		{Target: "fact:e", Kind: Action, Text: "docker-compose.yml in /srv/app"},
+		{Target: "fact:f", Kind: Request, Text: "grimoire.service.d/release.conf"},
+	}
+	s.all = all
+	ti := NewTriggerIndex(all)
+	for _, act := range []string{"Edit /etc/grimoire.service.d/release.conf", "vi docker-compose.yml", "ls", ""} {
+		got, want := ti.Triggered(act), s.Triggered(act)
+		if strings.Join(got, ",") != strings.Join(want, ",") {
+			t.Fatalf("%q: index %v, store %v", act, got, want)
+		}
+	}
+}

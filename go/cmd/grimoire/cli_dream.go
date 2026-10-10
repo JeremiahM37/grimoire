@@ -73,9 +73,15 @@ func printDream(rep *dream.Report) {
 	for _, a := range rep.Applied {
 		fmt.Printf("fixed  %s %s line %d\n", a.Kind, a.Path, a.Line)
 	}
+	for _, h := range rep.Held {
+		fmt.Printf("held   %s (%d fix(es)): %s\n", h.Path, h.Fixes, h.Reason)
+		for _, l := range h.Lost {
+			fmt.Printf("         would stop firing for: %q\n", l)
+		}
+	}
 	for _, a := range rep.Actions {
 		fmt.Println("done  ", a)
 	}
-	fmt.Printf("\n%d documents: %d high, %d medium, %d low, %d info; %d fix(es) applied\n",
-		rep.Docs, counts[dream.High], counts[dream.Medium], counts[dream.Low], counts[dream.Info], len(rep.Applied))
+	fmt.Printf("\n%d documents: %d high, %d medium, %d low, %d info; %d fix(es) applied, %d held by memory replay\n",
+		rep.Docs, counts[dream.High], counts[dream.Medium], counts[dream.Low], counts[dream.Info], len(rep.Applied), len(rep.Held))
 }

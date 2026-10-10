@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/JeremiahM37/grimoire/go/internal/cues"
 	"github.com/JeremiahM37/grimoire/go/internal/fts"
 	"github.com/JeremiahM37/grimoire/go/internal/index"
 	"github.com/JeremiahM37/grimoire/go/internal/markdown"
@@ -182,6 +183,10 @@ type memoryResult struct {
 	// its own write, that a person disagrees — which is the only moment it can
 	// still do something about it.
 	Challenges string `json:"challenges,omitempty"`
+
+	// Replay is set when this write stopped a memory that had been useful from
+	// firing in past situations (docs/MEMORY_REPLAY.md). The write happened.
+	Replay *replayWarning `json:"replay,omitempty"`
 }
 
 // remember records what an agent learned, reconciling each fact against what
@@ -451,6 +456,19 @@ func (s *Server) applySupersession(w http.ResponseWriter, r *http.Request,
 		return memoryResult{}, errHandled
 	}
 
+	oldTarget := cues.FactTarget(target.ID)
+	warn := s.replayPreview(r, func(b *replayBuilder) {
+		if !b.snap.Has(oldTarget) {
+			return
+		}
+		if d.Op == memory.OpUpdate {
+			const placeholder = "fact:replay-preview"
+			b.want(placeholder, fact, []string{fact})
+			b.remap(oldTarget, placeholder)
+		} else {
+			b.remove(oldTarget)
+		}
+	})
 	newID := ""
 	if d.Op == memory.OpUpdate {
 		old := target.Entry
@@ -473,9 +491,14 @@ func (s *Server) applySupersession(w http.ResponseWriter, r *http.Request,
 		return memoryResult{}, err
 	}
 	s.forgetPriors()
+	if d.Op == memory.OpUpdate {
+		// The replacement inherits what the old fact learned: its cues, and
+		// its place in the replay corpus.
+		s.replayCarry(map[string]string{oldTarget: cues.FactTarget(newID)})
+	}
 	op := string(d.Op)
 	return memoryResult{Op: op, ID: newID, Text: d.Text, Target: target.ID,
-		Path: rel, Why: d.Why}, nil
+		Path: rel, Why: d.Why, Replay: warn}, nil
 }
 
 // opVerified is the result of a write that re-checked a fact and found it
@@ -1057,6 +1080,16 @@ func (s *Server) patchEntry(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	var warn *replayWarning
+	if in.Text != nil && strings.TrimSpace(*in.Text) != "" {
+		// A person's edit is never blocked; replay only says what it costs.
+		target, text := cues.FactTarget(strings.TrimSpace(in.ID)), strings.TrimSpace(*in.Text)
+		warn = s.replayPreview(r, func(b *replayBuilder) {
+			if b.snap.Has(target) {
+				b.want(target, text, []string{text})
+			}
+		})
+	}
 	var out memory.Entry
 	err := s.mutateEntry(note, strings.TrimSpace(in.ID), func(e *memory.Entry) {
 		// An immutable fact is pinned against reconciliation, not against its
@@ -1086,7 +1119,11 @@ func (s *Server) patchEntry(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, statusForEntryErr(err), entryErrMsg(err))
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"path": note, "entry": entryOf(out, note)})
+	resp := map[string]any{"path": note, "entry": entryOf(out, note)}
+	if warn != nil {
+		resp["replay"] = warn
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func deref(p *string) string {

@@ -112,6 +112,8 @@ type Server struct {
 	holdAt    time.Time
 	adhStore  *adherence.Store
 	fpDF      fpCache
+
+	replay replayState
 }
 
 // Routes builds the mux. Specific paths are registered before the catch-all
@@ -219,6 +221,9 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/memory/cues", s.listCues)
 	mux.HandleFunc("GET /api/memory/core", s.memoryCore)
 	mux.HandleFunc("GET /api/memory/impact", s.memoryImpact)
+	mux.HandleFunc("GET /api/memory/replay", s.adminOnly(s.replayInfo))
+	mux.HandleFunc("POST /api/memory/replay", s.adminOnly(s.replayRun))
+	mux.HandleFunc("POST /api/memory/replay/seed", s.adminOnly(s.replaySeed))
 	mux.HandleFunc("POST /api/memory/cues", s.addCues)
 	mux.HandleFunc("GET /api/memory/export", s.exportMemory)
 	mux.HandleFunc("GET /api/memory/changes", s.memoryChanges)

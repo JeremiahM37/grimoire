@@ -103,6 +103,17 @@ const (
 	FixAppend      = "append"
 )
 
+// Held is an automated edit that memory replay stopped.
+type Held struct {
+	Path   string `json:"path"`
+	Reason string `json:"reason"`
+	// Fixes is how many fixes to the document were held back.
+	Fixes int `json:"fixes"`
+	// Lost quotes the situations in which a useful memory would have stopped
+	// firing, clipped.
+	Lost []string `json:"lost,omitempty"`
+}
+
 // Report is the result of one dream.
 type Report struct {
 	Started  time.Time `json:"started"`
@@ -111,6 +122,10 @@ type Report struct {
 	Findings []Finding `json:"findings"`
 	// Applied lists the fixes that were made, in order.
 	Applied []Fix `json:"applied,omitempty"`
+	// Held lists automated edits the dream did not apply because replaying
+	// past memory situations showed they would stop a useful memory from
+	// firing (docs/MEMORY_REPLAY.md). Nothing was written for them.
+	Held []Held `json:"held,omitempty"`
 	// Actions records anything else the dream did, e.g. queuing a bank
 	// consolidation, in a sentence each.
 	Actions []string `json:"actions,omitempty"`

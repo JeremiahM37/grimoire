@@ -165,6 +165,9 @@ task text; memories as shown, first 900 characters):
 action was right. It is the evidence that an injected memory was read and acted
 on, which is what the injection-usefulness counters need; `followed` and
 `violated` remain the checks' verdicts.
+The outcomes also build the corpus for [memory replay](MEMORY_REPLAY.md): a
+memory that was cited or followed in a situation is one a later change to the
+store must keep firing there.
 
 ## Checks
 

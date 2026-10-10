@@ -130,6 +130,7 @@ func (s *Server) memoryContext(w http.ResponseWriter, r *http.Request) {
 	if v, err := strconv.ParseFloat(r.URL.Query().Get("min_rel"), 64); err == nil && v >= 0 && v <= 1 {
 		minRel = v
 	}
+	replayMinRel := minRel
 	if rank == "hybrid" && strings.TrimSpace(query) != "" && mode != "manual" && mode != "off" {
 		items, err := s.hybridContext(r, query, terms, paths)
 		if err != nil {
@@ -151,8 +152,10 @@ func (s *Server) memoryContext(w http.ResponseWriter, r *http.Request) {
 			items = s.rerankContext(r, query, items, minRel)
 			minRel = 0
 		}
+		lg := s.traceLog(r, query, perm, ask)
+		lg.minRel, lg.limit, lg.budget = replayMinRel, limit, budget
 		s.writeContext(w, items, excluded, budget, limit, minRel, "hybrid", r.URL.Query().Get("format") != "json",
-			s.traceLog(r, query, perm, ask))
+			lg)
 		return
 	}
 	if (len(terms) > 0 || (mode == "scoped" && query == "")) && mode != "manual" && mode != "off" {
@@ -242,6 +245,10 @@ type ctxLog struct {
 	tool, pend, tu string
 	ask            map[string]bool
 	pwith          map[string]float64
+	// What memory replay keeps about the request (docs/MEMORY_REPLAY.md).
+	minRel float64
+	limit  int
+	budget int
 }
 
 // markerRoom is the most a "m:<tag> " marker adds to a line.
@@ -346,6 +353,9 @@ func (s *Server) writeContext(w http.ResponseWriter, items []contextItem, exclud
 	}
 	if lg.log && lg.session != "" && len(shown) > 0 {
 		s.logInjections(lg, shown, tags, fps)
+	}
+	if lg.log && lg.session != "" {
+		s.replayNote(lg, picked)
 	}
 	writeJSON(w, http.StatusOK, out)
 }

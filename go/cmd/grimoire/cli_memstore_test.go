@@ -59,3 +59,36 @@ func TestMemoryLinkStatusIndexUnlink(t *testing.T) {
 		t.Error("unlink left a symlink")
 	}
 }
+
+func TestMemoryReplayCLIHoldsALossyChange(t *testing.T) {
+	vaultDir(t)
+	if out, code := runCmd(t, "new", "Kestrel rule", "Never push to the kestrel repository without being asked. Kestrel pushes need a pull request."); code != 0 {
+		t.Fatalf("new = %d: %s", code, out)
+	}
+	work := t.TempDir()
+	cases := `{"cases":[
+	 {"text":"should I push to the kestrel repository","min_rel":0.3,"expect":["note:kestrel-rule.md"]},
+	 {"text":"can I push the kestrel repository now","min_rel":0.3,"expect":["note:kestrel-rule.md"]},
+	 {"text":"the kestrel repository needs a push","min_rel":0.3,"expect":["note:kestrel-rule.md"]}]}`
+	seed := filepath.Join(work, "seed.json")
+	os.WriteFile(seed, []byte(cases), 0o644)
+	if out, code := runCmd(t, "memory", "replay", "seed", seed); code != 0 || !strings.Contains(out, `"added":3`) {
+		t.Fatalf("seed = %d: %s", code, out)
+	}
+	if out, _ := runCmd(t, "memory", "replay"); !strings.Contains(out, `"live":0`) || !strings.Contains(out, `"seed":3`) {
+		t.Fatalf("stats: %s", out)
+	}
+
+	bad := filepath.Join(work, "bad.md")
+	os.WriteFile(bad, []byte("Quarterly invoices are reconciled by the finance team on Tuesdays."), 0o644)
+	out, code := runCmd(t, "memory", "replay", "--diff", "--note", "kestrel-rule.md", "--with", bad)
+	if code != 2 || !strings.Contains(out, "HOLD") || !strings.Contains(out, "lost 3 useful recall") {
+		t.Fatalf("a lossy rewrite must be held (exit 2): %d\n%s", code, out)
+	}
+	good := filepath.Join(work, "good.md")
+	os.WriteFile(good, []byte("Never push to the kestrel repository without being asked. Kestrel pushes need a pull request. Ask first."), 0o644)
+	out, code = runCmd(t, "memory", "replay", "--diff", "--note", "kestrel-rule.md", "--with", good, "--brief")
+	if code != 0 || strings.Contains(out, "HOLD") {
+		t.Fatalf("a harmless rewrite must pass: %d\n%s", code, out)
+	}
+}

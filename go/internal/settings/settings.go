@@ -177,6 +177,23 @@ var Fields = map[string]Field{
 	// estimate is attempted.
 	"memory_holdout_rate":  {"GRIMOIRE_MEMORY_HOLDOUT_RATE", "0"},
 	"memory_trace_min_arm": {"GRIMOIRE_MEMORY_TRACE_MIN_ARM", "10"},
+	// Memory replay (docs/MEMORY_REPLAY.md): context requests are kept as
+	// situations, and automated memory edits are replayed against them first.
+	// replay_log=0 stops recording; replay_gate=0 stops holding changes (the
+	// replay is still reported). replay_max_lost is how many useful recalls a
+	// change may lose before an automated edit is held; replay_max_false how
+	// many new false fires and replay_max_risk how many useful recalls left
+	// near the floor (-1 = report, never hold); replay_min_useful the
+	// number of situations with a useful recall the corpus needs before its
+	// verdict is trusted.
+	"replay_log":            {"GRIMOIRE_REPLAY_LOG", "1"},
+	"replay_gate":           {"GRIMOIRE_REPLAY_GATE", "1"},
+	"replay_max_situations": {"GRIMOIRE_REPLAY_MAX_SITUATIONS", "5000"},
+	"replay_retention_days": {"GRIMOIRE_REPLAY_RETENTION_DAYS", "60"},
+	"replay_max_lost":       {"GRIMOIRE_REPLAY_MAX_LOST", "0"},
+	"replay_max_false":      {"GRIMOIRE_REPLAY_MAX_FALSE", "-1"},
+	"replay_min_useful":     {"GRIMOIRE_REPLAY_MIN_USEFUL", "3"},
+	"replay_max_risk":       {"GRIMOIRE_REPLAY_MAX_RISK", "-1"},
 }
 
 // InternalFields are persisted in the same file and resolved the same way, but
