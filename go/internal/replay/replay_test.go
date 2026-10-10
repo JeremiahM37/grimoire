@@ -276,6 +276,9 @@ func TestThousandSituationsAreFast(t *testing.T) {
 	rp.Diff(Change{Upsert: []*Item{fact("x", "new", rv())}, Remove: []string{items[0].Target}})
 	diff := time.Since(start)
 	t.Logf("score 1000 situations x 1500 memories: %v; diff of one change: %v", build, diff)
+	if raceEnabled {
+		return // the race detector multiplies these timings; the budget is for real builds
+	}
 	if build > 8*time.Second || diff > time.Second {
 		t.Fatalf("too slow: %v / %v", build, diff)
 	}
