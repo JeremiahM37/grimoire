@@ -1,0 +1,150 @@
+[
+ {
+  "conversation_id": "syn-001",
+  "conversation_seed": {
+   "category": "Coding",
+   "id": 1,
+   "subtopics": [
+    "x"
+   ],
+   "theme": "synthetic",
+   "title": "Synthetic trip planning"
+  },
+  "narratives": "synthetic",
+  "user_profile": {
+   "user_info": "u",
+   "user_relationships": "r"
+  },
+  "conversation_plan": "synthetic",
+  "user_questions": [],
+  "chat": [
+   [
+    {
+     "content": "I want to plan a trip. The flight to Lisbon leaves on 3 June.",
+     "id": "0",
+     "index": "1,0",
+     "question_type": "main_question",
+     "role": "user",
+     "time_anchor": "March-01-2024"
+    },
+    {
+     "content": "Noted. Lisbon in June is lovely.",
+     "id": "1",
+     "index": "1,1",
+     "question_type": null,
+     "role": "assistant",
+     "time_anchor": ""
+    },
+    {
+     "content": "The budget was raised to 2400 euros last week.",
+     "id": "2",
+     "index": "1,2",
+     "question_type": "main_question",
+     "role": "user",
+     "time_anchor": ""
+    },
+    {
+     "content": "Got it, 2400 euros.",
+     "id": "3",
+     "index": "1,3",
+     "question_type": null,
+     "role": "assistant",
+     "time_anchor": ""
+    }
+   ],
+   [
+    {
+     "content": "The hotel is near the Alfama district. I am allergic to shellfish.",
+     "id": "0",
+     "index": "2,0",
+     "question_type": "main_question",
+     "role": "user",
+     "time_anchor": "March-09-2024"
+    },
+    {
+     "content": "I will avoid seafood suggestions.",
+     "id": "1",
+     "index": "2,1",
+     "question_type": null,
+     "role": "assistant",
+     "time_anchor": ""
+    }
+   ]
+  ],
+  "probing_questions": "{'abstention': [{'question': '[abstention #1] Which trip fact does the chat state about: the flight to Lisbon leaves on 3 June', 'rubric': ['Based on the provided chat, there is no information about the flight to lisbon'], 'difficulty': 'easy', 'ideal_response': 'Based on the provided chat, there is no information about the flight to lisbon.'}, {'question': '[abstention #2] Which trip fact does the chat state about: the budget was raised to 2400 euros', 'rubric': ['Based on the provided chat, there is no information about the budget was raise'], 'difficulty': 'easy', 'ideal_response': 'Based on the provided chat, there is no information about the budget was raise.'}], 'contradiction_resolution': [{'question': '[contradiction_resolution #1] Which trip fact does the chat state about: the budget was raised to 2400 euros', 'rubric': ['LLM response should state: the budget was raised to 2400 euros'], 'difficulty': 'easy', 'ideal_answer': 'the budget was raised to 2400 euros'}, {'question': '[contradiction_resolution #2] Which trip fact does the chat state about: the hotel is near the Alfama district', 'rubric': ['LLM response should state: the hotel is near the Alfama district'], 'difficulty': 'easy', 'ideal_answer': 'the hotel is near the Alfama district'}], 'event_ordering': [{'question': '[event_ordering #1] Which trip fact does the chat state about: the hotel is near the Alfama district', 'rubric': ['LLM response should state: the hotel is near the Alfama district'], 'difficulty': 'easy', 'answer': 'the hotel is near the Alfama district'}, {'question': '[event_ordering #2] Which trip fact does the chat state about: the user is allergic to shellfish', 'rubric': ['LLM response should state: the user is allergic to shellfish'], 'difficulty': 'easy', 'answer': 'the user is allergic to shellfish'}], 'information_extraction': [{'question': '[information_extraction #1] Which trip fact does the chat state about: the user is allergic to shellfish', 'rubric': ['LLM response should state: the user is allergic to shellfish'], 'difficulty': 'easy', 'answer': 'the user is allergic to shellfish'}, {'question': '[information_extraction #2] Which trip fact does the chat state about: the flight to Lisbon leaves on 3 June', 'rubric': ['LLM response should state: the flight to Lisbon leaves on 3 June'], 'difficulty': 'easy', 'answer': 'the flight to Lisbon leaves on 3 June'}], 'instruction_following': [{'question': '[instruction_following #1] Which trip fact does the chat state about: the flight to Lisbon leaves on 3 June', 'rubric': ['LLM response should state: the flight to Lisbon leaves on 3 June'], 'difficulty': 'easy'}, {'question': '[instruction_following #2] Which trip fact does the chat state about: the budget was raised to 2400 euros', 'rubric': ['LLM response should state: the budget was raised to 2400 euros'], 'difficulty': 'easy'}], 'knowledge_update': [{'question': '[knowledge_update #1] Which trip fact does the chat state about: the budget was raised to 2400 euros', 'rubric': ['LLM response should state: the budget was raised to 2400 euros'], 'difficulty': 'easy', 'answer': 'the budget was raised to 2400 euros'}, {'question': '[knowledge_update #2] Which trip fact does the chat state about: the hotel is near the Alfama district', 'rubric': ['LLM response should state: the hotel is near the Alfama district'], 'difficulty': 'easy', 'answer': 'the hotel is near the Alfama district'}], 'multi_session_reasoning': [{'question': '[multi_session_reasoning #1] Which trip fact does the chat state about: the hotel is near the Alfama district', 'rubric': ['LLM response should state: the hotel is near the Alfama district'], 'difficulty': 'easy', 'answer': 'the hotel is near the Alfama district'}, {'question': '[multi_session_reasoning #2] Which trip fact does the chat state about: the user is allergic to shellfish', 'rubric': ['LLM response should state: the user is allergic to shellfish'], 'difficulty': 'easy', 'answer': 'the user is allergic to shellfish'}], 'preference_following': [{'question': '[preference_following #1] Which trip fact does the chat state about: the user is allergic to shellfish', 'rubric': ['LLM response should state: the user is allergic to shellfish'], 'difficulty': 'easy'}, {'question': '[preference_following #2] Which trip fact does the chat state about: the flight to Lisbon leaves on 3 June', 'rubric': ['LLM response should state: the flight to Lisbon leaves on 3 June'], 'difficulty': 'easy'}], 'summarization': [{'question': '[summarization #1] Which trip fact does the chat state about: the flight to Lisbon leaves on 3 June', 'rubric': ['LLM response should state: the flight to Lisbon leaves on 3 June'], 'difficulty': 'easy', 'ideal_summary': 'the flight to Lisbon leaves on 3 June'}, {'question': '[summarization #2] Which trip fact does the chat state about: the budget was raised to 2400 euros', 'rubric': ['LLM response should state: the budget was raised to 2400 euros'], 'difficulty': 'easy', 'ideal_summary': 'the budget was raised to 2400 euros'}], 'temporal_reasoning': [{'question': '[temporal_reasoning #1] Which trip fact does the chat state about: the budget was raised to 2400 euros', 'rubric': ['LLM response should state: the budget was raised to 2400 euros'], 'difficulty': 'easy', 'answer': 'the budget was raised to 2400 euros'}, {'question': '[temporal_reasoning #2] Which trip fact does the chat state about: the hotel is near the Alfama district', 'rubric': ['LLM response should state: the hotel is near the Alfama district'], 'difficulty': 'easy', 'answer': 'the hotel is near the Alfama district'}]}"
+ },
+ {
+  "conversation_id": "syn-002",
+  "conversation_seed": {
+   "category": "Coding",
+   "id": 1,
+   "subtopics": [
+    "x"
+   ],
+   "theme": "synthetic",
+   "title": "Synthetic home renovation"
+  },
+  "narratives": "synthetic",
+  "user_profile": {
+   "user_info": "u",
+   "user_relationships": "r"
+  },
+  "conversation_plan": "synthetic",
+  "user_questions": [],
+  "chat": [
+   [
+    {
+     "content": "The kitchen tiles are grey slate and the contractor starts on 14 July.",
+     "id": "0",
+     "index": "1,0",
+     "question_type": "main_question",
+     "role": "user",
+     "time_anchor": "April-02-2024"
+    },
+    {
+     "content": "A July start gives you time to order.",
+     "id": "1",
+     "index": "1,1",
+     "question_type": null,
+     "role": "assistant",
+     "time_anchor": ""
+    },
+    {
+     "content": "I prefer oak cabinets.",
+     "id": "2",
+     "index": "1,2",
+     "question_type": "main_question",
+     "role": "user",
+     "time_anchor": ""
+    },
+    {
+     "content": "Oak it is.",
+     "id": "3",
+     "index": "1,3",
+     "question_type": null,
+     "role": "assistant",
+     "time_anchor": ""
+    }
+   ],
+   [
+    {
+     "content": "The total quote is 9800 dollars now.",
+     "id": "0",
+     "index": "2,0",
+     "question_type": "main_question",
+     "role": "user",
+     "time_anchor": "April-11-2024"
+    },
+    {
+     "content": "I will track that quote.",
+     "id": "1",
+     "index": "2,1",
+     "question_type": null,
+     "role": "assistant",
+     "time_anchor": ""
+    }
+   ]
+  ],
+  "probing_questions": "{'abstention': [{'question': '[abstention #1] What renovation fact does the chat state about: the kitchen tiles are grey slate', 'rubric': ['Based on the provided chat, there is no information about the kitchen tiles ar'], 'difficulty': 'easy', 'ideal_response': 'Based on the provided chat, there is no information about the kitchen tiles ar.'}, {'question': '[abstention #2] What renovation fact does the chat state about: the contractor starts on 14 July', 'rubric': ['Based on the provided chat, there is no information about the contractor start'], 'difficulty': 'easy', 'ideal_response': 'Based on the provided chat, there is no information about the contractor start.'}], 'contradiction_resolution': [{'question': '[contradiction_resolution #1] What renovation fact does the chat state about: the contractor starts on 14 July', 'rubric': ['LLM response should state: the contractor starts on 14 July'], 'difficulty': 'easy', 'ideal_answer': 'the contractor starts on 14 July'}, {'question': '[contradiction_resolution #2] What renovation fact does the chat state about: the user prefers oak cabinets', 'rubric': ['LLM response should state: the user prefers oak cabinets'], 'difficulty': 'easy', 'ideal_answer': 'the user prefers oak cabinets'}], 'event_ordering': [{'question': '[event_ordering #1] What renovation fact does the chat state about: the user prefers oak cabinets', 'rubric': ['LLM response should state: the user prefers oak cabinets'], 'difficulty': 'easy', 'answer': 'the user prefers oak cabinets'}, {'question': '[event_ordering #2] What renovation fact does the chat state about: the total quote is 9800 dollars', 'rubric': ['LLM response should state: the total quote is 9800 dollars'], 'difficulty': 'easy', 'answer': 'the total quote is 9800 dollars'}], 'information_extraction': [{'question': '[information_extraction #1] What renovation fact does the chat state about: the total quote is 9800 dollars', 'rubric': ['LLM response should state: the total quote is 9800 dollars'], 'difficulty': 'easy', 'answer': 'the total quote is 9800 dollars'}, {'question': '[information_extraction #2] What renovation fact does the chat state about: the kitchen tiles are grey slate', 'rubric': ['LLM response should state: the kitchen tiles are grey slate'], 'difficulty': 'easy', 'answer': 'the kitchen tiles are grey slate'}], 'instruction_following': [{'question': '[instruction_following #1] What renovation fact does the chat state about: the kitchen tiles are grey slate', 'rubric': ['LLM response should state: the kitchen tiles are grey slate'], 'difficulty': 'easy'}, {'question': '[instruction_following #2] What renovation fact does the chat state about: the contractor starts on 14 July', 'rubric': ['LLM response should state: the contractor starts on 14 July'], 'difficulty': 'easy'}], 'knowledge_update': [{'question': '[knowledge_update #1] What renovation fact does the chat state about: the contractor starts on 14 July', 'rubric': ['LLM response should state: the contractor starts on 14 July'], 'difficulty': 'easy', 'answer': 'the contractor starts on 14 July'}, {'question': '[knowledge_update #2] What renovation fact does the chat state about: the user prefers oak cabinets', 'rubric': ['LLM response should state: the user prefers oak cabinets'], 'difficulty': 'easy', 'answer': 'the user prefers oak cabinets'}], 'multi_session_reasoning': [{'question': '[multi_session_reasoning #1] What renovation fact does the chat state about: the user prefers oak cabinets', 'rubric': ['LLM response should state: the user prefers oak cabinets'], 'difficulty': 'easy', 'answer': 'the user prefers oak cabinets'}, {'question': '[multi_session_reasoning #2] What renovation fact does the chat state about: the total quote is 9800 dollars', 'rubric': ['LLM response should state: the total quote is 9800 dollars'], 'difficulty': 'easy', 'answer': 'the total quote is 9800 dollars'}], 'preference_following': [{'question': '[preference_following #1] What renovation fact does the chat state about: the total quote is 9800 dollars', 'rubric': ['LLM response should state: the total quote is 9800 dollars'], 'difficulty': 'easy'}, {'question': '[preference_following #2] What renovation fact does the chat state about: the kitchen tiles are grey slate', 'rubric': ['LLM response should state: the kitchen tiles are grey slate'], 'difficulty': 'easy'}], 'summarization': [{'question': '[summarization #1] What renovation fact does the chat state about: the kitchen tiles are grey slate', 'rubric': ['LLM response should state: the kitchen tiles are grey slate'], 'difficulty': 'easy', 'ideal_summary': 'the kitchen tiles are grey slate'}, {'question': '[summarization #2] What renovation fact does the chat state about: the contractor starts on 14 July', 'rubric': ['LLM response should state: the contractor starts on 14 July'], 'difficulty': 'easy', 'ideal_summary': 'the contractor starts on 14 July'}], 'temporal_reasoning': [{'question': '[temporal_reasoning #1] What renovation fact does the chat state about: the contractor starts on 14 July', 'rubric': ['LLM response should state: the contractor starts on 14 July'], 'difficulty': 'easy', 'answer': 'the contractor starts on 14 July'}, {'question': '[temporal_reasoning #2] What renovation fact does the chat state about: the user prefers oak cabinets', 'rubric': ['LLM response should state: the user prefers oak cabinets'], 'difficulty': 'easy', 'answer': 'the user prefers oak cabinets'}]}"
+ }
+]

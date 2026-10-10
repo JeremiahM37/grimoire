@@ -43,3 +43,7 @@ benchmarks/longmemeval/*.log
 .verify-artifacts/
 node_modules/
 .venv
+
+# BEAM dataset dump (`benchmarks/beam/run_beam.py download`); the data is licensed
+# by its publisher and is never committed here.
+benchmarks/beam/data/
