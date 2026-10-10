@@ -120,6 +120,32 @@ CREATE INDEX IF NOT EXISTS idx_memory_entries_category ON memory_entries(categor
 -- saved: measured at 13.7ms -> 23.6ms over a thousand entries, a 70% regression
 -- on the case where the bound does not even bind.
 CREATE INDEX IF NOT EXISTS idx_memory_entries_stamp ON memory_entries(stamp DESC, id DESC);
+-- Full-text index over memory facts, for candidate generation. Recall used to
+-- score only the newest scan-limit facts, so an old fact that answers the
+-- question was unreachable once the store outgrew the window (measured at 30%
+-- gold-in-top-10 at 50k facts). FTS5 supplies the lexical candidates that the
+-- window no longer does.
+--
+-- External content: the text lives once, in memory_entries, and this table
+-- holds only the index. The triggers keep it in step with every write path —
+-- the note rewrite (delete then insert), a removed note, and a full reindex —
+-- so nothing else has to remember to touch it. The rowid of memory_entries is
+-- the key; no VACUUM runs against an index (rowids of tables without an
+-- INTEGER PRIMARY KEY may renumber under VACUUM, which would desynchronise
+-- this table), so a VACUUM added later must rebuild memory_fts afterwards.
+CREATE VIRTUAL TABLE IF NOT EXISTS memory_fts USING fts5(
+  text, content='memory_entries', content_rowid='rowid', tokenize='porter unicode61'
+);
+CREATE TRIGGER IF NOT EXISTS memory_entries_fts_ai AFTER INSERT ON memory_entries BEGIN
+  INSERT INTO memory_fts(rowid, text) VALUES (new.rowid, new.text);
+END;
+CREATE TRIGGER IF NOT EXISTS memory_entries_fts_ad AFTER DELETE ON memory_entries BEGIN
+  INSERT INTO memory_fts(memory_fts, rowid, text) VALUES ('delete', old.rowid, old.text);
+END;
+CREATE TRIGGER IF NOT EXISTS memory_entries_fts_au AFTER UPDATE OF text ON memory_entries BEGIN
+  INSERT INTO memory_fts(memory_fts, rowid, text) VALUES ('delete', old.rowid, old.text);
+  INSERT INTO memory_fts(rowid, text) VALUES (new.rowid, new.text);
+END;
 -- Every model call grimoire made itself: ask, rerank, intent, summarize, embed.
 -- NOT an agent's own token spend, which never passes through this process.
 CREATE TABLE IF NOT EXISTS model_calls(
@@ -404,9 +430,26 @@ func Open(path string) (*DB, error) {
 		conn.Close()
 		return nil, fmt.Errorf("setting busy timeout: %w", err)
 	}
+	// Whether memory_fts already exists decides whether it needs a backfill.
+	// Its triggers keep it current from the first write, but rows written
+	// before the table existed are only indexed by a rebuild.
+	hadMemoryFTS, err := tableExists(conn, "memory_fts")
+	if err != nil {
+		conn.Close()
+		return nil, err
+	}
 	if _, err := conn.Exec(Schema); err != nil {
 		conn.Close()
 		return nil, fmt.Errorf("applying schema: %w", err)
+	}
+	if !hadMemoryFTS {
+		// The FTS5 'rebuild' command reads every row of the content table, so
+		// an index created before this table gets its candidates from the rows
+		// it already holds. Idempotent once the table exists.
+		if _, err := conn.Exec("INSERT INTO memory_fts(memory_fts) VALUES('rebuild')"); err != nil {
+			conn.Close()
+			return nil, fmt.Errorf("backfilling memory_fts: %w", err)
+		}
 	}
 	if _, err := conn.Exec(migrations); err != nil {
 		conn.Close()
@@ -534,6 +577,13 @@ var addedColumns = []struct{ table, column, decl string }{
 	{"grant_requests", "max_uses", "INTEGER NOT NULL DEFAULT 0"},
 	// The facts an observation was built from.
 	{"bank_units", "sources", "TEXT NOT NULL DEFAULT ''"},
+}
+
+// tableExists reports whether a table or virtual table is in the schema.
+func tableExists(conn *sql.DB, name string) (bool, error) {
+	var n int
+	err := conn.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE name=?", name).Scan(&n)
+	return n > 0, err
 }
 
 func hasColumn(conn *sql.DB, table, column string) (bool, error) {
