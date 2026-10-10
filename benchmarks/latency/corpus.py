@@ -21,7 +21,7 @@ from __future__ import annotations
 import hashlib
 import random
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 CORPUS_VERSION = 1
 FACTS_PER_NOTE = 50
@@ -52,7 +52,7 @@ AGENTS = ["claude-code", "codex", "homelab-ai", "lectern-worker", "librechat"]
 HUMANS = ["jam", "dana", "priya", "marco"]
 CATEGORIES = ["preference", "fact", "procedure", "status"]
 IMPORTANCE_WEIGHTS = [(1, 5), (2, 15), (3, 40), (4, 25), (5, 15)]
-BASE = datetime(2026, 1, 1, 0, 0, tzinfo=timezone.utc)
+BASE = datetime(2026, 1, 1, 0, 0, tzinfo=UTC)
 SPAN_DAYS = 273  # Jan 1 .. end of Sep 2026; stamps increase with generation order
 
 
@@ -176,7 +176,7 @@ def _make_fact(rng: random.Random, seed: int, tag: str, i: int, n: int,
                                  [wt for _, wt in IMPORTANCE_WEIGHTS])[0]
     valid_from = valid_to = ""
     if rng.random() < 0.20:
-        start = datetime(2025, 6, 1, tzinfo=timezone.utc) + timedelta(days=rng.randrange(0, 430))
+        start = datetime(2025, 6, 1, tzinfo=UTC) + timedelta(days=rng.randrange(0, 430))
         valid_from = start.strftime("%Y-%m-%d")
         if rng.random() < 1 / 3:
             valid_to = (start + timedelta(days=rng.randrange(30, 400))).strftime("%Y-%m-%d")
@@ -197,7 +197,6 @@ def build(seed: int, n: int) -> tuple[list[Fact], list[Entity]]:
     used: dict[tuple[str, str], Fact] = {}
     current: list[tuple[str, str]] = []  # keys whose belief is still current
     facts: list[Fact] = []
-    attempts = 0
     while len(facts) < n:
         i = len(facts)
         # One decision per fact: ~10% of facts re-state a current key. A rejected

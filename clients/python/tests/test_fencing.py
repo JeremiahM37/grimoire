@@ -10,8 +10,15 @@ import os
 
 import pytest
 from grimoire_client import Memory
-from grimoire_client.fencing import FENCE_BEGIN, FENCE_END, PREAMBLE, fence, is_fenced, neutralize, text_of
-
+from grimoire_client.fencing import (
+    FENCE_BEGIN,
+    FENCE_END,
+    PREAMBLE,
+    fence,
+    is_fenced,
+    neutralize,
+    text_of,
+)
 
 GO_FENCE = os.path.join(os.path.dirname(__file__), "..", "..", "..", "go", "internal", "trust", "fence.go")
 

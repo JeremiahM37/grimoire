@@ -185,4 +185,4 @@ def test_tools_become_structured_tools_when_langchain_is_present(monkeypatch, cl
 def test_errors_are_grimoire_errors_on_the_history_path(grimoire_stub, client):
     grimoire_stub.routes[("GET", "/api/memory")] = (503, {"error": "down"})
     with pytest.raises(GrimoireError):
-        lc.GrimoireChatMessageHistory(client, "s1").messages
+        _ = lc.GrimoireChatMessageHistory(client, "s1").messages

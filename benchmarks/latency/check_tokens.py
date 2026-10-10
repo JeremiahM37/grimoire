@@ -61,7 +61,7 @@ def main() -> int:
     texts = sample()
     got = json.loads(subprocess.run([str(d / "tokcheck")], input=json.dumps(texts),
                                     capture_output=True, text=True, check=True).stdout)
-    bad = [(t, g, count_tokens(t)) for t, g in zip(texts, got) if count_tokens(t) != g]
+    bad = [(t, g, count_tokens(t)) for t, g in zip(texts, got, strict=True) if count_tokens(t) != g]
     if bad:
         for t, g, p in bad[:5]:
             print(f"MISMATCH go={g} py={p} text={t[:80]!r}")

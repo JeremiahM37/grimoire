@@ -13,7 +13,6 @@ They run the real pipeline end to end on the synthetic fixture:
 import contextlib
 import io
 import json
-import os
 import socket
 import sys
 import tempfile
