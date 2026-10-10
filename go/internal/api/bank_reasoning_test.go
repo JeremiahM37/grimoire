@@ -12,7 +12,6 @@ import (
 )
 
 func TestBankReasoningRoutesWithoutAModel(t *testing.T) {
-	t.Parallel()
 	s, h := testServer(t)
 	if w := do(t, h, "POST", "/api/banks/b/memories", map[string]any{"items": []map[string]any{
 		{"content": "Alice adopted a beagle named Biscuit. Alice works as a nurse.", "document_id": "d1", "tags": []string{"pets"}}}}); w.Code != 200 {

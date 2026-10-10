@@ -600,7 +600,6 @@ func TestBriefingCarriesCurrentFacts(t *testing.T) {
 }
 
 func TestFactRecallRespectsReaderLists(t *testing.T) {
-	t.Parallel()
 	// The fact-level surface is a new way to read note content, and every new
 	// way to read note content is a new way to leak it.
 	s, h := testServer(t)

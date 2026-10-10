@@ -483,7 +483,6 @@ func call(t *testing.T, h http.Handler, key, method, path string, body any) *htt
 // only thing keeping him out. An earlier version of this test reused a fixture
 // whose note had no alias and no tag, and passed with every filter removed.
 func TestDerivedSurfacesRespectReaderLists(t *testing.T) {
-	t.Parallel()
 	s, h := testServer(t)
 	aliceKey := makeUser(t, s, h, "", "alice", "admin")
 	bobKey := makeUser(t, s, h, aliceKey, "bob", "member")
@@ -1012,7 +1011,6 @@ func shotgun(aim string, all []string) map[string]any {
 // The trail read back: bursts, over HTTP, on the route an operator reaches.
 
 func TestAnomaliesRouteReportsASweepAndItsThresholds(t *testing.T) {
-	t.Parallel()
 	s, h := testServer(t)
 	withReads(t, s)
 	aliceKey := makeUser(t, s, h, "", "alice", "admin")

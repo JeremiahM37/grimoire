@@ -103,7 +103,6 @@ func TestDreamReportsWithoutChangingAnything(t *testing.T) {
 // The report is a note, and notes sync to other devices: the credential the
 // sweep found must not travel with it, in the note or in the API response.
 func TestDreamNeverRepeatsTheSecretItFound(t *testing.T) {
-	t.Parallel()
 	s, h := dreamVault(t)
 	rec := do(t, h, "POST", "/api/dream", map[string]any{})
 	if rec.Code != http.StatusOK {
@@ -181,7 +180,6 @@ func TestScheduledDreamSkipsUnchangedMemory(t *testing.T) {
 }
 
 func TestDreamRouteNeedsAdmin(t *testing.T) {
-	t.Parallel()
 	s, _ := dreamVault(t)
 	s.AdminToken = "admin-secret"
 	h := s.Routes() // the gate is built with the routes

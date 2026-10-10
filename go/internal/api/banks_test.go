@@ -207,7 +207,6 @@ func TestBankLifecycleOverHTTP(t *testing.T) {
 }
 
 func TestRetainCreatesTheBankAndWorksWithNoModel(t *testing.T) {
-	t.Parallel()
 	_, h := testServer(t)
 	w := do(t, h, "POST", "/api/banks/notes:scratch/memories", map[string]any{"items": []map[string]any{
 		{"content": "Priya moved to Toronto in March 2022. She works at Shopify."}}})

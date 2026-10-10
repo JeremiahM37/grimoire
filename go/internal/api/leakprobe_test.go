@@ -1168,7 +1168,8 @@ func TestLeakprobeNoExistenceOracle(t *testing.T) {
 // graph degree, tag and entity counts, array lengths. A count that moves is a
 // count of something the caller cannot read.
 func TestLeakprobeCountsDoNotDependOnHiddenOwnedItems(t *testing.T) {
-	t.Parallel()
+	// Serial on purpose: it compares two worlds' counts, and the adherence
+	// routes read per-user state under HOME that parallel tests also write.
 	full := seedLeakWorldWith(t, true)
 	control := seedLeakWorldWith(t, false)
 	for _, p := range lpProbes(full) {
