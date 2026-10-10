@@ -203,7 +203,13 @@ type Card struct {
 	Reminders    ReminderStats  `json:"reminders"`
 	Benefit      Benefit        `json:"benefit"`
 	MeaningMatch Interval       `json:"meaning_match,omitempty"`
+	// Recent lists the latest actions this memory was linked to: tool, stage,
+	// time and outcome codes, never a command, path or text.
+	Recent []ActionRow `json:"recent_actions"`
 }
+
+// RecentActions is how many linked actions a card lists.
+const RecentActions = 10
 
 // Card builds the per-memory card.
 func (s *Store) Card(target string, since time.Time) (Card, error) {
@@ -346,6 +352,25 @@ func (s *Store) Card(target string, since time.Time) (Card, error) {
 		o.BadActions += b2i(bad)
 	}
 	ar.Close()
+	c.Recent = []ActionRow{}
+	rr, err := s.db.Query(`SELECT a.id, a.seq, a.tool, a.stage, a.ts, a.failed, a.tests_pass, a.tests_fail, a.reedit, a.revert, a.thrash, a.denied, a.correction
+		FROM trace_actions a WHERE a.ts>=? AND a.id IN
+		(SELECT l.action_id FROM trace_links l JOIN injections i ON i.id=l.injection_id WHERE i.target=?)
+		ORDER BY a.ts DESC, a.id DESC LIMIT ?`, since.Unix(), target, RecentActions)
+	if err != nil {
+		return c, err
+	}
+	for rr.Next() {
+		var a ActionRow
+		var re, rv, dn, co int
+		if err := rr.Scan(&a.ID, &a.Seq, &a.Tool, &a.Stage, &a.TS, &a.Failed, &a.TestsPass, &a.TestsFail, &re, &rv, &a.Thrash, &dn, &co); err != nil {
+			rr.Close()
+			return c, err
+		}
+		a.Reedit, a.Revert, a.Denied, a.Correction = re == 1, rv == 1, dn == 1, co == 1
+		c.Recent = append(c.Recent, a)
+	}
+	rr.Close()
 	c.Benefit, err = s.benefitLocked(ScopeTarget(target), since)
 	return c, err
 }

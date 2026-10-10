@@ -56,8 +56,11 @@ Without them the call that follows within two minutes (thirty for an ask) is the
 one, and a call that matches any pending reminder resolves that one rather than
 its neighbour. A rule that forced an `enforce: ask` decision is recorded with
 `ask`: `unchanged` means the user approved and it ran, `abandoned` that it never
-ran (declined or dropped). Limit: for `Edit` and `Write` the pending hash covers
-the tool and path, so a different edit of the same file reads as `unchanged`.
+ran (declined or dropped). For `Edit`, `MultiEdit`, `Write` and Codex
+`apply_patch` the hooks also send `ec`, a hash of the edit content (old and new
+strings, written text or patch), on both the pending side and the executed side,
+and the server folds it into the hash, so a different edit of the same file reads
+as `changed`. A hook without `ec` falls back to tool and target.
 
 ## Outcomes (the hook, per profile)
 
@@ -148,12 +151,22 @@ grimoire memory trace [--target T] [--days N] [--json]
 
 The card has `exposures`, `withheld`, `uptake` and `influence` (each with k, n,
 rate and a Wilson interval), `link_evidence`, `adherence_outcomes`,
-`linked_actions` (failed, tests failed, re-edited, reverted, thrash, denied,
+`recent_actions` (the last ten linked calls: tool, stage, time and outcome codes
+only), `linked_actions` (failed, tests failed, re-edited, reverted, thrash, denied,
 corrected), `reminders` (unchanged, changed, abandoned, open, change rate with
 interval, enforce-ask results), `benefit` (label `associated`) and `causal`.
 Uptake counts only injections where it could be seen (fingerprintable or cited);
 influence counts injections that had at least one action after them. A memory
 the caller cannot read answers 404.
+
+## In the console
+
+**Memory use** (command palette, or **Memory use...** in a note's menu) shows the
+overview (exposures, uptake, influence, outcome mix, top helpful, ignored and
+violated memories, active rule checks, holdout status) and, per memory, the
+funnel with n at each stage, the uptake evidence mix, the benefit labelled
+`associated`, `caused` or `insufficient data`, and recent linked actions. The
+summary and rules are administrator-only; the panel says so instead of erroring.
 
 ## Settings
 

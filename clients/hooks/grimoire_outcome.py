@@ -535,6 +535,43 @@ def edit_parts(tool_input):
     return None
 
 
+def edit_content_hash(tool, tool_input, delegation=()):
+    """A short hash of what an edit call changes, or None for a call that is not
+    an edit. The pending-action experiment hashes the tool and target; for Edit,
+    MultiEdit and Write the target is only the path, so without this a different
+    edit of the same file would read as unchanged. The context hook (before the
+    call) and the outcome hook (after it) must compute the same value, so keep
+    the two copies identical. Only the hash leaves the machine."""
+    if not isinstance(tool_input, dict) or tool in delegation or tool.lower() in {"bash", "shell"}:
+        return None
+
+    def text(value):
+        return value if isinstance(value, str) else ""
+
+    if isinstance(tool_input.get("edits"), list):
+        material = ["edits", [[text(e.get("old_string")), text(e.get("new_string"))]
+                              for e in tool_input["edits"] if isinstance(e, dict)]]
+    elif "old_string" in tool_input or "new_string" in tool_input:
+        material = ["edit", text(tool_input.get("old_string")), text(tool_input.get("new_string")),
+                    bool(tool_input.get("replace_all"))]
+    else:
+        material = None
+        for key in ("content", "new_source", "file_text"):
+            if isinstance(tool_input.get(key), str):
+                material = ["write", tool_input[key]]
+                break
+        if material is None:
+            for key in ("input", "patch", "command"):
+                value = tool_input.get(key)
+                if isinstance(value, str) and re.search(r"^(?:\*\*\* (?:Update|Add|Delete) File: |\+\+\+ (?:b/)?)\S", value, re.M):
+                    material = ["patch", value]
+                    break
+        if material is None:
+            return None
+    raw = json.dumps(material, ensure_ascii=True, separators=(",", ":")).encode("utf-8", "replace")
+    return hashlib.sha256(b"edit\0" + raw).hexdigest()[:16]
+
+
 def _path_id(path):
     return hashlib.sha256(("path\0" + path).encode("utf-8", "replace")).hexdigest()[:12]
 
@@ -697,6 +734,9 @@ def trace_body(event, profile, environment, name, tool, tool_input, target, fp_s
         if revert:
             body["revert"] = revert
         remember_edit(state, parts, region)
+    ec = edit_content_hash(tool, tool_input, profile.get("delegation_tools") or [])
+    if ec:
+        body["ec"] = ec
     tu = tool_use_id(event, profile)
     if tu:
         body["tu"] = tu

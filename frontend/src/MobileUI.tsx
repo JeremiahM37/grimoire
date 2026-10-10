@@ -100,7 +100,7 @@ function useSheetSwipe() {
     let box: HTMLElement | null = null, y0 = 0, dy = 0;
     const start = (e: TouchEvent) => {
       box = null; if (innerWidth > 780) return;
-      const b = (e.target as Element).closest<HTMLElement>('.modal:not(#graph-modal):not(#banks-modal):not(#knowledge-modal):not(#canvas-view):not(#vault-modal):not(#ask-modal):not(#new-note-modal):not(#palette) > .modal-box'); if (!b) return;
+      const b = (e.target as Element).closest<HTMLElement>('.modal:not(#graph-modal):not(#banks-modal):not(#memuse-modal):not(#knowledge-modal):not(#canvas-view):not(#vault-modal):not(#ask-modal):not(#new-note-modal):not(#palette) > .modal-box'); if (!b) return;
       const t = e.touches[0]!; if (t.clientY - b.getBoundingClientRect().top > 44) return;
       box = b; y0 = t.clientY; dy = 0; b.style.transition = 'none';
     };

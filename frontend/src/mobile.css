@@ -84,9 +84,9 @@
   .modal-box { width: 100% !important; max-width: none !important; border-radius: 20px 20px 0 0; border-width: 1px 0 0; box-shadow: 0 -8px 40px rgba(0, 0, 0, .25);
     max-height: calc(var(--visible-height, 100dvh) - 40px - env(safe-area-inset-top)) !important; padding-bottom: env(safe-area-inset-bottom); animation: sheet-up .24s cubic-bezier(.2, .8, .2, 1); }
   .modal-box::before { content: ""; flex: none; width: 40px; height: 4px; border-radius: 2px; background: var(--line); margin: 8px auto 4px; }
-  #graph-modal .modal-box, #banks-modal .modal-box, #knowledge-modal .modal-box, #canvas-view .modal-box { height: var(--visible-height, 100dvh); max-height: none !important; border-radius: 0; border: 0;
+  #graph-modal .modal-box, #banks-modal .modal-box, #memuse-modal .modal-box, #knowledge-modal .modal-box, #canvas-view .modal-box { height: var(--visible-height, 100dvh); max-height: none !important; border-radius: 0; border: 0;
     padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); animation: screen-in .22s ease; }
-  #graph-modal .modal-box::before, #banks-modal .modal-box::before, #knowledge-modal .modal-box::before, #canvas-view .modal-box::before { display: none; }
+  #graph-modal .modal-box::before, #banks-modal .modal-box::before, #memuse-modal .modal-box::before, #knowledge-modal .modal-box::before, #canvas-view .modal-box::before { display: none; }
   .modal-close, .modal-head button, .modal .close { min-width: 44px; min-height: 44px; }
   .modal button, .modal summary, .modal .btn { min-height: 44px; min-width: 44px; }
   .modal input:not([type=checkbox]):not([type=radio]):not([type=range]), .modal select, .modal textarea { min-height: 44px; box-sizing: border-box; }

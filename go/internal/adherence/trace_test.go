@@ -311,3 +311,62 @@ func TestTraceKeepsNoTextAndRetentionIsBounded(t *testing.T) {
 		}
 	}
 }
+
+// A different edit of the same file must not read as "unchanged": the pending
+// hash folds in the hook's hash of the edit content.
+func TestPendingHashSeparatesEditsOfOneFile(t *testing.T) {
+	if PendingHashEC("Edit", "/a.go", "") != PendingHash("Edit", "/a.go") {
+		t.Fatal("empty content hash must equal the plain pending hash")
+	}
+	if PendingHashEC("Edit", "/a.go", "aaaa1111aaaa1111") == PendingHashEC("Edit", "/a.go", "bbbb2222bbbb2222") {
+		t.Fatal("content hash ignored")
+	}
+	st := traceStore(t)
+	now := time.Now()
+	rec := func(session, tag, ec string) Injection {
+		i := reminder(session, tag, "fact:"+tag, "Edit", "/a.go", "", false)
+		i.Pend = PendingHashEC("Edit", "/a.go", ec)
+		return i
+	}
+	act := func(session, ec string) int64 {
+		id, _, err := st.RecordAction(ActionIn{Session: session, Tool: "Edit", Target: "/a.go", EC: ec, Failed: 0, TestsPass: -1, TestsFail: -1, TS: now.Add(2 * time.Second)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+	st.Log([]Injection{rec("e1", "e1e1", "aaaa1111aaaa1111")}, now)
+	act("e1", "aaaa1111aaaa1111")
+	if got := remOf(t, st, "e1e1"); got != RemUnchanged {
+		t.Fatalf("same edit: %q", got)
+	}
+	st.Log([]Injection{rec("e2", "e2e2", "aaaa1111aaaa1111")}, now)
+	act("e2", "bbbb2222bbbb2222")
+	if got := remOf(t, st, "e2e2"); got != RemChanged {
+		t.Fatalf("different edit of the same file: %q", got)
+	}
+}
+
+func TestCardListsRecentLinkedActionsAsCodesOnly(t *testing.T) {
+	st := traceStore(t)
+	now := time.Now()
+	st.Log([]Injection{inj("r1", "dddd", "fact:recent", "rule")}, now.Add(-time.Minute))
+	for i := 0; i < RecentActions+3; i++ {
+		failed := i % 2
+		if _, _, err := st.RecordAction(ActionIn{Session: "r1", Tool: "Edit", Target: "/secret/path.go", Failed: failed, TestsPass: -1, TestsFail: -1,
+			Ev: map[string]int{"dddd": 1}, TS: now.Add(time.Duration(i) * time.Second)}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	c, err := st.Card("fact:recent", now.Add(-time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(c.Recent) != RecentActions || c.Recent[0].Seq <= c.Recent[1].Seq || c.Recent[0].Tool != "Edit" {
+		t.Fatalf("recent actions: %+v", c.Recent)
+	}
+	empty, _ := st.Card("fact:none", now.Add(-time.Hour))
+	if empty.Recent == nil {
+		t.Fatal("recent_actions must be [] not null")
+	}
+}

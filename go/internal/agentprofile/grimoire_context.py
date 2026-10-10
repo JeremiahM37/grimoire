@@ -170,6 +170,43 @@ def tool_use_id(event, fields):
     return None
 
 
+def edit_content_hash(tool, tool_input, delegation=()):
+    """A short hash of what an edit call changes, or None for a call that is not
+    an edit. The pending-action experiment hashes the tool and target; for Edit,
+    MultiEdit and Write the target is only the path, so without this a different
+    edit of the same file would read as unchanged. The context hook (before the
+    call) and the outcome hook (after it) must compute the same value, so keep
+    the two copies identical. Only the hash leaves the machine."""
+    if not isinstance(tool_input, dict) or tool in delegation or tool.lower() in {"bash", "shell"}:
+        return None
+
+    def text(value):
+        return value if isinstance(value, str) else ""
+
+    if isinstance(tool_input.get("edits"), list):
+        material = ["edits", [[text(e.get("old_string")), text(e.get("new_string"))]
+                              for e in tool_input["edits"] if isinstance(e, dict)]]
+    elif "old_string" in tool_input or "new_string" in tool_input:
+        material = ["edit", text(tool_input.get("old_string")), text(tool_input.get("new_string")),
+                    bool(tool_input.get("replace_all"))]
+    else:
+        material = None
+        for key in ("content", "new_source", "file_text"):
+            if isinstance(tool_input.get(key), str):
+                material = ["write", tool_input[key]]
+                break
+        if material is None:
+            for key in ("input", "patch", "command"):
+                value = tool_input.get(key)
+                if isinstance(value, str) and re.search(r"^(?:\*\*\* (?:Update|Add|Delete) File: |\+\+\+ (?:b/)?)\S", value, re.M):
+                    material = ["patch", value]
+                    break
+        if material is None:
+            return None
+    raw = json.dumps(material, ensure_ascii=True, separators=(",", ":")).encode("utf-8", "replace")
+    return hashlib.sha256(b"edit\0" + raw).hexdigest()[:16]
+
+
 def ask_reason(result):
     """The reason of a server `permission` of decision "ask", else None.
     Grimoire may only ask; allow and deny are never honoured."""
@@ -406,6 +443,10 @@ def action_context(norm, environment, fetch, now, state, state_path, base, token
         extra["session"] = fingerprint("session\0" + norm["session"])[:32]
         if norm.get("tool_use_id") and environment.get("GRIMOIRE_TRACE", "1") != "0":
             extra["tu"] = norm["tool_use_id"]
+        if environment.get("GRIMOIRE_TRACE", "1") != "0":
+            ec = edit_content_hash(tool, tool_input, profile.get("delegation_tools") or [])
+            if ec:
+                extra["ec"] = ec
     result = fetch(base, token, query, list(recent)[-128:], budget, mode, paths, extra)
     context = result.get("context", "")
     keys = result.get("keys", [])

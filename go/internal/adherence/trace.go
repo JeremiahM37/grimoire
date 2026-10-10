@@ -139,6 +139,19 @@ func PendingHash(tool, target string) string {
 	return hex.EncodeToString(sum[:8])
 }
 
+// PendingHashEC is PendingHash for an edit call: ec is the hook's hash of the
+// edit content (old/new strings, written content or patch text), so two
+// different edits of one file differ. Empty ec gives PendingHash, which is what
+// every non-edit call and every hook without the field uses.
+func PendingHashEC(tool, target, ec string) string {
+	if ec == "" {
+		return PendingHash(tool, target)
+	}
+	target = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(target), "launch subagent "))
+	sum := sha256.Sum256([]byte(tool + "\x00" + target + "\x00" + ec))
+	return hex.EncodeToString(sum[:8])
+}
+
 // StageOf buckets an action's position in its session so influenced and
 // comparison actions are matched on how far into the work they are.
 func StageOf(seq int) string {
@@ -155,6 +168,7 @@ func StageOf(seq int) string {
 // fields use -1 for "not observed".
 type ActionIn struct {
 	Session, TU, Tool, Target string
+	EC                        string   // hash of the edit content, "" for non-edit calls
 	Region                    string   // id of the content this call produced (edits)
 	Failed                    int      // -1 unknown, 0 ok, 1 tool error or non-zero exit
 	ExitCode                  *int     // when the agent reports one
@@ -184,7 +198,7 @@ func (s *Store) RecordAction(a ActionIn) (int64, []Row, error) {
 	}
 	defer tx.Rollback()
 
-	hash := PendingHash(a.Tool, a.Target)
+	hash := PendingHashEC(a.Tool, a.Target, a.EC)
 	var id int64
 	if a.TU != "" {
 		_ = tx.QueryRow(`SELECT id FROM trace_actions WHERE session=? AND tu=?`, a.Session, a.TU).Scan(&id)

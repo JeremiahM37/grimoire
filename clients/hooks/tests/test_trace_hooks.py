@@ -183,3 +183,67 @@ def test_trace_off_restores_the_old_body(tmp_path):
 def test_tags_in_a_call_travel_as_cited(tmp_path):
     got = run(tmp_path, post("Bash", {"command": "git commit -m 'use snapshot (m:3e99)'"}, {"stdout": ""}))
     assert got[0]["cited"] == ["3e99"]
+
+
+# ---- pending-action hash covers edit content (docs/MEMORY_TRACE.md) --------
+
+ctx_spec = importlib.util.spec_from_file_location("trace_context", HOOKS / "grimoire_context.py")
+context = importlib.util.module_from_spec(ctx_spec)
+ctx_spec.loader.exec_module(context)
+
+PATCH_A = "*** Begin Patch\n*** Update File: a.go\n@@\n-old\n+new one\n*** End Patch"
+PATCH_B = PATCH_A.replace("new one", "new two")
+
+EDIT_CASES = [
+    ("claude-code", "Edit", {"file_path": "/r/a.go", "old_string": "x", "new_string": "y"},
+     {"file_path": "/r/a.go", "old_string": "x", "new_string": "z"}),
+    ("claude-code", "MultiEdit", {"file_path": "/r/a.go", "edits": [{"old_string": "x", "new_string": "y"}]},
+     {"file_path": "/r/a.go", "edits": [{"old_string": "x", "new_string": "q"}]}),
+    ("claude-code", "Write", {"file_path": "/r/a.go", "content": "one"},
+     {"file_path": "/r/a.go", "content": "two"}),
+    ("codex", "apply_patch", {"command": PATCH_A}, {"command": PATCH_B}),
+    ("codex", "apply_patch", {"input": PATCH_A}, {"input": PATCH_B}),
+]
+
+
+def pre_ec(tool, tool_input, tmp_path, profile=None):
+    seen = []
+
+    def fetch(base, token, query, excluded, budget, mode, paths, extra=None):
+        seen.append(dict(extra or {}))
+        return {"context": "", "keys": []}
+
+    event = {"hook_event_name": "PreToolUse", "session_id": SESSION, "tool_name": tool,
+             "tool_input": tool_input, "tool_use_id": "toolu_1"}
+    context.run(event, {"GRIMOIRE_CONTEXT_STATE_DIR": str(tmp_path), "GRIMOIRE_CONTEXT_MODE": "all"}, fetch, profile=profile, kind="pre_action")
+    return seen[0].get("ec") if seen else None
+
+
+def test_edit_content_hash_differs_per_edit_and_matches_both_sides(tmp_path):
+    for agent, tool, first, second in EDIT_CASES:
+        profile = None
+        if agent == "codex":
+            profile = json.loads((HOOKS.parents[1] / "go/internal/agentprofile/builtin/codex.json").read_text())
+            profile["actions"] = {"Bash": "command", "apply_patch": "command|input"}
+            profile.setdefault("delegation_tools", [])
+        a, b = pre_ec(tool, first, tmp_path, profile), pre_ec(tool, second, tmp_path, profile)
+        assert a and b and a != b, (agent, tool)
+        # The outcome hook sends the same value for the same call.
+        post_a = run(tmp_path, post(tool, first, "ok"), profile=profile)
+        assert post_a[0]["ec"] == a, (agent, tool)
+        assert pre_ec(tool, first, tmp_path, profile) == a
+
+
+def test_non_edit_calls_carry_no_content_hash(tmp_path):
+    assert pre_ec("Bash", {"command": "git status"}, tmp_path) is None
+    assert "ec" not in run(tmp_path, post("Bash", {"command": "git status"}, "ok"))[0]
+    assert context.edit_content_hash("Edit", {"file_path": "/a"}) is None
+
+
+def test_trace_off_sends_no_content_hash(tmp_path):
+    seen = []
+    event = {"hook_event_name": "PreToolUse", "session_id": SESSION, "tool_name": "Edit", "tool_use_id": "toolu_2",
+             "tool_input": {"file_path": "/a", "old_string": "x", "new_string": "y"}}
+    context.run(event, {"GRIMOIRE_CONTEXT_STATE_DIR": str(tmp_path), "GRIMOIRE_CONTEXT_MODE": "all", "GRIMOIRE_TRACE": "0"},
+                lambda *a, **k: seen.append(a[-1] if a else k) or {"context": "", "keys": []}, kind="pre_action")
+    assert not any("ec" in (x or {}) for x in seen if isinstance(x, dict))

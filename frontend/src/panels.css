@@ -33,10 +33,10 @@
 
 /* Banks keeps its own sub-header but uses the same title face */
 .react-app #banks-modal .modal-box.banks-box > h2,
-.react-app #banks-modal .banks-head h2 { font: 600 17px/1.3 var(--sans); }
-.react-app #banks-modal .banks-head { padding: 12px 52px 10px var(--panel-pad); border-bottom: 1px solid var(--line); }
-.react-app #banks-modal .banks-head h2.banks-name { font-size: 17px; }
-.react-app #banks-modal .banks-body { padding: 14px var(--panel-pad) 18px; }
+.react-app :is(#banks-modal, #memuse-modal) .banks-head h2 { font: 600 17px/1.3 var(--sans); }
+.react-app :is(#banks-modal, #memuse-modal) .banks-head { padding: 12px 52px 10px var(--panel-pad); border-bottom: 1px solid var(--line); }
+.react-app :is(#banks-modal, #memuse-modal) .banks-head h2.banks-name { font-size: 17px; }
+.react-app :is(#banks-modal, #memuse-modal) .banks-body { padding: 14px var(--panel-pad) 18px; }
 
 /* ---- inputs (vault, ask, new note, palette) ---------------------------- */
 .react-app :is(#vault-modal, #ask-modal, #new-note-modal, #palette, #graph-modal) :is(input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea) {
@@ -76,7 +76,7 @@
 
 /* ---- mobile: full-screen sheets with a sticky header ------------------- */
 @media (max-width: 780px) {
-  .react-app :is(#vault-modal, #ask-modal, #new-note-modal, #banks-modal, #graph-modal, #palette, #help-modal) .modal-box,
+  .react-app :is(#vault-modal, #ask-modal, #new-note-modal, #banks-modal, #memuse-modal, #graph-modal, #palette, #help-modal) .modal-box,
   .react-app .modal:is(#inspect-modal, #history-modal, #trash-modal, #tags-browser-modal, #tasks-modal, #calendar-modal) .modal-box {
     display: flex; flex-direction: column; box-sizing: border-box;
     width: 100vw !important; max-width: 100vw !important; height: var(--visible-height, 100dvh); max-height: var(--visible-height, 100dvh) !important;
@@ -93,7 +93,7 @@
   .react-app #vault-modal .v-form-add .v-field:first-child, .react-app #vault-modal .v-form-grant .v-field:first-child { grid-column: 1 / -1; }
   .react-app #vault-modal .v-form-grant .v-field:nth-child(2) { grid-column: 1 / -1; }
   .react-app #vault-modal .v-form-add .v-submit, .react-app #vault-modal .v-form-grant .v-submit { grid-column: 1 / -1; justify-self: stretch; }
-  .react-app #banks-modal .banks-head { padding-top: 10px; }
+  .react-app :is(#banks-modal, #memuse-modal) .banks-head { padding-top: 10px; }
   .react-app #ask-modal #ask-go { flex: 1 0 100%; }
 }
 @media (max-width: 380px) {
@@ -130,3 +130,57 @@
 
 /* The evidence explorer draws its own close button in its header row; the generic frame button would be a second ✕. */
 .react-app #knowledge-modal > .modal-box > .modal-close { display: none; }
+
+/* ---- memory use: overview and per-memory card ---------------------------- */
+#memuse-modal .modal-box.banks-box { width: min(860px, 100%); max-height: calc(100dvh - 48px); }
+.memuse-days { display: flex; gap: 4px; padding: 6px 16px 0; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+.memuse-lead { margin: 0 0 10px; }
+.memuse-section { margin: 0 0 18px; }
+.memuse-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+.memuse-stat { border: 1px solid var(--line); border-radius: 8px; background: var(--paper2); padding: 8px 10px; min-width: 0; }
+.memuse-stat-value { font-size: 20px; font-weight: 600; overflow-wrap: anywhere; }
+#memuse-holdout .memuse-stat-value { font-size: 13px; line-height: 1.35; padding-top: 4px; }
+.memuse-stat-label { font-size: 12px; color: var(--ink-soft); }
+.memuse-stat-sub { font-size: 11px; color: var(--ink-soft); margin-top: 2px; overflow-wrap: anywhere; }
+.memuse-bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: var(--paper2); border: 1px solid var(--line); }
+.memuse-seg, .memuse-dot { background: var(--ink-soft); }
+.memuse-seg.followed, .memuse-dot.followed, .memuse-seg.used, .memuse-dot.used, .memuse-seg.cited, .memuse-dot.cited { background: #2e7d32; }
+.memuse-seg.cited, .memuse-dot.cited { background: #5e9c62; }
+.memuse-seg.ignored, .memuse-dot.ignored { background: #b4741a; }
+.memuse-seg.violated, .memuse-dot.violated, .memuse-seg.contradicted, .memuse-dot.contradicted { background: #c0392b; }
+.memuse-seg.unknown, .memuse-dot.unknown, .memuse-seg.pending, .memuse-dot.pending { background: var(--line); }
+.memuse-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; margin: 6px 0; }
+.memuse-key { display: inline-flex; align-items: center; gap: 5px; }
+.memuse-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; }
+.memuse-tops { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.memuse-list { margin: 4px 0 0; padding-left: 18px; font-size: 13px; }
+.memuse-list li { margin: 3px 0; overflow-wrap: anywhere; }
+.memuse-fig { display: block; font-size: 11.5px; color: var(--ink-soft); }
+.memuse-link { border: 0; background: none; padding: 0; color: var(--link, var(--accent)); font: inherit; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+.memuse-link:hover { text-decoration: underline; }
+.memuse-table td, .memuse-table th { vertical-align: top; }
+.memuse-hint.admin { border-left: 2px solid var(--accent); padding-left: 8px; }
+.memuse-empty { border: 1px dashed var(--line); border-radius: 8px; padding: 12px; }
+.memuse-funnel { list-style: none; margin: 4px 0 12px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.memuse-funnel li { display: grid; grid-template-columns: 92px 120px 1fr; gap: 2px 10px; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; background: var(--paper2); }
+.memuse-stage { font-weight: 600; font-size: 13px; }
+.memuse-stage-n { font-size: 13px; font-variant-numeric: tabular-nums; }
+.memuse-meter { grid-column: 3; grid-row: 1; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.memuse-meter i { display: block; height: 100%; background: var(--accent); }
+.memuse-stage-hint { grid-column: 1 / -1; font-size: 12px; color: var(--ink-soft); overflow-wrap: anywhere; }
+.memuse-evidence { list-style: none; margin: 4px 0 8px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.memuse-evidence li { border: 1px solid var(--line); border-radius: 9px; padding: 2px 10px; font-size: 12.5px; background: var(--paper2); }
+.memuse-badge { display: inline-block; margin-left: 6px; padding: 0 8px; border-radius: 9px; font-size: 11px; border: 1px solid var(--line); text-transform: none; letter-spacing: 0; }
+.memuse-badge.associated { border-color: var(--link, var(--accent)); color: var(--link, var(--accent)); }
+.memuse-badge.caused { border-color: #2e7d32; color: #2e7d32; }
+.memuse-badge.insufficient-data { color: var(--ink-soft); }
+.memuse-actions { list-style: none; margin: 4px 0; padding: 0; font-size: 13px; }
+.memuse-actions li { display: flex; flex-wrap: wrap; gap: 2px 10px; padding: 5px 0; border-bottom: 1px solid var(--line); }
+.memuse-actions li span { color: var(--ink-soft); }
+@media (max-width: 780px) {
+  .memuse-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .memuse-tops { grid-template-columns: 1fr; }
+  .memuse-funnel li { grid-template-columns: 84px 1fr; }
+  .memuse-meter { grid-column: 1 / -1; grid-row: auto; }
+  .memuse-days { padding-left: 16px; }
+}

@@ -137,7 +137,11 @@ func (s *Server) traceLog(r *http.Request, query string, perm map[string]any, as
 	if lg.stage == "action" {
 		lg.tool, lg.pend = "", ""
 		if tool, target := actionParts(r, query); tool != "" && strings.TrimSpace(target) != "" {
-			lg.tool, lg.pend = tool, adherence.PendingHash(tool, target)
+			ec := q.Get("ec")
+			if !regionRE.MatchString(ec) {
+				ec = ""
+			}
+			lg.tool, lg.pend = tool, adherence.PendingHashEC(tool, target, ec)
 		}
 		if tu := q.Get("tu"); tuRE.MatchString(tu) {
 			lg.tu = tu
@@ -165,6 +169,10 @@ func (s *Server) tracePrompt(session string, corrected bool) {
 type traceFields struct {
 	TU     string `json:"tu"`     // the harness's tool_use id
 	Region string `json:"region"` // id of the content this call produced
+	// EC is a hash of an edit call's content (old/new strings, written text),
+	// folded into the pending-action hash so a different edit of the same file
+	// is a different action.
+	EC string `json:"ec"`
 	// Err is 1 when the call failed (tool error or non-zero exit), 0 when it
 	// succeeded; absent when the hook could not tell.
 	Err      *int `json:"err"`
@@ -189,7 +197,7 @@ type traceFields struct {
 var regionRE = regexp.MustCompile(`^[0-9a-f]{8,32}$`)
 
 func (f traceFields) valid() bool {
-	if (f.TU != "" && !tuRE.MatchString(f.TU)) || (f.Region != "" && !regionRE.MatchString(f.Region)) ||
+	if (f.TU != "" && !tuRE.MatchString(f.TU)) || (f.Region != "" && !regionRE.MatchString(f.Region)) || (f.EC != "" && !regionRE.MatchString(f.EC)) ||
 		len(f.Reedit) > 8 || len(f.Revert) > 8 || len(f.Ev) > 16 || len(f.Meaning) > 16 || f.Thrash < 0 || f.Thrash > 1000 {
 		return false
 	}
@@ -220,7 +228,7 @@ func (f traceFields) valid() bool {
 // evidence of. A require check that the call satisfied is evidence too.
 func (s *Server) recordTrace(st *adherence.Store, in outcomeIn, rows []adherence.Row, checks map[string]adherence.Check) {
 	f := in.traceFields
-	a := adherence.ActionIn{Session: in.Session, TU: f.TU, Tool: in.Tool, Target: in.Target, Region: f.Region,
+	a := adherence.ActionIn{Session: in.Session, TU: f.TU, Tool: in.Tool, Target: in.Target, EC: f.EC, Region: f.Region,
 		Failed: -1, ExitCode: f.Exit, TestsPass: -1, TestsFail: -1, Thrash: f.Thrash, Denied: f.Denied,
 		Reedit: f.Reedit, Revert: f.Revert, Ev: f.Ev, Cited: in.Cited, TS: time.Now()}
 	if f.Err != nil {
