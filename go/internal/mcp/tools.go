@@ -487,6 +487,9 @@ func Tools() []tool {
 					"description": "also return disputed claims awaiting review; excluded from current beliefs by default"},
 				"explain": map[string]any{"type": "boolean",
 					"description": "include why each fact ranked where it did"},
+				"expand": map[string]any{"type": "boolean",
+					"description": "also search by entities, keywords and aliases, and fuse the rankings; each fact lists the variants that found it"},
+				"hops":  intProp("also add facts that share an entity with the top hits, out to this many hops (0, 1 or 2; at most 20 added, each marked via 'graph')"),
 				"as_of": strProp("what was believed at this instant (RFC3339), rather than what is believed now"),
 				"valid_at": strProp("only facts that were true in the world at this instant (RFC3339 or YYYY-MM-DD). " +
 					"Combine with as_of to ask what was believed then about a past date"),

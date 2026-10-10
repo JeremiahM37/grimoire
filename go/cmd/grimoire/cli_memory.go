@@ -118,6 +118,12 @@ func cmdRecall(args []string) int {
 	if explain {
 		q.Set("explain", "1")
 	}
+	if hasFlag(args, "--expand") {
+		q.Set("expand", "1")
+	}
+	if v, ok := flagValue(args, "--hops"); ok {
+		q.Set("hops", v)
+	}
 	status, raw := e.call("GET", "/api/memory?"+q.Encode())
 	if status != http.StatusOK {
 		return fail("recall failed: %s", raw)
