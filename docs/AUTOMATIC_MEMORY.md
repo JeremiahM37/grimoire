@@ -57,9 +57,60 @@ script. Merge these entries with existing hooks; do not replace unrelated hooks:
 
 Claude Code uses `.claude/settings.json`; Codex uses `.codex/hooks.json` (or the
 corresponding user-level files). Supply the environment in the agent launcher
-or a trusted wrapper. On Windows use the installed Python executable. A new
-session and the host's hook trust/approval flow may be required. These files
-are examples, not an installer; nothing changes the operator's configuration.
+or a trusted wrapper, or bake non-secret values into the command with the
+installer below. On Windows use the installed Python executable. A new session
+and the host's hook trust/approval flow may be required. Nothing here changes
+the operator's configuration unless you run the installer with `--apply`.
+
+### Installer
+
+`clients/hooks/install.py` (standard library only) merges those two entries
+into a hooks file without touching anything else:
+
+```bash
+python3 clients/hooks/install.py ~/.codex/hooks.json --mode scoped \
+  --env 'GRIMOIRE_CONTEXT_PATHS=["memory/kestrel.md"]'      # prints a diff, changes nothing
+python3 clients/hooks/install.py ~/.codex/hooks.json --mode scoped \
+  --env 'GRIMOIRE_CONTEXT_PATHS=["memory/kestrel.md"]' --apply
+```
+
+- Default is a dry run that prints the unified diff. `--apply` writes.
+- Existing entries are preserved in order. Entries are appended per event only
+  when no command already runs `grimoire_context.py`, so a second run is a
+  no-op (this also recognises an installed copy at another path).
+- `--apply` first copies the file to `<name>.grimoire-backup-<timestamp>`;
+  the new file is written atomically with the original permissions. A missing
+  file is created.
+- The file is re-serialised as 2-space JSON; the diff shows any reformatting.
+- `--mode` and `--env NAME=VALUE` set variables in the command. Names
+  containing `TOKEN` or `SECRET` are refused: put credentials in the launcher,
+  not in a file other tools read.
+- It does not install the script itself. `--hook` names the script path to
+  write (default: the copy beside the installer); point it at a stable
+  location if you do not want the hook to live inside a checkout.
+
+### Codex protocol check
+
+Checked 2026-10-09 against the Codex hooks documentation
+(`developers.openai.com/codex/hooks`, which redirects to
+`learn.chatgpt.com/docs/hooks`) and the `hooks.json` of an installed
+codex-cli 0.161.0. This is a documentation check, not a recorded live Codex run.
+
+| | Codex sends / accepts | This hook |
+|---|---|---|
+| stdin | one JSON object with `session_id`, `transcript_path`, `cwd`, `hook_event_name`, `model`; `SessionStart` adds `permission_mode`, `source` (`startup`/`resume`/`clear`/`compact`); `UserPromptSubmit` adds `permission_mode`, `turn_id`, `prompt` | reads `hook_event_name`, `session_id`, `cwd`, `prompt`, `source`; other fields ignored |
+| stdout | `{"hookSpecificOutput": {"hookEventName": ..., "additionalContext": ...}}` (plain text on stdout is also added as context) | emits exactly that JSON, with `hookEventName` taken from the event |
+| empty result | exit 0 with no output is success | prints nothing, exits 0 |
+| file shape | `hooks` keyed by event, matcher groups containing `hooks: [{type, command, timeout}]`, timeout in seconds | the installer writes that shape |
+
+Differences found: none that break the exchange. The hook previously always
+reported `hookEventName: "UserPromptSubmit"`; it only ever emits for that event,
+so behaviour was unchanged, but it now echoes the incoming event name so the
+two cannot drift. Codex has `additionalContextLimit` as a handler option and
+`SessionStart` `matcher` values; the hook uses neither (it self-limits by
+byte budget and ignores `SessionStart` for injection). Not verified: that a
+live Codex session applies the injected context exactly as documented, and how
+Codex reports a hook that its trust prompt has not yet approved.
 
 References: [Claude Code hooks](https://code.claude.com/docs/en/hooks),
 [Codex hooks](https://developers.openai.com/codex/hooks).

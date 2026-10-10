@@ -228,3 +228,28 @@ export class Grimoire {
 }
 
 export default Grimoire
+
+export interface ContextOptions {
+  client?: Grimoire
+  /** UTF-8 byte ceiling, clamped to 128-8000. Default 2400. */
+  budget?: number
+  /** Default: `scoped` when `paths` are given, otherwise `all`. */
+  mode?: 'all' | 'scoped'
+  /** Vault-relative files or `dir/` prefixes; required for `scoped`. */
+  paths?: string[]
+  /** Fact keys already shown. */
+  exclude?: string[]
+}
+
+/**
+ * Bounded reference context for a prompt, or `''` when nothing is relevant,
+ * the prompt is trivial, or the server is unavailable. Never throws.
+ */
+export function contextFor(prompt: string, options?: ContextOptions): Promise<string>
+
+/** `contextFor` with the hook's deduplication rules, for one conversation. */
+export class ContextSession {
+  constructor(options?: ContextOptions & { now?: () => number })
+  contextFor(prompt: string): Promise<string>
+  reset(): void
+}

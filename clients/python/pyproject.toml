@@ -18,6 +18,8 @@ dev = ["pytest>=8"]
 langgraph = ["langgraph>=0.2"]
 # The CrewAI storage backend. Also optional, and also only imported on demand.
 crewai = ["crewai>=1.0"]
+# The OpenAI Agents SDK adapter (dynamic instructions + function tools).
+openai-agents = ["openai-agents>=0.2"]
 
 [project.urls]
 Homepage = "https://github.com/JeremiahM37/grimoire"
