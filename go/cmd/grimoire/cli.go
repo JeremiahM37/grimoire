@@ -62,6 +62,9 @@ const usage = `grimoire — local-first AI-native notes
   grimoire memory link|unlink|status|index|core|impact
                                       one memory store for every agent: link an agent's
                                       memory to it, regenerate MEMORY.md (rules + pointers)
+  grimoire rules compile|backtest|list|enable|disable
+                                      turn rule memories into checks, measure each one's
+                                      precision on your history, activate only the precise ones
   grimoire skills export --agent NAME [--dry-run] [--remove] [--dest DIR] [--force]
                                       write procedure memories as native skills (SKILL.md folders)
                                       into that agent's skills dir; never touches skills it did not write
@@ -143,7 +146,7 @@ func commands() map[string]func([]string) int {
 		"knowledge": cmdKnowledge,
 		"documents": cmdDocuments, "document-import": cmdDocumentImport,
 		"remember": cmdRemember, "recall": cmdRecall, "forget": cmdForget,
-		"challenges": cmdChallenges, "memory": cmdMemory, "skills": cmdSkills, "bank": cmdBank, "agent": cmdAgent, "context": cmdContext,
+		"challenges": cmdChallenges, "memory": cmdMemory, "rules": cmdRules, "skills": cmdSkills, "bank": cmdBank, "agent": cmdAgent, "context": cmdContext,
 		"doctor": cmdDoctor, "reindex": cmdReindex, "import": cmdImport, "ingest": cmdIngest, "seed-demo": cmdSeedDemo,
 		"export": cmdExport, "sync": cmdSync, "agent-setup": cmdAgentSetup,
 		"fetch-model": cmdFetchModel,

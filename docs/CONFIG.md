@@ -271,6 +271,18 @@ Settings added by the agent-memory work, plus the hook-side variables read by th
 | `GRIMOIRE_CONTEXT_GATE_BAND` | `0.5,0.75` | Relevance range that is asked: above it injects, below never does |
 | `GRIMOIRE_CONTEXT_GATE_MAX` | `3` | Most candidates asked per request, highest first, in parallel under a 400 ms total budget |
 | `GRIMOIRE_CONTEXT_GATE_THRESHOLD` | `0.16` | Yes-probability needed to keep a memory (calibrated for the strict question wording; 0.5 would drop most right memories) |
+| `GRIMOIRE_RULES_MIN_PRECISION` | `0.9` | Precision a compiled rule check needs (with enough labelled matches) to become an active reminder ([MEMORY_RULES.md](MEMORY_RULES.md)) |
+| `GRIMOIRE_RULES_ENFORCE_PRECISION` | `0.95` | Precision a check needs for `enforce: ask` automatically, when the rule text says never/always |
+| `GRIMOIRE_RULES_MIN_LABELLED` | `5` | Labelled matches required before a check can act |
+| `GRIMOIRE_RULES_MAX_MATCH_RATE` | `0.2` | A check flagging more than this share of the calls it covers is a topic detector and stays a suggestion |
+| `GRIMOIRE_RULES_FAITHFUL_THRESHOLD` | `0.5` | P(yes) the labelling model must give to "does this check say what the rule says" before the check's matches are labelled; below it the check stays a suggestion |
+| `GRIMOIRE_RULES_LLM_URL` | *(empty = deterministic only)* | Ollama that writes candidate checks (local; no hosted model) |
+| `GRIMOIRE_RULES_LLM_MODEL` | `qwen3.6:35b-a3b` | Model asked for candidates (`num_ctx` 16384) |
+| `GRIMOIRE_RULES_LABEL_URL` | *(falls back to the decision model)* | Decision server that labels sampled backtest matches |
+| `GRIMOIRE_RULES_LABEL_MODEL` | `jev-latest` | Model name sent for labelling |
+| `GRIMOIRE_RULES_LABEL_API_KEY` | *(falls back to the decision key)* | Key for the labelling server; keep it in the environment |
+| `GRIMOIRE_RULES_LABEL_BUDGET` | `1500` | Most new labelling calls per backtest run (answers are cached on disk) |
+| `GRIMOIRE_RULES_LABEL_THRESHOLD` | `0.5` | P(yes) at or above which a labelled match counts as a true violation |
 | `GRIMOIRE_MEMORY_AUTHORITY` | *(on)* | `off` puts human and agent writes on one rung (recency-only supersession), as a benchmark control arm. Untrusted-source protection is not affected |
 | `GRIMOIRE_MEMORY_CANONICAL_DIR` | *(empty)* | The shared agent-memory directory every agent's memory location links to; falls back to `GRIMOIRE_DREAM_CANONICAL_MEMORY`. See [MEMORY_STORE.md](MEMORY_STORE.md) |
 | `GRIMOIRE_MEMORY_EXTRACT_PROMPT` | *(empty)* | Prefix added to the memory-extraction prompt (biases what is recorded); the output contract is appended and cannot be overridden |

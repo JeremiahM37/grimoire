@@ -170,6 +170,7 @@ var routeAccess = map[string]access{
 	"GET /api/memory/core":                                       scoped, // rules + topic pointers; the canonical dir only for admins
 	"GET /api/memory/adherence":                                  scoped, // per-memory rates, filtered to readable memories
 	"GET /api/memory/check":                                      scoped, // checks and proposals, filtered to readable memories
+	"GET /api/memory/rules":                                      admin,  // compiled checks with their evidence; checked in the handler
 	"GET /api/memory/impact":                                     admin,  // reads agent transcripts on this host; checked in the handler
 	"GET /api/memory/export":                                     scoped, // every fact the caller may read
 	"GET /api/memory/changes":                                    scoped, // fact text, so the same filter as recall
@@ -217,12 +218,17 @@ var routeAccess = map[string]access{
 	"POST /api/memory": authed,
 	// Cues steer which memories reach agents, so adding one is a write like
 	// remember; cueTargetItem refuses targets the caller cannot read.
-	"POST /api/memory/cues":          authed,
-	"POST /api/memory/outcome":       authed, // the hook's report of what an agent did; no note content returned
-	"POST /api/memory/check":         authed, // write access to the memory is checked in the handler
-	"DELETE /api/memory/check":       authed,
-	"POST /api/memory/check/accept":  authed,
-	"POST /api/memory/check/propose": admin, // spends decision-model calls
+	"POST /api/memory/cues":           authed,
+	"POST /api/memory/outcome":        authed, // the hook's report of what an agent did; no note content returned
+	"POST /api/memory/check":          authed, // write access to the memory is checked in the handler
+	"DELETE /api/memory/check":        authed,
+	"POST /api/memory/check/accept":   authed,
+	"POST /api/memory/check/propose":  admin, // spends decision-model calls
+	"POST /api/memory/rules/compile":  admin, // calls the local model
+	"POST /api/memory/rules/backtest": admin, // reads agent transcripts on this host and spends labelling calls
+	"POST /api/memory/rules/enable":   admin, // changes what agents are asked or stopped from doing
+	"POST /api/memory/rules/disable":  admin,
+	"POST /api/memory/rules/label":    admin,
 	// Vouching for a pulled note rewrites its frontmatter, so it takes the
 	// note's own write check inside the handler as well.
 	"POST /api/stale/verify": authed,

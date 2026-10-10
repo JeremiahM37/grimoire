@@ -576,7 +576,8 @@ one that cost a feature its default. Full methods and per-question data in
 - **Agent memory** — [any agent, any hook shape](docs/AGENTS_ANY.md) ·
   [the shared memory store](docs/MEMORY_STORE.md) ·
   [writing good memories](docs/MEMORY_WRITING.md) ·
-  [adherence: did the agent follow it](docs/MEMORY_ADHERENCE.md)
+  [adherence: did the agent follow it](docs/MEMORY_ADHERENCE.md),
+  [rules compiled into checks](docs/MEMORY_RULES.md)
 - **Connectors and passwords** — [accounts as agent extensions](docs/CONNECTORS.md) ·
   [password managers](docs/PASSWORD_MANAGERS.md)
 - **Security** — threat model, what is and is not defended: [SECURITY.md](SECURITY.md).
