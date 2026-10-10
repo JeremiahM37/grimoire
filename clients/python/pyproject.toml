@@ -20,6 +20,10 @@ langgraph = ["langgraph>=0.2"]
 crewai = ["crewai>=1.0"]
 # The OpenAI Agents SDK adapter (dynamic instructions + function tools).
 openai-agents = ["openai-agents>=0.2"]
+# LangChain and LlamaIndex adapters use the real types when these are present.
+# Neither is required: without them the adapters return stand-in objects.
+langchain = ["langchain-core>=0.3"]
+llamaindex = ["llama-index-core>=0.12"]
 
 [project.urls]
 Homepage = "https://github.com/JeremiahM37/grimoire"

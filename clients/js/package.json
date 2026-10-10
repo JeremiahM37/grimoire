@@ -10,9 +10,10 @@
   "exports": {
     ".": { "types": "./index.d.ts", "default": "./index.js" },
     "./tools": { "types": "./tools.d.ts", "default": "./tools.js" },
-    "./banks": { "types": "./banks.d.ts", "default": "./banks.js" }
+    "./banks": { "types": "./banks.d.ts", "default": "./banks.js" },
+    "./ai-sdk": { "types": "./ai-sdk.d.ts", "default": "./ai-sdk.js" }
   },
-  "files": ["index.js", "index.d.ts", "tools.js", "tools.d.ts", "banks.js", "banks.d.ts", "README.md"],
+  "files": ["index.js", "index.d.ts", "tools.js", "tools.d.ts", "banks.js", "banks.d.ts", "ai-sdk.js", "ai-sdk.d.ts", "README.md"],
   "engines": { "node": ">=18" },
   "scripts": { "test": "node --test test/" },
   "keywords": ["grimoire", "agent-memory", "llm", "mcp", "self-hosted", "rag"],

@@ -39,6 +39,9 @@ __all__ = [
     "VaultLocked",
     "Memory",
     "Result",
+    "langchain",
+    "llamaindex",
+    "pydantic_ai",
 ]
 
 DEFAULT_URL = "http://localhost:9111"
@@ -103,6 +106,12 @@ class Memory:
     #: Whether to re-check before relying on it: ``action`` is ``"use"`` or
     #: ``"verify"``, ``check`` says how. See docs/FRESHNESS.md.
     freshness: Mapping[str, Any] = field(default_factory=dict)
+    #: Where the fact came from: a connector origin, or empty for agent writes.
+    origin: str = ""
+    #: ``"trusted"`` or ``"untrusted"``. Untrusted text is fenced before a model reads it.
+    trust: str = ""
+    #: Who asserted it: ``"human"``, ``"agent"`` or ``"pulled"``.
+    authority: str = ""
 
     @property
     def superseded(self) -> bool:
@@ -130,6 +139,9 @@ class Memory:
             score=float(raw.get("score", 0.0) or 0.0),
             scores=raw.get("scores") or {},
             freshness=raw.get("freshness") or {},
+            origin=raw.get("origin", "") or "",
+            trust=raw.get("trust", "") or "",
+            authority=raw.get("authority", "") or "",
         )
 
 
@@ -542,3 +554,15 @@ def _message_of(payload: bytes) -> str:
 # Imported last: these modules use the transport helpers defined above.
 from .banks import AsyncBank, Bank, Banks, ModelRequired, NotAvailable  # noqa: E402
 from .openai_memory import MemoryClient, with_memory  # noqa: E402
+
+# Framework adapters that import without their framework installed. They are
+# loaded on first access, so ``import grimoire_client`` costs nothing extra.
+_LAZY_ADAPTERS = frozenset({"langchain", "llamaindex", "pydantic_ai"})
+
+
+def __getattr__(name: str) -> Any:
+    if name in _LAZY_ADAPTERS:
+        import importlib
+
+        return importlib.import_module(f"{__name__}.{name}")
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

@@ -77,3 +77,55 @@ def live_server():
         proc.terminate()
         proc.wait(timeout=10)
         shutil.rmtree(vault, ignore_errors=True)
+
+
+@pytest.fixture
+def grimoire_stub():
+    """A stub Grimoire HTTP server for client-side assertions.
+
+    It records every request (method, path, parsed query, JSON body) and
+    answers from ``stub.routes``, keyed by ``(method, path)``. A value is the
+    JSON payload, or ``(status, payload)`` to fail. Unrouted requests get ``{}``.
+    """
+    import json
+    import threading
+    import urllib.parse
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+    from types import SimpleNamespace
+
+    stub = SimpleNamespace(calls=[], routes={})
+
+    class Handler(BaseHTTPRequestHandler):
+        def _handle(self):
+            parsed = urllib.parse.urlsplit(self.path)
+            length = int(self.headers.get("Content-Length") or 0)
+            raw = self.rfile.read(length) if length else b""
+            body = json.loads(raw) if raw else None
+            stub.calls.append({
+                "method": self.command,
+                "path": parsed.path,
+                "query": urllib.parse.parse_qs(parsed.query, keep_blank_values=True),
+                "body": body,
+                "auth": self.headers.get("Authorization"),
+            })
+            status, payload = 200, stub.routes.get((self.command, parsed.path), {})
+            if isinstance(payload, tuple):
+                status, payload = payload
+            data = json.dumps(payload).encode()
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
+        do_GET = do_POST = do_PUT = do_PATCH = do_DELETE = _handle
+
+        def log_message(self, *args):
+            pass
+
+    server = HTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    stub.url = f"http://127.0.0.1:{server.server_port}"
+    yield stub
+    server.shutdown()
+    server.server_close()
