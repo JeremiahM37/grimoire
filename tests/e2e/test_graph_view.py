@@ -197,3 +197,22 @@ def test_reduced_motion_focus_does_not_animate(browser, server):
         assert frames == 0, f"the overlay repainted {frames} times while idle with reduced motion"
     finally:
         context.close()
+
+
+def test_the_map_can_be_dragged_and_wheel_zoomed(page, server):
+    _graph(page, server)
+    camera = "() => document.getElementById('graph-canvas').engine.sigma.getCamera().getState()"
+    before = page.evaluate(camera)
+    box = page.locator("#graph-canvas").bounding_box()
+    # empty space near a corner, so the press starts on the stage and not on a note
+    x, y = box["x"] + box["width"] * 0.08, box["y"] + box["height"] * 0.9
+    page.mouse.move(x, y)
+    page.mouse.down()
+    page.mouse.move(x + 180, y - 120, steps=8)
+    page.mouse.up()
+    page.wait_for_timeout(400)
+    dragged = page.evaluate(camera)
+    assert abs(dragged["x"] - before["x"]) > 0.01 and abs(dragged["y"] - before["y"]) > 0.01, "dragging did not move the map"
+    page.mouse.wheel(0, -400)
+    page.wait_for_timeout(500)
+    assert page.evaluate(camera)["ratio"] < dragged["ratio"], "the wheel did not zoom in"

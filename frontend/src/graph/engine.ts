@@ -223,10 +223,11 @@ export class GraphEngine {
       return;
     }
     // sigma appended its canvases after ours; keep the halo layer underneath them and focus layer above
-    // Labels, hover and mouse layers are unused (labels and hover are drawn by our own layers). Each is a full-size canvas
+    // Label and hover layers are unused (labels and hover are drawn by our own layers). Each is a full-size canvas
     // the compositor must still blend every frame, which on a software rasteriser cost ~10x the frame rate; detached
-    // canvases are never composited and sigma draws into them harmlessly.
-    for (const name of ['edgeLabels', 'labels', 'hovers', 'hoverNodes', 'mouse']) this.container.querySelector(`canvas.sigma-${name}`)?.remove();
+    // canvases are never composited and sigma draws into them harmlessly. The mouse layer stays: it is the element
+    // sigma listens on, so detaching it switches off drag, wheel and pinch.
+    for (const name of ['edgeLabels', 'labels', 'hovers', 'hoverNodes']) this.container.querySelector(`canvas.sigma-${name}`)?.remove();
     this.container.insertBefore(this.bg, this.container.firstChild);
     this.container.appendChild(this.fx);
     this.wire();
