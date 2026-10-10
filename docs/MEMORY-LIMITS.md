@@ -10,7 +10,7 @@ it fixes is advertising.
 
 | # | Documented limitation | What Grimoire does | Status |
 |---|---|---|---|
-| 1 | Retrieval degrades with store size; near-duplicate distractors hurt most | Hybrid FTS + vector + entity arms with rank fusion; bounded top-k; opt-in query expansion and a bounded entity-graph walk (`expand=true`, `hops=1\|2`) | design; latency cost measured in `benchmarks/latency` |
+| 1 | Retrieval degrades with store size; near-duplicate distractors hurt most | Hybrid FTS + vector + entity arms with rank fusion; bounded top-k; opt-in query expansion and a bounded entity-graph walk (`expand=true`, `hops=1\|2`) | **measured here** (`benchmarks/latency`, synthetic corpus, offline embedder): gold-in-top-10 is 88% at 1k facts, 70% at 10k and 60.5% at 50k, up from 30% at 50k before candidates stopped depending on a recency window. Dense same-entity distractors still cost accuracy; this is not solved |
 | 2 | Superseded facts are served as current; implicit updates are the hardest case | Write-time reconciliation, `valid_from`/`valid_to` alongside belief time, `valid_at`/`as_of`/range recall, freshness marks (`use`/`verify`) | design; slot rules measured in `benchmarks/longmemeval/REPORT-slots.md` |
 | 3 | Memory is a persistent injection channel | Untrusted origins fenced and unable to supersede human-written facts; dream security sweep | design |
 | 4 | Cross-scope leakage in shared memory (one multi-tenant service leaked on ~44% of deny probes in a 2026 evaluation) | Access filtering at the index; a deny-probe suite over every route, MCP tool, stream and export, which fails when a new route has no probe | **measured here**: the suite found and fixed 3 real leaks (see `SECURITY-LEAKPROBE.md`) |
@@ -25,6 +25,9 @@ it fixes is advertising.
 
 ## Still open
 
+- **Recall accuracy still decays with store size.** The 50k figure above
+  misses the 80% target set for it. The scan-window defect is fixed; ranking
+  against many near-duplicate facts about the same entity is not.
 - **Benchmark validity is not fixed by being careful.** The best available
   independent audit found a lenient judge accepting most deliberately wrong but
   topically adjacent answers. Any LLM-judged score, ours included, inherits
