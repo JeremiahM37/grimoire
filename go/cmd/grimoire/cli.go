@@ -143,6 +143,8 @@ const usage = `grimoire — local-first AI-native notes
   grimoire code symbol NAME [--kind K] [--root R]   where a name is defined
   grimoire code callers NAME          call sites by name (approximate, not resolved)
   grimoire code outline FILE          what one source file declares and imports
+  grimoire completion bash|zsh|fish   print a completion script for subcommand names
+                                      e.g. source <(grimoire completion zsh)
   grimoire version                    print the build version
 
 Env: GRIMOIRE_VAULT (default ~/notes); VISUAL or EDITOR for edit`
@@ -171,6 +173,7 @@ func commands() map[string]func([]string) int {
 		"connect": cmdConnect, "sources": cmdSources, "actions": cmdActions,
 		"audit": cmdAudit, "eval": cmdEval, "dream": cmdDream, "ground": cmdGround,
 		"code": cmdCode,
+		"completion": cmdCompletion,
 	}
 }
 
@@ -210,6 +213,9 @@ func runCLI(args []string) (handled bool, code int) {
 			names = append(names, k)
 		}
 		sort.Strings(names)
+		if near := suggestCommand(args[0], commandWords()); near != "" {
+			fmt.Fprintf(os.Stderr, "unknown command %q — did you mean %q?\n", args[0], near)
+		}
 		fmt.Fprintf(os.Stderr, "unknown command %q. Try: %s, serve\n",
 			args[0], strings.Join(names, ", "))
 		return true, 2
