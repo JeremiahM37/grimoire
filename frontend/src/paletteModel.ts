@@ -60,6 +60,23 @@ export const COMMAND_LABELS: Record<string, string> = {
   'Sync now (with configured peer)': 'Sync now',
 };
 
+/**
+ * Other names people type for a command: the keywords the old palette's router answered to. Typing one finds the
+ * command it always ran, instead of falling through to "Create note".
+ */
+export const COMMAND_ALIASES: Record<string, string[]> = {
+  'What would the agent see?': ['retrieval inspection'],
+  'Unusual reading': ['reading report'],
+  'What your agents changed their mind about': ['belief changes'],
+  'Everything your agents did': ['agent timeline'],
+  'Review queue': ['stale notes', 're-check'],
+  'Account & spaces': ['identity'],
+  'Today daily note': ['daily note', 'journal'],
+  'Keyboard shortcuts & help': ['hotkeys'],
+  'Toggle focus mode distraction free': ['zen mode'],
+  'Version history': ['rollback'],
+};
+
 const STOP_WORDS = new Set(['open', 'show', 'go', 'to', 'the', 'a', 'an', 'this', 'all', 'my', 'of', 'in', 'and', 'how', 'do', 'i']);
 const EXACT_COMMAND_BONUS = 150;
 const PATH_PENALTY = 150;
@@ -160,10 +177,16 @@ export function buildPalette(input: {
   const commandHits = typedPool.flatMap(label => {
     // the label on screen and the command string both match; only a label match can be highlighted
     const shown = COMMAND_LABELS[label], onLabel = shown ? matchText(query, shown) : null, onValue = matchText(query, label);
-    const hit = onLabel && (!onValue || onLabel.score >= onValue.score) ? onLabel : onValue;
+    let hit = onLabel && (!onValue || onLabel.score >= onValue.score) ? onLabel : onValue;
+    let marks = shown ? onLabel?.marks ?? [] : hit?.marks ?? [];
+    let exact = normalizeLabel(label) === normalizedQuery || (!!shown && normalizeLabel(shown) === normalizedQuery);
+    for (const alias of COMMAND_ALIASES[label] ?? []) {
+      const onAlias = matchText(query, alias);
+      if (onAlias && (!hit || onAlias.score > hit.score)) { hit = onAlias; marks = []; }
+      exact ||= normalizeLabel(alias) === normalizedQuery;
+    }
     if (!hit) return [];
-    const exact = normalizeLabel(label) === normalizedQuery || (!!shown && normalizeLabel(shown) === normalizedQuery);
-    return [{ label, score: hit.score + (exact ? EXACT_COMMAND_BONUS : 0), marks: shown ? onLabel?.marks ?? [] : hit.marks }];
+    return [{ label, score: hit.score + (exact ? EXACT_COMMAND_BONUS : 0), marks }];
   }).sort((a, b) => b.score - a.score).slice(0, RESULT_LIMIT);
 
   const recentRank = new Map(input.recents.slice(0, RECENT_LIMIT).map((path, index) => [path, index] as const));

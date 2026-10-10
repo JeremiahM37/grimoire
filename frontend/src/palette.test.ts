@@ -140,3 +140,11 @@ test('a command shows a readable label, runs its command string, and matches on 
   assert.equal(today.value, 'Today daily note');
   assert.deepEqual(today.marks, [0, 1, 2, 3, 4, 5, 6]);
 });
+
+test('an old keyword still finds its command instead of offering to create a note', () => {
+  for (const [typed, value] of [['retrieval inspection', 'What would the agent see?'], ['agent timeline', 'Everything your agents did'], ['zen mode', 'Toggle focus mode distraction free']] as const) {
+    const row = flattenRows(buildPalette({ query: typed, notes: [], commands: BASE_COMMANDS, recents: [] }))[0]!;
+    assert.equal(row.kind, 'command', typed);
+    assert.equal(row.value, value, typed);
+  }
+});
