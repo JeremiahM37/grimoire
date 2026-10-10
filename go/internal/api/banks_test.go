@@ -489,3 +489,27 @@ func TestBankRoutesGiveTheSameAnswerForAbsentAndHiddenBanks(t *testing.T) {
 		}
 	}
 }
+
+// An asynchronous retain into a bank that does not exist yet creates the bank
+// at once, so the operation it returns can be read straight away. The worker
+// used to create it, and read routes confirm the bank, so the operation
+// answered 404 until the worker ran.
+func TestAsyncRetainOperationReadableImmediately(t *testing.T) {
+	_, h := testServer(t)
+	for _, id := range []string{"fresh-a", "fresh-b", "fresh-c"} {
+		w := do(t, h, "POST", "/api/banks/"+id+"/memories",
+			map[string]any{"items": []map[string]any{{"content": "queued fact for " + id}}, "async": true})
+		if w.Code != http.StatusAccepted {
+			t.Fatalf("async retain = %d %s", w.Code, w.Body)
+		}
+		var out struct {
+			OperationID string `json:"operation_id"`
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &out); err != nil || out.OperationID == "" {
+			t.Fatalf("no operation id: %s", w.Body)
+		}
+		if g := do(t, h, "GET", "/api/banks/"+id+"/operations/"+out.OperationID, nil); g.Code != http.StatusOK {
+			t.Fatalf("operation read straight after enqueue = %d %s", g.Code, g.Body)
+		}
+	}
+}

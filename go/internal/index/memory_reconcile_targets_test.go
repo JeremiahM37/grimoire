@@ -113,6 +113,9 @@ func oldWindowRank(t *testing.T, ix *Index, q MemoryQuery) []MemoryHit {
 }
 
 func TestReconcileTargetsAgainstExactOracle(t *testing.T) {
+	if raceEnabled {
+		t.Skip("corpus-scale ranking check; adds nothing under the race detector and takes minutes there")
+	}
 	ix := testIndex(t)
 	probes := buildProbeCorpus(t, ix)
 	now := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)

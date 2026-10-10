@@ -547,8 +547,33 @@ func (e *Engine) EnqueueRetain(bankID string, items []Item, opts RetainOptions) 
 	if items, _ = sanitizeItemsPII(items, e.piiMode(bankID)); len(items) == 0 {
 		return "", invalid("nothing to retain after removing private text")
 	}
+	// Banks are created on first use (see Retain). An asynchronous retain has
+	// to do that now, not in the worker: otherwise the operation it returns is
+	// for a bank that does not exist yet, and every read route, which confirms
+	// the bank before answering, reports the operation as not found until the
+	// worker gets to it.
+	if err := e.ensureBank(bankID); err != nil {
+		return "", err
+	}
 	id, _, err := e.Enqueue(bankID, OpRetain, retainPayload{Items: items, Opts: opts}, "")
 	return id, err
+}
+
+// ensureBank creates an empty bank when none exists, the same first-use rule
+// Retain applies.
+func (e *Engine) ensureBank(bankID string) error {
+	if !ValidID(bankID) {
+		return invalid("invalid bank id")
+	}
+	lock := e.bankLock(bankID)
+	lock.Lock()
+	defer lock.Unlock()
+	if _, err := e.Profile(bankID); err == nil {
+		return nil
+	} else if !errors.Is(err, ErrNotFound) {
+		return err
+	}
+	return e.writeProfile(NewProfile(bankID), false)
 }
 
 func (e *Engine) runConsolidationOp(ctx context.Context, op *Operation) (any, error) {
