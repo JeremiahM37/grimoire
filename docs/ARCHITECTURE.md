@@ -194,6 +194,39 @@ as `as_of` itself, so it is exact below `DefaultScanLimit` facts.
 validity parameters yet. Editing the bounds through `PATCH /api/memory` is not
 supported; change the trailer or write a corrected fact instead.
 
+## Agent memory: importance, use and eviction
+
+A fact may carry an importance from 1 to 5 (`imp=N` in the trailer). Unrated
+is the absence of the field, and it is never written. Importance is an
+authored claim, so it lives in the file like every other one.
+
+**Ranking.** At rank time an unrated fact counts as 3, or as 4 when a person
+wrote it (`HumanAuthored`: `by=human`, no trailer, or an id that no longer
+matches its text). The score is multiplied by `1 + 0.1 * (importance - 3)`,
+bounded to 0.8 to 1.2, and the recency half-life is doubled for importance 4
+and 5 and halved for 1 and 2. An unrated agent fact has factor exactly 1, so a
+store with no ratings scores bit for bit as it did before the feature
+(`TestUnratedRankingMatchesThePreImportanceBaseline`). A person's unrated fact
+is the one case that changes an existing ordering, on purpose.
+
+**Use.** A helpful vote through `POST /api/memory/feedback` is the use signal.
+It increments `uses` and sets `last_used` on the index row. Those columns are
+derived: they never reach the markdown, they survive note rewrites and
+reindexing, and they are lost only when the fact or its note is removed. The
+ranking bonus is `0.05 * (1 - exp(-uses/3))`, so it is small and saturating.
+Recall does not itself verify that the fact was returned before the vote;
+that is the caller's contract.
+
+**Eviction.** `grimoire memory prune` (or `POST /api/memory/prune`) is a dry
+run unless `--apply` is given. A fact is a candidate only if every one of these
+holds: agent-written, not immutable, not human-authored, not challenged, never
+voted helpful, never used, explicitly rated 1 to 3 (unrated is not a candidate,
+and 4 and 5 are never candidates), and last written more than 90 days ago. The
+index query and the file-side check (`pruneEligible`) state the same rules, and
+the file check runs again immediately before each retraction. Apply goes
+through the `forget` path, so the fact is struck through and appears in the
+belief-change digest as retracted by `memory-prune`. Nothing is deleted.
+
 ## Testing
 
 * `go/internal/*/[_]test.go` — pure logic (renderer, queries, CRDT, crypto…)
