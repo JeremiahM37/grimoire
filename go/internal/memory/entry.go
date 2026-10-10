@@ -28,6 +28,13 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/trust"
 )
 
+// Caption bases for an image entry (Entry.CaptionBasis).
+const (
+	CaptionStated   = "stated"   // the caller wrote the caption
+	CaptionInferred = "inferred" // a model wrote it from the picture (not wired; see docs/IMAGE-MEMORY.md)
+	CaptionNone     = "none"     // no caption; the placeholder text is never recalled
+)
+
 // Dir is the vault namespace agent memory lives under.
 const Dir = "memory"
 
@@ -134,6 +141,17 @@ type Entry struct {
 	Changes   int
 	Verifies  int
 	Since     string
+
+	// Image is the content address (SHA-256 hex) of an image this fact is
+	// about, declared as img=<sha>. The text is then the image's caption, and
+	// the bytes live in the vault attachment store (internal/memimage). Empty
+	// for every ordinary fact, and omitted from the trailer when empty.
+	Image string
+	// CaptionBasis says where the caption came from: "stated" (the caller
+	// wrote it), "inferred" (a model wrote it from the pixels), or "none" (no
+	// caption exists; the text is a placeholder and must not be recalled). It
+	// is declared as capb=<basis> and is only meaningful alongside Image.
+	CaptionBasis string
 
 	// Line is the 0-based index of this entry's bullet in the note body. It is
 	// a parse artifact, not persisted state: it exists so a rewrite can put an
@@ -368,6 +386,10 @@ func parseTrailer(s string) Entry {
 			if f, err := strconv.ParseFloat(v, 64); err == nil && f > 0 && f <= 24 {
 				e.PriorRate = f
 			}
+		case "img":
+			e.Image = v
+		case "capb":
+			e.CaptionBasis = v
 		case "vol":
 			if f, err := strconv.ParseFloat(v, 64); err == nil && f > 0 && f <= 1 {
 				e.Vol = f
@@ -483,6 +505,14 @@ func (e Entry) trailer() string {
 	}
 	if e.PriorRate > 0 {
 		fields = append(fields, "pr="+strconv.FormatFloat(e.PriorRate, 'g', 3, 64))
+	}
+	// Appended last so every bullet written before images existed formats
+	// byte-identically.
+	if e.Image != "" {
+		fields = append(fields, "img="+escapeField(e.Image))
+	}
+	if e.CaptionBasis != "" {
+		fields = append(fields, "capb="+escapeField(e.CaptionBasis))
 	}
 	return " <!--m " + strings.Join(fields, " ") + "-->"
 }

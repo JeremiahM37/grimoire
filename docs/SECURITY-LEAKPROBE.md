@@ -119,6 +119,24 @@ They conflict with the premise that agent memory and uploads are per-owner.
   If `private` is meant to be owner-only, that is a behaviour change to make on
   purpose, with the owner resolved from the note.
 
+## Image memory
+
+Two routes were added with image memory (`docs/IMAGE-MEMORY.md`), and both have
+probes:
+
+- `POST /api/memory/image` is a write (`lpWrite`). The probe sends an empty
+  picture as a non-owner and asserts that no canary comes back and that the write
+  is refused.
+- `GET /api/memory/image/{sha}` is by-id (`lpByID`). The probe asks for a
+  well-formed hash that nothing references. It must answer 404 to every
+  non-owner, which is the same answer a hidden picture gets.
+
+The canary sweep cannot test a picture a non-owner *should not* see, because
+pictures are written to commons memory notes, and a member may read those (the
+finding D1 above). The picture ACL is therefore covered by
+`TestMemoryImageHiddenWhenNoVisibleEntryRefersToIt`, which checks that a picture
+behind a `private` note answers 404 and reappears when the note is public again.
+
 ## Deferred and not covered
 
 - **Timing side channels** are not measured. Wall-clock comparisons are too

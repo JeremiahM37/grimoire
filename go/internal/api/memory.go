@@ -68,6 +68,12 @@ type memoryIn struct {
 	TargetPath   string `json:"target_path"`
 	ExpectedText string `json:"expected_text"`
 
+	// imageSHA and capBasis are set only by the image path (memory_image.go)
+	// and the portable import. They are unexported, so no JSON body can name
+	// an image it did not upload.
+	imageSHA string
+	capBasis string
+
 	// Session is mem0's run_id: the task or conversation this was learned in,
 	// so "what did this agent learn during that run" is answerable.
 	Session  string `json:"session"`
@@ -589,7 +595,8 @@ func (s *Server) appendEntryChallenging(w http.ResponseWriter, r *http.Request, 
 		Origin: strings.TrimSpace(m.Origin), Human: m.Human,
 		Evidence:   strings.Join(m.Evidence, memory.EvidenceSep),
 		Challenges: challenges,
-		ValidFrom:  m.ValidFrom, ValidTo: m.ValidTo,
+		Image:      m.imageSHA, CaptionBasis: m.capBasis,
+		ValidFrom: m.ValidFrom, ValidTo: m.ValidTo,
 		Fresh:      memory.NormFresh(m.Fresh),
 		Check:      strings.TrimSpace(m.Check),
 		Importance: m.Importance,
@@ -791,6 +798,11 @@ type entryOut struct {
 	Origin string `json:"origin,omitempty"`
 	Trust  string `json:"trust"`
 
+	// Image is set when the fact is about a picture; its text is the caption.
+	// CaptionBasis is stated, inferred or none (see memory.CaptionStated).
+	Image        *imageRef `json:"image,omitempty"`
+	CaptionBasis string    `json:"caption_basis,omitempty"`
+
 	// Basis is how the fact came to be on file: stated, observed, inferred,
 	// imported or pulled. Derived at read time (memory.Entry.Basis). Always
 	// present, like authority, because a missing basis reads as unknown.
@@ -840,6 +852,10 @@ func entriesOut(hits []index.MemoryHit, explain bool) []entryOut {
 			Origin: h.Origin, Trust: trust.FromOrigin(h.Origin).String(),
 			Authority: h.Authority().String(),
 			Basis:     string(h.Basis()), Evidence: memory.SplitEvidence(h.Evidence),
+		}
+		if h.Image != "" {
+			e.Image = &imageRef{SHA: h.Image, URL: imageURL(h.Image)}
+			e.CaptionBasis = h.CaptionBasis
 		}
 		if explain {
 			e.Scores = &scoreBreakdown{Semantic: h.Semantic, Keyword: h.Keyword,
@@ -921,7 +937,9 @@ func (s *Server) recall(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, s.markProcedures(s.assessHits(hits, entriesOut(hits, boolParam(r, "explain")))))
+	out := s.markProcedures(s.assessHits(hits, entriesOut(hits, boolParam(r, "explain"))))
+	s.fillImageRefs(out)
+	writeJSON(w, http.StatusOK, out)
 }
 
 // recallFilters reads mode and basis. Both are refused when malformed, for the
@@ -1388,9 +1406,11 @@ func (s *Server) removeEntry(note, id string) error {
 	lines := strings.Split(existing.Body, "\n")
 	kept := make([]string, 0, len(lines))
 	found := false
+	removed := ""
 	for _, ln := range lines {
 		if e, ok := memory.ParseLine(ln); ok && e.ID == id {
 			found = true
+			removed = ln
 			continue
 		}
 		kept = append(kept, ln)
@@ -1403,8 +1423,12 @@ func (s *Server) removeEntry(note, id string) error {
 		existing.Frontmatter.Clone()); err != nil {
 		return err
 	}
-	_, err = s.Index.Upsert(note)
-	return err
+	if _, err := s.Index.Upsert(note); err != nil {
+		return err
+	}
+	// The last bullet that used this picture is gone, so the picture goes.
+	s.gcImage(imageOfLine(removed))
+	return nil
 }
 
 func statusForEntryErr(err error) int {

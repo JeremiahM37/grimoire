@@ -11,6 +11,7 @@ package memport
 import (
 	"bufio"
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -56,6 +57,22 @@ type Record struct {
 	Origin       string `json:"origin,omitempty"`
 	SupersededBy string `json:"superseded_by,omitempty"`
 	Challenges   string `json:"challenges,omitempty"`
+
+	// Image is the content address of the picture this fact is about, and
+	// CaptionBasis how its caption was made (see docs/IMAGE-MEMORY.md).
+	Image        string `json:"image,omitempty"`
+	CaptionBasis string `json:"caption_basis,omitempty"`
+	// Attachment carries the picture's bytes. It is set on the first record
+	// that refers to a given picture, so one image shared by several facts is
+	// written once. Its Data marshals as base64 in JSONL.
+	Attachment *Attachment `json:"attachment,omitempty"`
+}
+
+// Attachment is an image's bytes inside a portable export.
+type Attachment struct {
+	SHA  string `json:"sha"`
+	MIME string `json:"mime"`
+	Data []byte `json:"data"`
 }
 
 // Item is one record ready for the write path. Restored is true for records from
@@ -142,6 +159,12 @@ func WriteMarkdown(records []Record, exported time.Time) []byte {
 				line += "  _(" + strings.Join(meta, " · ") + ")_"
 			}
 			buf.WriteString(line + "\n")
+			// The markdown form is a single file, so an image travels inline
+			// as a data URI. Only the bytes it already has are written.
+			if r.Attachment != nil {
+				fmt.Fprintf(&buf, "\n  ![%s](data:%s;base64,%s)\n",
+					oneLine(r.Text), r.Attachment.MIME, base64.StdEncoding.EncodeToString(r.Attachment.Data))
+			}
 		}
 	}
 	return buf.Bytes()
