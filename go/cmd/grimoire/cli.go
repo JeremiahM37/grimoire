@@ -59,7 +59,8 @@ const usage = `grimoire — local-first AI-native notes
                                       memory banks on a running server (see: grimoire bank help)
   grimoire agent install|uninstall|status [--claude-code] [--codex] [--agent NAME] [--memory] [--dry-run]
                                       wire a coding agent's hooks and MCP entry in one step
-  grimoire memory link|unlink|status|index|core|impact
+  grimoire memory link|unlink|status|index|core|impact|export|import
+                                      export/import every memory fact (docs/PORTABILITY.md)
                                       one memory store for every agent: link an agent's
                                       memory to it, regenerate MEMORY.md (rules + pointers)
   grimoire rules compile|backtest|list|enable|disable

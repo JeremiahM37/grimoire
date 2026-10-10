@@ -21,6 +21,7 @@ import (
 // topic pointers, and a status view of who is linked. See docs/MEMORY_STORE.md.
 
 const memoryUsage = `usage:
+` + memoryPortabilityUsage + `
   grimoire memory link --agent NAME --path P [--kind dir|file] [--dir STORE] [--merge] [--dry-run]
   grimoire memory unlink --agent NAME [--path P] [--dry-run]
   grimoire memory status [--dir STORE]
@@ -71,6 +72,10 @@ func cmdMemory(args []string) int {
 		return memoryTraceCmd(e, rest)
 	case "replay":
 		return memoryReplayCmd(e, rest)
+	case "export":
+		return memoryExportCmd(e, rest)
+	case "import":
+		return memoryImportCmd(e, rest)
 	}
 	return fail("unknown memory command %q\n\n%s", args[0], memoryUsage)
 }

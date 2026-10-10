@@ -1,6 +1,6 @@
 // Package memport is the portable form of agent memory: a documented, versioned
 // export of every fact a caller may read, and parsers that bring facts in from
-// the other formats people already hold (mem0, Letta, Zep/Graphiti) or from a
+// the other formats people already hold (the mem0, letta and zep source formats) or from a
 // generic JSONL file.
 //
 // It owns no storage. The API layer decides what may be read and written; this
@@ -442,7 +442,7 @@ func parseLetta(raw []byte) (Result, error) {
 		// A bare array of memory blocks is also accepted.
 		var blocks []map[string]any
 		if err2 := json.Unmarshal(bytes.TrimSpace(raw), &blocks); err2 != nil {
-			return Result{}, errors.New("not Letta JSON: expected an agent file or memory blocks")
+			return Result{}, errors.New("not letta JSON: expected an agent file or memory blocks")
 		}
 		root = map[string]any{"blocks": toAny(blocks)}
 	}
