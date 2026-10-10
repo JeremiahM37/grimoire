@@ -178,6 +178,53 @@ Which is why the size check exists at all — see [[Decisions]].
 
 # Memories a working agent would actually have written, so the provenance panel
 # and the 🤖 badges have something to show.
+# A second tier of short notes, so the graph photographs as a vault and not as ten dots. Each is one line: folder,
+# title, and the notes it links to. Links run to the hand-written notes above as well, which is what gives the graph
+# hubs and bridges between clusters instead of separate islands.
+LINKED = [
+    ("engineering", "API Gateway", ["Deployment Runbook", "Rate Limiter", "Auth Service"]),
+    ("engineering", "Auth Service", ["Postgres", "Session Store"]),
+    ("engineering", "Session Store", ["Cache Layer"]),
+    ("engineering", "Cache Layer", ["Monitoring"]),
+    ("engineering", "Rate Limiter", ["Cache Layer", "Monitoring"]),
+    ("engineering", "Job Queue", ["Postgres", "Monitoring"]),
+    ("engineering", "Search Index", ["Retrieval Notes", "Job Queue"]),
+    ("engineering", "Feature Flags", ["Deployment Runbook", "Roadmap"]),
+    ("engineering", "Backups", ["Postgres", "On-call"]),
+    ("engineering", "Load Testing", ["API Gateway", "Monitoring"]),
+    ("engineering", "Incident: slow queries", ["Postgres", "Monitoring", "On-call"]),
+    ("engineering", "Incident: cache stampede", ["Cache Layer", "Rate Limiter", "On-call"]),
+    ("product", "Pricing", ["Roadmap", "Decisions"]),
+    ("product", "Launch Checklist", ["Roadmap", "Feature Flags", "Deployment Runbook"]),
+    ("product", "User Interviews", ["Roadmap", "Onboarding Flow"]),
+    ("product", "Onboarding Flow", ["Decisions", "Team Onboarding"]),
+    ("product", "Changelog", ["Roadmap", "Launch Checklist"]),
+    ("product", "Metrics That Matter", ["Decisions", "Monitoring"]),
+    ("product", "Competitor Notes", ["Pricing", "Decisions"]),
+    ("research", "Embeddings", ["Retrieval Notes", "Search Index"]),
+    ("research", "Chunking", ["Retrieval Notes", "Embeddings"]),
+    ("research", "Reranking", ["Retrieval Notes", "Evaluation Set"]),
+    ("research", "Evaluation Set", ["Retrieval Notes", "Decisions"]),
+    ("research", "Hybrid Search", ["Embeddings", "Search Index", "Reranking"]),
+    ("research", "Paper: Dense Passage Retrieval", ["Embeddings", "Hybrid Search"]),
+    ("research", "Paper: ColBERT", ["Reranking", "Embeddings"]),
+    ("research", "Query Rewriting", ["Hybrid Search", "Evaluation Set"]),
+    ("team", "Hiring Loop", ["Team Onboarding"]),
+    ("team", "Code Review Norms", ["Team Onboarding", "Deployment Runbook"]),
+    ("team", "Retro: June", ["Incident: checkout 502s", "On-call", "Code Review Norms"]),
+    ("team", "Retro: July", ["Incident: slow queries", "Roadmap"]),
+    ("team", "Working Agreements", ["Team Onboarding", "Code Review Norms"]),
+    ("team", "1:1 Notes", ["Hiring Loop", "Working Agreements"]),
+    ("reading", "Designing Data-Intensive Applications", ["Postgres", "Job Queue", "Cache Layer"]),
+    ("reading", "The Checklist Manifesto", ["Launch Checklist", "Deployment Runbook"]),
+    ("reading", "Thinking in Systems", ["Metrics That Matter", "Retro: June"]),
+    ("reading", "How to Take Smart Notes", ["Reading List"]),
+    ("reading", "Reading List", ["Thinking in Systems"]),
+]
+NOTES += [(f"{folder}/{title.lower().replace(': ', '-').replace(' ', '-').replace(':', '')}.md", {"title": title, "tags": [folder]},
+           f"# {title}\n\n" + " ".join(f"See [[{target}]]." for target in links))
+          for folder, title, links in LINKED]
+
 MEMORIES = [
     ("claude-code", "ship the release pipeline",
      "The release archive must contain web/ as a whole directory. A `web/**/*` glob "
@@ -269,12 +316,15 @@ def capture(base: str):
         page.click("#preview-toggle")
 
         page.click("#graph-open")
-        page.wait_for_timeout(1200)
+        # the layout is animated: photograph it once it has settled, not after a guess at how long that takes
+        page.wait_for_selector("#graph-canvas[data-phase=settled]", timeout=20000)
+        shot(page, "graph.png")
+        shutil.copyfile(OUT / "graph.png", OUT / "graph-current.png")
         page.fill("#graph-search", "Deployment")
         page.locator("#graph-results .graph-show").first.click()
         page.fill("#graph-search", "")
-        shot(page, "graph.png")
-        shutil.copyfile(OUT / "graph.png", OUT / "graph-current.png")
+        page.wait_for_timeout(900)  # the camera glides to the focused note
+        shot(page, "graph-focus.png")
         page.click("#graph-close")
 
         page.click("#new-note")

@@ -100,9 +100,23 @@ Everything else follows from that one decision.
 ## The dark-mode workspace
 
 Create notes in a dedicated panel, search titles and content, or explain the current note
-without changing it. The graph supports pan, zoom, search, and exploring a
-note’s connections on desktop and mobile. Both searches use arrow keys to choose
-a result, Enter to open it, and Escape to clear the query.
+without changing it. Search results show the line that matched, with the words
+you typed marked. Both searches use arrow keys to choose a result, Enter to open
+it, and Escape to clear the query.
+
+**Ctrl/⌘ K** (or **O**) opens one box for everything: the notes you had open
+last, every note by fuzzy title, and every command, with its shortcut beside it.
+Open it and press Enter to switch back to the previous note. **Ctrl/⌘ P** lists
+commands only, **Ctrl/⌘ E** flips between reading and editing, **Ctrl/⌘ G**
+opens the graph, and **?** lists the rest.
+
+The graph fills the screen. Notes glow in the colour of their cluster (or their
+folder), the note you are editing is ringed, and clicking a note dims everything
+else and lights its links. Scope it to the open note and its neighbours, one to
+three hops out; filter by folder, tag or type; or play the vault growing over
+time, or colour notes by who wrote them, you or your agents. It is drawn on the
+GPU with the layout in a worker: `tools/graph_bench.py` measures 60 fps while
+panning a synthetic 50,000-note vault on a software renderer.
 
 Rename, templates, canvas cards and other actions use in-app panels. Dialogs
 keep keyboard focus inside, return it on close, and fit above the mobile keyboard.
@@ -601,6 +615,12 @@ one that cost a feature its default. Full methods and per-question data in
   non-zero, so it works from a healthcheck too.
 - **Tests** — `cd go && go test ./...`, plus a `verify` suite that drives a real
   headless browser against a live server.
+- **From a terminal** — `grimoire new`, `capture` and `daily` take text from
+  arguments or a pipe; `grimoire edit [NOTE]` opens a note (today's, by default)
+  in `$EDITOR` and re-indexes it; `grimoire search` prints the matching line
+  under each hit, and takes `--json` for scripts. Colour appears only on a
+  terminal and never with `NO_COLOR`. `source <(grimoire completion zsh)` (or
+  `bash`, `fish`) completes command names.
 - `grimoire help` lists the CLI. `grimoire eval` measures retrieval on *your*
   vault rather than on a public corpus.
 
