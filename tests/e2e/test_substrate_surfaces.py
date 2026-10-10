@@ -22,9 +22,12 @@ def test_memory_note_shows_badge_and_provenance(page, server):
     # badge in the (memory/ folder of the) note list
     folder = page.locator("details.folder").filter(has=page.locator("summary.folder-head", has_text=re.compile(r"^memory/?$")))
     expect(folder).to_be_visible(timeout=8000)
-    expect(folder.locator(".mem-badge")).to_be_visible()
+    # Scoped to the note this test wrote: the vault is shared across the suite,
+    # and other memory notes (a dated one, say) carry badges of their own.
+    staging = folder.locator(".note-row", has_text="Memory: staging")
+    expect(staging.locator(".mem-badge")).to_be_visible()
     # open it → provenance banner with the writing agent + history link
-    folder.locator(".note-row", has_text="Memory: staging").click()
+    staging.click()
     prov = page.locator("#provenance")
     expect(prov).to_be_visible(timeout=6000)
     expect(prov).to_contain_text("ops-agent")

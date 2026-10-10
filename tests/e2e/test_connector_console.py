@@ -20,6 +20,11 @@ from playwright.sync_api import expect
 
 PREFIX = "e2e-conn"
 
+# Settings every kind accepts (connectors.commonFields), validated server-side
+# as trust/action names, never as a feed URL. A kind's own fields are what a
+# test fills with a URL; these take their defaults.
+COMMON_FIELDS = {"trust", "actions", "action_approval", "action_rate"}
+
 
 def _api(server, path, method="GET", body=None):
     data = json.dumps(body).encode() if body is not None else None
@@ -119,7 +124,8 @@ def test_saving_a_connector_lists_it_and_removing_it_takes_it_away(page, server,
     expect(page.locator("#conn-form .conn-form")).to_be_visible(timeout=4000)
     page.fill("#cf-name", f"{PREFIX}-saved")
     for f in k.get("fields") or []:
-        page.fill(f"#cf-{f['name']}", "https://example.invalid/feed.xml")
+        if f["name"] not in COMMON_FIELDS:
+            page.fill(f"#cf-{f['name']}", "https://example.invalid/feed.xml")
     page.fill("#cf-prefix", f"{PREFIX}/saved")
     page.fill("#cf-interval", "0")   # manual, so nothing reaches the network
     page.locator("#cf-save").click()
@@ -144,7 +150,8 @@ def test_a_failing_sync_says_so_rather_than_looking_idle(page, server, kinds):
     k = next((x for x in kinds if x["kind"] == "rss"), None)
     if k is None:
         pytest.skip("no rss kind to point at an unreachable host")
-    cfg = {f["name"]: "http://127.0.0.1:9/nothing-here" for f in (k.get("fields") or [])}
+    cfg = {f["name"]: "http://127.0.0.1:9/nothing-here"
+           for f in (k.get("fields") or []) if f["name"] not in COMMON_FIELDS}
     made = _api(server, "/connectors", method="POST", body={
         "kind": k["kind"], "name": f"{PREFIX}-broken", "config": cfg,
         "prefix": f"{PREFIX}/broken", "interval": 0})
