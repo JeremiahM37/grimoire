@@ -145,6 +145,21 @@ var Fields = map[string]Field{
 	"memory_verify_ports":     {"GRIMOIRE_MEMORY_VERIFY_PORTS", ""},
 	"memory_other_hosts":      {"GRIMOIRE_MEMORY_OTHER_HOSTS", ""},
 	"memory_verify_per_dream": {"GRIMOIRE_MEMORY_VERIFY_PER_DREAM", "3"},
+	// Memory replay (docs/MEMORY_REPLAY.md): context requests are kept as
+	// situations, and automated memory edits are replayed against them first.
+	// replay_log=0 stops recording; replay_gate=0 stops holding changes (the
+	// replay is still reported). replay_max_lost is how many useful recalls a
+	// change may lose before an automated edit is held; replay_max_false how
+	// many new false fires (-1 = never hold on those); replay_min_useful the
+	// number of situations with a useful recall the corpus needs before its
+	// verdict is trusted.
+	"replay_log":            {"GRIMOIRE_REPLAY_LOG", "1"},
+	"replay_gate":           {"GRIMOIRE_REPLAY_GATE", "1"},
+	"replay_max_situations": {"GRIMOIRE_REPLAY_MAX_SITUATIONS", "5000"},
+	"replay_retention_days": {"GRIMOIRE_REPLAY_RETENTION_DAYS", "60"},
+	"replay_max_lost":       {"GRIMOIRE_REPLAY_MAX_LOST", "0"},
+	"replay_max_false":      {"GRIMOIRE_REPLAY_MAX_FALSE", "-1"},
+	"replay_min_useful":     {"GRIMOIRE_REPLAY_MIN_USEFUL", "3"},
 }
 
 // InternalFields are persisted in the same file and resolved the same way, but

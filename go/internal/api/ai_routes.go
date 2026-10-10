@@ -83,6 +83,8 @@ func (s *Server) consolidateMemory(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		Path  string `json:"path"`
 		Topic string `json:"topic"`
+		// Force applies rewrites that memory replay would hold back.
+		Force bool `json:"force"`
 	}
 	// an empty body means "all memory notes", so a decode failure is not fatal
 	_ = json.NewDecoder(r.Body).Decode(&in)
@@ -128,6 +130,8 @@ func (s *Server) consolidateMemory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	out := []map[string]any{}
+	held := []map[string]any{}
+	gater := s.newNoteGater()
 	for _, rel := range rels {
 		// The explicit path and topic forms come straight from the caller, and
 		// every form of this rewrites what it reads.
@@ -143,6 +147,24 @@ func (s *Server) consolidateMemory(w http.ResponseWriter, r *http.Request) {
 		if after == "" || strings.TrimSpace(after) == strings.TrimSpace(before) {
 			continue
 		}
+		// A rewrite by a model is an automated edit: replay it against past
+		// situations first, and keep it out of the store if it would stop a
+		// useful memory from firing. force overrides.
+		gate, hold, applied := gater.check(rel, after)
+		if hold && !in.Force {
+			h := map[string]any{"path": rel, "reason": gate.Verdict.Reason}
+			if p := principal(r); p.Unrestricted || p.IsAdmin() {
+				var lost []string
+				for _, d := range gate.Report.Diffs {
+					if len(d.Lost) > 0 && len(lost) < 5 {
+						lost = append(lost, d.Text)
+					}
+				}
+				h["would_stop_firing_for"] = lost
+			}
+			held = append(held, h)
+			continue
+		}
 		s.History.Snapshot(rel, before) // rollback-able
 		if _, err := s.Vault.Write(rel, after, note.Frontmatter); err != nil {
 			continue
@@ -150,6 +172,7 @@ func (s *Server) consolidateMemory(w http.ResponseWriter, r *http.Request) {
 		if _, err := s.Index.Upsert(rel); err != nil {
 			continue
 		}
+		applied()
 		out = append(out, map[string]any{
 			"path":           rel,
 			"before_entries": strings.Count(before, "- **"),
@@ -157,7 +180,7 @@ func (s *Server) consolidateMemory(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"consolidated": out, "notes_changed": len(out)})
+		"consolidated": out, "notes_changed": len(out), "held": held})
 }
 
 // audioMemo is record → transcribe → note. The audio itself lands in the vault

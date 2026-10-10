@@ -26,6 +26,8 @@ const memoryUsage = `usage:
   grimoire memory status [--dir STORE]
   grimoire memory index [--dir STORE] [--write] [--budget BYTES]
   grimoire memory core [--budget BYTES] [--format md|text]
+  grimoire memory replay [--diff --note P --with FILE | --change FILE | --index | seed FILE] [--json]
+  grimoire memory index --write [--force]   (replays the new index first; held if it loses useful recalls)
   grimoire memory impact [--since 90d] [--agent NAME] [--min N] [--json]
   grimoire memory impact --retells [--cutoff 2026-10-09] [--budget 2000] [--since D] [--all-sessions] [--json]
 
@@ -64,6 +66,8 @@ func cmdMemory(args []string) int {
 		return memoryCoreCmd(e, rest)
 	case "impact":
 		return memoryImpactCmd(e, rest)
+	case "replay":
+		return memoryReplayCmd(e, rest)
 	}
 	return fail("unknown memory command %q\n\n%s", args[0], memoryUsage)
 }
@@ -253,6 +257,22 @@ func memoryStatusCmd(e *env, args []string) int {
 	return 0
 }
 
+// buildIndexText is the MEMORY.md `memory index` would write.
+func buildIndexText(e *env, store string, args []string) (string, error) {
+	notes, err := memstore.LoadDir(store)
+	if err != nil {
+		return "", err
+	}
+	opt := memstore.CoreOptions{Links: true}
+	if v := flagOr(args, "--budget", ""); v != "" {
+		fmt.Sscanf(v, "%d", &opt.Budget)
+	}
+	if e.embedder != nil {
+		opt.Embed = e.embedder.Embed
+	}
+	return memstore.BuildCore(notes, opt).Text, nil
+}
+
 func memoryIndexCmd(e *env, args []string) int {
 	store := e.storeDir(args)
 	notes, err := memstore.LoadDir(store)
@@ -274,6 +294,12 @@ func memoryIndexCmd(e *env, args []string) int {
 		return 0
 	}
 	target := filepath.Join(store, memstore.IndexName)
+	if !hasFlag(args, "--force") {
+		if reason := indexHeld(e, target, core.Text); reason != "" {
+			fmt.Fprintf(os.Stderr, "not written: %s\nreview with: grimoire memory replay --diff --index   (or rerun with --force)\n", reason)
+			return 2
+		}
+	}
 	if old, err := os.ReadFile(target); err == nil {
 		if strings.Contains(string(old), filemem.GeneratedMarker) && string(old) == core.Text {
 			fmt.Println("MEMORY.md already up to date")
@@ -372,4 +398,29 @@ func memoryImpactCmd(e *env, args []string) int {
 		fmt.Fprintln(os.Stderr, "note:", msg)
 	}
 	return 0
+}
+
+// indexHeld replays the regenerated index against past situations and returns
+// why it must not be written automatically, or "". A server that cannot
+// replay (no corpus, nothing indexed) never holds the write.
+func indexHeld(e *env, target, text string) string {
+	old, err := os.ReadFile(target)
+	if err != nil || string(old) == text {
+		return ""
+	}
+	status, out := e.callBody("POST", "/api/memory/replay",
+		map[string]any{"notes": []map[string]string{{"path": target, "text": text}}})
+	if status != http.StatusOK {
+		return "" // the index is not an indexed note here; nothing to replay
+	}
+	var res struct {
+		Verdict struct {
+			Hold   bool   `json:"hold"`
+			Reason string `json:"reason"`
+		} `json:"verdict"`
+	}
+	if json.Unmarshal([]byte(out), &res) != nil || !res.Verdict.Hold {
+		return ""
+	}
+	return "memory replay: " + res.Verdict.Reason
 }

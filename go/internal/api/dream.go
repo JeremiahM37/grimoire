@@ -23,6 +23,7 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/dream/secscan"
 	"github.com/JeremiahM37/grimoire/go/internal/markdown"
 	"github.com/JeremiahM37/grimoire/go/internal/memory"
+	"github.com/JeremiahM37/grimoire/go/internal/vault"
 )
 
 // Dreaming: the periodic offline pass over agent memory.
@@ -213,7 +214,7 @@ func (s *Server) Dream(ctx context.Context, apply, onlyIfChanged bool) (*dream.R
 	rep.Findings = findings
 
 	if apply {
-		rep.Applied = s.applyDreamFixes(findings)
+		rep.Applied, rep.Held = s.applyDreamFixesGated(findings)
 		rep.Actions = append(rep.Actions, s.dreamConsolidate(ctx)...)
 	}
 	rep.Finished = time.Now().UTC()
@@ -261,6 +262,17 @@ func sortFindings(f []dream.Finding) {
 // another fix refers to. The pre-fix text goes to history first, as with any
 // other edit.
 func (s *Server) applyDreamFixes(findings []dream.Finding) []dream.Fix {
+	applied, _ := s.applyDreamFixesGated(findings)
+	return applied
+}
+
+// applyDreamFixesGated is applyDreamFixes with memory replay in front of every
+// document: a document whose fixes would stop a useful memory from firing in
+// past situations is left as it is and reported as held. Each document is
+// judged against the store as the earlier ones left it.
+func (s *Server) applyDreamFixesGated(findings []dream.Finding) ([]dream.Fix, []dream.Held) {
+	gater := s.newNoteGater()
+	var held []dream.Held
 	byPath := map[string][]dream.Fix{}
 	var order []string
 	for _, f := range findings {
@@ -286,6 +298,17 @@ func (s *Server) applyDreamFixes(findings []dream.Finding) []dream.Fix {
 		if len(done) == 0 || next == string(raw) {
 			continue
 		}
+		gate, hold, afterApply := gater.check(rel, vault.NoteFromText(rel, next, 0).Body)
+		if hold {
+			h := dream.Held{Path: rel, Reason: gate.Verdict.Reason, Fixes: len(done)}
+			for _, d := range gate.Report.Diffs {
+				if len(d.Lost) > 0 && len(h.Lost) < 5 {
+					h.Lost = append(h.Lost, clip(d.Text, 120))
+				}
+			}
+			held = append(held, h)
+			continue
+		}
 		if s.History != nil {
 			s.History.Snapshot(rel, string(raw))
 		}
@@ -305,9 +328,10 @@ func (s *Server) applyDreamFixes(findings []dream.Finding) []dream.Fix {
 				log.Printf("dream: reindexing %s: %v", rel, err)
 			}
 		}
+		afterApply()
 		applied = append(applied, done...)
 	}
-	return applied
+	return applied, held
 }
 
 // applyFixes applies fixes to one document's text and returns the result and
@@ -434,6 +458,17 @@ func renderDreamReport(rep *dream.Report) string {
 		}
 		for _, a := range rep.Actions {
 			fmt.Fprintf(&b, "- %s\n", a)
+		}
+		b.WriteString("\n")
+	}
+	if len(rep.Held) > 0 {
+		fmt.Fprintf(&b, "## Held by memory replay (%d)\n\n", len(rep.Held))
+		b.WriteString("These automated edits were not applied: replaying past situations showed a memory that was useful would stop firing. Review them by hand, or accept the change with `grimoire memory replay --diff`.\n\n")
+		for _, h := range rep.Held {
+			fmt.Fprintf(&b, "- [[%s]] (%d fix(es)) — %s\n", strings.TrimSuffix(h.Path, ".md"), h.Fixes, h.Reason)
+			for _, l := range h.Lost {
+				fmt.Fprintf(&b, "  - would no longer fire for: %q\n", l)
+			}
 		}
 		b.WriteString("\n")
 	}
