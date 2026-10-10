@@ -185,14 +185,89 @@ a bound learned later (`memory.Entry.ValidAtAsOf`).
 
 **Where it is evaluated.** The index stores both bounds as canonical text
 columns, added through the conditional column migration. `valid_at` and the
-ranges are SQL predicates, applied before the scan bound. Under `as_of` they are
-applied in Go, because the belief rule compares local stamps, which the
-canonical columns cannot express. That path is subject to the same scan bound
-as `as_of` itself, so it is exact below `DefaultScanLimit` facts.
+ranges are SQL predicates. Under `as_of` they are SQL predicates too: the belief
+rule compares minute-precision local stamps, which compare correctly as fixed
+width text against the instant rendered in the same format, so the predicate is
+exact, not a superset (see "Candidate generation above the scan bound"). The
+Go-side check still runs on every row that comes back.
 
 **Not covered.** Vector search (`POST /api/memory/search-vector`) does not take
 validity parameters yet. Editing the bounds through `PATCH /api/memory` is not
 supported; change the trailer or write a corrected fact instead.
+
+## Agent memory: candidate generation above the scan bound
+
+Recall scores at most `DefaultScanLimit` facts (20,000; `GRIMOIRE_SCAN_LIMIT`
+overrides it, so a test can put a small corpus over the bound). Below the bound
+the answer is the same as an unbounded scan. The window is the newest facts that
+pass every check, streamed in recency order until the bound is full.
+
+Above the bound that window is the wrong candidate set: an old fact that answers
+the question is simply never scored. A measured 50,000-fact corpus returned the
+gold fact in the top ten for 30% of targets, against 88% at 1,000 facts
+(`benchmarks/latency/REPORT.md`). So a recall with text or a vector, over the
+bound, takes its candidates from four arms over the same filtered set
+(`internal/index/memory_candidates.go`):
+
+| Arm | Source | Size |
+|---|---|---|
+| newest | `ORDER BY stamp DESC` | pool |
+| lexical | `memory_fts` (FTS5, porter unicode61) by `bm25`, query terms OR-ed and quoted | pool |
+| entity | `memory_entities` rows sharing a stored entity with the query, newest first | pool |
+| semantic | brute-force cosine; the first pass decodes only the `embedding` column and keeps a bounded heap | pool |
+
+`pool` is `scanLimit / 10`, with a floor of 10, so the union is at most four
+pools (8,000 rows at the default bound). The union's full rows are fetched by
+rowid, pass through the same `accept` check as the window, and are ranked by the
+unchanged `rankMemory`. The ranking formula, its weights and its tie-breaks are
+not touched by this path; only which rows reach it differ.
+
+**Queries with no text or vector** (a filter alone, or `as_of` with no words)
+keep the window, which now sees only rows that pass the time predicates. The
+window is the right answer for a filter: nothing about the question favours an
+old fact.
+
+**FTS table.** `memory_fts` is an external-content FTS5 table over
+`memory_entries.text`. Insert, delete and update triggers keep it in step with
+every write path: a note rewrite (delete then insert), a removed note, and a full
+reindex. A database that predates the table is backfilled on open with the FTS5
+`rebuild` command. Tests check it with FTS5's `integrity-check` after each kind
+of write.
+
+Supersession does not remove a row from the FTS table, and that is deliberate.
+The superseded fact is still a row in `memory_entries` with its old text, and
+`as_of` is defined to answer from exactly those rows. Default recall excludes
+superseded facts with the existing predicate, so they never surface; removing
+them from the FTS table would make `as_of` unable to find them, which is the
+one question superseded facts exist to answer. A forgotten fact is deleted, and
+its FTS row goes with it.
+
+**Pushdown.** Everything that can be decided in SQL is decided before the bound,
+so the bound counts only rows that can answer the question: the note, path, id,
+agent, task, session, category, mode and superseded filters; `as_of` (written by
+then, not replaced by then, and validity as it was known then); `valid_at` and
+the ranges; `private`; and the space and reader-list rule. The reader-list rule
+is an exact image of `aclAllows` (`acl=''`, or `instr(acl, ',user,')`), and the
+Go check `allows` still runs on every row. Expiry stays in Go, because the stored
+`expires` text is not canonical; the streamed window continues past rows that
+expiry rejects, so they do not shrink the answer.
+
+On the candidate path an expired fact can still take a pool slot before `accept`
+removes it. That only costs recall when a large share of the pool is expired;
+moving expiry into SQL needs a canonical expiry column, which is not added here.
+
+**Visibility over the bound.** The lexical arm's bm25 scores use term statistics
+of the whole table, including rows the caller cannot read. Those statistics only
+order the candidate pool, never the output: every returned row is visible, and
+its final score is computed from the visible candidates as before. The residual
+effect is that hidden rows can change which visible rows enter a pool of
+`scanLimit / 10` when the pool is full. `TestLeakprobeMemoryRecallOverScanBound`
+and `TestOverBoundRecallRespectsVisibility` cover the output; the statistical
+effect is recorded here rather than removed.
+
+**Cost.** The over-bound check is one `COUNT` capped at bound+1 rows. The vector
+arm reads every visible embedding once per recall; that is the linear term that
+remains, and it is cheaper than the full-row decode the window did.
 
 ## Agent memory: importance, use and eviction
 

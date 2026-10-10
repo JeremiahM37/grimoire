@@ -4,7 +4,7 @@
   "warmup": 20,
   "corpus_version": 1,
   "machine": {
-    "loadavg_1m_at_start": 4.732421875,
+    "loadavg_1m_at_start": 2.96240234375,
     "cpu_model": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
     "cpu_count": 32,
     "mem_total_gb": 123.5,
@@ -12,9 +12,193 @@
     "python": "3.13.5",
     "go": "go version go1.26.6 linux/amd64"
   },
-  "total_wall_s": 1237.1,
-  "loadavg_1m_at_end": 4.732421875,
+  "total_wall_s": 1030.8,
+  "loadavg_1m_at_end": 2.96240234375,
   "cells": [
+    {
+      "facts": 10000,
+      "entities": 5000,
+      "superseded": 977,
+      "human_authored": 2485,
+      "with_valid_from": 2093,
+      "corpus_gen_s": 0.1,
+      "cold_start_s": 50.331,
+      "index_log": "indexed 200 notes (full rebuild)",
+      "embedder": "model2vec:minishlab/potion-base-8M",
+      "rss_mb_after_index": 102.9,
+      "recall": {
+        "plain": {
+          "n": 200,
+          "p50_ms": 120.131,
+          "p95_ms": 123.137,
+          "p99_ms": 124.312,
+          "mean_ms": 120.304,
+          "min_ms": 115.818,
+          "max_ms": 125.666,
+          "tokens_mean": 195.6,
+          "tokens_p50": 182,
+          "hits_mean": 20.0,
+          "gold_in_top10": 0.695
+        },
+        "expand": {
+          "n": 200,
+          "p50_ms": 427.086,
+          "p95_ms": 546.776,
+          "p99_ms": 553.449,
+          "mean_ms": 407.465,
+          "min_ms": 303.306,
+          "max_ms": 559.788,
+          "tokens_mean": 195.5,
+          "tokens_p50": 182,
+          "hits_mean": 20.0,
+          "gold_in_top10": 0.695
+        },
+        "hops1": {
+          "n": 200,
+          "p50_ms": 196.883,
+          "p95_ms": 204.025,
+          "p99_ms": 206.949,
+          "mean_ms": 197.377,
+          "min_ms": 188.384,
+          "max_ms": 214.3,
+          "tokens_mean": 195.6,
+          "tokens_p50": 182,
+          "hits_mean": 20.0,
+          "gold_in_top10": 0.695
+        },
+        "valid_at": {
+          "n": 200,
+          "p50_ms": 118.32,
+          "p95_ms": 122.346,
+          "p99_ms": 123.79,
+          "mean_ms": 118.627,
+          "min_ms": 114.108,
+          "max_ms": 125.262,
+          "tokens_mean": 195.5,
+          "tokens_p50": 181,
+          "hits_mean": 20.0,
+          "gold_in_top10": null
+        },
+        "as_of": {
+          "n": 200,
+          "p50_ms": 59.188,
+          "p95_ms": 62.199,
+          "p99_ms": 64.074,
+          "mean_ms": 59.461,
+          "min_ms": 56.799,
+          "max_ms": 64.921,
+          "tokens_mean": 196.2,
+          "tokens_p50": 183,
+          "hits_mean": 20.0,
+          "gold_in_top10": null
+        }
+      },
+      "rss_mb_after_reads": 134.1,
+      "write": {
+        "n": 200,
+        "p50_ms": 285.841,
+        "p95_ms": 484.248,
+        "p99_ms": 524.265,
+        "mean_ms": 265.28,
+        "min_ms": 119.686,
+        "max_ms": 662.768,
+        "reconcile_updates": 35
+      },
+      "rss_mb_after_writes": 144.0
+    },
+    {
+      "facts": 50000,
+      "entities": 25000,
+      "superseded": 5037,
+      "human_authored": 12608,
+      "with_valid_from": 9930,
+      "corpus_gen_s": 1.2,
+      "cold_start_s": 241.91,
+      "index_log": "indexed 1000 notes (full rebuild)",
+      "embedder": "model2vec:minishlab/potion-base-8M",
+      "rss_mb_after_index": 105.4,
+      "recall": {
+        "plain": {
+          "n": 200,
+          "p50_ms": 219.076,
+          "p95_ms": 236.053,
+          "p99_ms": 259.06,
+          "mean_ms": 220.204,
+          "min_ms": 197.755,
+          "max_ms": 262.977,
+          "tokens_mean": 201.0,
+          "tokens_p50": 187,
+          "hits_mean": 20.0,
+          "gold_in_top10": 0.605
+        },
+        "expand": {
+          "n": 200,
+          "p50_ms": 797.114,
+          "p95_ms": 1040.502,
+          "p99_ms": 1155.62,
+          "mean_ms": 773.435,
+          "min_ms": 568.265,
+          "max_ms": 1185.663,
+          "tokens_mean": 200.0,
+          "tokens_p50": 186,
+          "hits_mean": 20.0,
+          "gold_in_top10": 0.605
+        },
+        "hops1": {
+          "n": 200,
+          "p50_ms": 397.38,
+          "p95_ms": 414.302,
+          "p99_ms": 434.332,
+          "mean_ms": 398.592,
+          "min_ms": 375.455,
+          "max_ms": 443.958,
+          "tokens_mean": 201.0,
+          "tokens_p50": 187,
+          "hits_mean": 20.0,
+          "gold_in_top10": 0.605
+        },
+        "valid_at": {
+          "n": 200,
+          "p50_ms": 228.301,
+          "p95_ms": 241.886,
+          "p99_ms": 263.254,
+          "mean_ms": 228.538,
+          "min_ms": 201.032,
+          "max_ms": 277.01,
+          "tokens_mean": 200.3,
+          "tokens_p50": 187,
+          "hits_mean": 20.0,
+          "gold_in_top10": null
+        },
+        "as_of": {
+          "n": 200,
+          "p50_ms": 159.78,
+          "p95_ms": 181.306,
+          "p99_ms": 189.555,
+          "mean_ms": 164.131,
+          "min_ms": 148.128,
+          "max_ms": 198.379,
+          "tokens_mean": 195.9,
+          "tokens_p50": 182,
+          "hits_mean": 20.0,
+          "gold_in_top10": null
+        }
+      },
+      "rss_mb_after_reads": 217.9,
+      "write": {
+        "n": 200,
+        "p50_ms": 296.919,
+        "p95_ms": 583.568,
+        "p99_ms": 611.544,
+        "mean_ms": 389.786,
+        "min_ms": 213.434,
+        "max_ms": 692.143,
+        "reconcile_updates": 16
+      },
+      "rss_mb_after_writes": 223.0
+    }
+  ],
+  "baseline_cells": [
     {
       "facts": 1000,
       "entities": 500,
@@ -288,5 +472,7 @@
       },
       "rss_mb_after_writes": 290.3
     }
-  ]
+  ],
+  "baseline_note": "Cells measured on the pre-candidate build (commit 59619a6) with the same harness, seed and corpus version, at total run time 1237 s (load average 4.7 at start). The 1,000-fact cells were not re-measured after the change.",
+  "after_note": "Cells measured on the candidate-generation build (feat/ms-scale, commit d9c7cf6 and its predecessors on this branch) at sizes 10,000 and 50,000 only."
 }
