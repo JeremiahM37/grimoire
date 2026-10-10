@@ -27,11 +27,23 @@ import (
 // minPool keeps tiny test bounds from producing empty arms.
 const minPool = 10
 
+// ReconcileCandidatePool is the per-arm pool for reconcile-originated queries.
+// A new fact restating an old one shares only its attribute with the target
+// when the new fact omits the subject or service, and then the target is one
+// of dozens of facts with the same terms. At the production pool (scanLimit/10
+// = 50 at a bound of 500) the lexical arm's top 50 dropped targets the old
+// newest-N window had found (memory_reconcile_targets_test.go). 200 restores
+// the exact oracle's candidate set on every probe variant.
+const ReconcileCandidatePool = 200
+
 // fetchChunk bounds the IN list of the final row fetch, under SQLite's
 // variable limit on old builds.
 const fetchChunk = 500
 
 func (q MemoryQuery) poolSize(limit int) int {
+	if q.CandidatePool > 0 {
+		return q.CandidatePool
+	}
 	if p := limit / 10; p > minPool {
 		return p
 	}

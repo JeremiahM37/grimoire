@@ -79,6 +79,10 @@ type MemoryQuery struct {
 	// DefaultScanLimit.
 	ScanLimit int
 
+	// CandidatePool, when positive, overrides the per-arm pool that candidate
+	// generation takes above the bound. Zero means scanLimit/10 with a floor.
+	CandidatePool int
+
 	Filter Filter
 
 	// Structured narrowing. Empty means "any".

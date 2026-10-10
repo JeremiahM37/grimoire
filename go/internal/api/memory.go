@@ -414,10 +414,11 @@ func (s *Server) reconcileFact(w http.ResponseWriter, r *http.Request, rel, fact
 		}
 	} else if m.Infer == nil || *m.Infer {
 		query := index.MemoryQuery{
-			Filter: filterFor(r, true),
-			Query:  fact,
-			Limit:  reconcileCandidates,
-			Now:    vault.Now(),
+			Filter:        filterFor(r, true),
+			Query:         fact,
+			Limit:         reconcileCandidates,
+			CandidatePool: index.ReconcileCandidatePool,
+			Now:           vault.Now(),
 		}
 		switch strings.TrimSpace(m.Scope) {
 		case scopeTopic:
