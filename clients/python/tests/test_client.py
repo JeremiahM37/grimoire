@@ -413,3 +413,44 @@ def test_graph_without_an_entity_asks_for_the_overview(server, client):
     server.reply = {"seed": "", "nodes": [], "edges": [], "entries": []}
     client.graph()
     assert "entity=" not in server.last["path"]
+
+
+def test_search_sends_mode_and_basis_only_when_set(server, client):
+    server.reply = []
+    client.search("x")
+    assert "mode" not in server.last["path"] and "basis" not in server.last["path"]
+
+    client.search("x", mode="factual", basis=["stated", "observed"])
+    assert "mode=factual" in server.last["path"]
+    assert "basis=stated%2Cobserved" in server.last["path"]
+
+    client.search("x", mode="all", basis="inferred")
+    assert "mode=" not in server.last["path"]
+    assert "basis=inferred" in server.last["path"]
+
+
+def test_search_parses_basis_and_evidence(server, client):
+    server.reply = [{"id": "a1", "text": "the backup runs at 03:00", "basis": "observed",
+                     "evidence": ["memory/cron.md"]}]
+    (fact,) = client.search("backup")
+    assert fact.basis == "observed"
+    assert fact.evidence == ["memory/cron.md"]
+
+
+def test_a_server_without_basis_parses_as_unknown(server, client):
+    server.reply = [{"id": "a1", "text": "old fact"}]
+    (fact,) = client.search("old")
+    assert fact.basis == ""
+    assert fact.evidence == []
+
+
+def test_add_forwards_evidence(server, client):
+    server.reply = {"op": "ADD", "id": "a1", "results": [{"op": "ADD", "id": "a1"}]}
+    client.add("the backup runs at 03:00", evidence=["memory/cron.md"])
+    assert server.last["body"]["evidence"] == ["memory/cron.md"]
+
+
+def test_add_without_evidence_sends_no_evidence_field(server, client):
+    server.reply = {"op": "ADD", "id": "a1", "results": [{"op": "ADD", "id": "a1"}]}
+    client.add("the cache is redis")
+    assert "evidence" not in server.last["body"]

@@ -376,15 +376,26 @@ def run(event, environment=None, fetch=fetch_context, now=None, profile=None, ki
 AUTOMATED_PROMPT = re.compile(r"\s*(\[SYSTEM NOTIFICATION|<task-notification>|<system-reminder>)", re.IGNORECASE)
 
 
+RECALL_MODES = {"factual", "personal"}
+
+
 def rank_params(environment):
     """Ranking for the server: hybrid (embeddings + keywords + cues) unless the
-    operator pins the old word-overlap ranking."""
+    operator pins the old word-overlap ranking.
+
+    GRIMOIRE_RECALL_MODE=factual|personal narrows the injected facts to the
+    factual ones or to the personal ones (see memory.RecallMode). It is sent
+    only when set to one of those two, so the default request is unchanged; any
+    other value is ignored rather than guessed at."""
     rank = environment.get("GRIMOIRE_CONTEXT_RANK", "hybrid")
     if rank not in {"hybrid", "lexical"}:
         rank = "hybrid"
     extra = {"rank": rank}
     if rank == "hybrid":
         extra["min_rel"] = environment.get("GRIMOIRE_CONTEXT_MIN_REL", "0.5")
+    recall = environment.get("GRIMOIRE_RECALL_MODE", "").strip().lower()
+    if recall in RECALL_MODES:
+        extra["recall_mode"] = recall
     return extra
 
 

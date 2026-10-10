@@ -318,6 +318,8 @@ Settings added by the agent-memory work, plus the hook-side variables read by th
 | `GRIMOIRE_CONTEXT_MAX_BYTES` | `2400` | Hook side: budget of one prompt-time injection (128-8000) |
 | `GRIMOIRE_ACTION_MAX_BYTES` | `1200` | Hook side: budget of one action-time injection (128-4000) |
 | `GRIMOIRE_CONTEXT_RANK` | `hybrid` | Hook side: `hybrid` (embeddings + keywords + cues) or `lexical` (word overlap) |
+| `GRIMOIRE_RECALL_MODE` | unset | Hook side: `factual` or `personal` narrows injected facts to those categories; unset sends nothing extra (see `docs/MEMORY_USE.md`) |
+| `GRIMOIRE_PERSONAL_CATEGORIES` | `preference,persona,style,likes` | Server side: the comma list of categories `mode=factual\|personal` and `exclude_personal` treat as personal |
 | `GRIMOIRE_CONTEXT_MIN_REL` | `0.5` | Hook side: relevance floor for prompt-time injection |
 | `GRIMOIRE_ACTION_MIN_REL` | `0.7` | Hook side: relevance floor before a command |
 | `GRIMOIRE_EDIT_MIN_REL` | `0.8` | Hook side: relevance floor before a file edit |

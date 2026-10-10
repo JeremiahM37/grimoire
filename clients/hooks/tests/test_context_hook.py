@@ -222,3 +222,32 @@ def test_output_matches_codex_and_claude_hook_protocol(environment, event_name):
 def test_every_codex_session_start_source_is_accepted(environment, source):
     start = {"hook_event_name": "SessionStart", "session_id": "s", "cwd": "/p", "source": source}
     assert hook.run(start, environment, lambda *a: pytest.fail("no fetch at start")) is None
+
+
+@pytest.mark.parametrize("value,sent", [("factual", "factual"), ("personal", "personal"),
+                                        (" Factual ", "factual"), ("bogus", None), ("", None)])
+def test_recall_mode_is_passed_through_only_when_set(environment, value, sent):
+    seen = []
+
+    def fetch(base, token, query, excluded, budget, mode, paths, extra=None):
+        seen.append(dict(extra or {}))
+        return {"context": "reference", "keys": [KEY]}
+
+    environment["GRIMOIRE_RECALL_MODE"] = value
+    assert hook.run(event(), environment, fetch, now=100)
+    if sent is None:
+        assert "recall_mode" not in seen[0], "an unrecognised mode must not be sent"
+    else:
+        assert seen[0]["recall_mode"] == sent
+
+
+def test_default_request_carries_no_recall_mode(environment):
+    seen = []
+
+    def fetch(base, token, query, excluded, budget, mode, paths, extra=None):
+        seen.append(dict(extra or {}))
+        return {"context": "reference", "keys": [KEY]}
+
+    assert hook.run(event(), environment, fetch, now=100)
+    assert "recall_mode" not in seen[0]
+    assert seen[0]["rank"] == "hybrid"

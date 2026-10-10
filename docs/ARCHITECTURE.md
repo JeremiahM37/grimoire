@@ -322,6 +322,55 @@ digest of every field the changes feed reads, plus the times at which an answer
 could go stale (an expiry, or a change leaving the window). Responses are cached
 under it, so an unchanged memory answers without rebuilding.
 
+## Agent memory: basis, evidence and recall mode
+
+**Basis is derived, never stored.** Every recalled fact, every profile line and
+every `explain` row carries `basis`, computed by `memory.Entry.Basis()` from
+fields the bullet already holds. Nothing is written for it, so there is no file
+format change, an old vault gets a basis on first read, and a hand edit that
+changes the claim changes the basis with it. The cases are applied top to
+bottom and the first that matches decides:
+
+| # | Condition on the fact | `basis` |
+|---|---|---|
+| 1 | origin starts `import:` | `imported` |
+| 2 | origin is untrusted (`trust.FromOrigin`: any origin other than `self`, `user`, `me`, `local`, or empty), even when a human claim is present | `pulled` |
+| 3 | a person asserted it: `by=human`, a bullet with no trailer, or an id that no longer matches its text (`HumanAuthored`) | `stated` |
+| 4 | agent or task starts `consolidat`, `reflect` or `dream`, or category is `inference`, `synthesis` or `reflection` | `inferred` |
+| 5 | an `ev=` evidence list is present, or category is `observation`, `observed`, `tool_result`, `transcript`, `document` or `log` | `observed` |
+| 6 | anything else: an agent's bare assertion | `inferred` |
+
+Two consequences follow from the order. A pulled origin cannot be made `stated`
+by a claimed `human` flag, which is the same rule `AuthorityOf` applies to
+authority. An origin such as `web:host` or `connector:x` therefore reads as
+`pulled`, not `observed`, because trust already classes it as untrusted.
+
+**Evidence.** `remember` takes `evidence` (note paths, urls or entry ids, at most
+16, each up to 512 characters, no comma or line break). It is stored in the
+trailer as `ev=a,b` and in the index column `memory_entries.evidence`. It does
+not enter the id hash, so it cannot change reconciliation, and it is what moves
+an agent's write from case 6 to case 5. Absent evidence on an agent write
+leaves it `inferred`.
+
+**Recall mode (`mode=factual|personal|all`).** The default `all` is the
+unchanged query. `factual` removes facts whose category is in the personal set,
+and `personal` keeps only those. The set is `preference`, `persona`, `style`
+and `likes`, matched case-insensitively, and is replaced entirely by
+`GRIMOIRE_PERSONAL_CATEGORIES` when that is set. The filter runs in SQL before
+the scan bound, so it cannot shrink the top-N. A fact with no category is not
+personal, so an uncategorised preference still reaches factual recall. The same
+filter applies to `GET /api/memory/context` as `recall_mode=`, to the profile as
+`exclude_personal=true`, and to the hook as `GRIMOIRE_RECALL_MODE`.
+
+**Basis filter.** `basis=stated,observed` keeps only the listed bases. Unknown
+names are a 400, not an empty answer.
+
+**Known gaps.** Consolidation rewrites a whole note through the model. Bullets
+it returns without their trailers read as hand-written, so a consolidated
+agent fact can become `stated`. This is the same trailer-loss hazard that
+already affects authority, and it is not fixed here. Portability exports do not
+yet carry `ev=`, so an imported fact loses its evidence.
+
 ## Testing
 
 * `go/internal/*/[_]test.go` — pure logic (renderer, queries, CRDT, crypto…)

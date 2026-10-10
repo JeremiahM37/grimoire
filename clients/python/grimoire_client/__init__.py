@@ -112,6 +112,12 @@ class Memory:
     trust: str = ""
     #: Who asserted it: ``"human"``, ``"agent"`` or ``"pulled"``.
     authority: str = ""
+    #: How it came to be on file: ``"stated"``, ``"observed"``, ``"inferred"``,
+    #: ``"imported"`` or ``"pulled"``. Derived by the server, never stored.
+    basis: str = ""
+    #: What the agent said it read the fact from, when it said (``evidence=`` on
+    #: remember). An agent fact with evidence is ``"observed"``.
+    evidence: list[str] = field(default_factory=list)
 
     @property
     def superseded(self) -> bool:
@@ -142,6 +148,8 @@ class Memory:
             origin=raw.get("origin", "") or "",
             trust=raw.get("trust", "") or "",
             authority=raw.get("authority", "") or "",
+            basis=raw.get("basis", "") or "",
+            evidence=list(raw.get("evidence") or []),
         )
 
 
@@ -232,6 +240,7 @@ class Grimoire:
         scope: str = "",
         fresh: str = "",
         check: str = "",
+        evidence: Iterable[str] | None = None,
     ) -> Result:
         """Record a fact, reconciled against what is already known.
 
@@ -245,10 +254,15 @@ class Grimoire:
         ``fresh`` says how the fact goes stale — ``"stable"``, ``"volatile"``
         or a re-check interval like ``"7d"`` — and ``check`` is the read-only
         command or place that verifies it.
+
+        ``evidence`` lists what the fact was read FROM (note paths, urls, entry
+        ids). An agent fact with evidence is recorded as ``observed``; without
+        it, as ``inferred``.
         """
         return _first_result(
             self.remember(
                 text,
+                evidence=evidence,
                 topic=topic,
                 agent=agent,
                 task=task,
@@ -274,6 +288,11 @@ class Grimoire:
             value = kwargs.pop(key, "")
             if value:
                 body[key] = value
+        # evidence: what the agent read the fact from. With it the fact is
+        # recorded as observed; without it, as inferred.
+        evidence = kwargs.pop("evidence", None)
+        if evidence:
+            body["evidence"] = [str(item) for item in evidence]
         if kwargs.pop("immutable", False):
             body["immutable"] = True
         infer = kwargs.pop("infer", True)
@@ -311,16 +330,28 @@ class Grimoire:
         include_expired: bool = False,
         as_of: str = "",
         explain: bool = False,
+        mode: str = "",
+        basis: Iterable[str] | str = "",
     ) -> list[Memory]:
         """Recall facts, most relevant first.
 
         Only what is currently believed, unless you ask otherwise:
         ``include_superseded`` also returns replaced beliefs, and ``as_of``
         (an RFC3339 instant) reconstructs what was believed then.
+
+        ``mode`` is ``"factual"`` (leave out stored preferences, personas and
+        style), ``"personal"`` (only those) or empty for everything. ``basis``
+        keeps only facts that came to be on file that way: a comma list or an
+        iterable of ``stated``, ``observed``, ``inferred``, ``imported``,
+        ``pulled``.
         """
         params: dict[str, str] = {"limit": str(limit)}
         if query:
             params["q"] = query
+        if mode and mode != "all":
+            params["mode"] = mode
+        if basis:
+            params["basis"] = basis if isinstance(basis, str) else ",".join(basis)
         for key, value in (
             ("agent", agent), ("task", task), ("session", session),
             ("category", category), ("path", path), ("as_of", as_of),

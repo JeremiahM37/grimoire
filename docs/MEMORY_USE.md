@@ -202,6 +202,7 @@ every tool call:
 | Variable (hook) | Default | Meaning |
 |---|---|---|
 | `GRIMOIRE_CONTEXT_RANK` | `hybrid` | `lexical` restores word matching |
+| `GRIMOIRE_RECALL_MODE` | unset (all facts) | `factual` leaves out stored preferences, personas and style from injected context; `personal` injects only those. Any other value is ignored |
 | `GRIMOIRE_CONTEXT_MIN_REL` | `0.5` | relevance needed to inject on a prompt |
 | `GRIMOIRE_CONTEXT_ACTIONS` | `1` | fire memories on tool calls |
 | `GRIMOIRE_EDIT_MIN_REL` | `0.8` | relevance needed on a file edit or write, whose path alone matches every memory about its repo |

@@ -79,12 +79,20 @@ def _clean_prompt(prompt: object) -> str:
     return prompt
 
 
+RECALL_MODES = frozenset({"factual", "personal"})
+
+
 def _fetch(client: Grimoire, query: str, excluded: list[str], budget: int,
-           mode: str, paths: list[str]) -> dict:
-    parameters = urllib.parse.urlencode({
+           mode: str, paths: list[str], recall_mode: str | None = None) -> dict:
+    values: dict = {
         "q": query, "exclude": ",".join(excluded), "max_bytes": budget, "limit": 5,
         "scope": mode, "path": paths,
-    }, doseq=True)
+    }
+    if recall_mode:
+        # Sent only when set, so the default request is the one the server has
+        # always answered.
+        values["recall_mode"] = recall_mode
+    parameters = urllib.parse.urlencode(values, doseq=True)
     headers = {"Accept": "application/json"}
     if client.token:
         headers["Authorization"] = "Bearer " + client.token
@@ -105,7 +113,8 @@ def _fetch(client: Grimoire, query: str, excluded: list[str], budget: int,
 
 def _lookup(prompt: object, client: Grimoire | None, budget: int, mode: str | None,
             paths: Iterable[str] | None, exclude: Iterable[str] | None,
-            fetch: Callable = _fetch) -> tuple[str | None, list[str]]:
+            fetch: Callable = _fetch, recall_mode: str | None = None,
+            ) -> tuple[str | None, list[str]]:
     """``(context, keys)``; ``None`` context when no lookup succeeded."""
     query = _clean_prompt(prompt)
     if not query:
@@ -120,8 +129,11 @@ def _lookup(prompt: object, client: Grimoire | None, budget: int, mode: str | No
         return None, []
     budget = max(128, min(8000, int(budget)))
     excluded = [k for k in (exclude or []) if isinstance(k, str)][-MAX_SEEN:]
+    # An unrecognised mode is dropped, not guessed at, as in the hook.
+    recall_mode = recall_mode if recall_mode in RECALL_MODES else None
     try:
-        result = fetch(client or _default_client(), query, excluded, budget, mode, paths)
+        result = fetch(client or _default_client(), query, excluded, budget, mode, paths,
+                       recall_mode)
     except (OSError, ValueError, urllib.error.URLError):
         return None, []
     context = result.get("context", "")
@@ -141,8 +153,12 @@ def context_for(
     mode: str | None = None,
     paths: Iterable[str] | None = None,
     exclude: Iterable[str] | None = None,
+    recall_mode: str | None = None,
 ) -> str:
     """Bounded reference context for ``prompt``, or ``""``.
+
+    ``recall_mode`` is ``"factual"`` (leave out stored preferences, personas and
+    style) or ``"personal"`` (only those); anything else is the default, all.
 
     ``mode`` is ``"all"`` (whole readable corpus) or ``"scoped"`` (only
     ``paths``, vault-relative files or ``dir/`` prefixes); by default it is
@@ -151,7 +167,8 @@ def context_for(
     Stateless — use :class:`ContextSession` to deduplicate across turns.
     ``client`` defaults to ``GRIMOIRE_URL`` / ``GRIMOIRE_AUTH_TOKEN``.
     """
-    return _lookup(prompt, client, budget, mode, paths, exclude)[0] or ""
+    return _lookup(prompt, client, budget, mode, paths, exclude,
+                   recall_mode=recall_mode)[0] or ""
 
 
 class ContextSession:
@@ -171,11 +188,13 @@ class ContextSession:
         mode: str | None = None,
         paths: Iterable[str] | None = None,
         clock: Callable[[], float] = time.time,
+        recall_mode: str | None = None,
     ) -> None:
         self.client = client
         self.budget = budget
         self.mode = mode
         self.paths = list(paths or [])
+        self.recall_mode = recall_mode
         self._clock = clock
         self.reset()
 
@@ -194,7 +213,8 @@ class ContextSession:
             return ""
         self._seen = {k: t for k, t in self._seen.items() if now - t < SEEN_SECONDS}
         context, keys = _lookup(
-            query, self.client, self.budget, self.mode, self.paths, list(self._seen))
+            query, self.client, self.budget, self.mode, self.paths, list(self._seen),
+            recall_mode=self.recall_mode)
         # A failed lookup is not remembered, so the next turn tries again.
         if context is None:
             return ""

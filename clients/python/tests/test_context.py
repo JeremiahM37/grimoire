@@ -140,3 +140,17 @@ def test_session_retries_after_a_failed_lookup(stub):
     assert session.context_for("kestrel deployment?") == ""
     stub["raw"] = None
     assert session.context_for("kestrel deployment?") == "reference"
+
+
+def test_recall_mode_is_sent_only_when_it_is_a_known_mode(stub):
+    client = stub["client"]
+    context_for("how does kestrel deployment work?", client=client, mode="all",
+                recall_mode="factual")
+    assert stub["calls"][-1]["query"]["recall_mode"] == ["factual"]
+
+    context_for("how does kestrel deployment work?", client=client, mode="all")
+    assert "recall_mode" not in stub["calls"][-1]["query"]
+
+    context_for("how does kestrel deployment work?", client=client, mode="all",
+                recall_mode="facts")
+    assert "recall_mode" not in stub["calls"][-1]["query"], "an unknown mode must be dropped"
