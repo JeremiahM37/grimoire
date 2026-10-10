@@ -357,3 +357,22 @@ func TestMemoryImageImportRefusesForgedOrDanglingPictures(t *testing.T) {
 		t.Fatal("bytes that do not match their address were stored")
 	}
 }
+
+// A fact tagged vis=private or vis=sensitive hides its picture too: the hash
+// must not be a way around the visibility tag.
+func TestMemoryImageHiddenByVisibilityTag(t *testing.T) {
+	s, h := testServer(t)
+	got := storedImage(t, h, testPNG(t, 77), "hidden by tag", "vis")
+	get := func() int {
+		return asKey(t, h, "", "GET", "/api/memory/image/"+got.Image.SHA, nil).Code
+	}
+	if c := get(); c != http.StatusOK {
+		t.Fatalf("visible picture: %d", c)
+	}
+	if err := s.Index.DB.Exec("UPDATE memory_entries SET visibility='sensitive' WHERE image=?", got.Image.SHA); err != nil {
+		t.Fatal(err)
+	}
+	if c := get(); c != http.StatusNotFound {
+		t.Fatalf("picture behind a vis-tagged fact answered %d", c)
+	}
+}

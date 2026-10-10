@@ -182,7 +182,7 @@ func writerAgent(r *http.Request, bodyAgent string) (string, bool) {
 // capability; an image nobody visible refers to answers as absent.
 func (s *Server) imageVisible(r *http.Request, sha string) bool {
 	rows, err := s.Index.DB.Query(
-		"SELECT note, acl FROM memory_entries WHERE image=? AND private=0", sha)
+		"SELECT note, acl FROM memory_entries WHERE image=? AND private=0 AND visibility=''", sha)
 	if err != nil {
 		return false
 	}
