@@ -40,7 +40,9 @@ const usage = `grimoire — local-first AI-native notes
   grimoire edit [PATH|TITLE]          open a note in $VISUAL/$EDITOR (default: today's daily note)
                                       and re-index it afterwards
   grimoire capture [text...]          quick capture → inbox + daily link
-  grimoire search QUERY               full-text search the vault
+  grimoire search QUERY [-n N] [--json]
+                                      full-text search the vault, with a snippet under each hit
+                                      (--json: the raw hits, path/title/snippet)
   grimoire query [QUESTION...]        ask knowledge with citations (interactive if omitted)
   grimoire knowledge extract PATH... extract semantic relationships (max 10)
   grimoire graph [--seed ID]          inspect bounded knowledge graph as JSON or text
@@ -84,7 +86,7 @@ const usage = `grimoire — local-first AI-native notes
   grimoire agent profiles | new NAME  list agent profiles; start a profile for a new agent
   grimoire context --event prompt|action --text TEXT [--agent NAME]
                                       print the memories that apply (for wrappers; no hook needed)
-  grimoire ls [--tag TAG]             list notes
+  grimoire ls [--tag TAG] [--json]    list notes
   grimoire open PATH                  print a note
   grimoire doctor                     diagnose why an agent cannot see your notes
   grimoire reindex                    rebuild the search index
@@ -296,6 +298,42 @@ func flagValue(args []string, name string) (string, bool) {
 	return "", false
 }
 
+// takeFlag removes every occurrence of a boolean flag and reports whether it was
+// there. Unlike hasFlag it hands back the arguments with the flag gone, so the
+// flag cannot leak into a query or a note body.
+func takeFlag(args []string, name string) ([]string, bool) {
+	found := false
+	out := make([]string, 0, len(args))
+	for _, a := range args {
+		if a == name {
+			found = true
+			continue
+		}
+		out = append(out, a)
+	}
+	return out, found
+}
+
+// takeFlagValue removes a flag and the value after it, returning that value and
+// whether the flag was present. A flag with no value after it is removed and
+// reports an empty value, which the caller then rejects.
+func takeFlagValue(args []string, name string) (string, bool, []string) {
+	out := make([]string, 0, len(args))
+	value, found := "", false
+	for i := 0; i < len(args); i++ {
+		if args[i] == name {
+			found = true
+			if i+1 < len(args) {
+				value = args[i+1]
+				i++
+			}
+			continue
+		}
+		out = append(out, args[i])
+	}
+	return value, found, out
+}
+
 func hasFlag(args []string, name string) bool {
 	for _, a := range args {
 		if a == name {
@@ -464,8 +502,18 @@ func cmdCapture(args []string) int {
 }
 
 func cmdSearch(args []string) int {
+	args, asJSON := takeFlag(args, "--json")
+	limitArg, hasLimit, args := takeFlagValue(args, "-n")
+	limit := 0
+	if hasLimit {
+		n, err := strconv.Atoi(limitArg)
+		if err != nil || n < 1 {
+			return fail("-n needs a positive number, not %q", limitArg)
+		}
+		limit = n
+	}
 	if len(args) == 0 {
-		return fail("usage: grimoire search QUERY")
+		return fail("usage: grimoire search QUERY [-n N] [--json]")
 	}
 	e, err := openEnv()
 	if err != nil {
@@ -475,21 +523,34 @@ func cmdSearch(args []string) int {
 
 	// the server's own handler, so operators (tag:, is:pinned, path:) and the
 	// any-term fallback behave identically here
-	status, body := e.call("GET", "/api/search?q="+url.QueryEscape(strings.Join(args, " ")))
+	path := "/api/search?q=" + url.QueryEscape(strings.Join(args, " "))
+	if limit > 0 {
+		path += "&limit=" + strconv.Itoa(limit)
+	}
+	status, body := e.call("GET", path)
 	if status != http.StatusOK {
 		return fail("search failed: %s", body)
 	}
-	var hits []struct{ Path, Title string }
+	if asJSON {
+		fmt.Println(strings.TrimSpace(body))
+		return 0
+	}
+	var hits []struct{ Path, Title, Snippet string }
 	if err := json.Unmarshal([]byte(body), &hits); err != nil {
 		return fail("%v", err)
 	}
+	colour := colourAllowed(os.Stdout)
 	for _, h := range hits {
-		fmt.Printf("%-40s  %s\n", h.Path, h.Title)
+		fmt.Printf("%s  %s\n", styled(colour, ansiDim, fmt.Sprintf("%-40s", h.Path)), h.Title)
+		if snip := renderSnippet(h.Snippet, colour); snip != "" {
+			fmt.Printf("    %s\n", snip)
+		}
 	}
 	return 0
 }
 
 func cmdLs(args []string) int {
+	args, asJSON := takeFlag(args, "--json")
 	e, err := openEnv()
 	if err != nil {
 		return fail("%v", err)
@@ -508,14 +569,31 @@ func cmdLs(args []string) int {
 		return fail("%v", err)
 	}
 	defer rows.Close()
+	type entry struct {
+		Path  string `json:"path"`
+		Title string `json:"title"`
+	}
+	list := []entry{}
 	for rows.Next() {
-		var path, title string
-		if rows.Scan(&path, &title) == nil {
-			fmt.Printf("%-40s  %s\n", path, title)
+		var x entry
+		if rows.Scan(&x.Path, &x.Title) == nil {
+			list = append(list, x)
 		}
 	}
 	if err := rows.Err(); err != nil {
 		return fail("%v", err)
+	}
+	if asJSON {
+		raw, err := json.Marshal(list)
+		if err != nil {
+			return fail("%v", err)
+		}
+		fmt.Println(string(raw))
+		return 0
+	}
+	colour := colourAllowed(os.Stdout)
+	for _, x := range list {
+		fmt.Printf("%s  %s\n", styled(colour, ansiDim, fmt.Sprintf("%-40s", x.Path)), x.Title)
 	}
 	return 0
 }
