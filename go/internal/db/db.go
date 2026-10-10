@@ -590,6 +590,10 @@ var addedColumns = []struct{ table, column, decl string }{
 	// entries that reference a hash without parsing every note.
 	{"memory_entries", "image", "TEXT NOT NULL DEFAULT ''"},
 	{"memory_entries", "capb", "TEXT NOT NULL DEFAULT ''"},
+	// The fact's visibility (memory.Entry.Visibility): '' is normal, and
+	// 'private' and 'sensitive' are hidden from default reads. Additive, so an
+	// existing index reads every old row as normal until it is reindexed.
+	{"memory_entries", "visibility", "TEXT NOT NULL DEFAULT ''"},
 	// Which agent read, as distinct from which account. On a single-user
 	// deployment there is no account, so without this the trail can say a
 	// restricted note was read and not by what — which is most of the question.

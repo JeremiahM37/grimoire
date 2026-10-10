@@ -493,8 +493,10 @@ func (s *Server) memoryProfile(w http.ResponseWriter, r *http.Request) {
 
 	now := vault.Now()
 	f := filterFor(r, true)
+	includePrivate := boolParam(r, "include_private")
 	hits, err := s.Index.MemoryEntries(index.MemoryQuery{
 		Filter:            f,
+		IncludePrivate:    includePrivate,
 		IncludeSuperseded: true,
 		IncludeExpired:    true,
 		Now:               now,
@@ -519,7 +521,7 @@ func (s *Server) memoryProfile(w http.ResponseWriter, r *http.Request) {
 	}
 	cursor, until := profileCursor(hits, now)
 	key := strings.Join([]string{subject, agent, strconv.Itoa(budget), strconv.FormatBool(synth),
-		strconv.FormatBool(excludePersonal),
+		strconv.FormatBool(excludePersonal), strconv.FormatBool(includePrivate),
 		fmt.Sprint(f.User, f.Spaces, f.IgnoreACLs, f.IncludePrivate), cursor}, "|")
 	if resp, ok := s.profileMemo.get(key, now); ok {
 		resp.Cached = true

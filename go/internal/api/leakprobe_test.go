@@ -19,6 +19,7 @@ import (
 
 	"github.com/JeremiahM37/grimoire/go/internal/index"
 	"github.com/JeremiahM37/grimoire/go/internal/mcp"
+	"github.com/JeremiahM37/grimoire/go/internal/memory"
 )
 
 // Deny-probe leakage suite.
@@ -93,6 +94,11 @@ var lpCanaries = map[string]string{
 	// route which started answering members would show up here.
 	"code-path": "LKC-codefile-3e8a",
 	"code-sym":  "LKCcodesym3e8a",
+	// Hidden agent memory. Not commons-shared: a private or sensitive fact
+	// stays out of every non-owner response, and out of every default read
+	// for the owner too. TestLeakprobeHiddenMemoryStaysHidden checks both.
+	"vis-private":   "LKC-visprivate-6e21",
+	"vis-sensitive": "LKC-vissensitive-8b47",
 }
 
 // lpNoMatch is a control query that matches nothing in any fixture.
@@ -257,6 +263,17 @@ func seedLeakWorldWith(t *testing.T, owned bool) *lpWorld {
 		"text": c["disputed"] + " the server is in rack C", "topic": "infra",
 		"agent": "alice-agent"})
 	w.mustOK("disputed memory", code, body, 201, 200)
+
+	// Hidden memory: one private and one sensitive fact, on their own topic so
+	// reconciliation does not treat them as corrections of the commons facts.
+	code, body = w.as(w.alice, "POST", "/api/memory", map[string]any{
+		"text": "privacy " + c["vis-private"] + " the staging token rotates weekly", "topic": "privacy",
+		"agent": "alice-agent", "session": "sess-alice", "visibility": "private"})
+	w.mustOK("private memory", code, body, 201, 200)
+	code, body = w.as(w.alice, "POST", "/api/memory", map[string]any{
+		"text": "privacy " + c["vis-sensitive"] + " the payroll login sits in the safe", "topic": "privacy",
+		"agent": "alice-agent", "session": "sess-alice", "visibility": "sensitive"})
+	w.mustOK("sensitive memory", code, body, 201, 200)
 
 	// An imported document (a pulled file, so it arrives untrusted).
 	var buf bytes.Buffer
@@ -1213,4 +1230,162 @@ func TestLeakprobeMemoryRecallOverScanBound(t *testing.T) {
 	if code, body := w.as(w.alice, "GET", "/api/memory?q=vendor", nil); code != 200 || !strings.Contains(body, lpCanaries["memory"]) {
 		t.Fatalf("alice cannot recall her own memory over the scan bound (%d): the probe proves nothing", code)
 	}
+}
+
+// lpHiddenIdentities are every identity the hidden-memory probe runs as. The
+// owner is included on purpose: a private fact is hidden from the person who
+// wrote it too, until that person asks for hidden facts.
+func lpHiddenIdentities(w *lpWorld) []lpWho {
+	return []lpWho{
+		{name: "alice", key: w.alice},
+		{name: "bob", key: w.bob},
+		{name: "admin", key: w.admin},
+		{name: "anon"},
+		{name: "bob+agent", key: w.bob, agent: "probe-agent"},
+	}
+}
+
+// lpHiddenSurface is one default read. honours says whether include_private
+// changes what the surface returns; export and the stream never carry a hidden
+// fact, whatever the caller asks.
+type lpHiddenSurface struct {
+	path    string
+	honours bool
+}
+
+var lpHiddenSurfaces = []lpHiddenSurface{
+	{"/api/memory?q=privacy", true},
+	{"/api/memory?q=privacy&explain=1", true},
+	{"/api/memory?q=privacy&expand=1", true},
+	{"/api/memory?shape=notes&q=privacy", true},
+	{"/api/memory?shape=notes", true},
+	{"/api/memory/profile?subject=user", true},
+	{"/api/memory/profile?subject=agent&agent=alice-agent", true},
+	{"/api/memory/context?q=privacy", true},
+	{"/api/memory/changes?since=1970-01-01T00:00:00Z", true},
+	{"/api/memory/receipts", true},
+	{"/api/memory/briefing", true},
+	{"/api/memory/export", false},
+	{"/api/memory/export?format=markdown", false},
+	{"/api/memory/export?format=jsonl", false},
+	{"/api/memory/stream?since=1970-01-01T00:00:00Z", false},
+	{"/api/memory/graph", false},
+	{"/api/memory/facets", false},
+}
+
+// withIncludePrivate adds include_private to a path, for a surface that honours it.
+func withIncludePrivate(path string) string {
+	if strings.Contains(path, "?") {
+		return path + "&include_private=1"
+	}
+	return path + "?include_private=1"
+}
+
+// TestLeakprobeHiddenMemoryStaysHidden checks the visibility tag end to end.
+//
+// Without include_private, a private or sensitive fact must not appear on any
+// default read, for any identity: recall, explain, expansion, note bodies,
+// profile, context, changes, receipts, briefing, export, stream and graph. The
+// export and the stream never carry one, even when asked. A sensitive fact's
+// text is redacted from an explanation even when hidden facts were requested.
+// Positive controls keep this honest: the owner recalls both facts once she
+// asks, and a forgotten hidden fact still has a receipt she can list.
+func TestLeakprobeHiddenMemoryStaysHidden(t *testing.T) {
+	w := seedLeakWorld(t)
+	c := lpCanaries
+	priv, sens := c["vis-private"], c["vis-sensitive"]
+
+	// Liveness: the owner recalls both hidden facts once she asks for them.
+	code, body := w.as(w.alice, "GET", "/api/memory?q=privacy&include_private=1", nil)
+	if code != 200 || !strings.Contains(body, priv) || !strings.Contains(body, sens) {
+		t.Fatalf("fixture sanity: owner cannot recall her hidden facts with include_private (%d): %.300s", code, body)
+	}
+
+	for _, who := range lpHiddenIdentities(w) {
+		for _, sf := range lpHiddenSurfaces {
+			t.Run(who.name+" "+sf.path, func(t *testing.T) {
+				_, body := w.fetch(who, "GET", sf.path, nil)
+				if strings.Contains(body, priv) || strings.Contains(body, sens) {
+					t.Fatalf("LEAK: hidden memory served on %s as %s without include_private: %.300s", sf.path, who.name, body)
+				}
+			})
+		}
+	}
+
+	// include_private opens the read surfaces that honour it, to the owner, and
+	// the sensitive text is still redacted in an explanation.
+	code, body = w.as(w.alice, "GET", "/api/memory?q=privacy&include_private=1&explain=1", nil)
+	if code != 200 || !strings.Contains(body, priv) {
+		t.Fatalf("private fact missing for owner with include_private+explain (%d): %.300s", code, body)
+	}
+	if strings.Contains(body, sens) || !strings.Contains(body, memory.RedactedText) {
+		t.Fatalf("sensitive fact not redacted in explain: %.300s", body)
+	}
+
+	// Export and stream never carry a hidden fact, even for the owner who asks.
+	for _, path := range []string{"/api/memory/export", "/api/memory/export?format=markdown",
+		"/api/memory/export?format=jsonl", "/api/memory/stream?since=1970-01-01T00:00:00Z"} {
+		_, body := w.fetch(lpWho{name: "alice", key: w.alice}, "GET", withIncludePrivate(path), nil)
+		if strings.Contains(body, priv) || strings.Contains(body, sens) {
+			t.Fatalf("LEAK: hidden memory in %s even with include_private", path)
+		}
+	}
+
+	// Receipts: forget the sensitive fact with a cascade, as its owner. Its
+	// receipt is listed only to a caller who asks for hidden facts, and the
+	// receipt on disk keeps no hash, salt or word count for sensitive text.
+	id := lpIDFor(t, w.asBody(w.alice, "/api/memory?q=privacy&include_private=1"), sens)
+	code, body = w.as(w.alice, "POST", "/api/memory/forget", map[string]any{
+		"path": "memory/privacy.md", "id": id, "cascade": true, "agent": "probe-owner"})
+	w.mustOK("forget hidden fact", code, body, 200, 201)
+	if _, body := w.fetch(lpWho{name: "alice", key: w.alice}, "GET", "/api/memory/receipts", nil); strings.Contains(body, id) {
+		t.Fatalf("LEAK: receipt for a sensitive fact listed without include_private: %.300s", body)
+	}
+	if _, body := w.fetch(lpWho{name: "alice", key: w.alice}, "GET", "/api/memory/receipts?include_private=1", nil); !strings.Contains(body, id) {
+		t.Fatalf("receipt for the forgotten sensitive fact not listed with include_private: %.300s", body)
+	}
+	dir := w.s.receiptDir()
+	ents, _ := os.ReadDir(dir)
+	found := false
+	for _, e := range ents {
+		raw, err := os.ReadFile(filepath.Join(dir, e.Name()))
+		if err != nil || !strings.Contains(string(raw), id) {
+			continue
+		}
+		found = true
+		if strings.Contains(string(raw), sens) {
+			t.Fatalf("LEAK: receipt file %s carries the sensitive text", e.Name())
+		}
+		if strings.HasSuffix(e.Name(), ".json") {
+			var d receiptDoc
+			if err := json.Unmarshal(raw, &d); err != nil {
+				t.Fatal(err)
+			}
+			if d.TargetHash != "" || d.Salt != "" || d.TargetTokens != 0 {
+				t.Fatalf("sensitive receipt keeps a guessable hash/salt/word count: %+v", d)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("no receipt file was written for the forgotten sensitive fact: the receipt probe is untested")
+	}
+}
+
+// lpIDFor returns the id of the recalled entry whose text carries canary.
+func lpIDFor(t *testing.T, body, canary string) string {
+	t.Helper()
+	var hits []struct {
+		ID   string `json:"id"`
+		Text string `json:"text"`
+	}
+	if err := json.Unmarshal([]byte(body), &hits); err != nil {
+		t.Fatalf("recall body is not a list of entries: %v: %.300s", err, body)
+	}
+	for _, h := range hits {
+		if strings.Contains(h.Text, canary) {
+			return h.ID
+		}
+	}
+	t.Fatalf("no recalled entry carries %s: %.300s", canary, body)
+	return ""
 }

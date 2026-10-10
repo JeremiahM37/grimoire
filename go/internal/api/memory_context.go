@@ -167,7 +167,8 @@ func (s *Server) memoryContext(w http.ResponseWriter, r *http.Request) {
 	if (len(terms) > 0 || (mode == "scoped" && query == "")) && mode != "manual" && mode != "off" {
 		hits, err := s.Index.MemoryEntries(index.MemoryQuery{Filter: filterFor(r, false),
 			Query: strings.Join(terms, " "), LexicalOnly: true, AcceptedOnly: true,
-			Paths: paths, Limit: 100, Now: vault.Now(), Mode: recallModeOf(r)})
+			Paths: paths, Limit: 100, Now: vault.Now(), Mode: recallModeOf(r),
+			IncludePrivate: boolParam(r, "include_private")})
 		if err != nil {
 			writeErr(w, http.StatusInternalServerError, err.Error())
 			return
@@ -474,7 +475,7 @@ func (s *Server) hybridContext(r *http.Request, query string, terms, paths []str
 	var items []contextItem
 	facts, err := s.Index.MemoryEntries(index.MemoryQuery{Filter: filterFor(r, false),
 		Query: query, AcceptedOnly: true, Paths: paths, Limit: 40, Now: vault.Now(),
-		Mode: recallModeOf(r)})
+		Mode: recallModeOf(r), IncludePrivate: boolParam(r, "include_private")})
 	if err != nil {
 		return nil, err
 	}
@@ -597,7 +598,8 @@ func cueRelevance(r *http.Request, cosine, overlap float64) float64 {
 func (s *Server) cueTargetItem(r *http.Request, target string, paths []string) (contextItem, bool) {
 	if id, ok := strings.CutPrefix(target, "fact:"); ok {
 		hits, err := s.Index.MemoryEntries(index.MemoryQuery{Filter: filterFor(r, false), ID: id,
-			AcceptedOnly: true, Paths: paths, Limit: 1, Now: vault.Now(), Mode: recallModeOf(r)})
+			AcceptedOnly: true, Paths: paths, Limit: 1, Now: vault.Now(), Mode: recallModeOf(r),
+			IncludePrivate: boolParam(r, "include_private")})
 		if err != nil || len(hits) == 0 || hits[0].Untrusted() {
 			return contextItem{}, false
 		}

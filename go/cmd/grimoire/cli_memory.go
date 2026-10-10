@@ -26,7 +26,7 @@ func cmdRemember(args []string) int {
 	text := strings.TrimSpace(stdinOrArgs(positional(args)))
 	if text == "" {
 		return fail("usage: grimoire remember TEXT [--topic T] [--session S] " +
-			"[--category C] [--expires-in 72h] [--immutable] [--human] [--importance 1-5]")
+			"[--category C] [--expires-in 72h] [--immutable] [--human] [--importance 1-5] [--visibility normal|private|sensitive]")
 	}
 	e, err := openEnv()
 	if err != nil {
@@ -58,6 +58,9 @@ func cmdRemember(args []string) int {
 			return fail("--importance wants a whole number 1-5, got %q", v)
 		}
 		body["importance"] = n
+	}
+	if v, ok := flagValue(args, "--visibility"); ok {
+		body["visibility"] = v
 	}
 	status, raw := e.callBody("POST", "/api/memory", body)
 	if status != http.StatusCreated {
@@ -120,6 +123,9 @@ func cmdRecall(args []string) int {
 	}
 	if hasFlag(args, "--expand") {
 		q.Set("expand", "1")
+	}
+	if hasFlag(args, "--include-private") {
+		q.Set("include_private", "1")
 	}
 	if v, ok := flagValue(args, "--hops"); ok {
 		q.Set("hops", v)

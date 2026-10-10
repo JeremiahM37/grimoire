@@ -99,7 +99,7 @@ func (s *Server) agentActivity(w http.ResponseWriter, r *http.Request) {
 	memRows, err := s.Index.DB.Query(
 		`SELECT agent, COUNT(*), SUM(CASE WHEN challenges!='' THEN 1 ELSE 0 END),
 		        MIN(stamp), MAX(stamp)
-		 FROM memory_entries WHERE superseded_by='' GROUP BY agent`)
+		 FROM memory_entries WHERE superseded_by='' AND visibility='' GROUP BY agent`)
 	if err == nil {
 		defer memRows.Close()
 		for memRows.Next() {

@@ -25,6 +25,8 @@ string (`LKC-<label>-<hex>`). Seeded as alice:
   whose wikilink target is a canary
 - a `private` note in the shared commons (`team/alice-private.md`)
 - agent memory (`agent`, `session`, `task`), a second and contradicting fact
+- a `private` and a `sensitive` memory on the `privacy` topic (`vis-private`,
+  `vis-sensitive`), seeded in both worlds
 - a bank in a space only alice writes: facts, a mental model, a directive,
   plus its observations, sessions, documents and webhook lists
 - an imported document (an upload, untrusted origin)
@@ -120,6 +122,30 @@ before looking for the id and then `requireWrite` on every note the resolution
 touches, and by `memory_disputes_test.go`, which checks that an agent caller is
 refused for every resolution before any lookup happens.
 
+## Privacy model
+
+Agent memory lives in a **shared commons, by design**. `remember` writes
+`memory/<topic>.md`, which every account can read, and the commons is the
+point of a memory that outlives one agent. So the fixture's agent memory is
+commons-shared: members may see it, anonymous callers may not. This suite does
+not treat the commons as an owner's space, and it does not treat `private` or
+`vis=` as one either. Both are **retrieval filters**: they keep a fact out of
+default reads, and a member who passes `include_private=1` reads a private
+fact another member wrote. The tag guarantees the default reads, export and
+the stream. It does not guarantee access control, encryption, or that the
+note file itself stays unread. The full statement, with what is and is not
+covered, is in `MEMORY-PRIVACY.md`.
+
+`TestLeakprobeHiddenMemoryStaysHidden` checks the tag. The two hidden canaries
+are **not** commons-shared: no identity may see them on any default read,
+including the owner who wrote them, and export and the stream never carry
+them even with `include_private`. Positive controls keep it honest: the owner
+recalls both with `include_private`, and a sensitive fact is redacted in
+`explain`, while its forget receipt is listed only with `include_private` and
+keeps no salted hash. The probe also runs the generic explicit probes above
+with these canaries in scope, so any route that starts returning memory
+without a visibility check fails the existing canary sweep.
+
 ## Findings
 
 Fixed, each in its own commit with a regression test that fails before the fix.
@@ -174,6 +200,12 @@ finding D1 above). The picture ACL is therefore covered by
 behind a `private` note answers 404 and reappears when the note is public again.
 
 ## Deferred and not covered
+
+- **Hidden memory through raw note reads.** A memory note's file is an
+  ordinary note, and `GET /api/notes/memory/…` returns its body with hidden
+  bullets. The note-level index (full-text, chunks, facts, blocks) does not
+  hold them, so search, context and ask are covered by the probe above; the
+  raw file read is not, and is a known gap for the note API.
 
 - **Timing side channels** are not measured. Wall-clock comparisons are too
   noisy for a unit suite. Count and ordering differences are covered by the

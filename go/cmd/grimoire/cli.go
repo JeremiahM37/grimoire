@@ -48,10 +48,11 @@ const usage = `grimoire — local-first AI-native notes
   grimoire document-import FILE       import a document through the server API
   grimoire remember TEXT [--topic T] [--session S] [--category C]
                     [--expires-in 72h] [--immutable] [--verbatim] [--human]
-                    [--importance 1-5]
+                    [--importance 1-5] [--visibility normal|private|sensitive]
                                       record a fact, reconciled against what is known
   grimoire recall [QUERY] [--agent A] [--session S] [--category C]
-                  [--limit N] [--all] [--as-of RFC3339] [--why]
+                  [--limit N] [--all] [--as-of RFC3339] [--why] [--include-private]
+
                                       what is currently believed (--all: and what was)
   grimoire forget PATH ID [--hard]    retract one fact (ids come from recall)
   grimoire forget PATH ID --cascade [--dry-run]

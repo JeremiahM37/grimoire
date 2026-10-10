@@ -105,6 +105,14 @@ type memoryIn struct {
 	// memory.Entry.Importance.
 	Importance int `json:"importance"`
 
+	// Visibility is normal (the default), private or sensitive. A private fact
+	// is left out of recall, profile, context and changes unless a caller asks
+	// for hidden facts; a sensitive one is also redacted from explain and
+	// receipts. It is never served by export or the stream. A replacement
+	// inherits its predecessor's visibility unless the writer sets one, so a
+	// restatement cannot quietly publish a private fact.
+	Visibility string `json:"visibility"`
+
 	// Human says a PERSON is asserting this, not an agent. It puts the write on
 	// the top rung of the authority lattice, where an agent's later write may
 	// not silently supersede it — the correction is durable rather than
@@ -286,6 +294,12 @@ func (s *Server) rememberOne(w http.ResponseWriter, r *http.Request, m memoryIn)
 		writeErr(w, http.StatusBadRequest, "importance must be 1 to 5, or omitted")
 		return
 	}
+	vis, err := memory.NormVisibility(m.Visibility)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	m.Visibility = vis
 	expires, err := resolveExpiry(m.Expires, m.ExpiresIn)
 	if err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
@@ -370,7 +384,7 @@ func (s *Server) reconcileFact(w http.ResponseWriter, r *http.Request, rel, fact
 	if m.TargetID != "" {
 		targetPath := normPath(m.TargetPath)
 		hits, err := s.Index.MemoryEntries(index.MemoryQuery{Filter: filterFor(r, true),
-			Note: targetPath, ID: m.TargetID, Limit: 1, Now: vault.Now()})
+			Note: targetPath, ID: m.TargetID, Limit: 1, Now: vault.Now(), IncludePrivate: true})
 		if err != nil {
 			writeErr(w, http.StatusInternalServerError, err.Error())
 			return memoryResult{}, errHandled
@@ -438,6 +452,9 @@ func (s *Server) reconcileFact(w http.ResponseWriter, r *http.Request, rel, fact
 		case scopeAgent:
 			query.Agent = agent
 		}
+		// Reconciliation must see hidden facts, or a new write would sit beside
+		// a private fact it contradicts instead of superseding it.
+		query.IncludePrivate = true
 		hits, err := s.Index.MemoryEntries(query)
 		if err != nil {
 			writeErr(w, http.StatusInternalServerError, err.Error())
@@ -600,6 +617,7 @@ func (s *Server) appendEntryChallenging(w http.ResponseWriter, r *http.Request, 
 		Fresh:      memory.NormFresh(m.Fresh),
 		Check:      strings.TrimSpace(m.Check),
 		Importance: m.Importance,
+		Visibility: m.Visibility,
 	}
 	if restored != nil && restored.Entry.ID != "" {
 		e.ID = restored.Entry.ID
@@ -612,6 +630,13 @@ func (s *Server) appendEntryChallenging(w http.ResponseWriter, r *http.Request, 
 		if e.Importance == 0 {
 			e.Importance = m.inherit.Importance
 		}
+		if e.Visibility == "" {
+			e.Visibility = m.inherit.Visibility
+		}
+	}
+	if restored != nil && e.Visibility == "" {
+		// A restored fact keeps the visibility it was exported with.
+		e.Visibility = restored.Entry.Visibility
 	}
 	// A fact with no declared tier and no inherited verdict is the one whose
 	// prior a decision model can improve. Never for an untrusted fact: its
@@ -782,6 +807,9 @@ type entryOut struct {
 	Immutable    bool   `json:"immutable,omitempty"`
 	SupersededBy string `json:"superseded_by,omitempty"`
 	Challenges   string `json:"challenges,omitempty"`
+	// Visibility is private or sensitive; absent means normal. It only appears
+	// on a response that asked for hidden facts.
+	Visibility string `json:"visibility,omitempty"`
 	// ValidFrom and ValidTo are when the fact was true in the world; empty
 	// means unbounded on that side.
 	ValidFrom string  `json:"valid_from,omitempty"`
@@ -841,9 +869,16 @@ type scoreBreakdown struct {
 func entriesOut(hits []index.MemoryHit, explain bool) []entryOut {
 	out := make([]entryOut, 0, len(hits))
 	for _, h := range hits {
+		text := h.Text
+		if explain && h.Redacted() {
+			// An explanation repeats the fact, and a sensitive fact is the one
+			// thing an explanation must not repeat, even to a caller that asked.
+			text = memory.RedactedText
+		}
 		e := entryOut{
-			ID: h.ID, Text: h.Text, Path: h.Note, Agent: h.Agent, Task: h.Task,
-			Session: h.Session, Category: h.Category, Stamp: h.Stamp,
+			ID: h.ID, Text: text, Path: h.Note, Agent: h.Agent, Task: h.Task,
+			Visibility: h.Visibility,
+			Session:    h.Session, Category: h.Category, Stamp: h.Stamp,
 			Expires: h.Expires, Immutable: h.Immutable,
 			SupersededBy: h.SupersededBy, Helpful: h.Helpful,
 			Challenges: h.Challenges,
@@ -919,6 +954,7 @@ func (s *Server) recall(w http.ResponseWriter, r *http.Request) {
 		IncludeSuperseded: boolParam(r, "include_superseded"),
 		AcceptedOnly:      !boolParam(r, "include_challenges") && !boolParam(r, "include_superseded") && asOf.IsZero(),
 		IncludeExpired:    boolParam(r, "include_expired"),
+		IncludePrivate:    boolParam(r, "include_private"),
 		AsOf:              asOf,
 		Now:               vault.Now(),
 		Limit:             limit,
@@ -1077,6 +1113,14 @@ func (s *Server) recallNotes(w http.ResponseWriter, r *http.Request, q string) {
 			return
 		}
 	}
+	// A memory note's body carries every bullet in it, hidden ones included.
+	// Unless the caller asked for hidden facts, the bullets of private and
+	// sensitive facts are dropped from the body and the rest is left intact.
+	if !boolParam(r, "include_private") {
+		for i := range out {
+			out[i].Body = memory.DropHidden(out[i].Body)
+		}
+	}
 	if out == nil {
 		out = []memoryOut{}
 	}
@@ -1188,7 +1232,8 @@ func (s *Server) briefing(w http.ResponseWriter, r *http.Request) {
 	// With a task, the facts are the ones that bear on it rather than the
 	// newest ones: recency is a poor proxy for what this session will need.
 	facts, err := s.Index.MemoryEntries(index.MemoryQuery{
-		Filter: filterFor(r, false), Query: task, AcceptedOnly: task != "", Limit: n, Now: vault.Now()})
+		Filter: filterFor(r, false), Query: task, AcceptedOnly: task != "", Limit: n, Now: vault.Now(),
+		IncludePrivate: boolParam(r, "include_private")})
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return

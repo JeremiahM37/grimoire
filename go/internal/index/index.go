@@ -16,6 +16,7 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/db"
 	"github.com/JeremiahM37/grimoire/go/internal/embed"
 	"github.com/JeremiahM37/grimoire/go/internal/markdown"
+	"github.com/JeremiahM37/grimoire/go/internal/memory"
 	"github.com/JeremiahM37/grimoire/go/internal/pyjson"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
 )
@@ -272,6 +273,17 @@ func (ix *Index) removeRows(rel string) error {
 func (ix *Index) writeNoteRows(note *vault.Note) error {
 	ix.bumpRev()
 	rel := note.Path
+	// The fact rows below need the whole memory note, hidden facts included;
+	// everything derived from the note as text must not hold one. A private or
+	// sensitive bullet is therefore left out of the note body, full-text rows,
+	// chunk embeddings, extracted facts and blocks, so no note-level retrieval
+	// (search, context, ask, briefing) can return it. The file keeps the fact.
+	full := note
+	if IsMemoryPath(rel) {
+		view := *note
+		view.Body = memory.DropHidden(note.Body)
+		note = &view
+	}
 	for _, stmt := range []string{
 		"DELETE FROM notes WHERE path=?",
 		"DELETE FROM links WHERE src=?",
@@ -355,7 +367,7 @@ func (ix *Index) writeNoteRows(note *vault.Note) error {
 		return err
 	}
 	// Agent memory is indexed a second time, bullet by bullet; see memory.go.
-	if err := ix.writeMemoryRows(note); err != nil {
+	if err := ix.writeMemoryRows(full); err != nil {
 		return err
 	}
 	// Memory banks keep their own fact-level rows; see internal/bank.

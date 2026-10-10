@@ -84,6 +84,7 @@ func (s *Server) memoryChanges(w http.ResponseWriter, r *http.Request) {
 	// learned and never what was lost, which is the half that matters.
 	hits, err := s.Index.MemoryEntries(index.MemoryQuery{
 		Filter:            filterFor(r, true),
+		IncludePrivate:    boolParam(r, "include_private"),
 		Agent:             strings.TrimSpace(r.URL.Query().Get("agent")),
 		Session:           strings.TrimSpace(r.URL.Query().Get("session")),
 		IncludeSuperseded: true,

@@ -22,6 +22,7 @@ it fixes is advertising.
 | 10 | Benchmarks are unreliable: flawed answer keys, lenient judges, vendor-run numbers | Pre-registered protocols, full-context and no-memory baselines, null results published; no numbers here claim a ranking over other systems | see `benchmarks/*/REPORT.md` |
 | 11 | Skills learned from failures can compound the failure | Mined skill candidates are drafts in a review queue; nothing enters memory until a person accepts one. There is no automated test gate on promotion | design; review-gated, not test-gated |
 | 12 | Portability: memory trapped in one product | Open JSONL/markdown export; importers for three other systems' formats | **measured here** (round-trip tests) |
+| 13 | Private facts reach default reads, exports and explanations | A `vis=private`/`sensitive` tag: hidden in SQL from every default read, never in export or the stream, sensitive text redacted from explain and receipts | **measured here** (`TestLeakprobeHiddenMemoryStaysHidden`). A retrieval filter, not an owner boundary or encryption; the note file, raw note reads and full-text search still carry the text (`MEMORY-PRIVACY.md`) |
 
 ## Still open
 
@@ -41,7 +42,11 @@ it fixes is advertising.
   preference that nobody categorised.
 - **Task-level benefit is not demonstrated.** Utilization tracing estimates
   whether a recalled memory was used; it does not show the task went better.
-- **Privacy model.** Agent memory, uploads and imports land in the shared
-  commons, and the `private` flag is a retrieval filter rather than an owner
-  boundary. Single-user deployments are unaffected; multi-user ones should
-  read `SECURITY-LEAKPROBE.md` before relying on isolation.
+- **Privacy model.** Agent memory lives in a shared commons by design: every
+  account can read `memory/<topic>.md`. The per-fact `vis=` tag and the
+  note-level `private` flag are retrieval filters, not owner boundaries, and
+  a member who passes `include_private=1` reads another member's private
+  fact. The tag keeps facts out of default reads, export and the stream; it
+  does not encrypt the file or stop raw note reads and full-text search. Single-user
+  deployments are unaffected; multi-user ones should read
+  `MEMORY-PRIVACY.md` and `SECURITY-LEAKPROBE.md` before relying on isolation.

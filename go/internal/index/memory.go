@@ -112,6 +112,11 @@ type MemoryQuery struct {
 	// Basis, when non-empty, keeps only facts whose derived basis is listed.
 	Basis []memory.Basis
 
+	// IncludePrivate admits private and sensitive facts. Without it every
+	// read leaves them out in SQL, before the scan bound, so a hidden fact
+	// cannot be ranked, counted or named by any surface that did not ask.
+	IncludePrivate bool
+
 	// QueryVector ranks by a vector the caller already computed, for a
 	// framework that owns its embedding step. It must be in THIS server's
 	// embedding space — the caller gets it from /api/embed — because a cosine
@@ -270,14 +275,14 @@ func (ix *Index) writeMemoryRows(note *vault.Note) error {
 				"expires,immutable,superseded_by,superseded_at,helpful,unhelpful,line,"+
 				"embedding,space,acl,private,origin,human,challenges,"+
 				"fresh,chk,verified,nchange,nverify,since,shape,vol,prate,valid_from,valid_to,"+
-				"importance,hand,evidence,image,capb)"+
-				" VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+				"importance,hand,evidence,image,capb,visibility)"+
+				" VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
 			e.ID, note.Path, e.Text, e.Agent, e.Task, e.Session, e.Stamp, e.Category,
 			e.Expires, immutable, e.SupersededBy, e.SupersededAt, e.Helpful,
 			e.Unhelpful, e.Line, blob, space, acl, private, e.Origin, human, e.Challenges,
 			e.Fresh, e.Check, e.Verified, e.Changes, e.Verifies, e.Since, e.Shape(), e.Vol, e.PriorRate,
 			canonicalValidity(e.ValidFrom), canonicalValidity(e.ValidTo),
-			e.Importance, boolInt(e.HumanAuthored()), e.Evidence, e.Image, e.CaptionBasis,
+			e.Importance, boolInt(e.HumanAuthored()), e.Evidence, e.Image, e.CaptionBasis, e.Visibility,
 		); err != nil {
 			return err
 		}
@@ -510,6 +515,9 @@ func (q MemoryQuery) sqlWhere() (string, []any) {
 	// An image with no caption is stored so the bytes are not lost, but its
 	// placeholder text is not a fact and must never be recalled as one.
 	where = append(where, "capb<>'none'")
+	if !q.IncludePrivate {
+		where = append(where, "visibility=''")
+	}
 	w, a := q.Filter.sqlVisibility()
 	where = append(where, w...)
 	args = append(args, a...)
@@ -618,7 +626,7 @@ func (ix *Index) overScanLimit(where string, args []any, limit int) (bool, error
 const memoryColumns = "id,note,text,agent,task,session,stamp,category,expires,immutable," +
 	"superseded_by,superseded_at,helpful,unhelpful,line,embedding,space,acl," +
 	"private,origin,human,challenges,fresh,chk,verified,nchange,nverify,since,vol,prate," +
-	"valid_from,valid_to,importance,hand,uses,last_used,evidence,image,capb"
+	"valid_from,valid_to,importance,hand,uses,last_used,evidence,image,capb,visibility"
 
 // scanMemoryRow reads one row selected with memoryColumns. It takes the Scan
 // method rather than the rows, so both the ranked query and the prune query
@@ -634,6 +642,7 @@ func scanMemoryRow(scan func(...any) error) (memoryRow, error) {
 		evidence  string
 		image     string
 		capb      string
+		vis       string
 	)
 	if err := scan(&r.hit.ID, &r.hit.Note, &r.hit.Text, &r.hit.Agent,
 		&r.hit.Task, &r.hit.Session, &r.hit.Stamp, &r.hit.Category,
@@ -644,12 +653,13 @@ func scanMemoryRow(scan func(...any) error) (memoryRow, error) {
 		&r.hit.Verifies, &r.hit.Since, &r.hit.Vol, &r.hit.PriorRate,
 		&r.hit.ValidFrom, &r.hit.ValidTo,
 		&r.hit.Importance, &hand, &r.hit.Uses, &r.hit.LastUsed, &evidence,
-		&image, &capb); err != nil {
+		&image, &capb, &vis); err != nil {
 		return r, err
 	}
 	r.hit.Evidence = evidence
 	r.hit.Image = image
 	r.hit.CaptionBasis = capb
+	r.hit.Visibility = vis
 	r.hit.Immutable = immutable == 1
 	r.hit.Human = human == 1
 	r.hit.HandWritten = hand == 1
@@ -1000,7 +1010,7 @@ func (ix *Index) PruneCandidates(below int, cutoff time.Time, limit int) ([]Memo
 		"SELECT "+memoryColumns+" FROM memory_entries WHERE"+
 			" superseded_by='' AND immutable=0 AND human=0 AND hand=0 AND challenges=''"+
 			" AND helpful=0 AND uses=0 AND last_used='' AND agent<>'' AND stamp<>''"+
-			" AND stamp<? AND importance BETWEEN ? AND ?"+
+			" AND stamp<? AND importance BETWEEN ? AND ? AND visibility=''"+
 			" ORDER BY stamp ASC, id ASC LIMIT ?",
 		cutoff.In(time.Local).Format(memory.StampFormat), memory.MinImportance, below, limit)
 	if err != nil {
