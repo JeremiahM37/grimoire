@@ -105,12 +105,13 @@
 .react-app #ed-toolbar { padding: 7px 24px; gap: 6px; background: var(--paper); }
 .react-app #content, .react-app #preview { padding: 32px clamp(24px, 6vw, 96px); }
 /* One vertical rhythm: 1.6 line-height everywhere, list items tighter than paragraphs. */
-.react-app .md { font-size: 15px; line-height: 1.6; }
+/* Reading view and editor share one face, size, leading and measure: toggling Read/Edit must not move the text. */
+.react-app .md { font-family: var(--sans); font-size: 16px; line-height: 1.65; }
 .react-app #preview .md { max-width: var(--readable-width); margin: 0 auto; }
 .react-app .md li { margin: .15em 0; }
 .react-app .md li > p { margin: 0; }
 .react-app .md ul, .react-app .md ol { margin: .45em 0; }
-.react-app #live-editor .cm-content { padding: 32px 0; }
+.react-app #live-editor .cm-content { padding: 32px 0; max-width: var(--readable-width); margin: 0 auto; }
 .react-app #live-editor .cm-scroller { padding: 0 24px 0 0; }
 /* Related notes is a slim bar at the foot of the note. Expanding it is capped at 40vh, scrolls inside itself, and
    keeps the text column centred on the note body. */
@@ -145,7 +146,7 @@
   .workspace-empty { padding: 24px; }
   .workspace-empty h2 { font-size: 23px; }
 }
-.react-app #live-editor .cm-editor, .react-app #live-editor .cm-scroller { font-family: var(--sans); font-size: 15px; line-height: 1.6; }
+.react-app #live-editor .cm-editor, .react-app #live-editor .cm-scroller { font-family: var(--sans); font-size: 16px; line-height: 1.65; }
 .react-app .gr-h { font-weight: 650; letter-spacing: -.025em; }
 .react-app .md h1, .react-app .md h2, .react-app .md h3 { font-family: var(--sans); letter-spacing: -.025em; }
 @media (max-width: 780px) {
@@ -246,6 +247,7 @@ tr.banks-disputed td { opacity: .78; }
 .react-app .section-count { margin-left: auto; font: 500 11px var(--sans); color: var(--ink-soft); }
 .react-app #section-agents > .section-head { color: var(--ink-soft); border-top: 1px solid var(--line, rgba(127,127,127,.18)); margin-top: 6px; }
 @media (max-width: 780px) { .react-app .section-head { min-height: 44px; padding-top: 8px; } }
+
 /* Search rows: the snippet says why a note matched; query words are <mark>ed in titles and snippets. */
 .react-app .note-row .snip { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 2px; font-size: 12px; line-height: 1.35; color: var(--ink-soft); overflow-wrap: anywhere; }
 .react-app .note-row mark { background: color-mix(in srgb, var(--accent) 26%, transparent); color: inherit; border-radius: 3px; padding: 0 1px; }
@@ -254,3 +256,17 @@ tr.banks-disputed td { opacity: .78; }
 /* Pin marker: a fixed gutter on every row, so titles line up whether or not a note is pinned. */
 .react-app .note-row .pin-slot { display: inline-block; width: 10px; margin-right: 4px; text-align: center; vertical-align: 1px; }
 .react-app .note-row .pin { color: var(--accent); font-weight: 700; }
+/* Visible keyboard focus everywhere a control is focused by Tab (existing row/side-tool rules keep precedence). */
+.react-app button:focus-visible, .react-app summary:focus-visible, .react-app a:focus-visible, .react-app [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* Vault stats (a plugin panel) on desktop: one quiet line in the sidebar, tag chips cut off rather than wrapping. */
+@media (min-width: 781px) {
+  .react-app .plugin-panel[data-panel="vault-stats"] { display: flex; align-items: baseline; gap: 10px; min-width: 0; margin: 0; padding: 0 14px 8px; font-size: 11px; color: var(--ink-soft); }
+  .react-app .plugin-panel[data-panel="vault-stats"] > .pp-title { flex: none; font-size: 11px; font-weight: 650; color: var(--ink); white-space: nowrap; }
+  .react-app .plugin-panel[data-panel="vault-stats"] > .pp-body { display: flex; align-items: baseline; gap: 8px; flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; }
+  .react-app .plugin-panel[data-panel="vault-stats"] > .pp-body > div { flex: none; margin: 0 !important; }
+  .react-app .plugin-panel[data-panel="vault-stats"] > .pp-body > div + div { flex: 1 1 auto; min-width: 0; overflow: hidden; }
+  .react-app .plugin-panel[data-panel="vault-stats"] .tag { flex: none; margin-right: 4px !important; font-size: 11px; }
+}
+@media (max-width: 780px) {
+  .react-app .plugin-panel[data-panel="vault-stats"] { display: none; }
+}
