@@ -234,6 +234,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/embed", s.embedText)
 	mux.HandleFunc("POST /api/memory/batch", s.userOnly(s.rememberBatch))
 	mux.HandleFunc("POST /api/memory/feedback", s.feedback)
+	mux.HandleFunc("POST /api/memory/prune", s.userOnly(s.pruneMemory))
 	mux.HandleFunc("POST /api/memory/outcome", s.memoryOutcome)
 	mux.HandleFunc("GET /api/memory/adherence", s.adherenceReport)
 	mux.HandleFunc("GET /api/memory/trace", s.traceCard)

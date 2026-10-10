@@ -255,9 +255,12 @@ var routeAccess = map[string]access{
 	"DELETE /api/bookmarks":          authed,
 	"POST /api/memory/batch":         authed,
 	// Settling a challenge supersedes a fact either way, so it is a write.
-	"POST /api/memory/challenge":    authed,
-	"POST /api/memory/feedback":     authed,
-	"POST /api/memory/consolidate":  authed,
+	"POST /api/memory/challenge":   authed,
+	"POST /api/memory/feedback":    authed,
+	"POST /api/memory/consolidate": authed,
+	// Prune is a dry run unless asked to apply, and an apply is a retraction
+	// through the forget path, so it is a user write like consolidate.
+	"POST /api/memory/prune":        authed,
 	"PATCH /api/memory/entry":       authed,
 	"DELETE /api/memory/entry":      authed,
 	"POST /api/facts":               authed,

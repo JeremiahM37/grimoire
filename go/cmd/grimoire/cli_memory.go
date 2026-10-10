@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/JeremiahM37/grimoire/go/internal/convo"
@@ -25,7 +26,7 @@ func cmdRemember(args []string) int {
 	text := strings.TrimSpace(stdinOrArgs(positional(args)))
 	if text == "" {
 		return fail("usage: grimoire remember TEXT [--topic T] [--session S] " +
-			"[--category C] [--expires-in 72h] [--immutable] [--human]")
+			"[--category C] [--expires-in 72h] [--immutable] [--human] [--importance 1-5]")
 	}
 	e, err := openEnv()
 	if err != nil {
@@ -50,6 +51,13 @@ func cmdRemember(args []string) int {
 	}
 	if hasFlag(args, "--verbatim") {
 		body["infer"] = false
+	}
+	if v, ok := flagValue(args, "--importance"); ok {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			return fail("--importance wants a whole number 1-5, got %q", v)
+		}
+		body["importance"] = n
 	}
 	status, raw := e.callBody("POST", "/api/memory", body)
 	if status != http.StatusCreated {
@@ -154,6 +162,58 @@ func cmdRecall(args []string) int {
 				"", f.Score, f.Scores["semantic"], f.Scores["keyword"],
 				f.Scores["entity"], f.Scores["recency"])
 		}
+	}
+	return 0
+}
+
+// memoryPruneCmd evicts low-value agent memory. It is a dry run unless --apply
+// is given, and the dry run prints exactly what --apply would retract.
+func memoryPruneCmd(e *env, args []string) int {
+	apply := hasFlag(args, "--apply")
+	if apply && hasFlag(args, "--dry-run") {
+		return fail("--apply and --dry-run are mutually exclusive")
+	}
+	body := map[string]any{"apply": apply}
+	if v, ok := flagValue(args, "--max"); ok {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			return fail("--max wants a whole number, got %q", v)
+		}
+		body["max"] = n
+	}
+	if v, ok := flagValue(args, "--below"); ok {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			return fail("--below wants 1, 2 or 3, got %q", v)
+		}
+		body["below"] = n
+	}
+	status, raw := e.callBody("POST", "/api/memory/prune", body)
+	if status != http.StatusOK {
+		return fail("prune failed: %s", raw)
+	}
+	var out struct {
+		Apply      bool `json:"apply"`
+		Removed    int  `json:"removed"`
+		Candidates []struct {
+			Path, ID, Text, Stamp, Agent string
+			Importance                   int
+		} `json:"candidates"`
+	}
+	if err := json.Unmarshal([]byte(raw), &out); err != nil {
+		return fail("%v", err)
+	}
+	for _, c := range out.Candidates {
+		fmt.Printf("  imp=%d  %s  %s  [%s]  %s\n", c.Importance, c.Stamp, c.Path, c.ID, c.Text)
+	}
+	switch {
+	case out.Apply:
+		fmt.Printf("retracted %d of %d fact(s) (struck through, recorded as memory-prune in memory changes)\n",
+			out.Removed, len(out.Candidates))
+	case len(out.Candidates) == 0:
+		fmt.Println("nothing to prune: no agent fact is unused, rated 1-3, and older than 90 days")
+	default:
+		fmt.Printf("dry run: %d fact(s) would be retracted; re-run with --apply\n", len(out.Candidates))
 	}
 	return 0
 }
