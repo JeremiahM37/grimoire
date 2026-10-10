@@ -120,9 +120,27 @@ var Fields = map[string]Field{
 	// request. 400 ms hard budget; on timeout the score rule stands. Off when
 	// context_gate_url is empty (docs/MEMORY_ADHERENCE.md). The key falls back
 	// to the decision key.
-	"context_gate_url":   {"GRIMOIRE_CONTEXT_GATE_URL", ""},
-	"context_gate_model": {"GRIMOIRE_CONTEXT_GATE_MODEL", "jev-latest"},
-	"context_gate_band":  {"GRIMOIRE_CONTEXT_GATE_BAND", "0.5,0.75"},
+	// Rules compiled into checks (docs/MEMORY_RULES.md). Precision needed for a
+	// check to remind, the stricter bar for enforce: ask, labelled matches
+	// needed before either, and the share of calls above which a check is a
+	// topic detector and never acts. rules_llm_url is the local Ollama that
+	// writes candidate checks; rules_label_* is the decision model that labels
+	// backtest matches (falls back to decision_*).
+	"rules_min_precision":      {"GRIMOIRE_RULES_MIN_PRECISION", "0.9"},
+	"rules_enforce_precision":  {"GRIMOIRE_RULES_ENFORCE_PRECISION", "0.95"},
+	"rules_min_labelled":       {"GRIMOIRE_RULES_MIN_LABELLED", "5"},
+	"rules_max_match_rate":     {"GRIMOIRE_RULES_MAX_MATCH_RATE", "0.2"},
+	"rules_faithful_threshold": {"GRIMOIRE_RULES_FAITHFUL_THRESHOLD", "0.5"},
+	"rules_llm_url":            {"GRIMOIRE_RULES_LLM_URL", ""},
+	"rules_llm_model":          {"GRIMOIRE_RULES_LLM_MODEL", "qwen3.6:35b-a3b"},
+	"rules_label_url":          {"GRIMOIRE_RULES_LABEL_URL", ""},
+	"rules_label_model":        {"GRIMOIRE_RULES_LABEL_MODEL", "jev-latest"},
+	"rules_label_api_key":      {"GRIMOIRE_RULES_LABEL_API_KEY", ""},
+	"rules_label_budget":       {"GRIMOIRE_RULES_LABEL_BUDGET", "1500"},
+	"rules_label_threshold":    {"GRIMOIRE_RULES_LABEL_THRESHOLD", "0.5"},
+	"context_gate_url":         {"GRIMOIRE_CONTEXT_GATE_URL", ""},
+	"context_gate_model":       {"GRIMOIRE_CONTEXT_GATE_MODEL", "jev-latest"},
+	"context_gate_band":        {"GRIMOIRE_CONTEXT_GATE_BAND", "0.5,0.75"},
 	// Most candidates one request sends to the gate, and the yes-probability a
 	// memory needs to be kept. Defaults from the round-2 gate benchmark: the
 	// strict question wording, three in parallel, threshold 0.16 (its

@@ -78,6 +78,9 @@ func (s *Server) adherenceFilter(r *http.Request, query string, items []contextI
 		tool, target := actionParts(r, query)
 		var forced []contextItem
 		forced, perm = s.enforceFor(r, tool, target)
+		ri, rp := s.ruleHits(r, actionFromQuery(r, tool, target))
+		forced = append(forced, ri...)
+		perm = mergePermission(perm, rp)
 		for _, f := range forced {
 			f.score = 1
 			replaced := false
@@ -168,6 +171,9 @@ type outcomeIn struct {
 	FP   map[string]int `json:"fp"`
 	Stop bool           `json:"stop"`
 	Pre  bool           `json:"pre"` // only compute the permission decision; record nothing
+	// Cwd and Agent scope compiled rule checks (docs/MEMORY_RULES.md); optional.
+	Cwd   string `json:"cwd"`
+	Agent string `json:"agent"`
 }
 
 var tagRE = regexp.MustCompile(`^[0-9a-f]{4,8}$`)
@@ -207,6 +213,8 @@ func (s *Server) memoryOutcome(w http.ResponseWriter, r *http.Request) {
 	}
 	if in.Pre {
 		_, perm := s.enforceFor(r, in.Tool, in.Target)
+		_, rp := s.ruleHits(r, actionContext{in.Session, in.Tool, in.Target, in.Cwd, in.Agent})
+		perm = mergePermission(perm, rp)
 		writeJSON(w, http.StatusOK, map[string]any{"permission": perm})
 		return
 	}
@@ -236,6 +244,7 @@ func (s *Server) memoryOutcome(w http.ResponseWriter, r *http.Request) {
 				st.SetCheck(row.ID, adherence.Followed)
 			}
 		}
+		s.ruleObserve(actionContext{in.Session, in.Tool, in.Target, in.Cwd, in.Agent}, st, rows)
 		st.BumpTools(in.Session, since)
 	}
 	if len(in.Cited) > 0 {
@@ -302,6 +311,7 @@ func (s *Server) applyOutcome(r *http.Request, row adherence.Row) {
 // that memory is marked contradicted, and the memory's unhelpful counter moves
 // once: it was in front of the agent and did not stick.
 func (s *Server) adherenceRetold(target string) {
+	s.rulesRetold(target)
 	st := s.adh()
 	if st == nil || target == "" {
 		return
@@ -585,4 +595,15 @@ func (s *Server) proposeChecks(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"proposed": proposed, "model_calls": asked})
+}
+
+// mergePermission joins two ask decisions into one.
+func mergePermission(a, b map[string]any) map[string]any {
+	switch {
+	case a == nil:
+		return b
+	case b == nil:
+		return a
+	}
+	return map[string]any{"decision": "ask", "reason": fmt.Sprint(a["reason"]) + " | " + fmt.Sprint(b["reason"])}
 }

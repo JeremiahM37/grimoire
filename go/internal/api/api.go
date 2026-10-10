@@ -22,6 +22,7 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/adherence"
 	"github.com/JeremiahM37/grimoire/go/internal/build"
 	"github.com/JeremiahM37/grimoire/go/internal/cues"
+	"github.com/JeremiahM37/grimoire/go/internal/rulecheck"
 
 	"github.com/JeremiahM37/grimoire/go/internal/ai"
 	"github.com/JeremiahM37/grimoire/go/internal/auth"
@@ -226,6 +227,17 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("DELETE /api/memory/check", s.deleteCheck)
 	mux.HandleFunc("POST /api/memory/check/propose", s.proposeChecks)
 	mux.HandleFunc("POST /api/memory/check/accept", s.acceptCheck)
+	mux.HandleFunc("GET /api/memory/rules", s.rulesList)
+	mux.HandleFunc("POST /api/memory/rules/compile", s.rulesCompile)
+	mux.HandleFunc("POST /api/memory/rules/backtest", s.rulesBacktest)
+	mux.HandleFunc("POST /api/memory/rules/enable", s.rulesSet(func(enforce bool) string {
+		if enforce {
+			return rulecheck.UserEnforce
+		}
+		return rulecheck.UserEnable
+	}))
+	mux.HandleFunc("POST /api/memory/rules/disable", s.rulesSet(func(bool) string { return rulecheck.UserOff }))
+	mux.HandleFunc("POST /api/memory/rules/label", s.rulesLabel)
 	mux.HandleFunc("GET /api/doctor", s.doctor)
 	mux.HandleFunc("GET /api/usage", s.modelUsage)
 	mux.HandleFunc("GET /api/usage/agents", s.agentActivity)
