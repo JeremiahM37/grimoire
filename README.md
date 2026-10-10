@@ -276,6 +276,7 @@ and be linked by reference — see [docs/PASSWORD_MANAGERS.md](docs/PASSWORD_MAN
 | Exact values | `get_fact` · **`set_fact`** |
 | Orientation | `get_briefing` · `kb_info` |
 | **Connected sources** (mail, calendar, Drive, Slack, GitHub, …) | `sources` · `source_search` · `source_read` · `source_act` · `source_action_status` |
+| **Code** (needs the admin token; see [docs/CODE-GRAPH.md](docs/CODE-GRAPH.md)) | `code_symbol` · `code_callers` · `code_outline` |
 
 <!-- tools:end -->
 

@@ -28,6 +28,9 @@ string (`LKC-<label>-<hex>`). Seeded as alice:
 - a bank in a space only alice writes: facts, a mental model, a directive,
   plus its observations, sessions, documents and webhook lists
 - an imported document (an upload, untrusted origin)
+- a code repository the admin indexed through `POST /api/code/index`: a file
+  whose name carries a canary, and a function whose name carries another (see
+  "Code graph" below)
 
 Seeding asserts its own success and sanity-checks that alice can read her own
 data, so no probe can pass against an empty fixture.
@@ -49,6 +52,13 @@ an `X-Grimoire-Agent` header, an agent with no grant of its own) and
   callers may not.
 - **Published**: the one note the operator published. Allowed only on the
   published routes, for any identity.
+- **Code graph**: the indexed file name and symbol name. The `/api/code/*`
+  routes are admin-only, because a repository has no owner and no space, and
+  indexing reads a directory the server names. Nothing here is allowed to any
+  non-admin identity. The probes assert that the same way as the owned
+  canaries, so a route that started answering members would fail the suite.
+  Index paths are confined to the vault and `GRIMOIRE_CODE_ROOTS`, and that
+  confinement is tested in `code_routes_test.go`, not here.
 
 ## What is asserted
 

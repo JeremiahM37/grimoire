@@ -133,6 +133,10 @@ const usage = `grimoire — local-first AI-native notes
                                       who opened which restricted document
   grimoire eval build|run|compare     measure retrieval on your own vault
   grimoire ground prepare|timeline|answer   grounded answers: time annotation, timeline, gather/answer/check
+  grimoire code index PATH            index a repository's symbols and calls (admin token)
+  grimoire code symbol NAME [--kind K] [--root R]   where a name is defined
+  grimoire code callers NAME          call sites by name (approximate, not resolved)
+  grimoire code outline FILE          what one source file declares and imports
   grimoire version                    print the build version
 
 Env: GRIMOIRE_VAULT (default ~/notes)`
@@ -160,6 +164,7 @@ func commands() map[string]func([]string) int {
 		"backup": cmdBackup, "restore": cmdRestore,
 		"connect": cmdConnect, "sources": cmdSources, "actions": cmdActions,
 		"audit": cmdAudit, "eval": cmdEval, "dream": cmdDream, "ground": cmdGround,
+		"code": cmdCode,
 	}
 }
 

@@ -61,6 +61,12 @@ var toolScope = map[string]string{
 	"consolidate_memory":     oauth.ScopeMemory,
 	"dream":                  oauth.ScopeMemory,
 
+	// The code graph reads source repositories. It is admin-only at the API;
+	// the scope is the read scope, since it is not a write and not a memory.
+	"code_symbol":  oauth.ScopeNotesRead,
+	"code_callers": oauth.ScopeNotesRead,
+	"code_outline": oauth.ScopeNotesRead,
+
 	// Memory banks are agent memory too.
 	"retain":                oauth.ScopeMemory,
 	"bank_recall":           oauth.ScopeMemory,

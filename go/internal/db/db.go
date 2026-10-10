@@ -360,6 +360,29 @@ CREATE TABLE IF NOT EXISTS read_audit(
 );
 CREATE INDEX IF NOT EXISTS idx_read_audit_path ON read_audit(path);
 CREATE INDEX IF NOT EXISTS idx_read_audit_user ON read_audit(user);
+-- The code graph (internal/codegraph): symbols and edges extracted from source
+-- repositories an operator allowed the server to read. Derived from those
+-- files, so it can be dropped and rebuilt. code_files is the incremental key:
+-- a file whose content hash is unchanged is not re-parsed. Rows are keyed by
+-- the repository's absolute root, so two checkouts of one project do not
+-- overwrite each other.
+CREATE TABLE IF NOT EXISTS code_files(
+  root TEXT NOT NULL, path TEXT NOT NULL, hash TEXT NOT NULL, lang TEXT NOT NULL,
+  error TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY(root, path)
+);
+CREATE TABLE IF NOT EXISTS code_symbols(
+  root TEXT NOT NULL, path TEXT NOT NULL, name TEXT NOT NULL, kind TEXT NOT NULL,
+  scope TEXT NOT NULL DEFAULT '', line INTEGER NOT NULL, end_line INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_code_symbols_name ON code_symbols(name);
+CREATE INDEX IF NOT EXISTS idx_code_symbols_file ON code_symbols(root, path);
+CREATE TABLE IF NOT EXISTS code_edges(
+  root TEXT NOT NULL, path TEXT NOT NULL, line INTEGER NOT NULL, kind TEXT NOT NULL,
+  caller TEXT NOT NULL DEFAULT '', callee TEXT NOT NULL, qual TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_code_edges_callee ON code_edges(callee);
+CREATE INDEX IF NOT EXISTS idx_code_edges_file ON code_edges(root, path);
 `
 
 // migrations bring an index created by an older build up to the current shape.

@@ -160,8 +160,11 @@ func newEnv(fetchModel bool) (*env, error) {
 		AdminToken:   os.Getenv("GRIMOIRE_ADMIN_TOKEN"),
 		FrameOptions: envOr("GRIMOIRE_FRAME_OPTIONS", "SAMEORIGIN"),
 		PluginDir:    envOr("GRIMOIRE_PLUGIN_DIR", firstDir("plugins", besideBinary("plugins"), "/usr/local/share/grimoire/plugins", "/usr/share/grimoire/plugins", "plugins")),
-		DailyDir:     envOr("GRIMOIRE_DAILY_DIR", "journal"),
-		InboxDir:     envOr("GRIMOIRE_INBOX_DIR", "inbox"),
+		// Directories, besides the vault, the code graph may index. Colon-separated
+		// like PATH. Empty means the vault is the only indexable tree.
+		CodeRoots: codeRootsFromEnv(),
+		DailyDir:  envOr("GRIMOIRE_DAILY_DIR", "journal"),
+		InboxDir:  envOr("GRIMOIRE_INBOX_DIR", "inbox"),
 	}
 	// Folder sync writes through the same index and CRDT store as everything
 	// else; a note deleted on another device goes to this device's trash, and
@@ -563,4 +566,16 @@ func aiWithUsage(store *settings.Store, secret func(string) (string, error), ix 
 	c := ai.New(store, secret)
 	c.Usage = usagelog.NewRecorder(ix)
 	return c
+}
+
+// codeRootsFromEnv reads GRIMOIRE_CODE_ROOTS, a colon-separated list of
+// directories the code graph may index in addition to the vault.
+func codeRootsFromEnv() []string {
+	var out []string
+	for _, p := range filepath.SplitList(os.Getenv("GRIMOIRE_CODE_ROOTS")) {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }

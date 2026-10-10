@@ -335,18 +335,25 @@ var routeAccess = map[string]access{
 	"GET /api/secrets/details": admin,
 	// The findings carry no values, but "there is an AWS key on line 40 of
 	// ops.md" is still the sentence an attacker would most like to read.
-	"GET /api/secrets/scan":                      admin,
-	"GET /api/secrets/versions":                  admin,
-	"POST /api/secrets/restore":                  admin,
-	"POST /api/secrets/broker":                   authed, // the grant token IS the capability
-	"GET /api/secrets/requests":                  admin,  // the human's approval queue
-	"POST /api/secrets/requests/{id}/approve":    admin,  // mints a grant
-	"POST /api/secrets/requests/{id}/deny":       admin,
-	"GET /api/grants":                            admin,
-	"DELETE /api/grants":                         admin,
-	"DELETE /api/grants/{token}":                 admin,
-	"GET /api/audit":                             admin,
-	"POST /api/reindex":                          admin,
+	"GET /api/secrets/scan":                   admin,
+	"GET /api/secrets/versions":               admin,
+	"POST /api/secrets/restore":               admin,
+	"POST /api/secrets/broker":                authed, // the grant token IS the capability
+	"GET /api/secrets/requests":               admin,  // the human's approval queue
+	"POST /api/secrets/requests/{id}/approve": admin,  // mints a grant
+	"POST /api/secrets/requests/{id}/deny":    admin,
+	"GET /api/grants":                         admin,
+	"DELETE /api/grants":                      admin,
+	"DELETE /api/grants/{token}":              admin,
+	"GET /api/audit":                          admin,
+	"POST /api/reindex":                       admin,
+	// The code graph. Admin-only: a repository's symbol table has no owner and
+	// no space, and indexing reads a directory the server names. See
+	// code_routes.go.
+	"POST /api/code/index":                       admin,
+	"GET /api/code/symbol":                       admin,
+	"GET /api/code/callers":                      admin,
+	"GET /api/code/outline":                      admin,
 	"POST /api/dream":                            admin,
 	"GET /api/dream":                             admin,
 	"GET /api/settings":                          admin,
