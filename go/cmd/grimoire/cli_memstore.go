@@ -23,6 +23,8 @@ import (
 const memoryUsage = `usage:
 ` + memoryPortabilityUsage + `
   grimoire memory receipts                 forget receipts (from forget --cascade)
+  grimoire memory disputes                 facts a person recorded that an agent contests
+  grimoire memory resolve ID keep|accept|merge [text] [--challenger ID] [--path P]
   grimoire memory link --agent NAME --path P [--kind dir|file] [--dir STORE] [--merge] [--dry-run]
   grimoire memory unlink --agent NAME [--path P] [--dry-run]
   grimoire memory status [--dir STORE]
@@ -88,6 +90,10 @@ func cmdMemory(args []string) int {
 		return memoryProfileCmd(e, rest)
 	case "receipts":
 		return memoryReceiptsCmd(e, rest)
+	case "disputes":
+		return memoryDisputesCmd(e, rest)
+	case "resolve":
+		return memoryResolveCmd(e, rest)
 	}
 	return fail("unknown memory command %q\n\n%s", args[0], memoryUsage)
 }

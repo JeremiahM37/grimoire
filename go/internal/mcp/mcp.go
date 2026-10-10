@@ -729,6 +729,13 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 		return s.api("POST", "/api/memory/feedback", map[string]any{
 			"path": str(args, "path"), "id": str(args, "id"),
 			"helpful": boolean(args, "helpful")})
+	case "memory_disputes":
+		return s.api("GET", "/api/memory/disputes", nil)
+	case "memory_resolve_dispute":
+		return s.api("POST", "/api/memory/disputes/resolve", map[string]any{
+			"id": str(args, "id"), "resolution": str(args, "resolution"),
+			"text": str(args, "text"), "path": str(args, "path"),
+			"challenger": str(args, "challenger")})
 	case "memory_scopes":
 		return s.api("GET", "/api/memory/facets", nil)
 	case "set_fact":

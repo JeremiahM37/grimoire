@@ -77,12 +77,14 @@ var behaviour = map[string]annotations{
 	"append_daily": {Title: "Append to today's daily note"},
 
 	// Writes that can replace something already on file.
-	"update_note":        {Title: "Update a note", DestructiveHint: true},
-	"set_fact":           {Title: "Set an exact value", DestructiveHint: true, IdempotentHint: true},
-	"remember":           {Title: "Record a fact", DestructiveHint: true},
-	"consolidate_memory": {Title: "Consolidate memory", DestructiveHint: true},
-	"dream":              {Title: "Dream over memory"},
-	"memory_feedback":    {Title: "Rate a recalled fact", IdempotentHint: true},
+	"update_note":            {Title: "Update a note", DestructiveHint: true},
+	"set_fact":               {Title: "Set an exact value", DestructiveHint: true, IdempotentHint: true},
+	"remember":               {Title: "Record a fact", DestructiveHint: true},
+	"consolidate_memory":     {Title: "Consolidate memory", DestructiveHint: true},
+	"dream":                  {Title: "Dream over memory"},
+	"memory_feedback":        {Title: "Rate a recalled fact", IdempotentHint: true},
+	"memory_disputes":        {Title: "List open disputes", ReadOnlyHint: true, IdempotentHint: true},
+	"memory_resolve_dispute": {Title: "Settle a dispute", DestructiveHint: true},
 
 	// Retraction. The one tool whose whole purpose is removal.
 	"forget": {Title: "Retract a fact", DestructiveHint: true, IdempotentHint: true},
@@ -602,6 +604,30 @@ func Tools() []tool {
 				"helpful": map[string]any{"type": "boolean",
 					"description": "true if the fact earned its place, false if it was noise"},
 			}, "id", "path", "helpful"),
+		},
+		{
+			Name: "memory_disputes",
+			Description: "The disagreements nobody has settled: a fact a person recorded, " +
+				"and the newer fact that contests it and was not allowed to replace it. " +
+				"Each side carries its text, authority, stamp and evidence. Read it when a " +
+				"recall shows two claims that cannot both be true. It is a question for the " +
+				"person, not a thing to resolve yourself: an agent cannot settle a dispute.",
+			InputSchema: obj(map[string]any{}),
+		},
+		{
+			Name: "memory_resolve_dispute",
+			Description: "Settle one dispute, as the person it concerns. `keep` leaves the " +
+				"person's fact standing and retracts the contesting claim. `accept_challenger` " +
+				"replaces the person's fact with the contesting one. `merge` writes the text " +
+				"you give, as the person's, and replaces both. Refused for an agent caller: a " +
+				"dispute is settled by a person, so use memory_disputes to read it and ask.",
+			InputSchema: obj(map[string]any{
+				"id":         strProp("the disputed entry's id, from memory_disputes"),
+				"resolution": strProp("keep, accept_challenger or merge"),
+				"text":       strProp("merge only: the new fact, as the person states it"),
+				"path":       strProp("the note it lives in, if the id is ambiguous"),
+				"challenger": strProp("the contesting entry's id, when more than one contests it"),
+			}, "id", "resolution"),
 		},
 		{
 			Name: "memory_scopes",

@@ -414,3 +414,32 @@ func TestRecallForwardsTheBitemporalWindow(t *testing.T) {
 		}
 	}
 }
+
+// Disputes are read and settled through their own routes, and the settle
+// carries the arguments the API needs under the names it expects.
+func TestDisputeToolsReachTheirRoutes(t *testing.T) {
+	var method, path string
+	var body map[string]any
+	s := stubAPI(t, func(w http.ResponseWriter, r *http.Request) {
+		method, path = r.Method, r.URL.Path
+		body = nil
+		if r.Method == http.MethodPost {
+			json.NewDecoder(r.Body).Decode(&body)
+		}
+		w.Write([]byte(`{}`))
+	})
+	call(t, s, map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+		"params": map[string]any{"name": "memory_disputes", "arguments": map[string]any{}}})
+	if method != "GET" || path != "/api/memory/disputes" {
+		t.Fatalf("memory_disputes = %s %s", method, path)
+	}
+	call(t, s, map[string]any{"jsonrpc": "2.0", "id": 2, "method": "tools/call",
+		"params": map[string]any{"name": "memory_resolve_dispute", "arguments": map[string]any{
+			"id": "abc", "resolution": "merge", "text": "the merged fact", "challenger": "def"}}})
+	if method != "POST" || path != "/api/memory/disputes/resolve" {
+		t.Fatalf("memory_resolve_dispute = %s %s", method, path)
+	}
+	if body["id"] != "abc" || body["resolution"] != "merge" || body["text"] != "the merged fact" || body["challenger"] != "def" {
+		t.Errorf("resolve body = %v", body)
+	}
+}

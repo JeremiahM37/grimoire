@@ -184,3 +184,15 @@
   .memuse-meter { grid-column: 1 / -1; grid-row: auto; }
   .memuse-days { padding-left: 16px; }
 }
+
+/* Disputes panel */
+.dispute-card { border: 1px solid var(--line, #d0d0d0); border-radius: 8px; padding: 12px; margin: 12px 0; }
+.dispute-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.dispute-count { font-size: 0.85em; opacity: 0.75; }
+.dispute-side { margin: 8px 0; }
+.dispute-label { font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.7; }
+.dispute-text { margin: 2px 0; }
+.dispute-meta { font-size: 0.8em; opacity: 0.7; }
+.dispute-choice { border: 0; padding: 0; margin-top: 10px; display: grid; gap: 6px; }
+.dispute-choice label { display: block; }
+.dispute-choice textarea, .dispute-choice select { width: 100%; }

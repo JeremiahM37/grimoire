@@ -46,16 +46,18 @@ var toolScope = map[string]string{
 	// implemented as notes underneath — see DESIGN.md's Grant/Secret
 	// glossary for why memory gets its own scope rather than folding into
 	// notes:write.
-	"remember":           oauth.ScopeMemory,
-	"recall":             oauth.ScopeMemory,
-	"memory_changes":     oauth.ScopeMemory,
-	"memory_profile":     oauth.ScopeMemory,
-	"memory_graph":       oauth.ScopeMemory,
-	"memory_feedback":    oauth.ScopeMemory,
-	"memory_scopes":      oauth.ScopeMemory,
-	"forget":             oauth.ScopeMemory,
-	"consolidate_memory": oauth.ScopeMemory,
-	"dream":              oauth.ScopeMemory,
+	"remember":               oauth.ScopeMemory,
+	"recall":                 oauth.ScopeMemory,
+	"memory_changes":         oauth.ScopeMemory,
+	"memory_profile":         oauth.ScopeMemory,
+	"memory_graph":           oauth.ScopeMemory,
+	"memory_feedback":        oauth.ScopeMemory,
+	"memory_disputes":        oauth.ScopeMemory,
+	"memory_resolve_dispute": oauth.ScopeMemory,
+	"memory_scopes":          oauth.ScopeMemory,
+	"forget":                 oauth.ScopeMemory,
+	"consolidate_memory":     oauth.ScopeMemory,
+	"dream":                  oauth.ScopeMemory,
 
 	// Memory banks are agent memory too.
 	"retain":                oauth.ScopeMemory,
