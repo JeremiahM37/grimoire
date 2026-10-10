@@ -376,6 +376,11 @@ func (s *Server) ask(w http.ResponseWriter, r *http.Request) {
 		// question that silently reaches the internet is a surprise nobody
 		// wants from their own vault.
 		Web bool `json:"web"`
+		// Grounded runs the gather / answer / self-check procedure with
+		// relative dates resolved (internal/grounded). Bank names a memory
+		// bank whose entity timeline joins the records.
+		Grounded bool   `json:"grounded"`
+		Bank     string `json:"bank"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 		writeErr(w, http.StatusBadRequest, "invalid json")
@@ -421,6 +426,13 @@ func (s *Server) ask(w http.ResponseWriter, r *http.Request) {
 	hits, mode, err := s.askContext(r, q, k, in.IncludePrivate, smart)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if in.Grounded && s.AI.Available() {
+		for _, h := range hits {
+			s.auditRead(r, h.Path, true)
+		}
+		s.groundedAnswer(w, r, q, hits, mode, in.Bank)
 		return
 	}
 	// Citing every note is citing nothing. In full mode the CONTEXT is the

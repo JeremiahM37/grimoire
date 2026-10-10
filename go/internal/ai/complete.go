@@ -128,6 +128,9 @@ func (c *Client) CompleteWith(ctx context.Context, prompt string, o CompleteOpts
 	maxTok := min(o.MaxTokens, MaxOutputTokens)
 	effort := c.effort(o)
 	switch backend {
+	case BackendClaudeCLI:
+		comp, _, err := c.completeClaudeCLI(ctx, prompt, o)
+		return comp, err
 	case "ollama":
 		body := map[string]any{"model": c.model(), "prompt": prompt, "stream": false, "think": false}
 		switch effort {

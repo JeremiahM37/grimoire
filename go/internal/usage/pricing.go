@@ -97,7 +97,7 @@ func ProviderFor(backend, baseURL string) Provider {
 	switch backend {
 	case "ollama":
 		return Ollama
-	case "claude":
+	case "claude", "claude-cli":
 		return Anthropic
 	}
 	if baseURL == "" {

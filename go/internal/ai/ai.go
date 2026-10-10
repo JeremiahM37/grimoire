@@ -11,6 +11,7 @@ package ai
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -135,7 +136,7 @@ func (c *Client) observe(backend, model string, tok usage.Tokens, started time.T
 
 func (c *Client) Backend() string {
 	switch b := strings.ToLower(c.get("llm")); b {
-	case "ollama", "claude", "openai":
+	case "ollama", "claude", "openai", BackendClaudeCLI:
 		return b
 	}
 	if c.ollamaURL() != "" {
@@ -302,6 +303,9 @@ func (c *Client) Complete(prompt, backend string) (string, error) {
 			b.WriteString(part.Text)
 		}
 		return strings.TrimSpace(b.String()), nil
+	case BackendClaudeCLI:
+		comp, _, err := c.completeClaudeCLI(context.Background(), prompt, CompleteOpts{})
+		return comp.Text, err
 	}
 	return "", fmt.Errorf("no llm backend configured")
 }

@@ -319,6 +319,13 @@ func Tools() []tool {
 				"trusted_only": map[string]any{"type": "boolean",
 					"description": "exclude passages from chat, tickets, feeds or the web — " +
 						"use when the answer will drive an action rather than a summary"},
+				"mode": map[string]any{"type": "string", "enum": []string{"passages", "grounded"},
+					"description": "\"grounded\" returns an ANSWER instead of passages: the server gathers every " +
+						"dated passage that bears on the question, answers from that list and checks the " +
+						"answer (completeness of lists, date arithmetic, who did it). Resolves \"last Saturday\" " +
+						"against each note's own date. Use for list/count/when questions that span many notes; " +
+						"costs two model calls and needs a configured LLM"},
+				"bank": strProp("with mode=grounded: a memory bank whose per-entity dated-event timeline is added to the records"),
 			}, "question"),
 		},
 		{
