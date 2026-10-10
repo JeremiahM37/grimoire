@@ -28,6 +28,8 @@ import { searchKeymap, highlightSelectionMatches, openSearchPanel } from "@codem
 const WIKILINK = /\[\[([^\[\]|]+?)(?:\|([^\[\]]+))?\]\]/g;
 const TAG = /(^|\s)#([A-Za-z][\w/-]*)/g;
 const HIGHLIGHT = /==([^=\n]+)==/g;
+// `key:: value` at the start of a line (an inline field, as in Dataview and Logseq)
+const FIELD = /^([A-Za-z][\w -]{0,40})::(?=\s)/gm;
 const TASK_LINE = /^\s*[-*+]\s+\[[ xX]\]/;
 
 /* ------------------------------------------------------------- widget types */
@@ -93,7 +95,10 @@ const IMAGE_EMBED = /!\[\[([^\[\]|]+?\.(?:png|jpe?g|gif|webp|svg|avif))\]\]/gi;
 function buildDecorations(view) {
   const widgets = [];
   const { from: selFrom, to: selTo } = view.state.selection.main;
-  const touches = (from, to) => selFrom <= to && selTo >= from;
+  // Markdown syntax is revealed only around the cursor of a focused editor. A note that was just opened has a
+  // cursor (at the very start) but nobody typing at it, and revealing there showed every note with a raw "# Title".
+  const focused = view.hasFocus;
+  const touches = (from, to) => focused && selFrom <= to && selTo >= from;
   const doc = view.state.doc;
 
   for (const { from, to } of view.visibleRanges) {
@@ -135,6 +140,13 @@ function buildDecorations(view) {
         } else if (name === "Blockquote") {
           for (let l = doc.lineAt(node.from).number; l <= doc.lineAt(node.to).number; l++)
             widgets.push(Decoration.line({ class: "gr-quote" }).range(doc.line(l).from));
+        } else if (name === "QuoteMark") {
+          // the bar on the left already says "quote": hide the "> " unless the cursor is on the line
+          const line = doc.lineAt(node.from);
+          if (!touches(line.from, line.to)) {
+            const space = doc.sliceString(node.to, node.to + 1) === " " ? 1 : 0;
+            widgets.push(Decoration.replace({}).range(node.from, node.to + space));
+          }
         } else if (name === "ListMark") {
           // Unordered items get a bullet (or, for tasks, the checkbox below) and
           // a hanging indent per nesting level; ordered items keep their numbers.
@@ -212,6 +224,10 @@ function buildDecorations(view) {
         class: "gr-tag", attributes: { "data-tag": m[2] },
       }).range(s, e));
     }
+    for (const m of text.matchAll(FIELD)) {
+      const s = from + m.index;
+      widgets.push(Decoration.mark({ class: "gr-field" }).range(s, s + m[1].length + 2));
+    }
     for (const m of text.matchAll(HIGHLIGHT)) {
       const s = from + m.index, e = s + m[0].length;
       widgets.push(Decoration.mark({ class: "gr-mark" }).range(s, e));
@@ -229,7 +245,7 @@ function buildDecorations(view) {
 const livePreview = ViewPlugin.fromClass(class {
   constructor(view) { this.decorations = buildDecorations(view); }
   update(update) {
-    if (update.docChanged || update.selectionSet || update.viewportChanged)
+    if (update.docChanged || update.selectionSet || update.viewportChanged || update.focusChanged)
       this.decorations = buildDecorations(update.view);
   }
 }, { decorations: (v) => v.decorations });

@@ -241,3 +241,26 @@ def test_link_completion_does_not_double_close_brackets(live_page, server):
     body = pg.evaluate("() => document.querySelector('#content').value")
     assert body.count("]]") == 1, f"stray closing brackets: {body!r}"
     assert "]]]]" not in body
+
+
+def test_opened_note_shows_no_raw_markers_until_the_editor_is_focused(live_page, server):
+    pg = live_page
+    path = "live-clean-open.md"
+    body = "# Clean Open\n\nowner:: platform-team\n\n> A quoted line.\n"
+    assert pg.request.post(server + "/api/notes", data={"path": path, "body": body}).ok
+    pg.goto(server + "/#" + path)
+    pg.wait_for_selector("body[data-ready]", timeout=10000)
+    lines = pg.locator("#live-editor .cm-line")
+    expect(lines.first).to_have_text("Clean Open", timeout=8000)
+    # the cursor starts on the heading, but nobody is typing: a note you opened to read is not shown as source
+    expect(pg.locator("#live-editor .cm-line", has_text="A quoted line.")).to_have_text("A quoted line.")
+    expect(pg.locator("#live-editor .gr-field")).to_have_text("owner::")
+    # put the cursor in the heading: its syntax comes back, and only there
+    lines.first.click()
+    expect(lines.first).to_have_text("# Clean Open")
+    expect(pg.locator("#live-editor .cm-line", has_text="A quoted line.")).to_have_text("A quoted line.")
+    pg.locator("#live-editor .cm-line", has_text="A quoted line.").click()
+    expect(pg.locator("#live-editor .cm-line", has_text="A quoted line.")).to_have_text("> A quoted line.")
+    expect(lines.first).to_have_text("Clean Open")
+    # the source on disk never changed
+    assert pg.request.get(server + "/api/notes/" + path).json()["body"] == body
