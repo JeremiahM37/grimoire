@@ -1,0 +1,76 @@
+/* Graph view: the map is the panel. One slim bar, a filter drawer that stays shut until asked for, floating zoom
+   controls and a details column that becomes a bottom sheet on phones. Loaded with the graph chunk, after the shared
+   panel rules, so it overrides the older graph rules in web/style.css. */
+
+.react-app #graph-modal { padding: 16px; align-items: stretch; justify-content: center; }
+.react-app #graph-modal .graph-box { display: flex; flex-direction: column; width: min(1680px, 100%); height: 100%; max-height: none; padding: 0; overflow: hidden; border-radius: 16px; }
+.react-app #graph-modal .graph-box > .graph-workspace { padding: 0 !important; }
+
+/* ---- bar ---------------------------------------------------------------- */
+.graph-bar { display: flex; align-items: center; gap: 14px; min-height: 52px; padding-top: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.graph-bar h2 { display: flex; align-items: baseline; gap: 10px; margin: 0; font: 600 16px/1.2 var(--sans); letter-spacing: -.01em; white-space: nowrap; }
+.graph-bar #graph-stat { font: 400 12px var(--sans); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.graph-bar #graph-phase { margin: 0; }
+.graph-bar .graph-controls { flex: 1; flex-wrap: nowrap; justify-content: flex-end; gap: 8px; padding: 0; border: 0; min-width: 0; }
+.graph-bar .graph-search-wrap { flex: 0 1 300px; min-width: 120px; margin: 0; padding: 0; }
+.graph-bar #graph-scope { flex: 0 1 190px; }
+.graph-bar .btn { flex: none; padding: 8px 12px; }
+.react-app #graph-modal #graph-filters-toggle { display: inline-flex; align-items: center; }
+.graph-bar .btn.on, .graph-filters .graph-depth .btn.on { background: var(--selection, var(--paper2)); color: var(--accent); border-color: var(--accent); }
+.react-app #graph-modal #graph-close { position: static; flex: none; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 8px; font-size: 15px; color: var(--ink-soft); }
+.react-app #graph-modal #graph-close:hover { background: var(--paper2); color: var(--ink); }
+
+/* ---- filter drawer -------------------------------------------------------- */
+.graph-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; padding-top: 10px; padding-bottom: 12px; background: var(--paper2); border-bottom: 1px solid var(--line); }
+.graph-filters[hidden], .graph-inspector[hidden] { display: none; }
+.graph-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; font: 600 10px var(--sans); letter-spacing: .07em; text-transform: uppercase; color: var(--ink-soft); }
+.graph-field select { min-width: 150px; max-width: 220px; text-transform: none; letter-spacing: 0; font-weight: 400 !important; background: var(--paper) !important; }
+.graph-filters .graph-depth .btn { min-width: 62px; padding: 8px 6px; text-transform: none; letter-spacing: 0; font-weight: 500; }
+.graph-filters .graph-time { flex: 1 1 260px; padding: 0; border: 0; align-items: stretch; }
+.graph-time-row { display: flex; align-items: center; gap: 8px; min-height: 38px; text-transform: none; letter-spacing: 0; font-weight: 400; }
+.graph-filters #graph-reset { flex: none; margin-left: auto; padding: 8px 14px; }
+
+/* ---- stage ------------------------------------------------------------- */
+.graph-workspace { position: relative; }
+/* The stage is darker than the app's paper so halos have something to glow against; the engine reads --graph-stage
+   for label outlines and the focus veil, so text always sits on the colour that is actually behind it. */
+:root { --graph-stage: #0c0a13; --graph-stage-edge: #07060b; }
+:root[data-theme="light"] { --graph-stage: var(--paper); --graph-stage-edge: var(--paper2); }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --graph-stage: var(--paper); --graph-stage-edge: var(--paper2); } }
+.graph-stage #graph-canvas { background: radial-gradient(ellipse 75% 65% at 50% 46%, color-mix(in srgb, var(--accent) 8%, var(--graph-stage)) 0%, var(--graph-stage) 60%, var(--graph-stage-edge) 100%); }
+.graph-zoom { position: absolute; right: 12px; bottom: 12px; z-index: 4; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); box-shadow: 0 4px 14px rgba(0, 0, 0, .18); }
+.graph-zoom .icon { width: 36px; height: 34px; padding: 0; border-radius: 0; font-size: 17px; line-height: 1; }
+.graph-zoom .icon + .icon { border-top: 1px solid var(--line); }
+#graph-panel-toggle { position: absolute; right: 12px; top: 12px; z-index: 4; flex: none; padding: 7px 12px; font-size: 12px; background: var(--paper); box-shadow: 0 4px 14px rgba(0, 0, 0, .18); }
+.graph-hover { z-index: 4; }
+.graph-overlay { z-index: 4; max-width: 420px; margin: auto; line-height: 1.5; }
+
+/* ---- details ------------------------------------------------------------ */
+.graph-inspector { width: 280px; flex: none; padding: 14px 14px 18px; scrollbar-width: thin; }
+.graph-inspector #graph-selection strong { font-size: 15px; line-height: 1.3; }
+.graph-inspector .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.graph-hint, .graph-count { color: var(--ink-soft); font-size: 12px; }
+.graph-neighbor { padding: 5px 6px; border-radius: 6px; border-bottom: 0; line-height: 1.35; }
+.graph-neighbor:hover, .graph-result button:hover { background: var(--paper); }
+.graph-cluster { padding: 5px 4px; }
+.graph-cluster i { box-shadow: 0 0 8px currentColor; }
+
+@media (max-width: 780px) {
+  .react-app #graph-modal { padding: 0; }
+  .react-app #graph-modal .graph-box { overflow: hidden !important; }
+  .graph-bar { flex-wrap: wrap; gap: 8px 10px; padding-top: 6px; padding-bottom: 8px; }
+  .graph-bar h2 { flex: 1; order: 1; min-height: 44px; align-items: center; }
+  .react-app #graph-modal #graph-close { order: 2; width: 44px; height: 44px; }
+  .graph-bar .graph-controls { order: 3; flex: 1 0 100%; }
+  .graph-bar .graph-search-wrap { flex: 1 1 0; }
+  .graph-bar .btn { min-height: 40px; }
+  .graph-field { flex: 1 1 42%; }
+  .graph-field select { width: 100%; max-width: none; min-width: 0; }
+  .graph-workspace { flex-direction: row; }
+  /* details ride over the map as a sheet, so opening them never shrinks or re-fits the graph */
+  .graph-inspector { position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; width: auto; max-height: 44%; border-left: 0; border-top: 1px solid var(--line); border-radius: 16px 16px 0 0; box-shadow: 0 -8px 24px rgba(0, 0, 0, .28); padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
+  .graph-zoom { top: 60px; bottom: auto; }
+  .graph-zoom .icon { width: 44px; height: 44px; }
+  #graph-panel-toggle { min-height: 40px; }
+  .graph-neighbor, .graph-cluster { padding-top: 11px; padding-bottom: 11px; }
+}

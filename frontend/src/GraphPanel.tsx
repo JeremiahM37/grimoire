@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Graph } from './types';
-import { GraphEngine, readTheme, type ClusterInfo, type Filter } from './graph/engine';
+import { GraphEngine, readTheme, type ClusterInfo, type ColorBy, type Filter } from './graph/engine';
+import './graph.css';
 import { folderOf, normalizeGraph, type Kind } from './graph/model';
 
 /** Importing this chunk (the Graph button is hovered) is a good moment to bring up the GPU process, which otherwise costs about 100 ms on first use. */
@@ -27,7 +28,11 @@ export function GraphPanel({ graph, close, open, currentPath }: { graph?: Graph;
   const [phase, setPhase] = useState<'organising' | 'settling' | 'settled'>('organising');
   const [clusters, setClusters] = useState<ClusterInfo[]>([]);
   const [failure, setFailure] = useState('');
-  const [filtersOpen, setFiltersOpen] = useState(false); // only meaningful on narrow screens, where the filter row is collapsed
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [colorBy, setColorBy] = useState<ColorBy>('cluster');
+  const [narrow, setNarrow] = useState(() => matchMedia('(max-width: 780px)').matches);
+  const [panelOpen, setPanelOpen] = useState(!narrow);
+  useEffect(() => { const media = matchMedia('(max-width: 780px)'), sync = () => setNarrow(media.matches); media.addEventListener('change', sync); return () => media.removeEventListener('change', sync); }, []);
 
   const index = useMemo(() => new Map((data?.ids || []).map((id, i) => [id, i])), [data]);
   const current = currentPath ? index.get(currentPath) : undefined;
@@ -52,14 +57,15 @@ export function GraphPanel({ graph, close, open, currentPath }: { graph?: Graph;
     if (!element || !data) return;
     setPhase('organising'); setFailure(''); setSelected(null); setHover(null); setClusters([]);
     const created = new GraphEngine(element, data, readTheme(), {
-      hover: setHover, select: setSelected, clusters: setClusters, fail: setFailure,
+      hover: setHover, select: index => { setSelected(index); if (index !== null) setPanelOpen(true); }, clusters: setClusters, fail: setFailure,
       stats: (nodes, edges) => setStat({ nodes, edges }),
       phase: next => { setPhase(next); element.dataset.phase = next; },
     });
     engine.current = created;
     return () => { created.destroy(); engine.current = undefined; };
   }, [data]);
-  useEffect(() => { engine.current?.setFilter({ scope, folder, tag, kind, cutoff, current }); }, [data, scope, folder, tag, kind, cutoff, current, phase === 'organising']);
+  useEffect(() => { engine.current?.setFilter({ scope, folder, tag, kind, cutoff, current, hops: depth }); }, [data, scope, folder, tag, kind, cutoff, current, scope === 'local' ? depth : 0, phase === 'organising']);
+  useEffect(() => { engine.current?.setColorBy(colorBy); }, [colorBy, phase === 'organising']);
   useEffect(() => { engine.current?.setDepth(depth); }, [depth]);
   useEffect(() => { engine.current?.setIsolate(isolate); }, [isolate]);
   // follow the app theme (light/dark toggles and the OS setting)
@@ -112,6 +118,7 @@ export function GraphPanel({ graph, close, open, currentPath }: { graph?: Graph;
   const focusNode = useCallback((i: number) => {
     const run = () => engine.current?.focus(i, depth, true);
     if (engine.current?.isVisible(i)) run(); else { setScope('all'); setFolder(''); setTag(''); setKind('all'); setTime(1000); engine.current?.setFilter({ scope: 'all', folder: '', tag: '', kind: 'all', cutoff: null }); setTimeout(run, 60); }
+    setPanelOpen(true);
   }, [depth]);
   const openResult = (i: number) => { close(); open(data!.ids[i]!); };
   const neighbours = selected !== null && engine.current ? engine.current.neighbours(selected).sort((a, b) => title(a).localeCompare(title(b))) : [];
@@ -123,31 +130,47 @@ export function GraphPanel({ graph, close, open, currentPath }: { graph?: Graph;
   const date = (cutoff ?? facets.max) ? new Date((cutoff ?? facets.max) * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '';
   const hovered = hover !== null && data ? title(hover) : '';
 
-  return <div id="graph-modal" className="modal" role="dialog" aria-label="Note graph" onMouseDown={event => event.currentTarget === event.target && close()}><div className="modal-box graph-box"><button id="graph-close" className="icon modal-close" aria-label="Close" title="Close" onClick={close}>✕</button>
-    <h2>Graph <span id="graph-stat">{stat.nodes} notes · {stat.edges} links</span><span id="graph-phase" role="status" aria-live="polite">{data && phase !== 'settled' ? (phase === 'organising' ? 'Organising…' : 'Settling…') : ''}</span></h2>
-    <div className={'graph-controls' + (filtersOpen ? ' filters-open' : '')}>
-      <div className="note-search graph-search-wrap"><input id="graph-search" type="search" value={query} onChange={event => { setQuery(event.target.value); setSearchIndex(-1); }} onKeyDown={onSearchKey} placeholder="Search note titles…" aria-label="Search graph notes" autoFocus={!matchMedia('(pointer: coarse)').matches} /><button id="graph-search-clear" className="icon" aria-label="Clear graph search" hidden={!query} onClick={() => { setQuery(''); setSearchIndex(-1); }}>✕</button></div>
-      <select id="graph-scope" aria-label="Graph scope" value={scope} onChange={event => setScope(event.target.value as Filter['scope'])}><option value="linked">Connected notes</option><option value="local">Current note &amp; neighbors</option><option value="all">All notes</option></select>
-      <button id="graph-filters-toggle" className="btn" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(open => !open)}>Filters</button>
-      <select className="graph-filter-part" id="graph-folder" aria-label="Filter by folder" value={folder} onChange={event => setFolder(event.target.value)}><option value="">All folders</option>{facets.folders.map(([name, count]) => <option key={name} value={name}>{name === '/' ? 'Top level' : name} ({count})</option>)}</select>
-      {facets.tags.length > 0 && <select className="graph-filter-part" id="graph-tag" aria-label="Filter by tag" value={tag} onChange={event => setTag(event.target.value)}><option value="">All tags</option>{facets.tags.map(([name, count]) => <option key={name} value={name}>#{name} ({count})</option>)}</select>}
-      {facets.hasMemory && <select className="graph-filter-part" id="graph-kind" aria-label="Filter by type" value={kind} onChange={event => setKind(event.target.value as typeof kind)}><option value="all">Notes &amp; memory</option><option value="note">Notes only</option><option value="memory">Agent memory only</option></select>}
-      <button id="graph-out" className="icon" aria-label="Zoom out" onClick={() => engine.current?.zoom(1 / 1.5)}>−</button><button id="graph-in" className="icon" aria-label="Zoom in" onClick={() => engine.current?.zoom(1.5)}>+</button>
-      <button id="graph-fit" className="btn" onClick={() => engine.current?.fit()}>Fit</button><button id="graph-reset" className="btn" onClick={() => { engine.current?.focus(null); setFolder(''); setTag(''); setKind('all'); setTime(1000); setIsolate(false); engine.current?.fit(); }}>Reset</button>
+  const filtered = !!folder || !!tag || kind !== 'all' || cutoff !== null || colorBy !== 'cluster' || (narrow && scope !== 'linked');
+  const depthButtons = <div className="graph-depth" role="group" aria-label="Connection depth">{[1, 2, 3].map(d => <button key={d} className={'btn' + (depth === d ? ' on' : '')} aria-pressed={depth === d} onClick={() => setDepth(d)}>{d} hop{d > 1 ? 's' : ''}</button>)}</div>;
+  // a phone bar has room for the search box and one button, so the scope moves into the filter drawer there
+  const scopeSelect = <select id="graph-scope" aria-label="Graph scope" value={scope} onChange={event => setScope(event.target.value as Filter['scope'])}><option value="linked">Connected notes</option><option value="local" disabled={current === undefined}>This note &amp; neighbours</option><option value="all">All notes</option></select>;
+  const legend = clusters.filter(c => c.size > 1);
+  const hasPanel = selected !== null || !!query || legend.length > 0;
+
+  return <div id="graph-modal" className="modal" role="dialog" aria-label="Note graph" onMouseDown={event => event.currentTarget === event.target && close()}><div className={'modal-box graph-box' + (panelOpen ? ' panel-open' : '')}>
+    <header className="graph-bar">
+      <h2>Graph <span id="graph-stat">{stat.nodes} notes · {stat.edges} links</span><span id="graph-phase" role="status" aria-live="polite">{data && phase !== 'settled' ? (phase === 'organising' ? 'Organising…' : 'Settling…') : ''}</span></h2>
+      <div className={'graph-controls' + (filtersOpen ? ' filters-open' : '')}>
+        <div className="note-search graph-search-wrap"><input id="graph-search" type="search" value={query} onChange={event => { setQuery(event.target.value); setSearchIndex(-1); if (event.target.value) setPanelOpen(true); }} onKeyDown={onSearchKey} placeholder="Find a note…" aria-label="Search graph notes" autoFocus={!matchMedia('(pointer: coarse)').matches} /><button id="graph-search-clear" className="icon" aria-label="Clear graph search" hidden={!query} onClick={() => { setQuery(''); setSearchIndex(-1); }}>✕</button></div>
+        {!narrow && scopeSelect}
+        <button id="graph-filters-toggle" className={'btn' + (filtered ? ' on' : '')} aria-expanded={filtersOpen} aria-controls="graph-filters" onClick={() => setFiltersOpen(open => !open)}>Filters{filtered ? ' •' : ''}</button>
+      </div>
+      <button id="graph-close" className="icon modal-close" aria-label="Close" title="Close" onClick={close}>✕</button>
+    </header>
+    <div id="graph-filters" className="graph-filters" hidden={!filtersOpen}>
+      {narrow && <label className="graph-field">Show{scopeSelect}</label>}
+      {scope === 'local' && <div className="graph-field">Reach{depthButtons}</div>}
+      <label className="graph-field">Folder<select id="graph-folder" aria-label="Filter by folder" value={folder} onChange={event => setFolder(event.target.value)}><option value="">All folders</option>{facets.folders.map(([name, count]) => <option key={name} value={name}>{name === '/' ? 'Top level' : name} ({count})</option>)}</select></label>
+      {facets.tags.length > 0 && <label className="graph-field">Tag<select id="graph-tag" aria-label="Filter by tag" value={tag} onChange={event => setTag(event.target.value)}><option value="">All tags</option>{facets.tags.map(([name, count]) => <option key={name} value={name}>#{name} ({count})</option>)}</select></label>}
+      {facets.hasMemory && <label className="graph-field">Type<select id="graph-kind" aria-label="Filter by type" value={kind} onChange={event => setKind(event.target.value as typeof kind)}><option value="all">Notes &amp; memory</option><option value="note">Notes only</option><option value="memory">Agent memory only</option></select></label>}
+      <label className="graph-field">Colour<select id="graph-color" aria-label="Colour notes by" value={colorBy} onChange={event => setColorBy(event.target.value as ColorBy)}><option value="cluster">By cluster</option><option value="folder">By folder</option></select></label>
+      {facets.timeline && <div className="graph-time graph-field">Timeline<span className="graph-time-row"><button id="graph-play" className="icon" aria-label={playing ? 'Pause timeline' : 'Play the vault growing'} onClick={() => { if (!playing && time >= 1000) setTime(0); setPlaying(p => !p); }}>{playing ? '❚❚' : '▶'}</button><input id="graph-time" type="range" min="0" max="1000" value={time} aria-label="Show notes created up to this date" onChange={event => { setPlaying(false); setTime(Number(event.target.value)); }} /><span id="graph-date">{date}</span></span></div>}
+      <button id="graph-reset" className="btn" onClick={() => { engine.current?.focus(null); setFolder(''); setTag(''); setKind('all'); setTime(1000); setIsolate(false); setColorBy('cluster'); engine.current?.fit(); }}>Reset</button>
     </div>
-    {facets.timeline && <div className={'graph-time graph-filter-part' + (filtersOpen ? ' open' : '')}><button id="graph-play" className="icon" aria-label={playing ? 'Pause timeline' : 'Play the vault growing'} onClick={() => { if (!playing && time >= 1000) setTime(0); setPlaying(p => !p); }}>{playing ? '❚❚' : '▶'}</button><input id="graph-time" type="range" min="0" max="1000" value={time} aria-label="Show notes created up to this date" onChange={event => { setPlaying(false); setTime(Number(event.target.value)); }} /><span id="graph-date">{date}</span></div>}
     <div className="graph-workspace"><div className="graph-stage"><div id="graph-canvas" ref={canvas} tabIndex={0} role="application" aria-label="Note graph. Drag to pan, scroll or pinch to zoom, click a note to focus its connections. Search to fly to a note." onKeyDown={event => { if (event.key === '+' || event.key === '=') { event.preventDefault(); engine.current?.zoom(1.5); } else if (event.key === '-') { event.preventDefault(); engine.current?.zoom(1 / 1.5); } else if (event.key === 'Home') { event.preventDefault(); engine.current?.fit(); } }} />
       {!data && <p className="graph-overlay" role="status">Loading graph…</p>}
       {failure && <p className="graph-overlay" role="alert">The graph needs WebGL, which this browser could not start ({failure}). Search still finds notes.</p>}
+      {data && !failure && stat.nodes === 0 && phase === 'settled' && <p className="graph-overlay" role="status">{scope === 'linked' ? 'No linked notes yet. Link two notes with [[double brackets]], or show all notes.' : 'No notes match these filters.'}</p>}
       {hovered && selected === null && <p className="graph-hover" aria-hidden="true">{hovered}</p>}
+      <div className="graph-zoom" role="group" aria-label="Zoom"><button id="graph-in" className="icon" aria-label="Zoom in" title="Zoom in (+)" onClick={() => engine.current?.zoom(1.5)}>+</button><button id="graph-out" className="icon" aria-label="Zoom out" title="Zoom out (−)" onClick={() => engine.current?.zoom(1 / 1.5)}>−</button><button id="graph-fit" className="icon" aria-label="Fit the whole graph" title="Fit (Home)" onClick={() => engine.current?.fit()}>⤢</button></div>
+      {hasPanel && <button id="graph-panel-toggle" className="btn" aria-expanded={panelOpen} aria-controls="graph-inspector" onClick={() => setPanelOpen(open => !open)}>{panelOpen ? 'Hide details' : selected !== null ? 'Connections' : query ? `${hits.length} results` : 'Legend'}</button>}
     </div>
-    <aside className="graph-inspector"><p id="graph-search-status" role="status">{query ? hits.length ? `${hits.length} results · Enter to open` : 'No matching notes. Try fewer words.' : ''}</p>
+    <aside id="graph-inspector" className="graph-inspector" hidden={!panelOpen || !hasPanel}><p id="graph-search-status" role="status">{query ? hits.length ? `${hits.length} results · Enter to open` : 'No matching notes. Try fewer words.' : ''}</p>
       <div id="graph-results" aria-live="polite">{hits.map((node, position) => <div className={'graph-result' + (position === searchIndex ? ' kbd-sel' : '')} key={node}><button className="graph-result-open" onClick={() => openResult(node)}>{title(node)}</button><button className="graph-show" aria-label={`Show connections for ${title(node)}`} onClick={() => focusNode(node)}>Connections</button></div>)}</div>
-      <div id="graph-selection">{selected !== null && data ? <><strong>{title(selected)}</strong><button className="btn" onClick={() => openResult(selected)}>Open note</button>
-        <div className="graph-depth" role="group" aria-label="Connection depth">{[1, 2, 3].map(d => <button key={d} className={'btn' + (depth === d ? ' on' : '')} aria-pressed={depth === d} onClick={() => setDepth(d)}>{d} hop{d > 1 ? 's' : ''}</button>)}</div>
+      <div id="graph-selection">{selected !== null && data ? <><strong>{title(selected)}</strong><button className="btn primary" onClick={() => openResult(selected)}>Open note</button>
+        {depthButtons}
         <label className="graph-isolate"><input type="checkbox" checked={isolate} onChange={event => setIsolate(event.target.checked)} /> Show only this neighbourhood</label>
-        <span>{neighbours.length} connected notes</span>{neighbours.map(id => <button className="graph-neighbor" key={id} onClick={() => focusNode(id)}>{title(id)}</button>)}</> : 'Click a note to see its connections.'}</div>
-      {clusters.some(c => c.size > 1) && <div className="graph-legend" aria-label="Clusters"><h3>Clusters</h3>{clusters.filter(c => c.size > 1).slice(0, 40).map(c => <button key={c.id} className="graph-cluster" onClick={() => engine.current?.flyToCluster(c.id)}><i style={{ background: c.color }} />{c.name}<small>{c.size}</small></button>)}</div>}
-    </aside></div>
-    <p className="graph-help">Drag to pan · scroll or pinch to zoom · click a note to focus · search flies there</p></div></div>;
+        <span className="graph-count">{neighbours.length} connected notes</span>{neighbours.map(id => <button className="graph-neighbor" key={id} onClick={() => focusNode(id)}>{title(id)}</button>)}</> : <span className="graph-hint">Click a note to see its connections.</span>}</div>
+      {legend.length > 0 && <div className="graph-legend" aria-label={colorBy === 'folder' ? 'Folders' : 'Clusters'}><h3>{colorBy === 'folder' ? 'Folders' : 'Clusters'}</h3>{legend.slice(0, 40).map(c => <button key={c.id} className="graph-cluster" onClick={() => engine.current?.flyToGroup(c.id)}><i style={{ background: c.color }} />{c.name}<small>{c.size}</small></button>)}</div>}
+    </aside></div></div></div>;
 }
