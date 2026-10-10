@@ -83,6 +83,7 @@ type Server struct {
 	InboxDir     string
 
 	// snapshot of the space table for the indexer; see SpaceOf.
+	gateLocal    gateLocalState
 	spaceMu      sync.Mutex
 	spaceAt      time.Time
 	spaceEnabled bool

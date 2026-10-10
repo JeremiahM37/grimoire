@@ -273,6 +273,42 @@ calibrated it removes about 40% of the wrong memories at a cost of 10-14% of
 the right ones, a trade for each operator to choose. Laya's local checkpoint
 does not suit the gate (below).
 
+### Local gate: a distilled cross-encoder (no extra service)
+
+`context_gate_local` (env `GRIMOIRE_CONTEXT_GATE_LOCAL`) points the gate at a
+model run **inside the Go binary** (`go/internal/rerank`, the same pure-Go BERT
+the reranker uses). It is used when `context_gate_url` is empty; a configured
+decision server takes precedence. Value: a model directory, or a name under
+`<vault>/.grimoire/models/`. The model is not committed or published: it is
+`config.json`, `tokenizer.json`, `model.safetensors` (91 MB) built by
+`benchmarks/memory_use/round2/gatemodel_{labels,train,eval,fixture}.py`
+(this install: `/mnt/bulk/memory-use-research/round2/gatemodel/model`).
+`context_gate_local_threshold` (default `-0.3`) is on the raw logit.
+
+How it was made: `ms-marco-MiniLM-L-6-v2` fine-tuned (6 epochs, lr 5e-5) on
+5,577 (request, memory) pairs from the round-1 cases only (gold memory, the
+top 5-7 hybrid non-matching candidates, 2-3 random ones; 48 round-1 cases that
+share a word 5-gram with any round-2 prompt were dropped), each labelled by Jev
+with the strict question above (5,577 calls). The target is
+`sigmoid(logit(p_jev) - logit(0.16))`, so logit 0 is Jev's calibrated point.
+Round 2 is held out by prompt; the memory store itself is shared.
+
+Round-2 band pairs (gold score 0.35-0.9; 222 right, 109 wrong), threshold set
+to keep 86% of the right memories:
+
+| Gate | AUC | near-miss memories removed at 86% kept | latency |
+|---|---|---|---|
+| Jev strict | 0.844 | 59.6% | ~280 ms, network |
+| untuned MiniLM | 0.681 | 25.7% | - |
+| **distilled MiniLM** | **0.783** | **39.4%** | **1 / 3 / 5 candidates: p50 15 / 27 / 36 ms, p95 20 / 34 / 47 ms (Go, CPU)** |
+
+Python and Go scores agree to 3e-6 (`TestGateModelMatchesReference`,
+`TestGateRound2`, which need `GRIMOIRE_GATE_MODEL_DIR`). With a threshold fitted
+on round 1 instead (no peeking), round 2 keeps 80.6% and removes 49.5%.
+It beats the untuned model clearly and is 0.06 AUC below Jev, so it stays
+**off by default**: on this benchmark it removes about 40% of wrong memories
+for 14% of right ones, in 30 ms instead of 280 ms.
+
 ### Measured on local Laya
 
 50 context requests against a test server on a copy of this vault, Laya
