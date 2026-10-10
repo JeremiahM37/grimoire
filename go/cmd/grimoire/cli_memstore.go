@@ -27,6 +27,7 @@ const memoryUsage = `usage:
   grimoire memory index [--dir STORE] [--write] [--budget BYTES]
   grimoire memory core [--budget BYTES] [--format md|text]
   grimoire memory impact [--since 90d] [--agent NAME] [--min N] [--json]
+  grimoire memory trace [--target fact:ID|note:PATH] [--days 30] [--json]
   grimoire memory impact --retells [--cutoff 2026-10-09] [--budget 2000] [--since D] [--all-sessions] [--json]
 
 A directory memory (Claude Code's memory/) becomes a symlink to the store; a
@@ -64,6 +65,8 @@ func cmdMemory(args []string) int {
 		return memoryCoreCmd(e, rest)
 	case "impact":
 		return memoryImpactCmd(e, rest)
+	case "trace":
+		return memoryTraceCmd(e, rest)
 	}
 	return fail("unknown memory command %q\n\n%s", args[0], memoryUsage)
 }

@@ -31,8 +31,9 @@ type contextItem struct {
 	// way to check it, or "re-check" when no way was recorded.
 	Verify string `json:"verify,omitempty"`
 	// Kind is rule, procedure, preference, fact or reference (memstore).
-	Kind  string `json:"kind,omitempty"`
-	score float64
+	Kind   string `json:"kind,omitempty"`
+	score  float64
+	pinned bool // a person pinned it (immutable): never withheld by the holdout
 }
 
 var contextNoise = strings.Fields("please can could would should will do does did how what when where why which who me my we our you your it this that these those help want need now just also really anything something tell explain use using work working fix add make get know thanks thank okay ok yes no continue proceed hello hi")
@@ -142,13 +143,16 @@ func (s *Server) memoryContext(w http.ResponseWriter, r *http.Request) {
 				s.learnFromPrompt(prev, query, items)
 			}
 		}
-		items, perm := s.adherenceFilter(r, query, items, minRel)
+		if r.URL.Query().Get("stage") != "action" {
+			s.tracePrompt(r.URL.Query().Get("session"), retellRE.MatchString(query))
+		}
+		items, perm, ask := s.adherenceFilter(r, query, items, minRel)
 		if r.URL.Query().Get("rerank") == "1" {
 			items = s.rerankContext(r, query, items, minRel)
 			minRel = 0
 		}
 		s.writeContext(w, items, excluded, budget, limit, minRel, "hybrid", r.URL.Query().Get("format") != "json",
-			ctxLog{session: r.URL.Query().Get("session"), stage: r.URL.Query().Get("stage"), query: query, log: true, permission: perm})
+			s.traceLog(r, query, perm, ask))
 		return
 	}
 	if (len(terms) > 0 || (mode == "scoped" && query == "")) && mode != "manual" && mode != "off" {
@@ -231,6 +235,13 @@ type ctxLog struct {
 	query          string // the situation: what triggered the injection
 	log            bool
 	permission     map[string]any
+	// Trace: the pending call an action-stage injection is for (tool and its
+	// hash), its tool_use id when the hook sent one, the targets an enforce
+	// decision forced, and the holdout probability per eligible item key
+	// (filled in by the holdout).
+	tool, pend, tu string
+	ask            map[string]bool
+	pwith          map[string]float64
 }
 
 // markerRoom is the most a "m:<tag> " marker adds to a line.
@@ -288,9 +299,26 @@ func (s *Server) writeContext(w http.ResponseWriter, items []contextItem, exclud
 	for i, it := range picked {
 		keys[i] = it.Key
 	}
-	tags := adherence.Tags(keys, 4)
+	allTags := adherence.Tags(keys, 4)
+	// Holdout (docs/MEMORY_TRACE.md): withhold eligible items at random and
+	// log them as would-have-injected. Off (rate 0) this is the identity.
+	shown, held := picked, []contextItem(nil)
+	tags := allTags
+	if lg.log && lg.session != "" && len(picked) > 0 {
+		if shown, held = s.holdout(&lg, picked); len(held) > 0 {
+			tagOf := map[string]string{}
+			for i, it := range picked {
+				tagOf[it.Key] = allTags[i]
+			}
+			tags = make([]string, len(shown))
+			for i, it := range shown {
+				tags[i] = tagOf[it.Key]
+			}
+			s.logWithheld(lg, held, tagOf)
+		}
+	}
 	context := ""
-	for i, item := range picked {
+	for i, item := range shown {
 		line := item.rawLine(directive)
 		if directive {
 			line = markLine(line, tags[i])
@@ -300,21 +328,24 @@ func (s *Server) writeContext(w http.ResponseWriter, items []contextItem, exclud
 		}
 		context += line + "\n"
 	}
+	// keys lists every item that was picked, withheld ones too: the hook
+	// dedups on them, so a withheld item stays withheld for its dedup window
+	// instead of being re-drawn on the next prompt.
 	out := map[string]any{"context": context, "keys": keys,
 		"bytes": len(context), "max_bytes": budget, "mode": mode, "model_calls": 0}
 	var fps [][]fpr.Fingerprint
 	if directive && lg.log {
 		out["tags"] = tags
-		if lg.session != "" && len(picked) > 0 {
-			fps = s.itemFingerprints(picked, lg.query)
+		if lg.session != "" && len(shown) > 0 {
+			fps = s.itemFingerprints(shown, lg.query)
 			out["fp"] = fingerprintWire(tags, fps)
 		}
 	}
 	if lg.permission != nil {
 		out["permission"] = lg.permission
 	}
-	if lg.log && lg.session != "" && len(picked) > 0 {
-		s.logInjections(lg, picked, tags, fps)
+	if lg.log && lg.session != "" && len(shown) > 0 {
+		s.logInjections(lg, shown, tags, fps)
 	}
 	writeJSON(w, http.StatusOK, out)
 }

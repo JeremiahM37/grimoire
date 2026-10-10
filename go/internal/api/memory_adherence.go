@@ -49,16 +49,24 @@ func itemTarget(it contextItem) string {
 	return cues.NoteTarget(it.Path)
 }
 
-// logInjections records what a response injected.
+// logInjections records what a response injected, with what the utilization
+// trace needs: the memory kind, the holdout probability each item faced and,
+// at the action stage, the pending call it was shown for.
 func (s *Server) logInjections(lg ctxLog, picked []contextItem, tags []string, fps [][]fpr.Fingerprint) {
 	st := s.adh()
 	if st == nil {
 		return
 	}
+	pend, tool := "", ""
+	if lg.stage == "action" {
+		tool, pend = lg.tool, lg.pend
+	}
 	rows := make([]adherence.Injection, len(picked))
 	for i, it := range picked {
 		rows[i] = adherence.Injection{Session: lg.session, Tag: tags[i], Key: it.Key, Target: itemTarget(it),
-			Path: it.Path, FactID: it.ID, Stage: lg.stage, Relevance: it.score}
+			Path: it.Path, FactID: it.ID, Stage: lg.stage, Relevance: it.score,
+			Kind: it.Kind, PWithhold: lg.pwith[it.Key], Tool: tool, Pend: pend, TU: lg.tu,
+			Ask: lg.ask[itemTarget(it)]}
 		if fps != nil {
 			rows[i].FPKnown, rows[i].FPN = true, len(fps[i])
 		}
@@ -72,14 +80,21 @@ func (s *Server) logInjections(lg ctxLog, picked []contextItem, tags []string, f
 // before a forbidden action, injected whatever their relevance), the optional
 // decision-model gate, and the down-rank of memories agents keep ignoring. The
 // down-rank is for injection only; recall and search are untouched.
-func (s *Server) adherenceFilter(r *http.Request, query string, items []contextItem, minRel float64) ([]contextItem, map[string]any) {
+func (s *Server) adherenceFilter(r *http.Request, query string, items []contextItem, minRel float64) ([]contextItem, map[string]any, map[string]bool) {
 	var perm map[string]any
+	ask := map[string]bool{}
 	if r.URL.Query().Get("stage") == "action" {
 		tool, target := actionParts(r, query)
 		var forced []contextItem
 		forced, perm = s.enforceFor(r, tool, target)
-		ri, rp := s.ruleHits(r, actionFromQuery(r, tool, target))
+		for _, f := range forced {
+			ask[itemTarget(f)] = true
+		}
+		ri, rp, enforced := s.ruleHits(r, actionFromQuery(r, tool, target))
 		forced = append(forced, ri...)
+		for t := range enforced {
+			ask[t] = true
+		}
 		perm = mergePermission(perm, rp)
 		for _, f := range forced {
 			f.score = 1
@@ -107,7 +122,7 @@ func (s *Server) adherenceFilter(r *http.Request, query string, items []contextI
 			}
 		}
 	}
-	return items, perm
+	return items, perm, ask
 }
 
 // actionParts splits an action-stage query, "Bash git push", into tool and
@@ -174,6 +189,8 @@ type outcomeIn struct {
 	// Cwd and Agent scope compiled rule checks (docs/MEMORY_RULES.md); optional.
 	Cwd   string `json:"cwd"`
 	Agent string `json:"agent"`
+	// The utilization trace's outcome codes (memory_trace.go).
+	traceFields
 }
 
 var tagRE = regexp.MustCompile(`^[0-9a-f]{4,8}$`)
@@ -201,6 +218,10 @@ func (s *Server) memoryOutcome(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if !in.traceFields.valid() {
+		writeErr(w, http.StatusBadRequest, "invalid trace fields")
+		return
+	}
 	if len(in.FP) > 16 {
 		writeErr(w, http.StatusBadRequest, "fp has at most 16 tags")
 		return
@@ -213,7 +234,7 @@ func (s *Server) memoryOutcome(w http.ResponseWriter, r *http.Request) {
 	}
 	if in.Pre {
 		_, perm := s.enforceFor(r, in.Tool, in.Target)
-		_, rp := s.ruleHits(r, actionContext{in.Session, in.Tool, in.Target, in.Cwd, in.Agent})
+		_, rp, _ := s.ruleHits(r, actionContext{in.Session, in.Tool, in.Target, in.Cwd, in.Agent})
 		perm = mergePermission(perm, rp)
 		writeJSON(w, http.StatusOK, map[string]any{"permission": perm})
 		return
@@ -225,6 +246,11 @@ func (s *Server) memoryOutcome(w http.ResponseWriter, r *http.Request) {
 	}
 	since := time.Now().Add(-outcomeWindow)
 	resp := map[string]any{"ok": true}
+	if in.Prompt && in.Tool == "" {
+		s.tracePrompt(in.Session, in.Corr)
+		writeJSON(w, http.StatusOK, resp)
+		return
+	}
 	if in.Tool != "" {
 		rows, err := st.OpenRows(in.Session, since)
 		if err != nil {
@@ -246,6 +272,7 @@ func (s *Server) memoryOutcome(w http.ResponseWriter, r *http.Request) {
 		}
 		s.ruleObserve(actionContext{in.Session, in.Tool, in.Target, in.Cwd, in.Agent}, st, rows)
 		st.BumpTools(in.Session, since)
+		s.recordTrace(st, in, rows, checks)
 	}
 	if len(in.Cited) > 0 {
 		n, _ := st.MarkCited(in.Session, in.Cited, since)
@@ -254,7 +281,11 @@ func (s *Server) memoryOutcome(w http.ResponseWriter, r *http.Request) {
 	if len(in.FP) > 0 {
 		resp["fp"] = s.recordFingerprintCounts(r, st, in.Session, in.FP, since)
 	}
+	for tag, score := range in.Meaning {
+		st.SetMeaning(in.Session, tag, score, since)
+	}
 	if in.Stop {
+		st.FinishReminders(in.Session)
 		rows, err := st.Finalize(in.Session, since)
 		if err != nil {
 			writeErr(w, http.StatusInternalServerError, err.Error())

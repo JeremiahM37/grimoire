@@ -22,6 +22,19 @@ the preimages nor any text leave the machine.
   context hook's action response already carries this; see
   docs/MEMORY_ADHERENCE.md for the two ways to wire it.
 
+Utilization trace (docs/MEMORY_TRACE.md): beside the tool and its target, each
+PostToolUse also sends OUTCOME CODES for the call, read locally from the tool
+response and never sent as text: failed / exit code, test pass and fail counts
+for go test, pytest, npm test and cargo test, whether the call re-edited or
+reverted an earlier edit of the same lines (ids of hashed line sets), whether
+the same command has now run three times, whether the user or harness denied it,
+and which memories' fingerprints or tags THIS call carries. The prompt event
+sends one bit, whether the prompt corrects the agent, classified locally by a
+regex. PostToolUseFailure (Claude Code) is handled like a failed PostToolUse.
+Events, tool names and payload fields come from the agent profile
+(`--agent NAME`), so any agent with a profile works. GRIMOIRE_TRACE=0 turns the
+trace fields off.
+
 Fails silently: a missing server must never disturb the agent.
 """
 
@@ -30,8 +43,10 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.parse
 import urllib.request
+from pathlib import Path
 
 FP_RUN = re.compile(r"[a-z0-9_./:~@%+#$=\-]+")
 FP_SPEC = 1
@@ -284,6 +299,344 @@ def turn_text(transcript_path, limit=524288):
             parts.extend(reversed(_texts((entry.get("message") or {}).get("content"))))
     return "\n".join(reversed(parts))
 
+# ---- agent profile (the same shape grimoire_context.py reads) --------------
+
+DEFAULT_EVENTS = {"prompt": "UserPromptSubmit", "pre_action": "PreToolUse", "post_action": "PostToolUse",
+                  "post_action_failure": "PostToolUseFailure", "stop": "Stop"}
+DEFAULT_FIELDS = {"event": "hook_event_name", "prompt": "prompt", "tool": "tool_name",
+                  "tool_input": "tool_input", "session": "session_id", "cwd": "cwd",
+                  "transcript": "transcript_path"}
+DEFAULT_PROFILE = {"name": "claude-code", "hooks": {"events": DEFAULT_EVENTS}, "event_fields": DEFAULT_FIELDS,
+                   "actions": ACTION_TOOLS, "delegation_tools": ["Agent", "Task"]}
+TU_FIELDS = ("tool_use_id", "toolUseId", "tool_call_id", "call_id", "tool_use.id")
+TU_RE = re.compile(r"[A-Za-z0-9_\-:.]{1,128}")
+
+
+def load_profile(name, environment):
+    """The resolved profile `grimoire agent install` wrote, or Claude Code's shape.
+    Never an error: a hook that fails loudly stops the agent's turn."""
+    if not name or not re.fullmatch(r"[a-z][a-z0-9_-]{0,31}", name):
+        return DEFAULT_PROFILE
+    directory = environment.get("GRIMOIRE_AGENT_DIR") or str(Path.home() / ".grimoire" / "agents")
+    try:
+        raw = (Path(directory) / (name + ".json")).read_bytes()
+        value = json.loads(raw) if len(raw) <= 64000 else None
+    except (OSError, ValueError):
+        return DEFAULT_PROFILE
+    if not isinstance(value, dict):
+        return DEFAULT_PROFILE
+    merged = dict(DEFAULT_PROFILE)
+    merged.update({key: item for key, item in value.items() if item not in (None, {}, "")})
+    return merged
+
+
+def lookup(source, path):
+    """A JSON path ("a.b", or "a|b" to try a then b) into a payload."""
+    for option in str(path).split("|"):
+        value = source
+        for part in option.split("."):
+            value = value.get(part) if isinstance(value, dict) else None
+        if isinstance(value, list) and all(isinstance(v, str) for v in value):
+            value = " ".join(value)
+        if value not in (None, "", {}):
+            return value
+    return None
+
+
+def event_kind(event, profile, forced=None):
+    """post_action, post_action_failure, stop, pre_action or prompt - the
+    logical event, from --event or the profile's own event names."""
+    forced = {"post-action": "post_action", "pre-action": "pre_action", "action": "pre_action"}.get(forced, forced)
+    if forced in DEFAULT_EVENTS:
+        return forced
+    fields = profile.get("event_fields") or DEFAULT_FIELDS
+    native = lookup(event, fields.get("event", "hook_event_name"))
+    events = dict(DEFAULT_EVENTS)
+    events.update((profile.get("hooks") or {}).get("events") or {})
+    for logical in DEFAULT_EVENTS:
+        if events.get(logical) and events[logical] == native:
+            return logical
+    return None
+
+
+def profile_target(profile, tool, tool_input):
+    """The command or path of a call, per the profile's `actions`; None for a
+    tool that draws no memory."""
+    actions = profile.get("actions") or ACTION_TOOLS
+    if tool not in actions or not isinstance(tool_input, dict):
+        return None
+    if tool in (profile.get("delegation_tools") or []):
+        parts = [str(tool_input.get("subagent_type", "") or ""),
+                 "model " + str(tool_input.get("model", "") or "default"),
+                 str(tool_input.get("description", "") or ""),
+                 str(tool_input.get("prompt", "") or "")[:300]]
+        return " ".join(p for p in parts if p.strip())
+    value = lookup(tool_input, actions[tool])
+    return value if isinstance(value, str) else ""
+
+
+# ---- outcome codes from a tool response (all local; only codes are sent) ----
+
+EXIT_RE = re.compile(r"(?:\"exit_code\"\s*:\s*|Process exited with code |Exit code:? |exit code |exit status )(-?\d+)")
+DENIED_RE = re.compile(
+    r"(?i)(user (doesn'?t|does not|did not) want to (proceed|take this action)|the user rejected|"
+    r"tool use was rejected|rejected by (the )?user|denied by (the )?(user|policy|sandbox|hook)|"
+    r"blocked by (a |the )?hook|operation (was )?(cancelled|canceled) by (the )?user|request was denied)")
+FAIL_KEYS = ("is_error", "isError", "error")
+EXIT_KEYS = ("exit_code", "exitCode", "returncode", "return_code")
+TEXT_KEYS = ("stdout", "stderr", "output", "content", "message", "text", "error", "formatted_output")
+
+
+def _walk_response(value, depth=0):
+    """(failed, exit, text) found in a response of any agent's shape."""
+    failed, exit_code, text = None, None, []
+    if isinstance(value, str):
+        text.append(value[:20000])
+    elif isinstance(value, dict) and depth < 3:
+        for key in FAIL_KEYS:
+            item = value.get(key)
+            if isinstance(item, bool):
+                failed = item or failed
+            elif key == "error" and item not in (None, "", False):
+                failed = True
+        if value.get("success") is False or value.get("interrupted") is True:
+            failed = True
+        for key in EXIT_KEYS:
+            item = value.get(key)
+            if isinstance(item, int) and not isinstance(item, bool):
+                exit_code = item
+        for key in TEXT_KEYS:
+            item = value.get(key)
+            if isinstance(item, str):
+                text.append(item[:20000])
+            elif isinstance(item, list):
+                for block in item[:20]:
+                    if isinstance(block, dict) and isinstance(block.get("text"), str):
+                        text.append(block["text"][:20000])
+        for key in ("metadata", "result", "response", "state"):
+            if isinstance(value.get(key), dict):
+                f2, e2, t2 = _walk_response(value[key], depth + 1)
+                failed = failed or f2 or None
+                exit_code = e2 if e2 is not None else exit_code
+                text.append(t2)
+    return failed, exit_code, "\n".join(t for t in text if t)
+
+
+def parse_response(response, failure_event=False):
+    """-> dict(err 0/1/None, exit int/None, text, denied bool). `err` is None
+    when nothing was returned to read."""
+    if isinstance(response, str):
+        stripped = response.lstrip()
+        if stripped.startswith("{"):
+            try:
+                loaded = json.loads(stripped)
+                if isinstance(loaded, dict):
+                    response = loaded
+            except ValueError:
+                pass
+    failed, exit_code, text = _walk_response(response)
+    if exit_code is None:
+        found = EXIT_RE.search(text[:20000])
+        if found:
+            exit_code = int(found.group(1))
+    err = None
+    if failure_event or failed:
+        err = 1
+    elif exit_code is not None:
+        err = 1 if exit_code != 0 else 0
+    elif response not in (None, "", {}):
+        err = 0
+    return {"err": err, "exit": exit_code, "text": text,
+            "denied": bool(DENIED_RE.search(text[:20000]))}
+
+
+RUNNER = re.compile(r"(?:^|[\s;&|(])(?:go\s+test|pytest|py\.test|python3?\s+-m\s+(?:pytest|unittest)|npm\s+(?:run\s+)?test|"
+                    r"npm\s+t\b|yarn\s+test|pnpm\s+(?:run\s+)?test|npx\s+(?:jest|vitest|mocha)|jest|vitest|mocha|cargo\s+test)")
+
+
+def parse_tests(command, text):
+    """(passed, failed) counts from a test runner's output, or (None, None)."""
+    if not command or not text or not RUNNER.search(command):
+        return None, None
+    text = text[-20000:]
+    passed = failed = None
+    # cargo: one "test result:" line per test binary
+    results = re.findall(r"test result: (?:ok|FAILED)\. (\d+) passed; (\d+) failed", text)
+    if results:
+        return sum(int(p) for p, _ in results), sum(int(f) for _, f in results)
+    # jest / vitest
+    found = re.search(r"Tests:?\s+(.*?)(?:\n|$)", text)
+    if found and re.search(r"\d+ (?:passed|failed)", found.group(1)):
+        line = found.group(1)
+        p, f = re.search(r"(\d+) passed", line), re.search(r"(\d+) failed", line)
+        return int(p.group(1)) if p else 0, int(f.group(1)) if f else 0
+    # mocha
+    p, f = re.search(r"(\d+) passing", text), re.search(r"(\d+) failing", text)
+    if p or f:
+        return int(p.group(1)) if p else 0, int(f.group(1)) if f else 0
+    # pytest summary: "=== 2 failed, 5 passed, 1 skipped in 0.3s ===" (also "-q" form)
+    summary = [ln for ln in text.splitlines() if re.search(r"\b\d+ (?:passed|failed|errors?)\b", ln)
+               and re.search(r"\bin [\d.]+s\b", ln)]
+    if summary:
+        line = summary[-1]
+        p = re.search(r"(\d+) passed", line)
+        f = sum(int(n) for n in re.findall(r"(\d+) (?:failed|errors?)\b", line))
+        return int(p.group(1)) if p else 0, f
+    # go test: per-test lines with -v, else per-package lines
+    ok_t, fail_t = len(re.findall(r"^\s*--- PASS:", text, re.M)), len(re.findall(r"^\s*--- FAIL:", text, re.M))
+    ok_p, fail_p = len(re.findall(r"^ok\s", text, re.M)), len(re.findall(r"^FAIL\s", text, re.M))
+    if ok_t or fail_t:
+        return ok_t, fail_t
+    if ok_p or fail_p:
+        return ok_p, fail_p
+    return passed, failed
+
+
+# ---- edit regions: re-edit and revert of the same lines ----------------------
+
+PATCH_FILE = re.compile(r"^(?:\*\*\* (?:Update|Add|Delete) File: |\+\+\+ (?:b/)?)(\S.*)$", re.M)
+
+
+def _lines(text):
+    """Hashes of the non-trivial lines of a text (at most 64): the region."""
+    out = []
+    for line in str(text).splitlines():
+        line = line.strip()
+        if len(line) >= 6:
+            digest = hashlib.sha1(line.encode("utf-8", "replace")).hexdigest()[:8]
+            if digest not in out:
+                out.append(digest)
+        if len(out) >= 64:
+            break
+    return out
+
+
+def edit_parts(tool_input):
+    """(path, removed text, added text) of an edit-shaped tool call, or None.
+    Understands Edit/MultiEdit-style fields, whole-file writes and patch text."""
+    if not isinstance(tool_input, dict):
+        return None
+    path = lookup(tool_input, "file_path|path|notebook_path|filename") or ""
+    if isinstance(tool_input.get("edits"), list):
+        old = "\n".join(str(e.get("old_string", "")) for e in tool_input["edits"] if isinstance(e, dict))
+        new = "\n".join(str(e.get("new_string", "")) for e in tool_input["edits"] if isinstance(e, dict))
+        return str(path), old, new
+    if "new_string" in tool_input or "old_string" in tool_input:
+        return str(path), str(tool_input.get("old_string", "")), str(tool_input.get("new_string", ""))
+    for key in ("content", "new_source", "file_text"):
+        if isinstance(tool_input.get(key), str):
+            return str(path), "", tool_input[key]
+    patch = lookup(tool_input, "input|patch|command")
+    if isinstance(patch, str) and PATCH_FILE.search(patch):
+        files = PATCH_FILE.findall(patch)
+        old = "\n".join(ln[1:] for ln in patch.splitlines() if ln.startswith("-") and not ln.startswith("---"))
+        new = "\n".join(ln[1:] for ln in patch.splitlines() if ln.startswith("+") and not ln.startswith("+++"))
+        return ",".join(sorted(f.strip() for f in files)), old, new
+    return None
+
+
+def _path_id(path):
+    return hashlib.sha256(("path\0" + path).encode("utf-8", "replace")).hexdigest()[:12]
+
+
+def region_effects(state, parts):
+    """Compare this edit with the session's earlier ones. Returns (region id,
+    ids of earlier regions this edit edited again, ids it undid). The state
+    keeps only hashes of lines."""
+    path, old, new = parts
+    pid = _path_id(path)
+    old_l, new_l = set(_lines(old)), set(_lines(new))
+    region = hashlib.sha256((pid + "\0" + ",".join(sorted(new_l)) + "\0" + hashlib.sha256(new.encode("utf-8", "replace")).hexdigest()[:12]).encode()).hexdigest()[:16]
+    reedit, revert = [], []
+    for earlier in state.get("edits", []):
+        if earlier.get("path") != pid or earlier.get("region") == region:
+            continue
+        e_new, e_old = set(earlier.get("new", [])), set(earlier.get("old", []))
+        # Revert: this edit restores what the earlier one removed.
+        if e_old and len(new_l & e_old) >= max(1, int(0.8 * len(e_old))) and e_old != e_new:
+            revert.append(earlier["region"])
+            continue
+        # Re-edit: this edit changes lines the earlier one wrote (a whole-file
+        # write replaces everything the file held).
+        whole_file = not old
+        if whole_file or (old_l and len(old_l & e_new) >= max(1, min(len(old_l), len(e_new)) // 2)):
+            reedit.append(earlier["region"])
+    return region, reedit[:8], revert[:8]
+
+
+def remember_edit(state, parts, region):
+    path, old, new = parts
+    edits = [e for e in state.get("edits", []) if e.get("region") != region]
+    edits.append({"path": _path_id(path), "region": region, "old": _lines(old)[:32], "new": _lines(new)[:32]})
+    state["edits"] = edits[-48:]
+
+
+# ---- trace state: per session, hashes and counters only ------------------------
+
+TRACE_TTL = 6 * 3600
+
+
+def trace_path(environment, sid):
+    directory = environment.get("GRIMOIRE_CONTEXT_STATE_DIR") or os.path.join(
+        os.path.expanduser("~"), ".cache", "grimoire", "context")
+    return os.path.join(directory, "tr-" + sid + ".json")
+
+
+def trace_read(path):
+    try:
+        with open(path, "rb") as handle:
+            raw = handle.read(65537)
+        state = json.loads(raw) if len(raw) <= 65536 else None
+    except (OSError, ValueError):
+        state = None
+    if not isinstance(state, dict) or time.time() - state.get("ts", 0) > TRACE_TTL:
+        return {"ts": time.time(), "cmds": {}, "edits": []}
+    return state
+
+
+def trace_write(path, state):
+    state["ts"] = time.time()
+    state["cmds"] = dict(list(state.get("cmds", {}).items())[-128:])
+    fp_write(path, state)
+
+
+# ---- the local correction classifier -------------------------------------------
+
+CORRECTION = re.compile(
+    r"(?i)^\W*(?:no+\b(?!\s+(?:problem|worries|rush|need|issue|hurry))|nope\b|stop\b|wait\b|wrong\b|incorrect\b|undo\b|revert\b|actually\b|don'?t\b|do not\b|"
+    r"not (?:that|what|quite|like)\b|that'?s (?:not|wrong|incorrect)\b|why did you\b|"
+    r"i (?:said|told|asked|meant|wanted|didn'?t (?:ask|want))\b|"
+    r"you (?:didn'?t|forgot|broke|missed|should(?:n'?t| have)|shouldn'?t have|were supposed)\b|"
+    r"that (?:broke|doesn'?t work|didn'?t work|isn'?t (?:right|what))\b|still (?:broken|failing|wrong|not)\b|try again\b)"
+    r"|\b(?:i (?:already|just) (?:said|told|asked|mentioned)|like i said|as i (?:said|mentioned)|how many times|"
+    r"i told you|that'?s not what i|not what i (?:asked|wanted|said)|you keep (?:forgetting|doing))\b")
+
+
+def is_correction(prompt):
+    """A cheap local guess that a prompt corrects the agent. The text never
+    leaves this function; the server's own re-tell detector is a second vote."""
+    if not isinstance(prompt, str) or not prompt.strip() or len(prompt) > 4000:
+        return False
+    return bool(CORRECTION.search(prompt))
+
+
+def fp_event(state, text):
+    """{tag: fingerprints matched in THIS text} for the live items."""
+    out = {}
+    if not state or not text:
+        return out
+    cache = {}
+    for item in state.get("items", []):
+        if not isinstance(item, dict) or not isinstance(item.get("hashes"), list) or not isinstance(item.get("tag"), str):
+            continue
+        salt = item.get("salt", "")
+        if salt not in cache:
+            cache[salt] = {fp_hash(salt, token) for token in candidates(text)}
+        n = len(set(item["hashes"]) & cache[salt])
+        if n:
+            out[item["tag"]] = n
+    return out
+
 
 def post(base, token, body):
     headers = {"Content-Type": "application/json", "Accept": "application/json"}
@@ -298,19 +651,75 @@ def post(base, token, body):
     return result if isinstance(result, dict) else {}
 
 
-KIND_NAMES = {"post_action": "PostToolUse", "post-action": "PostToolUse", "stop": "Stop",
-              "pre_action": "PreToolUse", "pre-action": "PreToolUse"}
+AUTOMATED_PROMPT = re.compile(r"\s*(\[SYSTEM NOTIFICATION|<task-notification>|<system-reminder>)", re.IGNORECASE)
 
 
-def run(event, environment=None, send=post, kind=None):
+def tool_use_id(event, profile):
+    """The harness's id for this call, when its payload has one."""
+    fields = profile.get("event_fields") or {}
+    for path in ([fields["tool_use_id"]] if fields.get("tool_use_id") else []) + list(TU_FIELDS):
+        value = lookup(event, path)
+        if isinstance(value, str) and TU_RE.fullmatch(value):
+            return value
+    return None
+
+
+def trace_body(event, profile, environment, name, tool, tool_input, target, fp_state, state):
+    """The outcome codes of one executed call. Codes and counts only."""
+    fields = profile.get("event_fields") or {}
+    body = {}
+    response = lookup(event, fields.get("tool_response") or "tool_response|tool_result|error")
+    info = parse_response(response, failure_event=(name == "post_action_failure"))
+    if event.get("is_interrupt") is True:
+        info["denied"] = True
+        info["err"] = 1
+    if info["err"] is not None:
+        body["err"] = info["err"]
+    if info["exit"] is not None and -1000 <= info["exit"] <= 1000000:
+        body["exit"] = info["exit"]
+    passed, failed = parse_tests(target, info["text"])
+    if passed is not None:
+        body["tp"], body["tf"] = min(passed, 1000000), min(failed, 1000000)
+    if info["denied"]:
+        body["denied"] = True
+    key = hashlib.sha256((tool + "\0" + target.strip()).encode("utf-8", "replace")).hexdigest()[:16]
+    parts = edit_parts(tool_input)
+    if parts is None:  # editing one file three times is work, running one command three times is thrash
+        count = state["cmds"].get(key, 0) + 1
+        state["cmds"][key] = count
+        if count >= 3:
+            body["thrash"] = min(count, 1000)
+    if parts is not None and info["err"] != 1:
+        region, reedit, revert = region_effects(state, parts)
+        body["region"] = region
+        if reedit:
+            body["reedit"] = reedit
+        if revert:
+            body["revert"] = revert
+        remember_edit(state, parts, region)
+    tu = tool_use_id(event, profile)
+    if tu:
+        body["tu"] = tu
+    if fp_state is not None:
+        ev = fp_event({"items": fp_live(fp_state, environment)}, target)
+        if ev:
+            body["ev"] = ev
+    return body
+
+
+def run(event, environment=None, send=post, kind=None, profile=None):
     environment = os.environ if environment is None else environment
     if environment.get("GRIMOIRE_AUTO_CONTEXT", "1") == "0" or environment.get("GRIMOIRE_OUTCOME", "1") == "0":
         return None
+    profile = profile or DEFAULT_PROFILE
+    fields = profile.get("event_fields") or DEFAULT_FIELDS
     # `--event` names the event for agents whose own event names differ.
-    name = KIND_NAMES.get(kind) or event.get("hook_event_name", "")
-    if name not in {"PostToolUse", "Stop", "PreToolUse"}:
+    name = event_kind(event, profile, kind)
+    if name is None:
         return None
-    session = event.get("session_id", "")
+    session = lookup(event, fields.get("session", "session_id"))
+    if not session and profile.get("session_fallback"):
+        session = environment.get("GRIMOIRE_SESSION") or "cwd:" + str(lookup(event, fields.get("cwd", "cwd")) or "")
     if not isinstance(session, str) or not session or len(session) > 256:
         return None
     base = environment.get("GRIMOIRE_URL", "http://127.0.0.1:9111").rstrip("/")
@@ -323,11 +732,18 @@ def run(event, environment=None, send=post, kind=None):
         return None
     token = environment.get("GRIMOIRE_AUTH_TOKEN", "")
     sid = session_hash(session)
+    trace_on = environment.get("GRIMOIRE_TRACE", "1") != "0"
+    if name == "prompt":
+        prompt = lookup(event, fields.get("prompt", "prompt"))
+        if (trace_on and isinstance(prompt, str) and prompt.strip() and len(prompt.encode()) <= 8000
+                and not AUTOMATED_PROMPT.match(prompt)):
+            send(base, token, {"session": sid, "prompt": True, "corr": is_correction(prompt)})
+        return None
     fp_file = fp_path(environment, sid)
     fp_state = fp_read(fp_file) if environment.get("GRIMOIRE_FINGERPRINTS", "1") != "0" else None
-    if name == "Stop":
+    if name == "stop":
         tags = []
-        path = event.get("transcript_path")
+        path = lookup(event, fields.get("transcript", "transcript_path"))
         if isinstance(path, str) and path:
             tags = cited_tags(path)
             if fp_state is not None:
@@ -345,15 +761,14 @@ def run(event, environment=None, send=post, kind=None):
             fp_write(fp_file, fp_state)
         send(base, token, body)
         return None
-    tool = event.get("tool_name", "")
-    if tool not in ACTION_TOOLS:
+    tool = lookup(event, fields.get("tool", "tool_name")) or ""
+    target = profile_target(profile, tool, lookup(event, fields.get("tool_input", "tool_input")))
+    if target is None or not target.strip() or len(target.encode()) > 4000:
         return None
-    target = action_target(tool, event.get("tool_input", {}))
-    if not target.strip() or len(target.encode()) > 4000:
-        return None
-    if name == "PostToolUse":
+    if name in {"post_action", "post_action_failure"}:
         body = {"session": sid, "tool": tool, "target": target}
         if fp_state is not None and fp_state["items"]:
+            ev_state = {"turn": fp_state.get("turn", 0), "items": [dict(item) for item in fp_state["items"]]}
             fp_match(fp_state, environment, target)
             for item in fp_live(fp_state, environment):
                 item["tools"] = item.get("tools", 0) + 1
@@ -361,6 +776,17 @@ def run(event, environment=None, send=post, kind=None):
             if matched:
                 body["fp"] = matched
             fp_write(fp_file, fp_state)
+        else:
+            ev_state = None
+        if trace_on:
+            tr_file = trace_path(environment, sid)
+            state = trace_read(tr_file)
+            body.update(trace_body(event, profile, environment, name, tool,
+                                   lookup(event, fields.get("tool_input", "tool_input")), target, ev_state, state))
+            trace_write(tr_file, state)
+            tags = TAG.findall(target)
+            if tags:
+                body["cited"] = list(dict.fromkeys(tags))[:8]
         send(base, token, body)
         return None
     if environment.get("GRIMOIRE_OUTCOME_ENFORCE", "0") != "1":
@@ -383,12 +809,16 @@ def permission_output(permission):
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
-    kind = None
+    kind, agent = None, os.environ.get("GRIMOIRE_AGENT_PROFILE", "")
     for index, argument in enumerate(argv):
         if argument == "--event" and index + 1 < len(argv):
             kind = argv[index + 1]
         elif argument.startswith("--event="):
             kind = argument[8:]
+        elif argument == "--agent" and index + 1 < len(argv):
+            agent = argv[index + 1]
+        elif argument.startswith("--agent="):
+            agent = argument[8:]
     try:
         raw = sys.stdin.buffer.read(65001)
         if len(raw) > 65000:
@@ -396,7 +826,7 @@ def main(argv=None):
         event = json.loads(raw)
         if not isinstance(event, dict):
             return
-        result = run(event, kind=kind)
+        result = run(event, kind=kind, profile=load_profile(agent, os.environ))
         if result:
             print(json.dumps(result))
     except (OSError, ValueError, TypeError, OverflowError):

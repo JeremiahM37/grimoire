@@ -58,6 +58,11 @@ prompt, and extracts only the `m:` tags and fingerprint match counts. It fails
 silently.
 `GRIMOIRE_OUTCOME=0` turns it off.
 
+The outcome hook also feeds the **utilization trace**: whether a memory that was
+used led to a better outcome, with outcome codes per action, a natural experiment
+at the action stage and an optional randomised holdout. See
+[MEMORY_TRACE.md](MEMORY_TRACE.md).
+
 ## Fingerprints: use without a tag
 
 Agents rarely write the `(m:3e99)` tag (qwen 14% of the time even when asked), so

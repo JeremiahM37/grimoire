@@ -169,6 +169,14 @@ var Fields = map[string]Field{
 	"memory_verify_ports":     {"GRIMOIRE_MEMORY_VERIFY_PORTS", ""},
 	"memory_other_hosts":      {"GRIMOIRE_MEMORY_OTHER_HOSTS", ""},
 	"memory_verify_per_dream": {"GRIMOIRE_MEMORY_VERIFY_PER_DREAM", "3"},
+	// Utilization trace (docs/MEMORY_TRACE.md). The holdout withholds each
+	// eligible injected memory with this probability (0 = off, at most 0.5)
+	// and logs it as would-have-injected, so a causal effect can be measured.
+	// Rules with enforce or an active compiled check, and pinned memories, are
+	// never withheld. min_arm is the decisions each arm needs before the causal
+	// estimate is attempted.
+	"memory_holdout_rate":  {"GRIMOIRE_MEMORY_HOLDOUT_RATE", "0"},
+	"memory_trace_min_arm": {"GRIMOIRE_MEMORY_TRACE_MIN_ARM", "10"},
 }
 
 // InternalFields are persisted in the same file and resolved the same way, but

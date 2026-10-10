@@ -98,7 +98,8 @@ def test_post_tool_use_sends_only_a_count_when_a_fingerprint_appears(tmp_path):
     body = calls[1]
     assert body["fp"] == {"3e99": 2}
     # Only the counts leave; no hash, token or text beyond the existing target.
-    assert set(body) == {"session", "tool", "target", "fp"}
+    # ev is the same match counted for this call alone (the trace's link evidence).
+    assert set(body) == {"session", "tool", "target", "fp", "ev"} and body["ev"] == {"3e99": 2}
     state = json.loads((tmp_path / ("fp-" + SID + ".json")).read_text())
     assert state["items"][0]["tools"] == 2
 

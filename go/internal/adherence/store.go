@@ -72,6 +72,10 @@ func Open(dir string) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("adherence schema: %w", err)
 	}
+	if err := migrateTrace(db); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("adherence schema: %w", err)
+	}
 	return &Store{db: db}, nil
 }
 
@@ -114,6 +118,16 @@ type Injection struct {
 	// classified as before fingerprints existed.
 	FPKnown bool
 	FPN     int
+	// Trace fields (trace.go). Kind is the memory kind. PWithhold is the
+	// holdout probability this item faced (0: it was never eligible to be
+	// withheld). At the action stage Tool and Pend identify the pending call
+	// the memory was shown for, TU is its tool_use id when known, and Ask says
+	// an enforce: ask rule forced the decision.
+	Kind       string
+	PWithhold  float64
+	Tool, Pend string
+	TU         string
+	Ask        bool
 }
 
 // Tags returns the shortest hex prefix of each key (at least min characters)
@@ -177,17 +191,16 @@ func (s *Store) Log(items []Injection, now time.Time) error {
 		if !it.FPKnown {
 			it.FPN = -1
 		}
-		if _, err := tx.Exec(`INSERT INTO injections(session,tag,key,target,path,fact_id,stage,relevance,ts,fp_n) VALUES(?,?,?,?,?,?,?,?,?,?)`,
-			it.Session, it.Tag, it.Key, it.Target, it.Path, it.FactID, it.Stage, it.Relevance, now.Unix(), it.FPN); err != nil {
+		if _, err := tx.Exec(`INSERT INTO injections(session,tag,key,target,path,fact_id,stage,relevance,ts,fp_n,kind,p_withhold,tool,pend,tu,ask) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			it.Session, it.Tag, it.Key, it.Target, it.Path, it.FactID, it.Stage, it.Relevance, now.Unix(), it.FPN,
+			it.Kind, it.PWithhold, it.Tool, it.Pend, it.TU, b2i(it.Ask)); err != nil {
 			tx.Rollback()
 			return err
 		}
 	}
 	if now.Sub(s.lastPrune) > time.Minute {
 		s.lastPrune = now
-		tx.Exec(`DELETE FROM injections WHERE ts < ?`, now.Add(-Retention).Unix())
-		tx.Exec(`DELETE FROM injections WHERE id <= (SELECT COALESCE(MAX(id),0) FROM injections) - ?`, maxRows)
-		tx.Exec(`DELETE FROM gate_log WHERE ts < ?`, now.Add(-Retention).Unix())
+		pruneAll(tx, now)
 	}
 	return tx.Commit()
 }

@@ -363,15 +363,16 @@ func actionFromQuery(r *http.Request, tool, target string) actionContext {
 
 // ruleHits finds the active compiled checks a live call trips, as injected
 // items plus a permission decision when any of them enforces.
-func (s *Server) ruleHits(r *http.Request, a actionContext) ([]contextItem, map[string]any) {
+func (s *Server) ruleHits(r *http.Request, a actionContext) ([]contextItem, map[string]any, map[string]bool) {
 	_, live := s.rules()
 	if live == nil || a.tool == "" || a.target == "" {
-		return nil, nil
+		return nil, nil, nil
 	}
 	hits := live.Check(a.session, a.tool, a.target, a.cwd, a.agent)
 	if len(hits) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
+	enforced := map[string]bool{}
 	var items []contextItem
 	var reasons []string
 	seen := map[string]bool{}
@@ -385,14 +386,15 @@ func (s *Server) ruleHits(r *http.Request, a actionContext) ([]contextItem, map[
 			items = append(items, it)
 		}
 		if h.Enforce {
+			enforced[h.Row.Target] = true
 			reasons = append(reasons, "Grimoire rule: "+clipText(strings.Join(strings.Fields(h.Row.RuleText), " "), 240))
 		}
 	}
 	if len(reasons) == 0 {
-		return items, nil
+		return items, nil, nil
 	}
 	return items, map[string]any{"decision": "ask", "reason": strings.Join(reasons, " | ") +
-		fmt.Sprintf(" (a compiled check measured at precision >= %.2f flags this action; allow only if the user wants it)", s.rulesPolicy().MinPrecision)}
+		fmt.Sprintf(" (a compiled check measured at precision >= %.2f flags this action; allow only if the user wants it)", s.rulesPolicy().MinPrecision)}, enforced
 }
 
 // ruleObserve is the PostToolUse side: count firings, mark the injected rule

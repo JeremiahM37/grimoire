@@ -34,13 +34,17 @@ def assistant(text):
     return {"type": "assistant", "message": {"content": [{"type": "text", "text": text}]}}
 
 
-def test_post_tool_use_sends_tool_and_target_only():
+def test_post_tool_use_sends_tool_and_target_only(tmp_path):
     calls, send = recorder()
     event = {"hook_event_name": "PostToolUse", "session_id": "abc", "tool_name": "Bash",
              "tool_input": {"command": "git push origin main"}, "tool_response": {"stdout": "SECRET"}}
-    assert hook.run(event, {}, send) is None
-    assert calls[0][2] == {"session": sid("abc"), "tool": "Bash", "target": "git push origin main"}
+    assert hook.run(event, {"GRIMOIRE_CONTEXT_STATE_DIR": str(tmp_path)}, send) is None
+    # The only addition is the outcome code (no error); the output stays here.
+    assert calls[0][2] == {"session": sid("abc"), "tool": "Bash", "target": "git push origin main", "err": 0}
     assert "SECRET" not in json.dumps(calls)
+    legacy = {"GRIMOIRE_CONTEXT_STATE_DIR": str(tmp_path), "GRIMOIRE_TRACE": "0"}
+    assert hook.run(event, legacy, send) is None
+    assert calls[1][2] == {"session": sid("abc"), "tool": "Bash", "target": "git push origin main"}
 
 
 def test_non_action_tools_and_other_events_send_nothing():

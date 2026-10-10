@@ -12,6 +12,7 @@
       "prompt": "UserPromptSubmit",
       "pre_action": "PreToolUse",
       "post_action": "PostToolUse",
+      "post_action_failure": "PostToolUseFailure",
       "stop": "Stop",
       "session_end": "SessionEnd",
       "file_read": "PreToolUse"
@@ -19,6 +20,7 @@
     "matchers": {
       "session_start": "startup|resume|clear|compact",
       "post_action": "Edit|MultiEdit|Write|NotebookEdit|Bash",
+      "post_action_failure": "Edit|MultiEdit|Write|NotebookEdit|Bash",
       "file_read": "Read"
     },
     "timeouts": {

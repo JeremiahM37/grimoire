@@ -23,6 +23,7 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/build"
 	"github.com/JeremiahM37/grimoire/go/internal/cues"
 	"github.com/JeremiahM37/grimoire/go/internal/rulecheck"
+	"github.com/JeremiahM37/grimoire/go/internal/utilization"
 
 	"github.com/JeremiahM37/grimoire/go/internal/ai"
 	"github.com/JeremiahM37/grimoire/go/internal/auth"
@@ -101,9 +102,16 @@ type Server struct {
 	cueStore *cues.Store
 	recent   recentQueries
 
-	adhOnce  sync.Once
-	adhStore *adherence.Store
-	fpDF     fpCache
+	adhOnce sync.Once
+	// Estimator turns the holdout's decision records into a causal effect
+	// (docs/MEMORY_TRACE.md); nil means none is installed.
+	Estimator utilization.Estimator
+	holdRand  func() float64 // test hook: replaces the holdout's random draw
+	holdMu    sync.Mutex
+	holdProt  map[string]bool
+	holdAt    time.Time
+	adhStore  *adherence.Store
+	fpDF      fpCache
 }
 
 // Routes builds the mux. Specific paths are registered before the catch-all
@@ -222,6 +230,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/memory/feedback", s.feedback)
 	mux.HandleFunc("POST /api/memory/outcome", s.memoryOutcome)
 	mux.HandleFunc("GET /api/memory/adherence", s.adherenceReport)
+	mux.HandleFunc("GET /api/memory/trace", s.traceCard)
+	mux.HandleFunc("GET /api/memory/trace/summary", s.traceSummary)
 	mux.HandleFunc("GET /api/memory/check", s.listChecks)
 	mux.HandleFunc("POST /api/memory/check", s.setCheck)
 	mux.HandleFunc("DELETE /api/memory/check", s.deleteCheck)

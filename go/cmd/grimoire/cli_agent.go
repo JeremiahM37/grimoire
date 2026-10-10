@@ -163,14 +163,20 @@ func contextSpecs(p *agentprofile.Profile, command string) []hookSpec {
 // names differ.
 func outcomeSpecs(p *agentprofile.Profile, base string) []hookSpec {
 	var specs []hookSpec
-	for _, logical := range []string{"post_action", "stop"} {
+	// post_action_failure: Claude Code reports a failed call on its own event,
+	// not on PostToolUse. prompt: the next prompt says whether the agent was
+	// corrected (the utilization trace, docs/MEMORY_TRACE.md).
+	for _, logical := range []string{"post_action", "post_action_failure", "prompt", "stop"} {
 		native := p.Hooks.Events[logical]
 		if native == "" {
 			continue
 		}
 		matcher := ""
-		if logical == "post_action" {
+		if logical == "post_action" || logical == "post_action_failure" {
 			matcher = p.Hooks.Matchers[logical]
+			if matcher == "" {
+				matcher = p.Hooks.Matchers["post_action"]
+			}
 			if matcher == "" {
 				var tools []string
 				for tool := range p.Actions {
@@ -181,7 +187,7 @@ func outcomeSpecs(p *agentprofile.Profile, base string) []hookSpec {
 			}
 		}
 		specs = append(specs, hookSpec{event: native, matcher: matcher, timeout: 3,
-			command: base + " --event " + logical, marker: outcomeMarker})
+			command: base + " --agent " + p.Name + " --event " + logical, marker: outcomeMarker})
 	}
 	return specs
 }

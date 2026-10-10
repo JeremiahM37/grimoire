@@ -290,6 +290,8 @@ Settings added by the agent-memory work, plus the hook-side variables read by th
 | `GRIMOIRE_MEMORY_VERIFY_PORTS` | *(empty)* | Comma-separated ports a procedure check may probe; empty probes none |
 | `GRIMOIRE_MEMORY_OTHER_HOSTS` | *(empty)* | Other hosts a procedure check may probe on those ports |
 | `GRIMOIRE_MEMORY_VERIFY_PER_DREAM` | `3` | How many due procedures one dream verifies |
+| `GRIMOIRE_MEMORY_HOLDOUT_RATE` | `0` (off) | Probability (0-0.5) that each eligible injected memory is withheld and logged as would-have-injected, so its causal effect can be measured. Pinned memories and rules with `enforce` or an active compiled check are never withheld ([MEMORY_TRACE.md](MEMORY_TRACE.md)) |
+| `GRIMOIRE_MEMORY_TRACE_MIN_ARM` | `10` | Shown and withheld decisions (each) a memory needs before its causal estimate is attempted; below that the card says "insufficient data" |
 | `GRIMOIRE_DREAM_REPORT_DIR` | `Dreams` | Vault folder the dream report note is written to |
 | `GRIMOIRE_DREAM_PROJECTS_DIR` | *(empty)* | An agent's per-project directory (e.g. `~/.claude/projects`); with the canonical memory directory, a dream reports projects whose `memory/` is a separate real directory |
 | `GRIMOIRE_DREAM_CANONICAL_MEMORY` | *(empty)* | The memory directory every project is meant to share |
@@ -315,6 +317,7 @@ Settings added by the agent-memory work, plus the hook-side variables read by th
 | `GRIMOIRE_CONTEXT_STATE_DIR` | `~/.cache/grimoire/context` | Hook side: dedupe state |
 | `GRIMOIRE_CONTEXT_DEBUG` | *(off)* | Hook side: `1` prints a note to stderr when the hook cannot reach the server |
 | `GRIMOIRE_OUTCOME` | `1` | Hook side: `0` turns off adherence reporting (`grimoire_outcome.py`) |
+| `GRIMOIRE_TRACE` | `1` | Hook side: `0` stops the outcome hook sending the utilization trace's outcome codes and prompt-correction bit, and the context hook sending the tool_use id ([MEMORY_TRACE.md](MEMORY_TRACE.md)) |
 | `GRIMOIRE_OUTCOME_ENFORCE` | `0` | Hook side: `1` makes the outcome hook ask the server on `PreToolUse` and emit a permission `ask` for `enforce: ask` rules. The context hook already does this; prefer it ([MEMORY_ADHERENCE.md](MEMORY_ADHERENCE.md)) |
 | `GRIMOIRE_BANK_SESSIONS` | *(off)* | Hook side: `1` retains session transcripts into the bank (set by `agent install`) |
 | `GRIMOIRE_BANK_CONTEXT` | *(off)* | Hook side: `1` adds the bank's context at session start |

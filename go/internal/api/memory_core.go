@@ -151,6 +151,7 @@ func (s *Server) annotateItem(it *contextItem) {
 		category := ""
 		if err == nil && len(hits) == 1 {
 			category = hits[0].Category
+			it.pinned = hits[0].Immutable
 		}
 		it.Kind = memstore.KindOfFact(category, it.Text)
 		key = "fact:" + it.ID

@@ -153,7 +153,21 @@ def normalise(event, profile, forced=None):
             "cwd": str(cwd), "source": lookup(event, fields.get("source", "source")),
             "prompt": lookup(event, fields.get("prompt", "prompt")) if kind == "prompt" else "",
             "tool": lookup(event, fields.get("tool", "tool_name")) or "",
-            "tool_input": lookup(event, fields.get("tool_input", "tool_input"))}
+            "tool_input": lookup(event, fields.get("tool_input", "tool_input")),
+            "tool_use_id": tool_use_id(event, fields)}
+
+
+TU_FIELDS = ("tool_use_id", "toolUseId", "tool_call_id", "call_id", "tool_use.id")
+
+
+def tool_use_id(event, fields):
+    """The harness's id for a tool call, when its payload has one. It pairs the
+    memory shown for a pending call with that call's outcome (docs/MEMORY_TRACE.md)."""
+    for path in ([fields["tool_use_id"]] if fields.get("tool_use_id") else []) + list(TU_FIELDS):
+        value = lookup(event, path)
+        if isinstance(value, str) and re.fullmatch(r"[A-Za-z0-9_\-:.]{1,128}", value):
+            return value
+    return None
 
 
 def ask_reason(result):
@@ -390,6 +404,8 @@ def action_context(norm, environment, fetch, now, state, state_path, base, token
     # its prompt pairing.
     if norm.get("session"):
         extra["session"] = fingerprint("session\0" + norm["session"])[:32]
+        if norm.get("tool_use_id") and environment.get("GRIMOIRE_TRACE", "1") != "0":
+            extra["tu"] = norm["tool_use_id"]
     result = fetch(base, token, query, list(recent)[-128:], budget, mode, paths, extra)
     context = result.get("context", "")
     keys = result.get("keys", [])

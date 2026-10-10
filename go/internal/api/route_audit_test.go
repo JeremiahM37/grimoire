@@ -169,6 +169,8 @@ var routeAccess = map[string]access{
 	"GET /api/memory/cues":                                       scoped,
 	"GET /api/memory/core":                                       scoped, // rules + topic pointers; the canonical dir only for admins
 	"GET /api/memory/adherence":                                  scoped, // per-memory rates, filtered to readable memories
+	"GET /api/memory/trace":                                      scoped, // per-memory trace card; 404 for memories the caller cannot read
+	"GET /api/memory/trace/summary":                              admin,  // counts across every memory; checked in the handler
 	"GET /api/memory/check":                                      scoped, // checks and proposals, filtered to readable memories
 	"GET /api/memory/rules":                                      admin,  // compiled checks with their evidence; checked in the handler
 	"GET /api/memory/impact":                                     admin,  // reads agent transcripts on this host; checked in the handler

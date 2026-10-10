@@ -74,11 +74,11 @@ are errors, so a typo is not ignored.
 | `detect` | paths whose presence means the agent is installed; `install` with no agent named uses the detected ones |
 | `hooks.file` | the hooks file; `~/` is expanded. Empty means "not installable yet" |
 | `hooks.format` | `claude-json` (the only one so far) |
-| `hooks.events` | logical event to the agent's own name: `session_start`, `prompt`, `pre_action`, `post_action`, `stop`, `session_end`, `file_read` |
+| `hooks.events` | logical event to the agent's own name: `session_start`, `prompt`, `pre_action`, `post_action`, `post_action_failure` (agents that report a failed call on its own event, as Claude Code's `PostToolUseFailure`), `stop`, `session_end`, `file_read` |
 | `hooks.matchers` | logical event to the tool matcher; `pre_action` defaults to the tools in `actions` |
 | `hooks.timeouts` | seconds per logical event (bank hooks only) |
 | `hooks.trust` | `codex`: record the agent's own trust hash in `config.toml` |
-| `event_fields` | JSON paths in the payload: `event`, `prompt`, `tool`, `tool_input`, `session`, `cwd`, `source`, `transcript`. Dotted paths reach into objects (`message.text`); `a\|b` tries `a` then `b`; a list of strings is joined with spaces |
+| `event_fields` | JSON paths in the payload: `event`, `prompt`, `tool`, `tool_input`, `session`, `cwd`, `source`, `transcript`, and for the utilization trace optionally `tool_response` and `tool_use_id` (defaults cover Claude Code and Codex; see [MEMORY_TRACE.md](MEMORY_TRACE.md)). Dotted paths reach into objects (`message.text`); `a\|b` tries `a` then `b`; a list of strings is joined with spaces |
 | `actions` | tool name to the field of its input that holds the command or path. Only these tools draw action context |
 | `delegation_tools` | tools that launch a sub-agent; matched on purpose and model, not the whole brief |
 | `session_fallback` | the agent sends no session id: use `GRIMOIRE_SESSION`, else the working directory |
