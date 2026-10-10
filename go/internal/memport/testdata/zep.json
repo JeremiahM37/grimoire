@@ -1,0 +1,6 @@
+[
+  {"uuid": "e1", "fact": "Jeremiah's NAS is a TerraMaster TDAS",
+   "valid_at": "2025-01-10T00:00:00Z", "invalid_at": null, "created_at": "2026-01-11T09:00:00Z"},
+  {"uuid": "e2", "fact": "The router is a UniFi Dream Router 7",
+   "valid_at": "2026-08-21T00:00:00Z", "invalid_at": "2026-09-01T00:00:00Z", "created_at": "2026-08-21T12:00:00Z"}
+]

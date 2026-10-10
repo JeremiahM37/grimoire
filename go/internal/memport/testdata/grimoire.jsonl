@@ -1,0 +1,4 @@
+{"format":"grimoire-memory","version":1,"exported":"2026-08-14T09:00:00Z","count":3}
+{"id":"a1b2c3d4e5f6","text":"The deploy needs a VPN reset","path":"memory/ops.md","agent":"claude-code","task":"deploy","session":"run-1","category":"fact","stamp":"2026-08-14 09:00","authority":"agent"}
+{"id":"ffee00112233","text":"The box is fast","path":"memory/ops.md","agent":"cli","stamp":"2026-08-13 08:30","origin":"connector:slack:C1","superseded_by":"a1b2c3d4e5f6","challenges":"","immutable":true,"expires":"2027-01-01T00:00:00Z"}
+{"id":"0badc0ffee00","text":"Stamp is broken","path":"memory/ops.md","agent":"cli","stamp":"yesterday"}

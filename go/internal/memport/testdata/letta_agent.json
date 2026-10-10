@@ -1,0 +1,13 @@
+{
+  "agents": [{
+    "name": "homelab",
+    "memory": {"blocks": [
+      {"label": "persona", "value": "Terse, precise, prefers shell over GUI."},
+      {"label": "human", "value": "Name is Jeremiah. Works nights."},
+      {"label": "empty", "value": ""}
+    ]},
+    "archival_passages": [
+      {"text": "Restic repo lives on MediaServer.", "created_at": "2026-02-01T00:00:00Z"}
+    ]
+  }]
+}

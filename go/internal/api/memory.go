@@ -151,6 +151,12 @@ type memoryIn struct {
 
 	// inherit is the fact this write replaces, whose history it carries.
 	inherit *memory.Entry
+
+	// restore is set only by a portability import of a grimoire-memory export
+	// (memory_portability.go). It carries the recorded stamp, id, supersession
+	// and challenge so that re-importing an export reproduces the same entries.
+	// Nothing outside that path can set it, because the field is unexported.
+	restore *restoredFact
 }
 
 // Reconciliation scopes.
@@ -273,6 +279,9 @@ func (s *Server) rememberOne(w http.ResponseWriter, r *http.Request, m memoryIn)
 	}
 	task := strings.TrimSpace(m.Task)
 	rel := s.memoryRel(m.Topic)
+	if m.restore != nil && index.IsMemoryPath(normPath(m.restore.Path)) {
+		rel = normPath(m.restore.Path)
+	}
 	if m.TargetID != "" {
 		rel = normPath(m.TargetPath)
 	}
@@ -542,6 +551,14 @@ func (s *Server) appendEntryChallenging(w http.ResponseWriter, r *http.Request, 
 	agent, task string, m memoryIn, expires, supersededBy, challenges string) (string, error) {
 
 	stamp := vault.Now().Format("2006-01-02 15:04")
+	restored := m.restore
+	if restored != nil {
+		// A restored fact keeps the stamp, id, supersession and challenge it
+		// was exported with; the write path would otherwise mint new ones.
+		stamp = restored.Entry.Stamp
+		supersededBy = restored.Entry.SupersededBy
+		challenges = restored.Entry.Challenges
+	}
 	e := memory.Entry{
 		ID: memory.DeriveID(stamp, agent, fact), Text: fact, Agent: agent,
 		Task: task, Session: strings.TrimSpace(m.Session), Stamp: stamp,
@@ -553,13 +570,17 @@ func (s *Server) appendEntryChallenging(w http.ResponseWriter, r *http.Request, 
 		Fresh: memory.NormFresh(m.Fresh),
 		Check: strings.TrimSpace(m.Check),
 	}
+	if restored != nil && restored.Entry.ID != "" {
+		e.ID = restored.Entry.ID
+	}
 	if m.inherit != nil {
 		inheritFreshness(&e, *m.inherit)
 	}
 	// A fact with no declared tier and no inherited verdict is the one whose
 	// prior a decision model can improve. Never for an untrusted fact: its
-	// text is someone else's, and is not sent to a third-party service.
-	if e.Fresh == "" && e.Vol == 0 && !e.Untrusted() {
+	// text is someone else's, and is not sent to a third-party service. A
+	// restored fact is not re-judged: it is put back as it was.
+	if restored == nil && e.Fresh == "" && e.Vol == 0 && !e.Untrusted() {
 		e.Vol, e.PriorRate = s.askVolatility(fact)
 	}
 
@@ -1426,6 +1447,10 @@ func (s *Server) rememberBatch(w http.ResponseWriter, r *http.Request) {
 // lock-in; here the markdown was always the export, and this is the shape a
 // program wants rather than the shape a person reads.
 func (s *Server) exportMemory(w http.ResponseWriter, r *http.Request) {
+	if f := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("format"))); f != "" && f != "json" {
+		s.exportPortable(w, r, f)
+		return
+	}
 	hits, err := s.Index.MemoryEntries(index.MemoryQuery{
 		Filter:            filterFor(r, true),
 		Agent:             strings.TrimSpace(r.URL.Query().Get("agent")),
