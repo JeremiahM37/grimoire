@@ -161,3 +161,30 @@ func TestSearchKeepsEncryptedBodiesSealed(t *testing.T) {
 		t.Error("snippet leaked plaintext from before encryption")
 	}
 }
+
+// A wikilink that resolves to nothing is still text somebody wrote, and the
+// graph used to list every such target to every caller: the "unresolved"
+// field was drawn from the whole links table with no reader filter. A target
+// written in a note the caller cannot read must not appear for that caller.
+func TestGraphUnresolvedTargetsFollowTheirSource(t *testing.T) {
+	s, h := testServer(t)
+	adminKey := makeUser(t, s, h, "", "root", "admin")
+	bobKey := makeUser(t, s, h, adminKey, "bob", "member")
+	if w := asKey(t, h, adminKey, "POST", "/api/notes", map[string]any{
+		"path": "users/root/plan.md", "body": "# Plan\n\nSee [[Zeta Acquisition Target]]."}); w.Code != http.StatusCreated {
+		t.Fatalf("seed = %d %s", w.Code, w.Body)
+	}
+	const secret = "Zeta Acquisition Target"
+
+	// The admin reads everything, so the link is listed for the admin: the
+	// test is only meaningful if the target really exists in the index.
+	if body := asKey(t, h, adminKey, "GET", "/api/graph", nil).Body.String(); !strings.Contains(body, secret) {
+		t.Fatalf("fixture: admin graph does not list the unresolved target: %s", body)
+	}
+	if body := asKey(t, h, bobKey, "GET", "/api/graph", nil).Body.String(); strings.Contains(body, secret) {
+		t.Errorf("bob's graph lists an unresolved target written in a note he cannot read: %s", body)
+	}
+	if body := do(t, h, "GET", "/api/graph", nil).Body.String(); strings.Contains(body, secret) {
+		t.Errorf("anonymous graph lists an unresolved target written in a note nobody may read: %s", body)
+	}
+}

@@ -240,14 +240,35 @@ func (s *Server) graph(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	// A link target is text the note that wrote it chose, so it is reported
+	// only when that note is one the caller may read. Filtering here by
+	// readable nodes alone is not enough: this list is not an edge, and an
+	// unresolved [[target]] in a private space was being returned to everyone.
+	aclByPath := map[string]string{}
+	if err := s.eachRow("SELECT path, acl FROM notes", nil, func(rows *sql.Rows) error {
+		var path, acl string
+		if err := rows.Scan(&path, &acl); err != nil {
+			return err
+		}
+		aclByPath[path] = acl
+		return nil
+	}); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 	unresolved := []string{}
+	seenTarget := map[string]bool{}
 	if err := s.eachRow(
-		"SELECT DISTINCT target FROM links WHERE resolved=0 ORDER BY target LIMIT 200", nil,
+		"SELECT src, target FROM links WHERE resolved=0 ORDER BY target", nil,
 		func(rows *sql.Rows) error {
-			var t string
-			if err := rows.Scan(&t); err != nil {
+			var src, t string
+			if err := rows.Scan(&src, &t); err != nil {
 				return err
 			}
+			if seenTarget[t] || len(unresolved) >= 200 || !s.canReadNote(r, src, aclByPath[src]) {
+				return nil
+			}
+			seenTarget[t] = true
 			unresolved = append(unresolved, t)
 			return nil
 		}); err != nil {
