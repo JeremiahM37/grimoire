@@ -485,6 +485,10 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 	case "import_document":
 		return s.apiDocument(str(args, "filename"), str(args, "content"), str(args, "path"))
 	case "ask_notes":
+		if str(args, "mode") == "grounded" {
+			return s.api("POST", "/api/ask", map[string]any{"question": str(args, "question"),
+				"k": num(args, "k", 8), "grounded": true, "bank": str(args, "bank")})
+		}
 		q := url.Values{}
 		q.Set("q", str(args, "question"))
 		q.Set("k", fmt.Sprint(num(args, "k", 8)))

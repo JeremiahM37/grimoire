@@ -128,6 +128,7 @@ const usage = `grimoire — local-first AI-native notes
   grimoire audit [--denied] [--path P] [--user U] [--limit N]
                                       who opened which restricted document
   grimoire eval build|run|compare     measure retrieval on your own vault
+  grimoire ground prepare|timeline|answer   grounded answers: time annotation, timeline, gather/answer/check
   grimoire version                    print the build version
 
 Env: GRIMOIRE_VAULT (default ~/notes)`
@@ -154,7 +155,7 @@ func commands() map[string]func([]string) int {
 		"secret": cmdSecret, "run": cmdRun,
 		"backup": cmdBackup, "restore": cmdRestore,
 		"connect": cmdConnect, "sources": cmdSources, "actions": cmdActions,
-		"audit": cmdAudit, "eval": cmdEval, "dream": cmdDream,
+		"audit": cmdAudit, "eval": cmdEval, "dream": cmdDream, "ground": cmdGround,
 	}
 }
 
