@@ -273,3 +273,5 @@ tr.banks-disputed td { opacity: .78; }
 
 /* inline fields (`owner:: platform-team`): the key is a label, the value is the text */
 .react-app .gr-field { color: var(--ink-soft); font-size: .86em; letter-spacing: .02em; }
+/* the excerpt sits under its title, past the pin gutter */
+.react-app .note-row .snip { padding-left: 14px; }

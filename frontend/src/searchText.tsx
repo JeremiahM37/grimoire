@@ -21,8 +21,14 @@ export function plainSnippet(raw: string, terms: string[]): string {
   const text = raw
     .replace(/<[^>]*>/g, ' ')
     .replace(/\[([^[\]\n]+)\]/g, (whole, inner: string) => terms.some(term => inner.toLowerCase().includes(term)) ? inner : whole)
-    .replace(/\*\*|__|`/g, '');
-  return text.replace(/\s+/g, ' ').trim();
+    .replace(/\*\*|__|`/g, '')
+    // block syntax means nothing in a one-line excerpt: heading hashes, quote marks, list and task markers, table rules and bars
+    .replace(/(^|\s)#{1,6}\s+/g, '$1')
+    .replace(/(^|\s)>\s+/g, '$1')
+    .replace(/(^|\s)[-*+]\s+(\[[ xX]\]\s+)?/g, '$1')
+    .replace(/[-:]{3,}/g, ' ')
+    .replace(/\|/g, ' · ');
+  return text.replace(/\s+/g, ' ').trim().replace(/(· )+/g, '· ').replace(/^(· ?)+|( ?·)+$/g, '').trim();
 }
 
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
