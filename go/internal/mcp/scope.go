@@ -49,6 +49,7 @@ var toolScope = map[string]string{
 	"remember":           oauth.ScopeMemory,
 	"recall":             oauth.ScopeMemory,
 	"memory_changes":     oauth.ScopeMemory,
+	"memory_profile":     oauth.ScopeMemory,
 	"memory_graph":       oauth.ScopeMemory,
 	"memory_feedback":    oauth.ScopeMemory,
 	"memory_scopes":      oauth.ScopeMemory,

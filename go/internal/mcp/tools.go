@@ -54,6 +54,7 @@ var behaviour = map[string]annotations{
 	"get_fact":              {Title: "Look up an exact value", ReadOnlyHint: true, IdempotentHint: true},
 	"recall":                {Title: "Recall what is believed", ReadOnlyHint: true, IdempotentHint: true},
 	"memory_changes":        {Title: "Read belief changes", ReadOnlyHint: true, IdempotentHint: true},
+	"memory_profile":        {Title: "Read a memory profile", ReadOnlyHint: true, IdempotentHint: true},
 	"memory_graph":          {Title: "Read the memory graph", ReadOnlyHint: true, IdempotentHint: true},
 	"memory_scopes":         {Title: "List memory scopes", ReadOnlyHint: true, IdempotentHint: true},
 	"list_grants":           {Title: "List credential grants", ReadOnlyHint: true, IdempotentHint: true},
@@ -525,6 +526,24 @@ func Tools() []tool {
 				"agent":   strProp("optional: only this agent's beliefs"),
 				"session": strProp("optional: only what one run wrote, by its session id"),
 				"limit":   intProp("max rows (default 100)"),
+			}),
+		},
+		{
+			Name: "memory_profile",
+			Description: "A short, stable profile of a subject — the person (`user`) or " +
+				"one agent (`agent`) — built from the facts already in memory: what they " +
+				"prefer, the constraints on the work, the standing facts, and what changed " +
+				"lately. Human-written facts come first. Every line ends with [mem:ID], the " +
+				"fact it came from, so you can recall any line you doubt.\n" +
+				"Read this at the start of a session instead of recalling everything. " +
+				"It is deterministic and cheap; set `synthesize` only if you want prose, and " +
+				"then check the citations, because the verifiable version is always returned too.",
+			InputSchema: obj(map[string]any{
+				"subject": strProp("`user` (default) or `agent`"),
+				"agent":   strProp("for subject=agent: whose profile (defaults to you)"),
+				"budget":  intProp("token budget for the markdown (default 400, 50..4000)"),
+				"synthesize": map[string]any{"type": "boolean",
+					"description": "rewrite the selection as prose; falls back to the deterministic text if the citations do not check out"},
 			}),
 		},
 		{

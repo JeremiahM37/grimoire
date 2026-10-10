@@ -181,6 +181,7 @@ var routeAccess = map[string]access{
 	"POST /api/memory/import":                                    authed, // each fact goes through the write path, which checks the note's write access
 	"GET /api/memory/changes":                                    scoped, // fact text, so the same filter as recall
 	"GET /api/memory/stream":                                     authed, // SSE of the changes feed; text per event passes canRead at emit time
+	"GET /api/memory/profile":                                    scoped, // synthesized from facts the caller may read
 	"GET /api/memory/facets":                                     scoped, // scope names are drawn from facts
 	"GET /api/memory/graph":                                      scoped, // entities and the facts behind them
 	"POST /api/memory/search":                                    scoped, // recall, ranked by a supplied vector

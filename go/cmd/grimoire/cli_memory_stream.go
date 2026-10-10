@@ -121,3 +121,47 @@ func formatWatchLine(event, data string) string {
 	}
 	return fmt.Sprintf("%s  %-18s %s  %s  %s", ev.At, event, ev.ID, strings.TrimSpace(who), detail)
 }
+
+// memoryProfileCmd prints the profile. The markdown is what an agent reads; the
+// footer says when a model rewrite was asked for and not used, and why.
+func memoryProfileCmd(e *env, args []string) int {
+	q := url.Values{}
+	if v, ok := flagValue(args, "--subject"); ok {
+		q.Set("subject", v)
+	}
+	if v, ok := flagValue(args, "--agent"); ok {
+		q.Set("agent", v)
+	}
+	if v, ok := flagValue(args, "--budget"); ok {
+		q.Set("budget", v)
+	}
+	if hasFlag(args, "--synthesize") {
+		q.Set("synthesize", "true")
+	}
+	status, raw := e.call("GET", "/api/memory/profile?"+q.Encode())
+	if status != http.StatusOK {
+		return fail("profile failed: %s", raw)
+	}
+	if hasFlag(args, "--json") {
+		fmt.Println(raw)
+		return 0
+	}
+	var p struct {
+		Markdown      string `json:"markdown"`
+		Tokens        int    `json:"tokens"`
+		Budget        int    `json:"budget"`
+		Synthesized   bool   `json:"synthesized"`
+		Fallback      bool   `json:"fallback"`
+		Reason        string `json:"reason"`
+		Deterministic string `json:"deterministic"`
+	}
+	if err := json.Unmarshal([]byte(raw), &p); err != nil {
+		return fail("%v", err)
+	}
+	fmt.Print(p.Markdown)
+	if p.Fallback {
+		fmt.Fprintf(os.Stderr, "note: model rewrite not used (%s); showing the verifiable selection\n", p.Reason)
+	}
+	fmt.Fprintf(os.Stderr, "%d of %d tokens\n", p.Tokens, p.Budget)
+	return 0
+}
