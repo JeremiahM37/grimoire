@@ -172,7 +172,7 @@ func commands() map[string]func([]string) int {
 		"backup": cmdBackup, "restore": cmdRestore,
 		"connect": cmdConnect, "sources": cmdSources, "actions": cmdActions,
 		"audit": cmdAudit, "eval": cmdEval, "dream": cmdDream, "ground": cmdGround,
-		"code": cmdCode,
+		"code":       cmdCode,
 		"completion": cmdCompletion,
 	}
 }
