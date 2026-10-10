@@ -5,6 +5,7 @@ type Actions = {
   visible: boolean; refresh: () => Promise<unknown> | void; request: ReturnType<typeof createGrimoireApi>['request'];
   ask: () => void; newNote: () => void; daily: () => void; evidence: () => void; banks: () => void; vault: () => void;
   graph: () => void; graphWarm: () => void; palette: () => void; settings: () => void; theme: () => void; openPath: (path: string) => void;
+  approvals?: () => void; approvalCount?: number;
 };
 type Sheet = 'capture' | 'more' | null;
 
@@ -47,6 +48,7 @@ export function MobileChrome(a: Actions) {
         <button onClick={pick(a.daily)}><b>◈</b>Today</button>
         <button onClick={pick(a.evidence)}><b>❝</b>Evidence</button>
         <button onClick={pick(a.banks)}><b>▤</b>Banks</button>
+        {a.approvals && <button onClick={pick(a.approvals)}><b>✓</b>Approvals{(a.approvalCount ?? 0) > 0 && <span className="ap-count">{a.approvalCount}</span>}</button>}
         <button onClick={pick(a.vault)}><b>◇</b>Vault</button>
         <button onPointerDown={a.graphWarm} onClick={pick(a.graph)}><b>◉</b>Graph</button>
         <button onClick={pick(a.palette)}><b>⌘</b>Commands</button>
