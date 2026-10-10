@@ -9,6 +9,8 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -86,6 +88,11 @@ var lpCanaries = map[string]string{
 	"bank-direct":    "LKC-bankdirect-6fa3",
 	"imported-doc":   "LKC-importeddoc-70b4",
 	"graph-entity":   "LKC-graphentity-81c5",
+	// The code graph. These are not owned by a person: the index is admin-only
+	// because a repository has no space. They are canaries anyway, so that a
+	// route which started answering members would show up here.
+	"code-path": "LKC-codefile-3e8a",
+	"code-sym":  "LKCcodesym3e8a",
 }
 
 // lpNoMatch is a control query that matches nothing in any fixture.
@@ -303,6 +310,21 @@ func seedLeakWorldWith(t *testing.T, owned bool) *lpWorld {
 			"name": "rule", "text": c["bank-direct"] + " never share the Initech contract"})
 		w.mustOK("directive", code, body, 200, 201)
 
+		// A code repository the admin indexed. Its file name and one symbol are
+		// canaries: the code routes are admin-only, so neither may reach a
+		// member or an anonymous caller.
+		codeDir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(codeDir, c["code-path"]+".go"),
+			[]byte("package codefile\n\nfunc "+c["code-sym"]+"() {}\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		s.CodeRoots = append(s.CodeRoots, codeDir)
+		code, body = w.as(w.admin, "POST", "/api/code/index", map[string]string{"path": codeDir})
+		w.mustOK("code index", code, body, 200)
+		if code, body := w.as(w.admin, "GET", "/api/code/symbol?name="+c["code-sym"], nil); code != 200 || !strings.Contains(body, c["code-sym"]) {
+			t.Fatalf("fixture sanity: admin cannot see the indexed symbol (%d): %s", code, body)
+		}
+
 		// A graph entity that only alice's notes mention.
 		code, body = w.as(w.alice, "POST", "/api/notes", map[string]any{
 			"path": "users/alice/graph.md", "body": "# Graph\n\n[[" + c["graph-entity"] + "]] links to [[Diary]]"})
@@ -410,6 +432,12 @@ func lpProbes(w *lpWorld) []lpProbe {
 		{route: "PUT /api/canvas/{path...}", path: "/api/canvas/users/alice/diary.md", method: "PUT", body: map[string]any{}, kind: lpWrite},
 		{route: "DELETE /api/canvas/{path...}", path: "/api/canvas/users/alice/diary.md", method: "DELETE", kind: lpWrite},
 		{route: "POST /api/canvas", path: "/api/canvas", body: map[string]any{"path": "users/alice/diary.md"}, kind: lpWrite},
+
+		// --- code graph: admin-only, so no canary may reach a non-owner ---
+		{route: "POST /api/code/index", path: "/api/code/index", body: map[string]any{"path": "/nonexistent-codegraph-probe"}, kind: lpWrite},
+		{route: "GET /api/code/symbol", path: "/api/code/symbol?name=" + c["code-sym"], kind: lpList, control: "/api/code/symbol?name=" + lpShadow},
+		{route: "GET /api/code/callers", path: "/api/code/callers?name=" + c["code-sym"], kind: lpList, control: "/api/code/callers?name=" + lpShadow},
+		{route: "GET /api/code/outline", path: "/api/code/outline?file=" + c["code-path"] + ".go", kind: lpList, control: "/api/code/outline?file=" + lpShadow + ".go"},
 
 		// --- search and retrieval: counts must not move with hidden matches ---
 		{route: "GET /api/search", path: "/api/search" + q(c["diary"]), kind: lpList, control: "/api/search" + q(lpShadow)},

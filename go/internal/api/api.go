@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/JeremiahM37/grimoire/go/internal/codegraph"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -61,6 +62,11 @@ type Server struct {
 	Documents *documents.Store
 	// Banks is the memory-bank engine; built in Routes when nil.
 	Banks *bank.Engine
+	// Code is the code-graph store; built in Routes over the index when nil.
+	Code *codegraph.Store
+	// CodeRoots are directories, besides the vault, that the code graph may
+	// index. Set from GRIMOIRE_CODE_ROOTS; see code_routes.go.
+	CodeRoots []string
 	// Identity resolves callers that are not on this machine. Nil or empty
 	// means no resolution, which is the default and preserves the historical
 	// behaviour exactly.
@@ -175,6 +181,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/admin/reads/anomalies", s.readAnomalies)
 	s.authRoutes(mux)
 	s.connectorRoutes(mux)
+	s.codeRoutes(mux)
 	s.sourceRoutes(mux)
 	s.webRoutes(mux)
 	s.metricsRoutes(mux)

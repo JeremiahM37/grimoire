@@ -10,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/JeremiahM37/grimoire/go/internal/db"
 )
@@ -20,6 +21,10 @@ type Store struct {
 	// MaxFileBytes caps the size of one source file. Zero means
 	// DefaultMaxFileBytes.
 	MaxFileBytes int64
+
+	// runMu serializes Index runs. Two runs over one root would each read the
+	// stored hashes before either wrote, and both would parse the same files.
+	runMu sync.Mutex
 }
 
 // NewStore wraps the index connection.
@@ -47,6 +52,8 @@ type Stats struct {
 // removed. Each changed file is written in its own transaction under the index
 // write lock, so a large repository does not hold the lock for its whole run.
 func (s *Store) Index(root string) (Stats, error) {
+	s.runMu.Lock()
+	defer s.runMu.Unlock()
 	if !filepath.IsAbs(root) {
 		return Stats{}, errors.New("codegraph: root must be an absolute path")
 	}
