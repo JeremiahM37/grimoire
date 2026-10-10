@@ -226,6 +226,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/memory/replay/seed", s.adminOnly(s.replaySeed))
 	mux.HandleFunc("POST /api/memory/cues", s.addCues)
 	mux.HandleFunc("GET /api/memory/export", s.exportMemory)
+	mux.HandleFunc("POST /api/memory/import", s.userOnly(s.importMemory))
 	mux.HandleFunc("GET /api/memory/changes", s.memoryChanges)
 	mux.HandleFunc("GET /api/memory/facets", s.memoryFacets)
 	mux.HandleFunc("GET /api/memory/graph", s.memoryGraph)

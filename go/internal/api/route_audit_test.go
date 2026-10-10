@@ -178,6 +178,7 @@ var routeAccess = map[string]access{
 	"POST /api/memory/replay":                                    admin,  // replays a proposed change; answers quote past requests
 	"POST /api/memory/replay/seed":                               admin,  // loads seed situations
 	"GET /api/memory/export":                                     scoped, // every fact the caller may read
+	"POST /api/memory/import":                                    authed, // each fact goes through the write path, which checks the note's write access
 	"GET /api/memory/changes":                                    scoped, // fact text, so the same filter as recall
 	"GET /api/memory/facets":                                     scoped, // scope names are drawn from facts
 	"GET /api/memory/graph":                                      scoped, // entities and the facts behind them
