@@ -75,9 +75,13 @@ jobs:
           npm test
           npm run build
 
-  go:
+  # The Go checks are three jobs rather than one long one. Lint, the plain
+  # suite and the race suite are independent, and run back to back they were
+  # the longest pole in the pipeline; side by side the wall time is the slowest
+  # of them, not the sum.
+  go-lint:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
@@ -87,10 +91,6 @@ jobs:
           # requires 1.26.6, and the build failed with GOTOOLCHAIN=local.
           go-version-file: go/go.mod
           cache-dependency-path: go/go.sum
-      - name: Install PDF extraction dependency
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y poppler-utils
       - name: Format
         run: test -z "$(gofmt -l go/)" || { gofmt -l go/; exit 1; }
       - name: Vet
@@ -116,12 +116,47 @@ jobs:
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
           "$(go env GOPATH)/bin/govulncheck" -scan symbol ./...
+
+  go-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          # The module's own go directive, not a "1.26" that setup-go resolves
+          # to whatever patch it feels like: it picked 1.26.5 for a go.mod that
+          # requires 1.26.6, and the build failed with GOTOOLCHAIN=local.
+          go-version-file: go/go.mod
+          cache-dependency-path: go/go.sum
+      - name: Install PDF extraction dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y poppler-utils
       - name: Tests
         working-directory: go
         run: go test ./...
-      # -race and -count=1 on a second pass: the suite above is the fast signal,
-      # this is the one that catches a data race in the watcher, the connector
-      # runner or the index's write lock. Both are cheap enough to keep.
+
+  # -race and -count=1 are what catch a data race in the watcher, the connector
+  # runner or the index's write lock. The race detector multiplies run time by
+  # five to ten, so this is the job that sets the Go wall time: tests that do
+  # not share process state call t.Parallel() to keep it short.
+  go-race:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          # The module's own go directive, not a "1.26" that setup-go resolves
+          # to whatever patch it feels like: it picked 1.26.5 for a go.mod that
+          # requires 1.26.6, and the build failed with GOTOOLCHAIN=local.
+          go-version-file: go/go.mod
+          cache-dependency-path: go/go.sum
+      - name: Install PDF extraction dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y poppler-utils
       - name: Tests (race)
         working-directory: go
         run: go test -race -count=1 ./...
@@ -187,6 +222,14 @@ jobs:
           node --test test/
 
   e2e:
+    # Two shards: the browser suite is the longest job, and test_ui.py is
+    # roughly half of it. The retrieval gate and the harness lint run once, on
+    # the second shard.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [ui, rest]
+    name: e2e (${{ matrix.shard }})
     runs-on: ubuntu-latest
     # Generous for ~100 browser flows, and still 24× under the ceiling that
     # made a hung install cost six hours.
@@ -245,14 +288,21 @@ jobs:
           path: ~/.cache/huggingface
           key: model2vec-${{ runner.os }}-potion-base-8M
       - name: Lint the harness
+        if: matrix.shard == 'rest'
         # clients/ is in scope too: they are shipped packages, and the lint
         # that catches a stale import in a benchmark should catch one in the
         # thing people pip install.
         run: ruff check tests/ benchmarks/ clients/
       - name: Browser flows against the React console and built binary
         timeout-minutes: 15
-        run: pytest -q tests/e2e --ignore=tests/e2e/test_react_save.py
+        run: |
+          if [ "${{ matrix.shard }}" = ui ]; then
+            pytest -q tests/e2e/test_ui.py
+          else
+            pytest -q tests/e2e --ignore=tests/e2e/test_ui.py --ignore=tests/e2e/test_react_save.py
+          fi
       - name: Retrieval gate
+        if: matrix.shard == 'rest'
         timeout-minutes: 5
         # Seconds, not an afternoon: 20 questions with known evidence notes,
         # scored on rank alone. The benchmarks say how good retrieval is; this
