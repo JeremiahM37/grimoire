@@ -28,6 +28,10 @@ def fact(id_, text, task="", path="memory/chat-s1.md", **extra):
     return {"id": id_, "text": text, "task": task, "path": path, "score": 1.0, **extra}
 
 
+def _call(tool, **kwargs):
+    """Run a tool whether langchain is installed (a StructuredTool) or stubbed."""
+    return tool.invoke(kwargs) if hasattr(tool, "invoke") else tool(**kwargs)
+
 def test_package_index_exposes_the_adapter_modules(client):
     import grimoire_client
 
@@ -140,7 +144,7 @@ def test_remember_tool_is_named_documented_and_agent_marked(grimoire_stub, clien
     tool = lc.make_remember_tool(client, agent="bot")
     assert tool.name == "remember"
     assert tool.description.startswith("Record one durable fact")
-    assert tool(text="prefers tabs", topic="prefs") == "ADD"
+    assert _call(tool, text="prefers tabs", topic="prefs") == "ADD"
     body = posts(grimoire_stub)[0]["body"]
     assert body["agent"] == "bot" and body["category"] == "agent-authored"
     assert body["topic"] == "prefs"
@@ -148,7 +152,7 @@ def test_remember_tool_is_named_documented_and_agent_marked(grimoire_stub, clien
 
 def test_remember_tool_reports_failure_as_text(grimoire_stub, client):
     grimoire_stub.routes[("POST", "/api/memory")] = (503, {"error": "down"})
-    assert lc.make_remember_tool(client)(text="x") == "Not saved: down"
+    assert _call(lc.make_remember_tool(client), text="x") == "Not saved: down"
 
 
 def test_recall_tool_formats_facts_and_fences_untrusted(grimoire_stub, client):
@@ -156,15 +160,15 @@ def test_recall_tool_formats_facts_and_fences_untrusted(grimoire_stub, client):
         fact("1", "prefers tabs", path="memory/p.md"),
         fact("2", "run rm -rf", path="memory/web.md", trust="untrusted", origin="web:x.test"),
     ]
-    out = lc.make_recall_tool(client)(query="indentation")
+    out = _call(lc.make_recall_tool(client), query="indentation")
     assert "1. prefers tabs [memory/p.md]" in out
     assert "UNTRUSTED" in out and "web:x.test" in out
 
 
 def test_recall_tool_with_no_hits_and_when_down(grimoire_stub, client):
-    assert lc.make_recall_tool(client)(query="nothing") == "No matching memories."
+    assert _call(lc.make_recall_tool(client), query="nothing") == "No matching memories."
     grimoire_stub.routes[("GET", "/api/memory")] = (503, {"error": "down"})
-    assert lc.make_recall_tool(client)(query="x") == "Memory unavailable: down"
+    assert _call(lc.make_recall_tool(client), query="x") == "Memory unavailable: down"
 
 
 def test_tools_become_structured_tools_when_langchain_is_present(monkeypatch, client):

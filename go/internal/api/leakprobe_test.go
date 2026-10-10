@@ -101,9 +101,6 @@ var lpCanaries = map[string]string{
 	"vis-sensitive": "LKC-vissensitive-8b47",
 }
 
-// lpNoMatch is a control query that matches nothing in any fixture.
-const lpNoMatch = "zqxnomatchqzx"
-
 // lpShadow is a control with the same shape as a canary and no content behind
 // it. A canary query and its shadow must produce the same counts for a
 // non-owner: the only thing allowed to differ is what the caller may see.
@@ -740,11 +737,7 @@ func lpAllowed(who lpWho, route string) map[string]bool {
 // "From your notes on ..." is not a leak, and a probe that asks for a canary
 // by name must not be failed for its own question. So a canary counts as
 // leaked only where the body carries MORE copies than the request did.
-func lpCanaryHits(body string, allowed map[string]bool) []string {
-	return lpLeaked(body, "", allowed)
-}
-
-// lpLeaked is lpCanaryHits with the request text that produced the body.
+// lpLeaked lists the canaries a body carries beyond what the request said.
 func lpLeaked(body, request string, allowed map[string]bool) []string {
 	var hits []string
 	for label, c := range lpCanaries {

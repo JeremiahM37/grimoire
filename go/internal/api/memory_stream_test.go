@@ -123,26 +123,6 @@ func nextEvent(t *testing.T, c *sseConn) sseFrame {
 	}
 }
 
-// expectNothing asserts that no event arrives within d. Comments are allowed.
-func expectNothing(t *testing.T, c *sseConn, d time.Duration) []sseFrame {
-	t.Helper()
-	var got []sseFrame
-	deadline := time.After(d)
-	for {
-		select {
-		case f, ok := <-c.frames:
-			if !ok {
-				return got
-			}
-			if f.Event != "" {
-				got = append(got, f)
-			}
-		case <-deadline:
-			return got
-		}
-	}
-}
-
 func jsonField(t *testing.T, data, key string) string {
 	t.Helper()
 	var m map[string]any
