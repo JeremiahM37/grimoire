@@ -139,18 +139,23 @@ jobs:
 
   # -race and -count=1 are what catch a data race in the watcher, the connector
   # runner or the index's write lock. The race detector multiplies run time by
-  # five to ten, so this is the job that sets the Go wall time: tests that do
-  # not share process state call t.Parallel() to keep it short.
+  # five to ten, and internal/api alone is more than half of the Go suite, so
+  # this is the job that sets the Go wall time. It is sharded: internal/api is
+  # split three ways by test name (the tests do not depend on each other, and
+  # the ones that share process state run serially inside their shard), and
+  # every other package runs in a fourth job.
   go-race:
+    name: go-race (${{ matrix.shard }})
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ["1", "2", "3", rest]
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
         with:
-          # The module's own go directive, not a "1.26" that setup-go resolves
-          # to whatever patch it feels like: it picked 1.26.5 for a go.mod that
-          # requires 1.26.6, and the build failed with GOTOOLCHAIN=local.
           go-version-file: go/go.mod
           cache-dependency-path: go/go.sum
       - name: Install PDF extraction dependency
@@ -159,7 +164,17 @@ jobs:
           sudo apt-get install -y poppler-utils
       - name: Tests (race)
         working-directory: go
-        run: go test -race -count=1 ./...
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          if [ "$SHARD" = rest ]; then
+            go test -race -count=1 -timeout 20m $(go list ./... | grep -v '/internal/api$')
+          else
+            run=$(go test -list '.*' ./internal/api | grep -E '^(Test|Example)' | sort |
+              awk -v s="$SHARD" 'NR % 3 == s % 3' | paste -sd'|')
+            test -n "$run" || { echo "no tests selected for shard $SHARD"; exit 1; }
+            go test -race -count=1 -timeout 20m ./internal/api -run "^($run)\$"
+          fi
 
   clients:
     # The Python and JS clients are the surface most people reach the server
