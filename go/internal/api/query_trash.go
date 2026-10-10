@@ -307,20 +307,25 @@ func (s *Server) restoreTrash(w http.ResponseWriter, r *http.Request) {
 func (s *Server) purgeTrash(w http.ResponseWriter, r *http.Request) {
 	tid := r.PathValue("tid")
 	m := s.loadTrash()
+	// A missing id answers exactly as restore does. It used to answer 204, so a
+	// caller who could not write an existing entry got 404 for a real trash id
+	// and 204 for a fake one: a way to test which trash ids exist (they are
+	// timestamps, so they can be guessed) without ever seeing one.
+	entry, ok := m[tid]
+	if !ok {
+		writeErr(w, http.StatusNotFound, "no such trashed note")
+		return
+	}
 	// Purging is irreversible, so it answers to the same rule as deleting:
 	// whoever may write the note may destroy its last copy, and nobody else.
-	if entry, ok := m[tid]; ok {
-		if !s.requireWrite(w, r, normPath(entry.Original)) {
-			return
-		}
+	if !s.requireWrite(w, r, normPath(entry.Original)) {
+		return
 	}
-	if _, ok := m[tid]; ok {
-		_ = os.Remove(filepath.Join(s.trashDir(), tid+".md"))
-		delete(m, tid)
-		if err := s.saveTrash(m); err != nil {
-			writeErr(w, http.StatusInternalServerError, err.Error())
-			return
-		}
+	_ = os.Remove(filepath.Join(s.trashDir(), tid+".md"))
+	delete(m, tid)
+	if err := s.saveTrash(m); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

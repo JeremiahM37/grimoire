@@ -643,3 +643,41 @@ func TestUploadedDocumentsCannotActAsTheApp(t *testing.T) {
 		t.Error("an image was forced to download, which breaks inline previews")
 	}
 }
+
+// Purging a trash entry answered 204 for an id that did not exist and 404 for
+// one that did but belonged to someone else, so a non-owner could tell which
+// trash ids were real. Trash ids are timestamps, so they are guessable.
+func TestPurgingATrashIdDoesNotRevealWhetherItExists(t *testing.T) {
+	s, h := testServer(t)
+	adminKey := makeUser(t, s, h, "", "root", "admin")
+	aliceKey := makeUser(t, s, h, adminKey, "alice", "member")
+	bobKey := makeUser(t, s, h, adminKey, "bob", "member")
+	if w := asKey(t, h, aliceKey, "POST", "/api/notes", map[string]any{
+		"path": "users/alice/gone.md", "body": "# Gone"}); w.Code != http.StatusCreated {
+		t.Fatalf("create = %d", w.Code)
+	}
+	if w := asKey(t, h, aliceKey, "DELETE", "/api/notes/users/alice/gone.md", nil); w.Code != http.StatusOK {
+		t.Fatalf("delete = %d %s", w.Code, w.Body)
+	}
+	var trash []struct {
+		ID string `json:"id"`
+	}
+	decode(t, asKey(t, h, aliceKey, "GET", "/api/trash", nil), &trash)
+	if len(trash) != 1 {
+		t.Fatalf("trash = %v", trash)
+	}
+	real := trash[0].ID
+
+	for _, id := range []string{real, "19990101-000000"} {
+		if w := asKey(t, h, bobKey, "DELETE", "/api/trash/"+id, nil); w.Code != http.StatusNotFound {
+			t.Errorf("bob purging trash id %s = %d, want 404 (the same answer for a real and a missing id)", id, w.Code)
+		}
+	}
+	// The owner can still purge, and the entry is then gone.
+	if w := asKey(t, h, aliceKey, "DELETE", "/api/trash/"+real, nil); w.Code != http.StatusNoContent {
+		t.Fatalf("owner purge = %d %s", w.Code, w.Body)
+	}
+	if w := asKey(t, h, aliceKey, "GET", "/api/trash", nil); strings.Contains(w.Body.String(), real) {
+		t.Errorf("purged entry still listed: %s", w.Body)
+	}
+}
