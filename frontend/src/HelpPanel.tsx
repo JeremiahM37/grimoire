@@ -1,15 +1,15 @@
 const SHORTCUTS: [string, string][] = [
-  ['Ctrl / ⌘ K or O', 'Command palette: recent notes, every note, and commands'],
-  ['Ctrl / ⌘ P', 'Command palette showing commands only'],
+  ['Ctrl / ⌘ K or O', 'Command palette: jump to a note or run a command'],
+  ['Ctrl / ⌘ P', 'Commands only'],
   ['Ctrl / ⌘ S', 'Save the current note'],
   ['Ctrl / ⌘ F', 'Find in the current note'],
-  ['Ctrl / ⌘ E', 'Switch between reading and editing the current note'],
-  ['Ctrl / ⌘ G', 'Open the graph view'],
+  ['Ctrl / ⌘ E', 'Switch between reading and editing'],
+  ['Ctrl / ⌘ G', 'Graph view'],
   ['Ctrl / ⌘ \\', 'Show or hide the sidebar'],
   ['Alt + N', 'New note'],
-  ['?', 'Open this keyboard help outside an editor field'],
-  ['Escape', 'Close a panel or the palette, or clear graph search'],
-  ['↑ / ↓ / Enter', 'In the palette: move the selection and run it'],
+  ['?', 'This help (outside a text field)'],
+  ['Escape', 'Close a panel, or clear a search'],
+  ['↑ / ↓ / Enter', 'Move through a list and open the selection'],
 ];
 
 export function HelpPanel({ close }: { close: () => void }) {

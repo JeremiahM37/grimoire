@@ -122,3 +122,21 @@ test('typed-only phrases stay out of the empty palette', () => {
   const values = flattenRows(buildPalette({ query: '', notes: [], commands: BASE_COMMANDS, recents: [] })).map(r => r.value);
   assert.ok(!values.includes('New canvas'));
 });
+
+test('the open note is left out of Recent, so Enter switches to the previous one', () => {
+  const notes = [{ path: 'a.md', title: 'Alpha' }, { path: 'b.md', title: 'Beta' }];
+  const sections = buildPalette({ query: '', notes, commands: BASE_COMMANDS, recents: ['a.md', 'b.md'], current: 'a.md' });
+  assert.equal(sections[0]!.title, 'Recent');
+  assert.deepEqual(sections[0]!.rows.map(row => row.value), ['b.md']);
+});
+
+test('a command shows a readable label, runs its command string, and matches on either', () => {
+  for (const query of ['focus', 'distraction']) {
+    const row = flattenRows(buildPalette({ query: '>' + query, notes: [], commands: BASE_COMMANDS, recents: [] }))[0]!;
+    assert.equal(row.label, 'Focus mode', query);
+    assert.equal(row.value, 'Toggle focus mode distraction free', query);
+  }
+  const today = flattenRows(buildPalette({ query: "today's", notes: [], commands: BASE_COMMANDS, recents: [] }))[0]!;
+  assert.equal(today.value, 'Today daily note');
+  assert.deepEqual(today.marks, [0, 1, 2, 3, 4, 5, 6]);
+});

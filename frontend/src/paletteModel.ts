@@ -47,6 +47,19 @@ export const COMMAND_SHORTCUTS: Record<string, string> = {
   'Keyboard shortcuts & help': '?',
 };
 
+/**
+ * What a command is called on screen, where its command string reads badly. The strings themselves are matched by
+ * executeCommand and by anyone who has typed them for months, so they stay; only the label changes, and both match.
+ */
+export const COMMAND_LABELS: Record<string, string> = {
+  'Today daily note': "Today's note",
+  'Toggle focus mode distraction free': 'Focus mode',
+  'Split view open current note on the right': 'Open in split view',
+  'Previous day daily note': "Previous day's note",
+  'Next day daily note': "Next day's note",
+  'Sync now (with configured peer)': 'Sync now',
+};
+
 const STOP_WORDS = new Set(['open', 'show', 'go', 'to', 'the', 'a', 'an', 'this', 'all', 'my', 'of', 'in', 'and', 'how', 'do', 'i']);
 const EXACT_COMMAND_BONUS = 150;
 const PATH_PENALTY = 150;
@@ -113,14 +126,16 @@ export function buildPalette(input: {
   notes: PaletteNote[];
   commands: readonly string[];
   recents: readonly string[];
+  /** The open note. It is left out of Recent, so the first row is the note you were in before: Enter switches back. */
+  current?: string;
 }): PaletteSection[] {
   const raw = input.query.trimStart();
   const commandOnly = raw.startsWith('>');
   const query = (commandOnly ? raw.slice(1) : raw).trim();
   const commands = orderCommands(input.commands);
   const noteByPath = new Map(input.notes.map(note => [note.path, note] as const));
-  const commandRow = (label: string, hit?: Hit): PaletteRow => ({
-    kind: 'command', value: label, label, shortcut: COMMAND_SHORTCUTS[label], marks: hit?.marks ?? [],
+  const commandRow = (value: string, marks: number[] = []): PaletteRow => ({
+    kind: 'command', value, label: COMMAND_LABELS[value] ?? value, shortcut: COMMAND_SHORTCUTS[value], marks,
   });
   const noteRow = (note: PaletteNote, marks: number[] = []): PaletteRow => {
     const folder = noteFolder(note.path);
@@ -129,6 +144,7 @@ export function buildPalette(input: {
 
   if (!query) {
     const recent = input.recents
+      .filter(path => path !== input.current)
       .map(path => noteByPath.get(path))
       .filter((note): note is PaletteNote => Boolean(note))
       .slice(0, RECENT_SHOWN)
@@ -142,10 +158,12 @@ export function buildPalette(input: {
   const normalizedQuery = normalizeLabel(query);
   const typedPool = [...commands, ...TYPED_ONLY_COMMANDS.filter(label => !commands.includes(label))];
   const commandHits = typedPool.flatMap(label => {
-    const hit = matchText(query, label);
+    // the label on screen and the command string both match; only a label match can be highlighted
+    const shown = COMMAND_LABELS[label], onLabel = shown ? matchText(query, shown) : null, onValue = matchText(query, label);
+    const hit = onLabel && (!onValue || onLabel.score >= onValue.score) ? onLabel : onValue;
     if (!hit) return [];
-    const exact = normalizeLabel(label) === normalizedQuery;
-    return [{ label, score: hit.score + (exact ? EXACT_COMMAND_BONUS : 0), marks: hit.marks }];
+    const exact = normalizeLabel(label) === normalizedQuery || (!!shown && normalizeLabel(shown) === normalizedQuery);
+    return [{ label, score: hit.score + (exact ? EXACT_COMMAND_BONUS : 0), marks: shown ? onLabel?.marks ?? [] : hit.marks }];
   }).sort((a, b) => b.score - a.score).slice(0, RESULT_LIMIT);
 
   const recentRank = new Map(input.recents.slice(0, RECENT_LIMIT).map((path, index) => [path, index] as const));
@@ -160,7 +178,7 @@ export function buildPalette(input: {
   }).sort((a, b) => b.score - a.score || noteTitle(a.note).length - noteTitle(b.note).length).slice(0, RESULT_LIMIT);
 
   const notesSection: PaletteSection[] = noteHits.length ? [{ title: 'Notes', top: noteHits[0]!.score, rows: noteHits.map(hit => noteRow(hit.note, hit.marks)) }] : [];
-  const commandsSection: PaletteSection[] = commandHits.length ? [{ title: 'Commands', top: commandHits[0]!.score, rows: commandHits.map(hit => commandRow(hit.label, hit)) }] : [];
+  const commandsSection: PaletteSection[] = commandHits.length ? [{ title: 'Commands', top: commandHits[0]!.score, rows: commandHits.map(hit => commandRow(hit.label, hit.marks)) }] : [];
   // A command named by the query (exact name, prefix or whole word) goes first, so typing it runs it.
   const strong = (commandHits[0]?.score ?? 0) >= STRONG_COMMAND;
   const sections: PaletteSection[] = strong ? [...commandsSection, ...notesSection] : [...notesSection, ...commandsSection];

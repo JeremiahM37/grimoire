@@ -20,17 +20,24 @@ def _palette(page):
     expect(page.locator('#palette')).to_be_visible()
 
 
-def test_empty_palette_lists_recently_opened_note_first(page, server):
-    path = 'palette-recent-alpha.md'
-    _note(page, server, path, 'Palette Recent Alpha')
-    _open_note(page, server, path)
+def test_empty_palette_lists_the_previous_note_first_and_enter_switches_back(page, server):
+    earlier, current = 'palette-recent-alpha.md', 'palette-recent-beta.md'
+    _note(page, server, earlier, 'Palette Recent Alpha')
+    _note(page, server, current, 'Palette Recent Beta')
+    _open_note(page, server, earlier)
     expect(page.locator('#title')).to_have_value('Palette Recent Alpha', timeout=8000)
+    _open_note(page, server, current)
+    expect(page.locator('#title')).to_have_value('Palette Recent Beta', timeout=8000)
     _palette(page)
     expect(page.locator('#palette-list .pal-heading').first).to_have_text('Recent')
     first = page.locator('#palette-list .pal-item').first
     expect(first).to_have_attribute('data-kind', 'note')
-    expect(first).to_have_attribute('data-value', path)
+    # the note you are in is not offered: the top row is the one you came from
+    expect(first).to_have_attribute('data-value', earlier)
+    expect(page.locator(f'#palette-list .pal-item[data-value="{current}"]')).to_have_count(0)
     expect(page.locator('#palette-list .pal-heading', has_text='Commands')).to_have_count(1)
+    page.keyboard.press('Enter')
+    expect(page.locator('#title')).to_have_value('Palette Recent Alpha', timeout=8000)
 
 
 def test_typing_part_of_a_note_outside_the_first_twenty_opens_it(page, server):

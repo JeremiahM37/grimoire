@@ -8,6 +8,8 @@ export type PaletteProps = {
   templates: { name: string }[];
   pluginCommands: string[];
   recents: string[];
+  /** Path of the open note, left out of Recent. */
+  current?: string;
   command: (value: string) => void | Promise<void>;
   open: (path: string) => void | Promise<void>;
   create: (title: string) => void | Promise<void>;
@@ -19,12 +21,12 @@ function Highlighted({ label, marks }: { label: string; marks: number[] }) {
 }
 
 /** Ctrl/⌘K, O and P palette. Rows carry their data in data-kind / data-value; actions read those, never textContent. */
-export function Palette({ initial = '', notes, templates, pluginCommands, recents, command, open, create, close }: PaletteProps) {
+export function Palette({ initial = '', notes, templates, pluginCommands, recents, current, command, open, create, close }: PaletteProps) {
   const [query, setQuery] = useState(initial);
   const [selected, setSelected] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
   const commands = useMemo(() => [...BASE_COMMANDS, ...pluginCommands, ...templates.map(t => `New from: ${t.name}`)], [pluginCommands, templates]);
-  const sections = useMemo(() => buildPalette({ query, notes, commands, recents }), [query, notes, commands, recents]);
+  const sections = useMemo(() => buildPalette({ query, notes, commands, recents, current }), [query, notes, commands, recents, current]);
   const rows = flattenRows(sections);
   const index = Math.min(selected, Math.max(0, rows.length - 1));
 

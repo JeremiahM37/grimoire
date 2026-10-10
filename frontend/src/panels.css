@@ -205,3 +205,14 @@
 .dispute-choice { border: 0; padding: 0; margin-top: 10px; display: grid; gap: 6px; }
 .dispute-choice label { display: block; }
 .dispute-choice textarea, .dispute-choice select { width: 100%; }
+
+/* shortcut hints are for keyboards: a touch screen has none to press */
+@media (pointer: coarse) { .react-app #palette .pal-kbd { display: none; } }
+
+/* ---- keyboard help: keys left, what they do right ---------------------- */
+.react-app #help-modal .modal-box { width: min(520px, 100%); }
+.react-app #help-body { padding-top: 0; padding-bottom: 6px; }
+.react-app #help-body > h2 { margin: 0 0 12px; padding: 16px 40px 12px 0; border-bottom: 1px solid var(--line); font: 600 17px/1.3 var(--sans); }
+.help-keys { display: grid; grid-template-columns: max-content 1fr; gap: 9px 18px; align-items: baseline; margin: 0; }
+.help-keys dt { font: 500 12px var(--mono); color: var(--ink); white-space: nowrap; padding: 3px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper2); justify-self: start; }
+.help-keys dd { margin: 0; font-size: 14px; color: var(--ink-soft); }
