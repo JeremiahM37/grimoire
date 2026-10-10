@@ -98,7 +98,7 @@ func TestCollectReadsProfilesMemoriesAndSkills(t *testing.T) {
 	var b strings.Builder
 	// Noon UTC, so the memory's date-only landing day cannot fall on the
 	// wrong side of a session in any local time zone.
-	base := time.Now().UTC().Truncate(24 * time.Hour).AddDate(0, 0, -30).Add(12 * time.Hour)
+	base := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, 0, -30).Add(12 * time.Hour)
 	for d := 0; d < 20; d++ {
 		ts := base.AddDate(0, 0, d).Unix()
 		sid := string(rune('a' + d))
