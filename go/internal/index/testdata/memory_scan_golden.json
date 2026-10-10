@@ -1,0 +1,1642 @@
+[
+ {
+  "name": "plain",
+  "hits": [
+   {
+    "id": "f00385",
+    "note": "memory/topic038.md",
+    "score": 0.8632489832699033,
+    "semantic": 0.8451542547285166,
+    "keyword": 1,
+    "entity": 1,
+    "recency": 0.20710490709815926,
+    "useful": 0.5
+   },
+   {
+    "id": "f00000",
+    "note": "memory/topic000.md",
+    "score": 0.8612886976344536,
+    "semantic": 0.8451542547285166,
+    "keyword": 1,
+    "entity": 1,
+    "recency": 0.15809776621191657,
+    "useful": 0.5
+   },
+   {
+    "id": "f00154",
+    "note": "memory/topic015.md",
+    "score": 0.7695260261596313,
+    "semantic": 0.6761234037828132,
+    "keyword": 0.8055507020387489,
+    "entity": 1,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00308",
+    "note": "memory/topic030.md",
+    "score": 0.7695260261596313,
+    "semantic": 0.6761234037828132,
+    "keyword": 0.8055507020387489,
+    "entity": 1,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00462",
+    "note": "memory/topic046.md",
+    "score": 0.7571173171750996,
+    "semantic": 0.6761234037828132,
+    "keyword": 0.8055507020387489,
+    "entity": 1,
+    "recency": 0.6897822753867072,
+    "useful": 0.5
+   },
+   {
+    "id": "f00077",
+    "note": "memory/topic007.md",
+    "score": 0.7507512434166492,
+    "semantic": 0.6761234037828132,
+    "keyword": 0.8055507020387489,
+    "entity": 1,
+    "recency": 0.5306304314254486,
+    "useful": 0.5
+   },
+   {
+    "id": "f00231",
+    "note": "memory/topic023.md",
+    "score": 0.7442415404424969,
+    "semantic": 0.6761234037828132,
+    "keyword": 0.8055507020387489,
+    "entity": 1,
+    "recency": 0.36788785707164096,
+    "useful": 0.5
+   },
+   {
+    "id": "f00210",
+    "note": "memory/topic021.md",
+    "score": 0.5988817004216891,
+    "semantic": 0.5477225575051661,
+    "keyword": 0.42717195631482896,
+    "entity": 1,
+    "recency": 0.7307519625341811,
+    "useful": 0.5
+   },
+   {
+    "id": "f00455",
+    "note": "memory/topic045.md",
+    "score": 0.5925870199597383,
+    "semantic": 0.50709255283711,
+    "keyword": 0.42717195631482896,
+    "entity": 1,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00035",
+    "note": "memory/topic003.md",
+    "score": 0.5925870199597383,
+    "semantic": 0.50709255283711,
+    "keyword": 0.42717195631482896,
+    "entity": 1,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00070",
+    "note": "memory/topic007.md",
+    "score": 0.5925870199597383,
+    "semantic": 0.50709255283711,
+    "keyword": 0.42717195631482896,
+    "entity": 1,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00105",
+    "note": "memory/topic010.md",
+    "score": 0.5925870199597383,
+    "semantic": 0.50709255283711,
+    "keyword": 0.42717195631482896,
+    "entity": 1,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00140",
+    "note": "memory/topic014.md",
+    "score": 0.5925870199597383,
+    "semantic": 0.50709255283711,
+    "keyword": 0.42717195631482896,
+    "entity": 1,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00275",
+    "note": "memory/topic027.md",
+    "score": 0.5918225037593482,
+    "semantic": 0.7071067811865475,
+    "keyword": 0.7672773416464221,
+    "entity": 0,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00175",
+    "note": "memory/topic017.md",
+    "score": 0.5887287388861038,
+    "semantic": 0.50709255283711,
+    "keyword": 0.42717195631482896,
+    "entity": 1,
+    "recency": 0.9035429731591369,
+    "useful": 0.5
+   },
+   {
+    "id": "f00165",
+    "note": "memory/topic016.md",
+    "score": 0.5788094852497798,
+    "semantic": 0.6761234037828132,
+    "keyword": 0.7672773416464221,
+    "entity": 0,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00440",
+    "note": "memory/topic044.md",
+    "score": 0.5788094852497798,
+    "semantic": 0.6761234037828132,
+    "keyword": 0.7672773416464221,
+    "entity": 0,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00245",
+    "note": "memory/topic024.md",
+    "score": 0.576227220663441,
+    "semantic": 0.50709255283711,
+    "keyword": 0.42717195631482896,
+    "entity": 1,
+    "recency": 0.5910050175925682,
+    "useful": 0.5
+   },
+   {
+    "id": "f00055",
+    "note": "memory/topic005.md",
+    "score": 0.5722721888622966,
+    "semantic": 0.6761234037828132,
+    "keyword": 0.7672773416464221,
+    "entity": 0,
+    "recency": 0.8365675903129188,
+    "useful": 0.5
+   },
+   {
+    "id": "f00280",
+    "note": "memory/topic028.md",
+    "score": 0.5717124717359958,
+    "semantic": 0.50709255283711,
+    "keyword": 0.42717195631482896,
+    "entity": 1,
+    "recency": 0.478136294406439,
+    "useful": 0.5
+   }
+  ]
+ },
+ {
+  "name": "entities",
+  "hits": [
+   {
+    "id": "f00345",
+    "note": "memory/topic034.md",
+    "score": 0.5514022009497213,
+    "semantic": 0.5773502691896257,
+    "keyword": 0.49612531389313724,
+    "entity": 0.5,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00464",
+    "note": "memory/topic046.md",
+    "score": 0.5316537239638408,
+    "semantic": 0.5303300858899106,
+    "keyword": 0.49612531389313724,
+    "entity": 0.5,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00079",
+    "note": "memory/topic007.md",
+    "score": 0.5256293104923507,
+    "semantic": 0.5303300858899106,
+    "keyword": 0.49612531389313724,
+    "entity": 0.5,
+    "recency": 0.8493896632127472,
+    "useful": 0.5
+   },
+   {
+    "id": "f00275",
+    "note": "memory/topic027.md",
+    "score": 0.5081385804806863,
+    "semantic": 0.4743416490252569,
+    "keyword": 0.49612531389313724,
+    "entity": 0.5,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00107",
+    "note": "memory/topic010.md",
+    "score": 0.5081385804806863,
+    "semantic": 0.4743416490252569,
+    "keyword": 0.49612531389313724,
+    "entity": 0.5,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00443",
+    "note": "memory/topic044.md",
+    "score": 0.5081385804806863,
+    "semantic": 0.4743416490252569,
+    "keyword": 0.49612531389313724,
+    "entity": 0.5,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00310",
+    "note": "memory/topic031.md",
+    "score": 0.5081385804806863,
+    "semantic": 0.4743416490252569,
+    "keyword": 0.49612531389313724,
+    "entity": 0.5,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00226",
+    "note": "memory/topic022.md",
+    "score": 0.5081385804806863,
+    "semantic": 0.4743416490252569,
+    "keyword": 0.49612531389313724,
+    "entity": 0.5,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00478",
+    "note": "memory/topic047.md",
+    "score": 0.5081385804806863,
+    "semantic": 0.4743416490252569,
+    "keyword": 0.49612531389313724,
+    "entity": 0.5,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00142",
+    "note": "memory/topic014.md",
+    "score": 0.5081385804806863,
+    "semantic": 0.4743416490252569,
+    "keyword": 0.49612531389313724,
+    "entity": 0.5,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00058",
+    "note": "memory/topic005.md",
+    "score": 0.5081385804806863,
+    "semantic": 0.4743416490252569,
+    "keyword": 0.49612531389313724,
+    "entity": 0.5,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00394",
+    "note": "memory/topic039.md",
+    "score": 0.5081385804806863,
+    "semantic": 0.4743416490252569,
+    "keyword": 0.49612531389313724,
+    "entity": 0.5,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00261",
+    "note": "memory/topic026.md",
+    "score": 0.5081385804806863,
+    "semantic": 0.4743416490252569,
+    "keyword": 0.49612531389313724,
+    "entity": 0.5,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00093",
+    "note": "memory/topic009.md",
+    "score": 0.5081385804806863,
+    "semantic": 0.4743416490252569,
+    "keyword": 0.49612531389313724,
+    "entity": 0.5,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00429",
+    "note": "memory/topic042.md",
+    "score": 0.5081385804806863,
+    "semantic": 0.4743416490252569,
+    "keyword": 0.49612531389313724,
+    "entity": 0.5,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00009",
+    "note": "memory/topic000.md",
+    "score": 0.5081385804806863,
+    "semantic": 0.4743416490252569,
+    "keyword": 0.49612531389313724,
+    "entity": 0.5,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00296",
+    "note": "memory/topic029.md",
+    "score": 0.5081385804806863,
+    "semantic": 0.4743416490252569,
+    "keyword": 0.49612531389313724,
+    "entity": 0.5,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00212",
+    "note": "memory/topic021.md",
+    "score": 0.5081385804806863,
+    "semantic": 0.4743416490252569,
+    "keyword": 0.49612531389313724,
+    "entity": 0.5,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00128",
+    "note": "memory/topic012.md",
+    "score": 0.5081385804806863,
+    "semantic": 0.4743416490252569,
+    "keyword": 0.49612531389313724,
+    "entity": 0.5,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00044",
+    "note": "memory/topic004.md",
+    "score": 0.5081385804806863,
+    "semantic": 0.4743416490252569,
+    "keyword": 0.49612531389313724,
+    "entity": 0.5,
+    "recency": 1,
+    "useful": 0.5
+   }
+  ]
+ },
+ {
+  "name": "newest",
+  "hits": [
+   {
+    "id": "f00335",
+    "note": "memory/topic033.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00323",
+    "note": "memory/topic032.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00311",
+    "note": "memory/topic031.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00299",
+    "note": "memory/topic029.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00287",
+    "note": "memory/topic028.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00275",
+    "note": "memory/topic027.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00263",
+    "note": "memory/topic026.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00251",
+    "note": "memory/topic025.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00239",
+    "note": "memory/topic023.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00227",
+    "note": "memory/topic022.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00215",
+    "note": "memory/topic021.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00203",
+    "note": "memory/topic020.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00179",
+    "note": "memory/topic017.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00167",
+    "note": "memory/topic016.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00155",
+    "note": "memory/topic015.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00491",
+    "note": "memory/topic049.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00479",
+    "note": "memory/topic047.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00143",
+    "note": "memory/topic014.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00131",
+    "note": "memory/topic013.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00119",
+    "note": "memory/topic011.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   }
+  ]
+ },
+ {
+  "name": "as_of",
+  "hits": [
+   {
+    "id": "f00173",
+    "note": "memory/topic017.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00161",
+    "note": "memory/topic016.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00497",
+    "note": "memory/topic049.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00149",
+    "note": "memory/topic014.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00485",
+    "note": "memory/topic048.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00473",
+    "note": "memory/topic047.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00137",
+    "note": "memory/topic013.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00461",
+    "note": "memory/topic046.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00125",
+    "note": "memory/topic012.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00113",
+    "note": "memory/topic011.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00449",
+    "note": "memory/topic044.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00101",
+    "note": "memory/topic010.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00437",
+    "note": "memory/topic043.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00089",
+    "note": "memory/topic008.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00425",
+    "note": "memory/topic042.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00413",
+    "note": "memory/topic041.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00077",
+    "note": "memory/topic007.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00401",
+    "note": "memory/topic040.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00065",
+    "note": "memory/topic006.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   },
+   {
+    "id": "f00053",
+    "note": "memory/topic005.md",
+    "score": 0,
+    "semantic": 0,
+    "keyword": 0,
+    "entity": 0,
+    "recency": 0,
+    "useful": 0
+   }
+  ]
+ },
+ {
+  "name": "valid_at",
+  "hits": [
+   {
+    "id": "f00221",
+    "note": "memory/topic022.md",
+    "score": 0.8662119009476282,
+    "semantic": 0.816496580927726,
+    "keyword": 1,
+    "entity": 1,
+    "recency": 0.582083423949583,
+    "useful": 0.5
+   },
+   {
+    "id": "f00144",
+    "note": "memory/topic014.md",
+    "score": 0.7493053933160068,
+    "semantic": 0.7071067811865475,
+    "keyword": 0.8049408273364813,
+    "entity": 1,
+    "recency": 0.17342783908604822,
+    "useful": 0.5
+   },
+   {
+    "id": "f00298",
+    "note": "memory/topic029.md",
+    "score": 0.7425798546464486,
+    "semantic": 0.6123724356957946,
+    "keyword": 0.8049408273364813,
+    "entity": 1,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00452",
+    "note": "memory/topic045.md",
+    "score": 0.7425798546464486,
+    "semantic": 0.6123724356957946,
+    "keyword": 0.8049408273364813,
+    "entity": 1,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00067",
+    "note": "memory/topic006.md",
+    "score": 0.7364226868588657,
+    "semantic": 0.6123724356957946,
+    "keyword": 0.8049408273364813,
+    "entity": 1,
+    "recency": 0.8460708053104278,
+    "useful": 0.5
+   },
+   {
+    "id": "f00441",
+    "note": "memory/topic044.md",
+    "score": 0.5514866566989199,
+    "semantic": 0.6123724356957946,
+    "keyword": 0.765322263238165,
+    "entity": 0,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00056",
+    "note": "memory/topic005.md",
+    "score": 0.5514866566989199,
+    "semantic": 0.6123724356957946,
+    "keyword": 0.765322263238165,
+    "entity": 0,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00291",
+    "note": "memory/topic029.md",
+    "score": 0.543390500522419,
+    "semantic": 0.447213595499958,
+    "keyword": 0.42973690942535364,
+    "entity": 1,
+    "recency": 0.38086139433343996,
+    "useful": 0.5
+   },
+   {
+    "id": "f00466",
+    "note": "memory/topic046.md",
+    "score": 0.5390714133029745,
+    "semantic": 0.3779644730092272,
+    "keyword": 0.42973690942535364,
+    "entity": 1,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00081",
+    "note": "memory/topic008.md",
+    "score": 0.5390714133029745,
+    "semantic": 0.3779644730092272,
+    "keyword": 0.42973690942535364,
+    "entity": 1,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00116",
+    "note": "memory/topic011.md",
+    "score": 0.5390714133029745,
+    "semantic": 0.3779644730092272,
+    "keyword": 0.42973690942535364,
+    "entity": 1,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00151",
+    "note": "memory/topic015.md",
+    "score": 0.5346561291579226,
+    "semantic": 0.3779644730092272,
+    "keyword": 0.42973690942535364,
+    "entity": 1,
+    "recency": 0.8896178963737023,
+    "useful": 0.5
+   },
+   {
+    "id": "f00331",
+    "note": "memory/topic033.md",
+    "score": 0.5324078517024994,
+    "semantic": 0.5669467095138409,
+    "keyword": 0.765322263238165,
+    "entity": 0,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00496",
+    "note": "memory/topic049.md",
+    "score": 0.5291921560254369,
+    "semantic": 0.6123724356957946,
+    "keyword": 0.765322263238165,
+    "entity": 0,
+    "recency": 0.4426374831629228,
+    "useful": 0.5
+   },
+   {
+    "id": "f00186",
+    "note": "memory/topic018.md",
+    "score": 0.5278510084298181,
+    "semantic": 0.3779644730092272,
+    "keyword": 0.42973690942535364,
+    "entity": 1,
+    "recency": 0.7194898781710908,
+    "useful": 0.5
+   },
+   {
+    "id": "f00111",
+    "note": "memory/topic011.md",
+    "score": 0.5251113792517277,
+    "semantic": 0.6123724356957946,
+    "keyword": 0.765322263238165,
+    "entity": 0,
+    "recency": 0.34061806382019344,
+    "useful": 0.5
+   },
+   {
+    "id": "f00386",
+    "note": "memory/topic038.md",
+    "score": 0.5217679049404824,
+    "semantic": 0.6123724356957946,
+    "keyword": 0.765322263238165,
+    "entity": 0,
+    "recency": 0.25703120603906165,
+    "useful": 0.5
+   },
+   {
+    "id": "f00001",
+    "note": "memory/topic000.md",
+    "score": 0.5195185054794514,
+    "semantic": 0.6123724356957946,
+    "keyword": 0.765322263238165,
+    "entity": 0,
+    "recency": 0.20079621951328896,
+    "useful": 0.5
+   },
+   {
+    "id": "f00256",
+    "note": "memory/topic025.md",
+    "score": 0.5179021105490635,
+    "semantic": 0.3779644730092272,
+    "keyword": 0.42973690942535364,
+    "entity": 1,
+    "recency": 0.4707674311522281,
+    "useful": 0.5
+   },
+   {
+    "id": "f00166",
+    "note": "memory/topic016.md",
+    "score": 0.5170288697804486,
+    "semantic": 0.5303300858899106,
+    "keyword": 0.765322263238165,
+    "entity": 0,
+    "recency": 1,
+    "useful": 0.5
+   }
+  ]
+ },
+ {
+  "name": "as_of_text",
+  "hits": [
+   {
+    "id": "f00267",
+    "note": "memory/topic026.md",
+    "score": 0.8906590880831198,
+    "semantic": 0.8944271909999159,
+    "keyword": 1,
+    "entity": 1,
+    "recency": 0.3749916965788797,
+    "useful": 0.5
+   },
+   {
+    "id": "f00113",
+    "note": "memory/topic011.md",
+    "score": 0.7539707372441391,
+    "semantic": 0.6761234037828132,
+    "keyword": 0.8149627483084082,
+    "entity": 1,
+    "recency": 0.5452334532250813,
+    "useful": 0.5
+   },
+   {
+    "id": "f00036",
+    "note": "memory/topic003.md",
+    "score": 0.73865934464663,
+    "semantic": 0.6761234037828132,
+    "keyword": 0.8149627483084082,
+    "entity": 1,
+    "recency": 0.16244863828735312,
+    "useful": 0.5
+   },
+   {
+    "id": "f00157",
+    "note": "memory/topic015.md",
+    "score": 0.5622497303174577,
+    "semantic": 0.7071067811865475,
+    "keyword": 0.7726831140670651,
+    "entity": 0,
+    "recency": 0.2228402570082394,
+    "useful": 0.5
+   },
+   {
+    "id": "f00377",
+    "note": "memory/topic037.md",
+    "score": 0.5611435557522781,
+    "semantic": 0.6761234037828132,
+    "keyword": 0.7726831140670651,
+    "entity": 0,
+    "recency": 0.5205113556179595,
+    "useful": 0.5
+   },
+   {
+    "id": "f00302",
+    "note": "memory/topic030.md",
+    "score": 0.5605692043993976,
+    "semantic": 0.50709255283711,
+    "keyword": 0.4123541376245269,
+    "entity": 1,
+    "recency": 0.3032793418235964,
+    "useful": 0.5
+   },
+   {
+    "id": "f00337",
+    "note": "memory/topic033.md",
+    "score": 0.5564714261151334,
+    "semantic": 0.50709255283711,
+    "keyword": 0.4123541376245269,
+    "entity": 1,
+    "recency": 0.20083488471699207,
+    "useful": 0.5
+   },
+   {
+    "id": "f00372",
+    "note": "memory/topic037.md",
+    "score": 0.5549351422313615,
+    "semantic": 0.50709255283711,
+    "keyword": 0.4123541376245269,
+    "entity": 1,
+    "recency": 0.16242778762269197,
+    "useful": 0.5
+   },
+   {
+    "id": "f00432",
+    "note": "memory/topic043.md",
+    "score": 0.5462414458206571,
+    "semantic": 0.674199862463242,
+    "keyword": 0.7726831140670651,
+    "entity": 0,
+    "recency": 0.16815579118292961,
+    "useful": 0.5
+   },
+   {
+    "id": "f00232",
+    "note": "memory/topic023.md",
+    "score": 0.5073679106259962,
+    "semantic": 0.3651483716701107,
+    "keyword": 0.4123541376245269,
+    "entity": 1,
+    "recency": 0.46366089974205377,
+    "useful": 0.5
+   },
+   {
+    "id": "f00399",
+    "note": "memory/topic039.md",
+    "score": 0.46975138489685075,
+    "semantic": 0.6000000000000001,
+    "keyword": 0.5876458623754732,
+    "entity": 0,
+    "recency": 0.33026358579295706,
+    "useful": 0.5
+   },
+   {
+    "id": "f00134",
+    "note": "memory/topic013.md",
+    "score": 0.46254063206906376,
+    "semantic": 0.4,
+    "keyword": 0.22731688593293492,
+    "entity": 1,
+    "recency": 0.2722976001960507,
+    "useful": 0.5
+   },
+   {
+    "id": "f00135",
+    "note": "memory/topic013.md",
+    "score": 0.4559622686426901,
+    "semantic": 0.565685424949238,
+    "keyword": 0.5876458623754732,
+    "entity": 0,
+    "recency": 0.34583871747194106,
+    "useful": 0.5
+   },
+   {
+    "id": "f00003",
+    "note": "memory/topic000.md",
+    "score": 0.454788926349394,
+    "semantic": 0.565685424949238,
+    "keyword": 0.5876458623754732,
+    "entity": 0,
+    "recency": 0.3165051601395383,
+    "useful": 0.5
+   },
+   {
+    "id": "f00289",
+    "note": "memory/topic028.md",
+    "score": 0.451793716003529,
+    "semantic": 0.565685424949238,
+    "keyword": 0.5876458623754732,
+    "entity": 0,
+    "recency": 0.24162490149291344,
+    "useful": 0.5
+   },
+   {
+    "id": "f00124",
+    "note": "memory/topic012.md",
+    "score": 0.44830549904026956,
+    "semantic": 0.5393598899705937,
+    "keyword": 0.5876458623754732,
+    "entity": 0,
+    "recency": 0.43083759468719357,
+    "useful": 0.5
+   },
+   {
+    "id": "f00449",
+    "note": "memory/topic044.md",
+    "score": 0.44744118170479047,
+    "semantic": 0.3380617018914066,
+    "keyword": 0.22731688593293492,
+    "entity": 1,
+    "recency": 0.5451634712294481,
+    "useful": 0.5
+   },
+   {
+    "id": "f00029",
+    "note": "memory/topic002.md",
+    "score": 0.446217274723847,
+    "semantic": 0.3380617018914066,
+    "keyword": 0.22731688593293492,
+    "entity": 1,
+    "recency": 0.5145657967058616,
+    "useful": 0.5
+   },
+   {
+    "id": "f00365",
+    "note": "memory/topic036.md",
+    "score": 0.44621463289465435,
+    "semantic": 0.3380617018914066,
+    "keyword": 0.22731688593293492,
+    "entity": 1,
+    "recency": 0.514499750976046,
+    "useful": 0.5
+   },
+   {
+    "id": "f00316",
+    "note": "memory/topic031.md",
+    "score": 0.445129403205965,
+    "semantic": 0.3380617018914066,
+    "keyword": 0.22731688593293492,
+    "entity": 1,
+    "recency": 0.48736900875881234,
+    "useful": 0.5
+   }
+  ]
+ },
+ {
+  "name": "private_off",
+  "hits": [
+   {
+    "id": "f00179",
+    "note": "memory/topic017.md",
+    "score": 0.8200000000000001,
+    "semantic": 0.6666666666666666,
+    "keyword": 1,
+    "entity": 1,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00249",
+    "note": "memory/topic024.md",
+    "score": 0.8200000000000001,
+    "semantic": 0.6666666666666666,
+    "keyword": 1,
+    "entity": 1,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00284",
+    "note": "memory/topic028.md",
+    "score": 0.8200000000000001,
+    "semantic": 0.6666666666666666,
+    "keyword": 1,
+    "entity": 1,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00319",
+    "note": "memory/topic031.md",
+    "score": 0.8196335083221379,
+    "semantic": 0.6666666666666666,
+    "keyword": 1,
+    "entity": 1,
+    "recency": 0.9908377080534472,
+    "useful": 0.5
+   },
+   {
+    "id": "f00144",
+    "note": "memory/topic014.md",
+    "score": 0.8039219616617919,
+    "semantic": 0.7071067811865475,
+    "keyword": 1,
+    "entity": 1,
+    "recency": 0.17342783908604822,
+    "useful": 0.5
+   },
+   {
+    "id": "f00389",
+    "note": "memory/topic038.md",
+    "score": 0.8009021260287801,
+    "semantic": 0.6666666666666666,
+    "keyword": 1,
+    "entity": 1,
+    "recency": 0.5225531507195005,
+    "useful": 0.5
+   },
+   {
+    "id": "f00424",
+    "note": "memory/topic042.md",
+    "score": 0.7969048623811029,
+    "semantic": 0.6666666666666666,
+    "keyword": 1,
+    "entity": 1,
+    "recency": 0.42262155952757324,
+    "useful": 0.5
+   },
+   {
+    "id": "f00004",
+    "note": "memory/topic000.md",
+    "score": 0.7959560653609422,
+    "semantic": 0.6666666666666666,
+    "keyword": 1,
+    "entity": 1,
+    "recency": 0.3989016340235536,
+    "useful": 0.5
+   },
+   {
+    "id": "f00459",
+    "note": "memory/topic045.md",
+    "score": 0.7936764122397411,
+    "semantic": 0.6666666666666666,
+    "keyword": 1,
+    "entity": 1,
+    "recency": 0.3419103059935259,
+    "useful": 0.5
+   },
+   {
+    "id": "f00039",
+    "note": "memory/topic003.md",
+    "score": 0.793008617011494,
+    "semantic": 0.6666666666666666,
+    "keyword": 1,
+    "entity": 1,
+    "recency": 0.325215425287351,
+    "useful": 0.5
+   },
+   {
+    "id": "f00494",
+    "note": "memory/topic049.md",
+    "score": 0.7910609737239992,
+    "semantic": 0.6666666666666666,
+    "keyword": 1,
+    "entity": 1,
+    "recency": 0.27652434309997803,
+    "useful": 0.5
+   },
+   {
+    "id": "f00074",
+    "note": "memory/topic007.md",
+    "score": 0.79044016897133,
+    "semantic": 0.6666666666666666,
+    "keyword": 1,
+    "entity": 1,
+    "recency": 0.26100422428324854,
+    "useful": 0.5
+   },
+   {
+    "id": "f00109",
+    "note": "memory/topic010.md",
+    "score": 0.7886437541154625,
+    "semantic": 0.6666666666666666,
+    "keyword": 1,
+    "entity": 1,
+    "recency": 0.21609385288656163,
+    "useful": 0.5
+   },
+   {
+    "id": "f00354",
+    "note": "memory/topic035.md",
+    "score": 0.7136742785349457,
+    "semantic": 0.447213595499958,
+    "keyword": 1,
+    "entity": 1,
+    "recency": 0.6461142106240833,
+    "useful": 0.5
+   },
+   {
+    "id": "f00298",
+    "note": "memory/topic029.md",
+    "score": 0.5854021148501347,
+    "semantic": 0.408248290463863,
+    "keyword": 0.5497779744832575,
+    "entity": 1,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00452",
+    "note": "memory/topic045.md",
+    "score": 0.5854021148501347,
+    "semantic": 0.408248290463863,
+    "keyword": 0.5497779744832575,
+    "entity": 1,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00067",
+    "note": "memory/topic006.md",
+    "score": 0.5792449470625518,
+    "semantic": 0.408248290463863,
+    "keyword": 0.5497779744832575,
+    "entity": 1,
+    "recency": 0.8460708053104278,
+    "useful": 0.5
+   },
+   {
+    "id": "f00291",
+    "note": "memory/topic029.md",
+    "score": 0.577001998738632,
+    "semantic": 0.447213595499958,
+    "keyword": 0.5497779744832575,
+    "entity": 1,
+    "recency": 0.38086139433343996,
+    "useful": 0.5
+   },
+   {
+    "id": "f00207",
+    "note": "memory/topic020.md",
+    "score": 0.5762562670761225,
+    "semantic": 0.447213595499958,
+    "keyword": 0.5497779744832575,
+    "entity": 1,
+    "recency": 0.3622181027707026,
+    "useful": 0.5
+   },
+   {
+    "id": "f00263",
+    "note": "memory/topic026.md",
+    "score": 0.5726829115191876,
+    "semantic": 0.3779644730092272,
+    "keyword": 0.5497779744832575,
+    "entity": 1,
+    "recency": 1,
+    "useful": 0.5
+   }
+  ]
+ },
+ {
+  "name": "superseded",
+  "hits": [
+   {
+    "id": "f00299",
+    "note": "memory/topic029.md",
+    "score": 0.6833161507461905,
+    "semantic": 0.769800358919501,
+    "keyword": 1,
+    "entity": 0,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00411",
+    "note": "memory/topic041.md",
+    "score": 0.6695314870456719,
+    "semantic": 0.8006407690254357,
+    "keyword": 1,
+    "entity": 0,
+    "recency": 0.33155910137472344,
+    "useful": 0.5
+   },
+   {
+    "id": "f00460",
+    "note": "memory/topic046.md",
+    "score": 0.6605529730071836,
+    "semantic": 0.769800358919501,
+    "keyword": 1,
+    "entity": 0,
+    "recency": 0.4309205565248313,
+    "useful": 0.5
+   },
+   {
+    "id": "f00215",
+    "note": "memory/topic021.md",
+    "score": 0.6524504620055724,
+    "semantic": 0.6963106238227913,
+    "keyword": 1,
+    "entity": 0,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00467",
+    "note": "memory/topic046.md",
+    "score": 0.6524504620055724,
+    "semantic": 0.6963106238227913,
+    "keyword": 1,
+    "entity": 0,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00131",
+    "note": "memory/topic013.md",
+    "score": 0.6524504620055724,
+    "semantic": 0.6963106238227913,
+    "keyword": 1,
+    "entity": 0,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00047",
+    "note": "memory/topic004.md",
+    "score": 0.6524504620055724,
+    "semantic": 0.6963106238227913,
+    "keyword": 1,
+    "entity": 0,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00383",
+    "note": "memory/topic038.md",
+    "score": 0.6524504620055724,
+    "semantic": 0.6963106238227913,
+    "keyword": 1,
+    "entity": 0,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00334",
+    "note": "memory/topic033.md",
+    "score": 0.6524504620055724,
+    "semantic": 0.6963106238227913,
+    "keyword": 1,
+    "entity": 0,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00250",
+    "note": "memory/topic025.md",
+    "score": 0.6524504620055724,
+    "semantic": 0.6963106238227913,
+    "keyword": 1,
+    "entity": 0,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00418",
+    "note": "memory/topic041.md",
+    "score": 0.6524504620055724,
+    "semantic": 0.6963106238227913,
+    "keyword": 1,
+    "entity": 0,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00082",
+    "note": "memory/topic008.md",
+    "score": 0.6524504620055724,
+    "semantic": 0.6963106238227913,
+    "keyword": 1,
+    "entity": 0,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00285",
+    "note": "memory/topic028.md",
+    "score": 0.6524504620055724,
+    "semantic": 0.6963106238227913,
+    "keyword": 1,
+    "entity": 0,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00201",
+    "note": "memory/topic020.md",
+    "score": 0.6524504620055724,
+    "semantic": 0.6963106238227913,
+    "keyword": 1,
+    "entity": 0,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00117",
+    "note": "memory/topic011.md",
+    "score": 0.6524504620055724,
+    "semantic": 0.6963106238227913,
+    "keyword": 1,
+    "entity": 0,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00453",
+    "note": "memory/topic045.md",
+    "score": 0.6524504620055724,
+    "semantic": 0.6963106238227913,
+    "keyword": 1,
+    "entity": 0,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00369",
+    "note": "memory/topic036.md",
+    "score": 0.6524504620055724,
+    "semantic": 0.6963106238227913,
+    "keyword": 1,
+    "entity": 0,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00236",
+    "note": "memory/topic023.md",
+    "score": 0.6524504620055724,
+    "semantic": 0.6963106238227913,
+    "keyword": 1,
+    "entity": 0,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00152",
+    "note": "memory/topic015.md",
+    "score": 0.6524504620055724,
+    "semantic": 0.6963106238227913,
+    "keyword": 1,
+    "entity": 0,
+    "recency": 1,
+    "useful": 0.5
+   },
+   {
+    "id": "f00488",
+    "note": "memory/topic048.md",
+    "score": 0.6524504620055724,
+    "semantic": 0.6963106238227913,
+    "keyword": 1,
+    "entity": 0,
+    "recency": 1,
+    "useful": 0.5
+   }
+  ]
+ }
+]
