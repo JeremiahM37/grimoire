@@ -25,6 +25,7 @@ from typing import Any, TypedDict
 
 __all__ = [
     "Answer",
+    "autogen",
     "AsyncBank",
     "Bank",
     "Banks",
@@ -588,7 +589,7 @@ from .openai_memory import MemoryClient, with_memory  # noqa: E402
 
 # Framework adapters that import without their framework installed. They are
 # loaded on first access, so ``import grimoire_client`` costs nothing extra.
-_LAZY_ADAPTERS = frozenset({"langchain", "llamaindex", "pydantic_ai"})
+_LAZY_ADAPTERS = frozenset({"autogen", "langchain", "llamaindex", "pydantic_ai"})
 
 
 def __getattr__(name: str) -> Any:

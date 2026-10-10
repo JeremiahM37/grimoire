@@ -30,6 +30,7 @@ it use that information.
 | **LlamaIndex** | `GrimoireRetriever` (nodes) and `GrimoireMemoryBlock` with `get`/`put` (`grimoire_client.llamaindex`) | Block `get` recalls for the latest user turn | Your agent calls `retrieve`; `put` records turns | Duck-typed fakes and a stub server; not run against `llama_index.core` here |
 | **Pydantic AI** | `grimoire_tools` and `grimoire_context` (`grimoire_client.pydantic_ai`) | `grimoire_context` in a dynamic system prompt | `remember`, `recall`, `search_notes` tools | Signatures checked with `get_type_hints`; stub server; not run against a live model |
 | **Vercel AI SDK (JS)** | `aiSdkTools` and `withGrimoireMemory` (`@jeremiahm37/grimoire/ai-sdk`) | Wrapper recalls before and retains after each call | `remember`, `recall`, `search_notes` tool definitions | Stub HTTP server; no `ai` package dependency, so not run against it |
+| **AutoGen** | `GrimoireMemory` (`grimoire_client.autogen`) | `update_context` recalls for the latest user message and adds the facts as a system message | `add` / `query` as your agents call them | Duck-typed fakes against AutoGen's `Memory` shape and a stub server; not run against `autogen_core` here |
 | **Plain chatbots / custom loops** | `context_for` / `ContextSession` (Python), `contextFor` (JS) | You call it before the model; it returns a string | Whatever tools you wire up | Unit-tested against a stub of the endpoint |
 | **Obsidian** | Plugin in `clients/obsidian` | Badges and panels in the editor | You act on disputes and corrections | Developed on a separate branch (`feat/obsidian-plugin`); not part of this tree |
 | **LibreChat and other MCP chat UIs** | MCP server | None unless the host calls `/api/memory/context` | MCP tools, subject to the host's tool-approval UI | MCP works with any compliant client; no first-party automatic injection |
@@ -62,6 +63,7 @@ installed (`pip install 'grimoire-client[langchain]'`, `[llamaindex]`).
 | LlamaIndex memory block | `grimoire_client.llamaindex.GrimoireMemoryBlock` | `get` recalls, `put` records each turn once; async variants |
 | Pydantic AI tools | `grimoire_client.pydantic_ai.grimoire_tools` | Typed, documented functions for `Agent(tools=[...])` |
 | Pydantic AI context | `grimoire_client.pydantic_ai.grimoire_context` | Bounded context string for a dynamic system prompt |
+| AutoGen memory | `grimoire_client.autogen.GrimoireMemory` | `add` remembers, `query` recalls, `update_context` injects recalled facts as a system message; async |
 | Vercel AI SDK tools | `@jeremiahm37/grimoire/ai-sdk` `aiSdkTools` | `{description, parameters, execute}` for `remember`, `recall`, `search_notes` |
 | Vercel AI SDK memory | `withGrimoireMemory(generate, {client})` | Recall before and retain after each `generateText`-style call |
 
@@ -93,6 +95,18 @@ agent = Agent("anthropic:claude-sonnet-4-5", tools=grimoire_tools(client, agent_
 def memory(ctx) -> str:
     return grimoire_context(client, ctx.prompt or "")
 ```
+
+**AutoGen**
+
+```python
+from grimoire_client.autogen import GrimoireMemory
+memory = GrimoireMemory(client, agent="support-bot")
+assistant = AssistantAgent("support", model_client=model, memory=[memory])  # AutoGen's Memory protocol
+await memory.add(MemoryContent(content="prefers tabs", metadata={"topic": "prefs"}))
+```
+
+`clear` and `close` do not touch the server: Grimoire memory is durable, and forgetting a fact is a deliberate `forget`.
+`update_context` drops nothing when the server is down; `add` and `query` raise, because the caller asked for them.
 
 **Vercel AI SDK (JS)**
 
