@@ -634,6 +634,21 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 			q.Set("limit", fmt.Sprint(n))
 		}
 		return s.api("GET", "/api/memory/changes?"+q.Encode(), nil)
+	case "memory_profile":
+		q := url.Values{}
+		if v := str(args, "subject"); v != "" {
+			q.Set("subject", v)
+		}
+		if v := str(args, "agent"); v != "" {
+			q.Set("agent", v)
+		}
+		if n := num(args, "budget", 0); n > 0 {
+			q.Set("budget", fmt.Sprint(n))
+		}
+		if boolean(args, "synthesize") {
+			q.Set("synthesize", "true")
+		}
+		return s.api("GET", "/api/memory/profile?"+q.Encode(), nil)
 	case "forget":
 		q := url.Values{}
 		q.Set("path", str(args, "path"))

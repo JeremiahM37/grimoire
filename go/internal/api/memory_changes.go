@@ -101,6 +101,34 @@ func (s *Server) memoryChanges(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	out := beliefChanges(hits, since, now)
+
+	// Newest first. A digest is read from the top and abandoned partway down,
+	// so the ordering decides what actually gets read.
+	sort.SliceStable(out, func(i, j int) bool { return out[i].At > out[j].At })
+	if len(out) > limit {
+		out = out[:limit]
+	}
+
+	counts := map[string]int{changeLearned: 0, changeChanged: 0,
+		changeRetracted: 0, changeExpired: 0}
+	for _, c := range out {
+		counts[c.Kind]++
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"since":   since.Format(time.RFC3339),
+		"changes": out,
+		"counts":  counts,
+	})
+}
+
+// beliefChanges classifies the entries a window moved. It is the ONE place the
+// changes digest and the realtime memory stream (memory_stream.go) decide what
+// counts as a change, so the two cannot disagree about what happened.
+//
+// hits must include superseded and expired entries; the rows are returned
+// unsorted and untruncated.
+func beliefChanges(hits []index.MemoryHit, since, now time.Time) []beliefChange {
 	byID := make(map[string]index.MemoryHit, len(hits))
 	// successors are facts that replaced something. They are reported on the
 	// REPLACED fact's row, which carries both texts — so listing them again as
@@ -149,7 +177,8 @@ func (s *Server) memoryChanges(w http.ResponseWriter, r *http.Request) {
 		if h.Expires != "" {
 			if exp, err := time.Parse(time.RFC3339, h.Expires); err == nil &&
 				!exp.After(now) && !exp.Before(since) {
-				out = append(out, changeFrom(changeExpired, exp.Format(memory.StampFormat), h))
+				// Local time, like every other stamp: the feed sorts on these strings.
+				out = append(out, changeFrom(changeExpired, exp.In(time.Local).Format(memory.StampFormat), h))
 				continue
 			}
 		}
@@ -163,23 +192,7 @@ func (s *Server) memoryChanges(w http.ResponseWriter, r *http.Request) {
 		out = append(out, changeFrom(changeLearned, h.Stamp, h))
 	}
 
-	// Newest first. A digest is read from the top and abandoned partway down,
-	// so the ordering decides what actually gets read.
-	sort.SliceStable(out, func(i, j int) bool { return out[i].At > out[j].At })
-	if len(out) > limit {
-		out = out[:limit]
-	}
-
-	counts := map[string]int{changeLearned: 0, changeChanged: 0,
-		changeRetracted: 0, changeExpired: 0}
-	for _, c := range out {
-		counts[c.Kind]++
-	}
-	writeJSON(w, http.StatusOK, map[string]any{
-		"since":   since.Format(time.RFC3339),
-		"changes": out,
-		"counts":  counts,
-	})
+	return out
 }
 
 func changeFrom(kind, at string, h index.MemoryHit) beliefChange {
