@@ -135,3 +135,61 @@ func (s *Store) GetVersion(rel, versionID string) (string, bool) {
 	}
 	return string(b), true
 }
+
+// Scan calls fn with every stored version body, for read-only checks.
+func (s *Store) Scan(fn func(rel, body string)) {
+	dirs, err := os.ReadDir(s.Dir)
+	if err != nil {
+		return
+	}
+	for _, d := range dirs {
+		if !d.IsDir() {
+			continue
+		}
+		rel := strings.ReplaceAll(d.Name(), "__", "/")
+		dir := filepath.Join(s.Dir, d.Name())
+		for _, f := range s.versionFiles(dir) {
+			if b, err := os.ReadFile(filepath.Join(dir, f)); err == nil {
+				fn(rel, string(b))
+			}
+		}
+	}
+}
+
+// Rewrite replaces, in place, every stored version body for which fn returns
+// changed=true, and reports how many versions it rewrote. It is for removing
+// information that must not survive in history, such as a forgotten fact; the
+// version ring and its ordering are untouched.
+func (s *Store) Rewrite(fn func(rel, body string) (string, bool)) (int, error) {
+	dirs, err := os.ReadDir(s.Dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil
+		}
+		return 0, err
+	}
+	n := 0
+	for _, d := range dirs {
+		if !d.IsDir() {
+			continue
+		}
+		rel := strings.ReplaceAll(d.Name(), "__", "/")
+		dir := filepath.Join(s.Dir, d.Name())
+		for _, f := range s.versionFiles(dir) {
+			p := filepath.Join(dir, f)
+			b, err := os.ReadFile(p)
+			if err != nil {
+				continue
+			}
+			out, changed := fn(rel, string(b))
+			if !changed {
+				continue
+			}
+			if err := os.WriteFile(p, []byte(out), 0o600); err != nil {
+				return n, err
+			}
+			n++
+		}
+	}
+	return n, nil
+}

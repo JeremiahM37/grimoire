@@ -551,10 +551,17 @@ func Tools() []tool {
 			Description: "Retract one recorded fact by id (ids come from recall). The fact " +
 				"stops being recalled but stays in the note, struck through, so the human " +
 				"can see what was believed and undo this. Use it when a fact is WRONG — " +
-				"not when it is merely old, which remember handles by superseding.",
+				"not when it is merely old, which remember handles by superseding. " +
+				"With cascade=true the fact is removed outright and so are the copies derived " +
+				"from it (redacted or challenged, never silently rewritten in a person's own " +
+				"entries), then re-searched; the result says what is still left and writes a receipt.",
 			InputSchema: obj(map[string]any{
 				"id":   strProp("the fact's id, from recall"),
 				"path": strProp("the note it lives in, from recall"),
+				"cascade": map[string]any{"type": "boolean",
+					"description": "also reach every derived copy and verify nothing is left"},
+				"dry_run": map[string]any{"type": "boolean",
+					"description": "with cascade, list what would change and change nothing"},
 			}, "id", "path"),
 		},
 		{

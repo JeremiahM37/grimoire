@@ -54,6 +54,8 @@ const usage = `grimoire — local-first AI-native notes
                   [--limit N] [--all] [--as-of RFC3339] [--why]
                                       what is currently believed (--all: and what was)
   grimoire forget PATH ID [--hard]    retract one fact (ids come from recall)
+  grimoire forget PATH ID --cascade [--dry-run]
+                                      also reach every derived copy, then verify and write a receipt
   grimoire challenges [--note P --uphold ID | --concede ID]
                                       facts your agents dispute, and how to settle them
   grimoire bank COMMAND [args]        list, create, retain, recall, reflect, import-git, …

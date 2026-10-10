@@ -227,13 +227,17 @@ func memoryPruneCmd(e *env, args []string) int {
 func cmdForget(args []string) int {
 	pos := positional(args)
 	if len(pos) < 2 {
-		return fail("usage: grimoire forget PATH ID [--hard]   (ids come from `grimoire recall`)")
+		return fail("usage: grimoire forget PATH ID [--hard | --cascade [--dry-run]]   (ids come from `grimoire recall`)")
 	}
 	e, err := openEnv()
 	if err != nil {
 		return fail("%v", err)
 	}
 	defer e.close()
+
+	if hasFlag(args, "--cascade") {
+		return forgetCascadeCmd(e, pos[0], pos[1], hasFlag(args, "--dry-run"))
+	}
 
 	q := url.Values{}
 	q.Set("path", pos[0])
@@ -251,6 +255,95 @@ func cmdForget(args []string) int {
 	} else {
 		fmt.Printf("retracted %s — still in %s, struck through\n", pos[1], pos[0])
 	}
+	return 0
+}
+
+// forgetCascadeCmd runs the cascade and prints what it did. The exit status is
+// non-zero when the verification finds anything the forget should have removed.
+func forgetCascadeCmd(e *env, path, id string, dry bool) int {
+	// The initiator is the identity header or query, never the body: the CLI
+	// presents none, so it is the person, and a body cannot claim otherwise.
+	status, raw := e.callBody("POST", "/api/memory/forget", map[string]any{
+		"path": path, "id": id, "cascade": true, "dry_run": dry})
+	if status != http.StatusOK {
+		return fail("forget failed: %s", raw)
+	}
+	var out struct {
+		Status      string `json:"status"`
+		Receipt     string `json:"receipt"`
+		AlreadyDone bool   `json:"already_forgotten"`
+		Actions     []struct {
+			Kind, Ref, Path, Action string
+		} `json:"actions"`
+		Verification *struct {
+			Vector   string `json:"vector"`
+			Hidden   int    `json:"hidden"`
+			Residual []struct {
+				Store, Path, Ref, Reason string
+			} `json:"residual"`
+		} `json:"verification"`
+	}
+	if err := json.Unmarshal([]byte(raw), &out); err != nil {
+		return fail("forget: unreadable answer: %v", err)
+	}
+	if out.AlreadyDone {
+		fmt.Printf("already forgotten; receipt %s\n", out.Receipt)
+		return 0
+	}
+	if dry {
+		fmt.Printf("dry run: %d artefact(s) would change; nothing was written\n", len(out.Actions))
+	}
+	for _, a := range out.Actions {
+		fmt.Printf("  %-18s %-18s %s  %s\n", a.Kind, a.Action, a.Ref, a.Path)
+	}
+	if dry {
+		return 0
+	}
+	if v := out.Verification; v != nil {
+		for _, r := range v.Residual {
+			fmt.Printf("  RESIDUAL [%s] %s %s — %s\n", r.Store, r.Path, r.Ref, r.Reason)
+		}
+		if v.Hidden > 0 {
+			fmt.Printf("  RESIDUAL %d hit(s) in notes you cannot read\n", v.Hidden)
+		}
+		fmt.Printf("vector check: %s\n", v.Vector)
+	}
+	fmt.Printf("receipt: %s\n", out.Receipt)
+	if out.Status != "clean" {
+		fmt.Println("forget incomplete: residual hits remain (see the receipt)")
+		return 1
+	}
+	fmt.Println("forget complete: nothing residual")
+	return 0
+}
+
+// memoryReceiptsCmd lists the forget receipts the caller can read.
+func memoryReceiptsCmd(e *env, args []string) int {
+	status, raw := e.call("GET", "/api/memory/receipts")
+	if status != http.StatusOK {
+		return fail("receipts failed: %s", raw)
+	}
+	var rows []struct {
+		Receipt  string `json:"receipt"`
+		TargetID string `json:"target_id"`
+		Path     string `json:"path"`
+		At       string `json:"at"`
+		Status   string `json:"status"`
+		Residual int    `json:"residual"`
+		Hidden   int    `json:"hidden"`
+	}
+	if err := json.Unmarshal([]byte(raw), &rows); err != nil {
+		return fail("receipts: unreadable answer: %v", err)
+	}
+	if len(rows) == 0 {
+		fmt.Println("no forget receipts")
+		return 0
+	}
+	for _, r := range rows {
+		fmt.Printf("%s  %-8s  %s  %s  residual=%d hidden=%d\n", r.At, r.Status, r.TargetID, r.Path, r.Residual, r.Hidden)
+		fmt.Printf("    %s\n", r.Receipt)
+	}
+	_ = args
 	return 0
 }
 

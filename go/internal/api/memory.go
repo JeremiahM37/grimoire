@@ -1292,10 +1292,17 @@ func (s *Server) forgetEntry(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "not a memory note")
 		return
 	}
+	s.forgetOne(w, r, note, id, boolParam(r, "hard"), r.URL.Query().Get("agent"))
+}
+
+// forgetOne is the plain forget behind both DELETE /api/memory/entry and
+// POST /api/memory/forget without cascade. The path and id are checked by the
+// caller.
+func (s *Server) forgetOne(w http.ResponseWriter, r *http.Request, note, id string, hard bool, agent string) {
 	if !s.requireWrite(w, r, note) {
 		return
 	}
-	if boolParam(r, "hard") {
+	if hard {
 		if err := s.removeEntry(note, id); err != nil {
 			writeErr(w, statusForEntryErr(err), entryErrMsg(err))
 			return
@@ -1303,7 +1310,7 @@ func (s *Server) forgetEntry(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"path": note, "id": id, "forgotten": true})
 		return
 	}
-	who := strings.TrimSpace(r.URL.Query().Get("agent"))
+	who := strings.TrimSpace(agent)
 	if who == "" {
 		who = "human"
 	}
