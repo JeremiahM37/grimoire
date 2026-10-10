@@ -36,6 +36,12 @@ export interface Memory {
   unhelpful?: number
   /** Whether to re-check before relying on it. See docs/FRESHNESS.md. */
   freshness?: Freshness
+  /** Where the fact came from; empty for agent writes. */
+  origin?: string
+  /** `trusted` or `untrusted`. Untrusted text is fenced before a model reads it. */
+  trust?: 'trusted' | 'untrusted'
+  /** Who asserted it: `human`, `agent` or `pulled`. */
+  authority?: 'human' | 'agent' | 'pulled'
   score: number
   /** Present when `explain` was requested. */
   scores?: {
