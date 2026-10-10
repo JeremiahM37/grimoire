@@ -11,7 +11,7 @@ export interface Theme { paper: string; ink: string; soft: string; accent: strin
 // `paper` here is the graph stage (what is behind the notes), which is darker than the app's page in dark themes.
 export interface ClusterInfo { id: number; name: string; color: string; size: number }
 export interface Filter { scope: 'linked' | 'local' | 'all'; current?: number; hops: number; folder: string; tag: string; kind: 'all' | Kind; cutoff: number | null }
-export type ColorBy = 'cluster' | 'folder';
+export type ColorBy = 'cluster' | 'folder' | 'author';
 export interface EngineEvents {
   hover(index: number | null): void;
   select(index: number | null): void;
@@ -78,6 +78,7 @@ export class GraphEngine {
   private filter: Filter = { scope: 'all', hops: 1, folder: '', tag: '', kind: 'all', cutoff: null };
   private colorBy: ColorBy = 'cluster';
   private folders: string[] = [];
+  private authorOf: Uint8Array = new Uint8Array(0);
   private glow: GlowStyle = { spread: 3, glow: 0.4, additive: 1, light: 0.3 };
   private veilFrom = 0; private bgDirty = true; private flowTimer = 0;
   private isolate = false; private depth = 1;
@@ -101,6 +102,7 @@ export class GraphEngine {
     const index = new Map(folders.map((f, i) => [f, i]));
     this.folderRank = Int32Array.from(data.ids, id => index.get(folderOf(id))!);
     this.folders = folders;
+    this.authorOf = Uint8Array.from(data.ids, id => (kindOf(id) === 'memory' ? 1 : 0));
     container.style.position = 'relative';
     this.bg = this.layer('graph-halos', 0); this.fx = this.layer('graph-focus', 3);
     this.resizeObserver = new ResizeObserver(() => { if (!this.destroyed) { this.sizeLayers(); this.sigma?.resize(); this.sigma?.refresh(); this.schedule(); } });
@@ -144,8 +146,9 @@ export class GraphEngine {
     return i >= this.clusterCount ? (this.theme.dark ? '#7c7a8c' : '#9a96aa') : this.swatch(i);
   }
   /** The group a note is coloured by: its detected cluster, or its top-level folder. */
-  private groupOf(i: number): number { return this.colorBy === 'folder' ? this.folderRank[i]! : this.cluster[i]!; }
-  private groupColor(group: number): string { return this.colorBy === 'folder' ? this.swatch(group) : this.palette(group); }
+  private groupOf(i: number): number { return this.colorBy === 'folder' ? this.folderRank[i]! : this.colorBy === 'author' ? this.authorOf[i]! : this.cluster[i]!; }
+  /** By author there are two groups: what you wrote (the brand purple) and what agents wrote (teal). */
+  private groupColor(group: number): string { return this.colorBy === 'cluster' ? this.palette(group) : this.colorBy === 'author' ? this.swatch(group ? 2 : 0) : this.swatch(group); }
   private nodeColor(i: number): string { return this.groupColor(this.groupOf(i)); }
   /** Links inside a group take its colour; links between groups are a quieter blend of both, never a white line. */
   private edgeColor(a: number, b: number): string {
@@ -279,6 +282,11 @@ export class GraphEngine {
   /** What the legend lists: clusters, or folders when colouring by folder. */
   private groups(): ClusterInfo[] {
     if (this.colorBy === 'cluster') return this.clusters;
+    if (this.colorBy === 'author') {
+      let agents = 0;
+      for (let i = 0; i < this.data.n; i++) agents += this.authorOf[i]!;
+      return [{ id: 0, name: 'Your notes', color: this.groupColor(0), size: this.data.n - agents }, { id: 1, name: 'Agent memory', color: this.groupColor(1), size: agents }].filter(g => g.size > 0);
+    }
     const sizes = new Int32Array(this.folders.length);
     for (let i = 0; i < this.data.n; i++) sizes[this.folderRank[i]!]!++;
     return this.folders.map((name, id) => ({ id, name: name || 'Top level', color: this.swatch(id), size: sizes[id]! })).sort((a, b) => b.size - a.size);

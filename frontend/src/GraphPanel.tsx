@@ -134,7 +134,8 @@ export function GraphPanel({ graph, close, open, currentPath }: { graph?: Graph;
   const depthButtons = <div className="graph-depth" role="group" aria-label="Connection depth">{[1, 2, 3].map(d => <button key={d} className={'btn' + (depth === d ? ' on' : '')} aria-pressed={depth === d} onClick={() => setDepth(d)}>{d} hop{d > 1 ? 's' : ''}</button>)}</div>;
   // a phone bar has room for the search box and one button, so the scope moves into the filter drawer there
   const scopeSelect = <select id="graph-scope" aria-label="Graph scope" value={scope} onChange={event => setScope(event.target.value as Filter['scope'])}><option value="linked">Connected notes</option><option value="local" disabled={current === undefined}>This note &amp; neighbours</option><option value="all">All notes</option></select>;
-  const legend = clusters.filter(c => c.size > 1);
+  const legendTitle = colorBy === 'folder' ? 'Folders' : colorBy === 'author' ? 'Written by' : 'Clusters';
+  const legend = clusters.filter(c => c.size > 1 || colorBy === 'author');
   const hasPanel = selected !== null || !!query || legend.length > 0;
 
   return <div id="graph-modal" className="modal" role="dialog" aria-label="Note graph" onMouseDown={event => event.currentTarget === event.target && close()}><div className={'modal-box graph-box' + (panelOpen ? ' panel-open' : '')}>
@@ -153,7 +154,7 @@ export function GraphPanel({ graph, close, open, currentPath }: { graph?: Graph;
       <label className="graph-field">Folder<select id="graph-folder" aria-label="Filter by folder" value={folder} onChange={event => setFolder(event.target.value)}><option value="">All folders</option>{facets.folders.map(([name, count]) => <option key={name} value={name}>{name === '/' ? 'Top level' : name} ({count})</option>)}</select></label>
       {facets.tags.length > 0 && <label className="graph-field">Tag<select id="graph-tag" aria-label="Filter by tag" value={tag} onChange={event => setTag(event.target.value)}><option value="">All tags</option>{facets.tags.map(([name, count]) => <option key={name} value={name}>#{name} ({count})</option>)}</select></label>}
       {facets.hasMemory && <label className="graph-field">Type<select id="graph-kind" aria-label="Filter by type" value={kind} onChange={event => setKind(event.target.value as typeof kind)}><option value="all">Notes &amp; memory</option><option value="note">Notes only</option><option value="memory">Agent memory only</option></select></label>}
-      <label className="graph-field">Colour<select id="graph-color" aria-label="Colour notes by" value={colorBy} onChange={event => setColorBy(event.target.value as ColorBy)}><option value="cluster">By cluster</option><option value="folder">By folder</option></select></label>
+      <label className="graph-field">Colour<select id="graph-color" aria-label="Colour notes by" value={colorBy} onChange={event => setColorBy(event.target.value as ColorBy)}><option value="cluster">By cluster</option><option value="folder">By folder</option>{facets.hasMemory && <option value="author">By author</option>}</select></label>
       {facets.timeline && <div className="graph-time graph-field">Timeline<span className="graph-time-row"><button id="graph-play" className="icon" aria-label={playing ? 'Pause timeline' : 'Play the vault growing'} onClick={() => { if (!playing && time >= 1000) setTime(0); setPlaying(p => !p); }}>{playing ? '❚❚' : '▶'}</button><input id="graph-time" type="range" min="0" max="1000" value={time} aria-label="Show notes created up to this date" onChange={event => { setPlaying(false); setTime(Number(event.target.value)); }} /><span id="graph-date">{date}</span></span></div>}
       <button id="graph-reset" className="btn" onClick={() => { engine.current?.focus(null); setFolder(''); setTag(''); setKind('all'); setTime(1000); setIsolate(false); setColorBy('cluster'); engine.current?.fit(); }}>Reset</button>
     </div>
@@ -171,6 +172,6 @@ export function GraphPanel({ graph, close, open, currentPath }: { graph?: Graph;
         {depthButtons}
         <label className="graph-isolate"><input type="checkbox" checked={isolate} onChange={event => setIsolate(event.target.checked)} /> Show only this neighbourhood</label>
         <span className="graph-count">{neighbours.length} connected notes</span>{neighbours.map(id => <button className="graph-neighbor" key={id} onClick={() => focusNode(id)}>{title(id)}</button>)}</> : <span className="graph-hint">Click a note to see its connections.</span>}</div>
-      {legend.length > 0 && <div className="graph-legend" aria-label={colorBy === 'folder' ? 'Folders' : 'Clusters'}><h3>{colorBy === 'folder' ? 'Folders' : 'Clusters'}</h3>{legend.slice(0, 40).map(c => <button key={c.id} className="graph-cluster" onClick={() => engine.current?.flyToGroup(c.id)}><i style={{ background: c.color }} />{c.name}<small>{c.size}</small></button>)}</div>}
+      {legend.length > 0 && <div className="graph-legend" aria-label={legendTitle}><h3>{legendTitle}</h3>{legend.slice(0, 40).map(c => <button key={c.id} className="graph-cluster" onClick={() => engine.current?.flyToGroup(c.id)}><i style={{ background: c.color }} />{c.name}<small>{c.size}</small></button>)}</div>}
     </aside></div></div></div>;
 }

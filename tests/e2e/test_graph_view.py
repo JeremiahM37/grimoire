@@ -6,9 +6,9 @@ from conftest import DESKTOP, PHONE
 from playwright.sync_api import expect
 
 
-def _graph(page, server, current=None):
+def _graph(page, server, current=None, second="beta"):
     """Two folders of twelve notes, each a chain, joined by one link. Served by interception: the vault is untouched."""
-    ids = [f"alpha/n{i}.md" for i in range(12)] + [f"beta/n{i}.md" for i in range(12)]
+    ids = [f"alpha/n{i}.md" for i in range(12)] + [f"{second}/n{i}.md" for i in range(12)]
     edges = []
     for base in (0, 12):
         for i in range(11):
@@ -26,6 +26,25 @@ def _graph(page, server, current=None):
         expect(page.locator("#title")).to_have_value("Note 5")
     page.evaluate("document.querySelector('#graph-open').click()")
     expect(page.locator("#graph-canvas")).to_have_attribute("data-phase", "settled", timeout=10000)
+
+
+def _node_position(page, index):
+    """Where a note is on the stage, once it has stopped moving.
+
+    Hiding the details column or opening the graph re-fits the camera over a few frames. A click aimed at a position
+    read mid-glide lands on empty space, so wait for the same answer on consecutive frames instead of sleeping.
+    """
+    return page.evaluate("""index => new Promise(resolve => {
+      const engine = document.getElementById('graph-canvas').engine;
+      let last = null, steady = 0;
+      const step = () => {
+        const p = engine.screenPosition(index);
+        steady = last && Math.abs(p.x - last.x) < 0.5 && Math.abs(p.y - last.y) < 0.5 ? steady + 1 : 0;
+        last = p;
+        if (steady >= 4) resolve({x: p.x, y: p.y}); else requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    })""", index)
 
 
 def _colourful_pixels(page):
@@ -75,6 +94,27 @@ def test_colour_by_folder_and_reset(page, server):
     expect(page.locator("#graph-filters-toggle")).not_to_contain_text("•")
 
 
+def test_colour_by_author_separates_your_notes_from_agent_memory(page, server):
+    # the second folder is agent memory, so half the vault was written by agents
+    _graph(page, server, second="memory")
+    page.click("#graph-filters-toggle")
+    page.select_option("#graph-color", "author")
+    expect(page.locator(".graph-legend h3")).to_have_text("Written by")
+    rows = page.locator(".graph-legend .graph-cluster")
+    expect(rows).to_have_count(2)
+    expect(rows.nth(0)).to_contain_text("Your notes")
+    expect(rows.nth(0)).to_contain_text("12")
+    expect(rows.nth(1)).to_contain_text("Agent memory")
+    swatches = rows.locator("i").evaluate_all("els => els.map(el => getComputedStyle(el).backgroundColor)")
+    assert swatches[0] != swatches[1]
+
+
+def test_colour_by_author_is_offered_only_when_agents_have_written(page, server):
+    _graph(page, server)
+    page.click("#graph-filters-toggle")
+    expect(page.locator("#graph-color option[value=author]")).to_have_count(0)
+
+
 def test_local_graph_reach_follows_the_open_note(page, server):
     _graph(page, server, current="alpha/n5.md")
     page.select_option("#graph-scope", "local")
@@ -97,7 +137,7 @@ def test_details_panel_can_be_hidden_and_returns_on_selection(page, server):
     page.click("#graph-panel-toggle")
     expect(page.locator("#graph-inspector")).to_be_hidden()
     assert page.locator("#graph-canvas").bounding_box()["width"] > before + 200
-    position = page.evaluate("(() => { const p = document.getElementById('graph-canvas').engine.screenPosition(5); return {x: p.x, y: p.y}; })()")
+    position = _node_position(page, 5)
     box = page.locator("#graph-canvas").bounding_box()
     page.mouse.click(box["x"] + position["x"], box["y"] + position["y"])
     expect(page.locator("#graph-inspector")).to_be_visible()
@@ -123,7 +163,7 @@ def test_phone_details_are_a_sheet_over_the_map(page, server):
     _graph(page, server)
     expect(page.locator("#graph-inspector")).to_be_hidden()
     stage = page.locator("#graph-canvas").bounding_box()
-    position = page.evaluate("(() => { const p = document.getElementById('graph-canvas').engine.screenPosition(5); return {x: p.x, y: p.y}; })()")
+    position = _node_position(page, 5)
     page.mouse.click(stage["x"] + position["x"], stage["y"] + position["y"])
     expect(page.locator("#graph-inspector")).to_be_visible()
     expect(page.locator("#graph-selection")).to_contain_text("Note 5")
@@ -143,7 +183,7 @@ def test_reduced_motion_focus_does_not_animate(browser, server):
     page = context.new_page()
     try:
         _graph(page, server)
-        position = page.evaluate("(() => { const p = document.getElementById('graph-canvas').engine.screenPosition(5); return {x: p.x, y: p.y}; })()")
+        position = _node_position(page, 5)
         box = page.locator("#graph-canvas").bounding_box()
         page.mouse.click(box["x"] + position["x"], box["y"] + position["y"])
         expect(page.locator("#graph-selection")).to_contain_text("Note 5")
