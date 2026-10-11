@@ -446,6 +446,14 @@ func (s *Server) reconcileFact(w http.ResponseWriter, r *http.Request, rel, fact
 			}
 			revealed := []index.MemoryHit{target}
 			s.revealSealed(r, revealed)
+			// The owner= label on a bullet is editable by anyone who can write
+			// the note. What proves ownership is that the key store opens the
+			// fact for this caller, so a fact that stays unopened is refused,
+			// whatever its label says (this also covers a locked vault).
+			if revealed[0].Text == memory.SealedPlaceholder {
+				writeErr(w, http.StatusConflict, "this sealed fact cannot be opened: unlock the vault, or it is sealed by another account")
+				return memoryResult{}, errHandled
+			}
 			expected = revealed[0].Text
 		}
 		if expected != m.ExpectedText {

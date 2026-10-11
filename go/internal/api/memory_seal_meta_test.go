@@ -1,9 +1,12 @@
 package api
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -383,5 +386,55 @@ func TestSealedCorrectionOfAReplayedFactNeverEmbedsIt(t *testing.T) {
 	}
 	if got := rec.all(); strings.Contains(got, sealFixed) {
 		t.Errorf("the embedder was given the sealed fact:\n%s", got)
+	}
+}
+
+// Who may correct a sealed fact is decided by the key store, not by the owner=
+// label on the bullet, which anyone who can write the note can edit. Here the
+// label says the caller owns the fact while the key store says otherwise.
+func TestSealedCorrectionNeedsTheKeyStoreNotTheLabel(t *testing.T) {
+	t.Parallel()
+	s, h := testServer(t)
+	if err := s.Secrets.Initialize("correct horse battery"); err != nil {
+		t.Fatal(err)
+	}
+	rel, id := rememberSealed(t, h, "", sealCanary)
+	correct := func(expected string) int {
+		w := do(t, h, "POST", "/api/memory", map[string]any{"text": "replacement secret text here",
+			"topic": "seal-test", "visibility": "sealed",
+			"target_id": id, "target_path": rel, "expected_text": expected})
+		return w.Code
+	}
+
+	path := filepath.Join(s.Vault.Root, ".grimoire", "seal-keys.json")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var kf map[string]map[string]string
+	if err := json.Unmarshal(raw, &kf); err != nil {
+		t.Fatal(err)
+	}
+	for k := range kf["owners"] {
+		kf["owners"][k] = "user:someone-else"
+	}
+	forged, _ := json.Marshal(kf)
+	if err := os.WriteFile(path, forged, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, guess := range []string{sealCanary, "[sealed]"} {
+		if code := correct(guess); code != http.StatusConflict {
+			t.Fatalf("correction with expected_text %q = %d, want 409 when the key store names another owner", guess, code)
+		}
+	}
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if code := correct(sealCanary); code != http.StatusCreated {
+		t.Fatalf("the real owner's correction = %d, want 201", code)
+	}
+	got := do(t, h, "GET", "/api/memory?q=replacement+secret&include_private=1&limit=5", nil).Body.String()
+	if !strings.Contains(got, "replacement secret text here") {
+		t.Errorf("the owner does not read the corrected text back: %s", got)
 	}
 }
