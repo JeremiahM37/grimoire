@@ -170,6 +170,9 @@ func (ix *Index) Sync() (SyncStats, error) {
 		if err := ix.resolveAll(); err != nil {
 			return stats, err
 		}
+		if err := ix.refreshCapture(); err != nil {
+			return stats, err
+		}
 	}
 	return stats, nil
 }

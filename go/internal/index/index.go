@@ -150,6 +150,9 @@ func (ix *Index) Reindex() (int, error) {
 	if err := ix.flushAliases(); err != nil {
 		return n, err
 	}
+	if err := ix.refreshCapture(); err != nil {
+		return n, err
+	}
 	if err := ix.setMeta(aliasTablesKey, aliasTablesVersion); err != nil {
 		return n, err
 	}
@@ -269,6 +272,9 @@ func (ix *Index) removeRows(rel string) error {
 		return err
 	}
 	if err := ix.deleteMemoryRows(rel); err != nil {
+		return err
+	}
+	if err := ix.captureUnlessBulk(); err != nil {
 		return err
 	}
 	if err := ix.DB.Exec("DELETE FROM blocks WHERE note=?", rel); err != nil {
