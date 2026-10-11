@@ -173,6 +173,7 @@ type forgetIn struct {
 	Path    string `json:"path"`
 	ID      string `json:"id"`
 	Agent   string `json:"agent,omitempty"`
+	Origin  string `json:"origin,omitempty"`
 	Hard    bool   `json:"hard,omitempty"`
 	Cascade bool   `json:"cascade,omitempty"`
 	DryRun  bool   `json:"dry_run,omitempty"`
@@ -202,7 +203,7 @@ func (s *Server) forgetPost(w http.ResponseWriter, r *http.Request) {
 		s.cascadeForget(w, r, note, id, in)
 		return
 	}
-	s.forgetOne(w, r, note, id, in.Hard, in.Agent)
+	s.forgetOne(w, r, note, id, in.Hard, in.Agent, in.Origin)
 }
 
 // isAgentInitiated reports whether the request came from an agent. A caller

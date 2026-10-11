@@ -1552,14 +1552,25 @@ func (s *Server) forgetEntry(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "not a memory note")
 		return
 	}
-	s.forgetOne(w, r, note, id, boolParam(r, "hard"), r.URL.Query().Get("agent"))
+	s.forgetOne(w, r, note, id, boolParam(r, "hard"), r.URL.Query().Get("agent"),
+		r.URL.Query().Get("origin"))
 }
 
 // forgetOne is the plain forget behind both DELETE /api/memory/entry and
 // POST /api/memory/forget without cascade. The path and id are checked by the
 // caller.
-func (s *Server) forgetOne(w http.ResponseWriter, r *http.Request, note, id string, hard bool, agent string) {
+func (s *Server) forgetOne(w http.ResponseWriter, r *http.Request, note, id string, hard bool, agent, origin string) {
 	if !s.requireWrite(w, r, note) {
+		return
+	}
+	// The lattice: a caller below the entry's rung may not forget it, whether
+	// the forget is soft or hard. Refused before anything is written.
+	rung := forgetRung(r, agent, origin)
+	if e, ok := s.entryAt(note, id); ok && rung < e.Authority() {
+		writeJSON(w, http.StatusForbidden, map[string]any{
+			"path": note, "id": id, "detail": "this entry was written at the " +
+				e.Authority().String() + " rung; a " + rung.String() + " caller cannot forget it",
+		})
 		return
 	}
 	if !hard && s.entryIsSealed(note, id) {

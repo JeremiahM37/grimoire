@@ -23,7 +23,6 @@ func TestOracleF1SubjectSlotDoesNotSupersedeAnotherSubject(t *testing.T) {
 }
 
 func TestOracleF2OutrankedWriterCannotForgetAFact(t *testing.T) {
-	t.Skip("open finding F2 (docs/lab/oracle.md): an agent or pulled writer can forget a person's fact")
 	runOracle(t, []modelcheck.Op{
 		{Kind: modelcheck.KRemember, Slot: 1, Value: 2, Writer: 0},
 		{Kind: modelcheck.KHardForget, Writer: 2, Target: 445215},
@@ -93,10 +92,6 @@ func TestOracleFindingsStillReproduce(t *testing.T) {
 		{"[subject-slot]", []modelcheck.Op{
 			{Kind: modelcheck.KRemember, Slot: 0, Value: 0, Writer: 1},
 			{Kind: modelcheck.KRemember, Slot: 1, Value: 1, Writer: 1},
-		}},
-		{"[lattice-forget]", []modelcheck.Op{
-			{Kind: modelcheck.KRemember, Slot: 1, Value: 2, Writer: 0},
-			{Kind: modelcheck.KHardForget, Writer: 2, Target: 445215},
 		}},
 		{"[supersession]", []modelcheck.Op{
 			{Kind: modelcheck.KRemember, Slot: 0, Value: 2, Writer: 1},

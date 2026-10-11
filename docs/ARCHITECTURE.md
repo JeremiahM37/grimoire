@@ -405,6 +405,14 @@ that was merely wrong. It does not reach what was derived from the bullet. A
 bank observation, a mental model, a cached profile, a dream report, or a
 snapshot in history can all still carry the text.
 
+A plain forget, soft or hard, is checked against the authority lattice
+(`memory/authority.go`) before anything is written. The caller's rung is a
+person when it names no agent (or the CLI), an agent when it names one (in the
+body or the identity header), and pulled when it also declares a connector
+`origin`. A caller below the entry's rung gets 403 and nothing changes. A soft
+forget of an entry that is already superseded or retracted gets 409 with the
+successor recorded there, and changes nothing; a hard forget still removes it.
+
 `POST /api/memory/forget` with `cascade=true` (CLI `grimoire forget PATH ID
 --cascade [--dry-run]`, MCP `forget` with `cascade`) reaches those copies. The
 work is split across two packages.

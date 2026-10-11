@@ -186,8 +186,13 @@ func (o *oracle) apply(op modelcheck.Op) string {
 		if w.Auth != modelcheck.Human {
 			agent = w.Name
 		}
-		code, body := o.call("POST", "/api/memory/forget", "",
-			map[string]any{"path": oracleNote, "id": o.real[t], "hard": hard, "agent": agent})
+		// A pulled writer declares its connector origin, as remember does, so the
+		// store can place it on the lattice's lowest rung.
+		body0 := map[string]any{"path": oracleNote, "id": o.real[t], "hard": hard, "agent": agent}
+		if w.Origin != "" {
+			body0["origin"] = w.Origin
+		}
+		code, body := o.call("POST", "/api/memory/forget", "", body0)
 		if got := code == http.StatusOK; got != ok {
 			tag := "[forget-refused]"
 			switch {
@@ -596,7 +601,6 @@ func runOracle(t *testing.T, ops []modelcheck.Op) {
 // skipped regression test that pins the documented behaviour.
 var oracleKnownFindings = map[string]string{
 	"[subject-slot]":     "F1: the value rule compares slots without the subject (memory_oracle_findings_test.go)",
-	"[lattice-forget]":   "F2: an outranked writer may retract or forget a fact above its rung",
 	"[supersession]":     "F4: a correction supersedes one contender and leaves another believed",
 	"[multi-contender]":  "F4: the store decides on the first contender it finds, not on every contender",
 	"[resolve-mismatch]": "F5: a dispute whose challenger is private cannot be settled",
