@@ -137,7 +137,7 @@ func groupDisputes(hits []index.MemoryHit, rel conflict.ReliabilityFn) []dispute
 		for _, c := range challengers {
 			row.Challengers = append(row.Challengers, sideOf(c))
 		}
-		row.Suggestion, row.Breakdown = adjudicate(d, challengers, rel)
+		row.Suggestion, row.Breakdown = adjudicate(d, challengers, rel, byID)
 		out = append(out, row)
 	}
 	// Newest disagreement first, so a person reads what most recently needs

@@ -7,6 +7,7 @@ import (
 
 	"github.com/JeremiahM37/grimoire/go/internal/calibrate"
 	"github.com/JeremiahM37/grimoire/go/internal/conflict"
+	"github.com/JeremiahM37/grimoire/go/internal/exp"
 	"github.com/JeremiahM37/grimoire/go/internal/index"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
 )
@@ -30,6 +31,9 @@ type disputeScore struct {
 	ID   string `json:"id"`
 	Side string `json:"side"`
 	conflict.Breakdown
+	// Hops is the fact's hop depth from its source. Only set under the
+	// "lineage" experiment; absent otherwise, so the flag-off listing is unchanged.
+	Hops *int `json:"hops,omitempty"`
 }
 
 // stampLayout is how appendEntry writes Stamp. A stamp that does not parse
@@ -40,7 +44,7 @@ const stampLayout = "2006-01-02 15:04"
 // is scored on its own terms, but corroboration is judged within the dispute:
 // a side counts as corroborated only by other sides in it that assert the same
 // text from an independent origin.
-func adjudicate(disputed index.MemoryHit, challengers []index.MemoryHit, rel conflict.ReliabilityFn) (disputeSuggestion, []disputeScore) {
+func adjudicate(disputed index.MemoryHit, challengers []index.MemoryHit, rel conflict.ReliabilityFn, byID map[string]index.MemoryHit) (disputeSuggestion, []disputeScore) {
 	type side struct {
 		hit  index.MemoryHit
 		name string
@@ -68,10 +72,27 @@ func adjudicate(disputed index.MemoryHit, challengers []index.MemoryHit, rel con
 		asserts[t][origin(s.hit)] = true
 	}
 
+	// Under the "lineage" experiment, corroboration counts distinct source
+	// lineages instead of writers (see memory_lineage.go). Off, lin is nil and
+	// every line below is what it was before.
+	var lin *lineageTerms
+	if exp.On(lineageFlag) {
+		raw := make([]index.MemoryHit, len(sides))
+		for i, s := range sides {
+			raw[i] = s.hit
+		}
+		t := scoreLineage(raw, byID, text)
+		lin = &t
+	}
+
 	now := vault.Now()
 	cands := make([]conflict.Candidate, 0, len(sides))
 	for i, s := range sides {
 		validFrom, _ := time.Parse(stampLayout, s.hit.Stamp)
+		corroboration, hops := len(asserts[text(s.hit)]), 0
+		if lin != nil {
+			corroboration, hops = lin.corroboration[i], lin.hops[i]
+		}
 		cands = append(cands, conflict.Candidate{
 			// The candidate id is the side's position, because a fact's own id
 			// can repeat across notes (see docs/DISPUTES.md, Limits).
@@ -79,8 +100,9 @@ func adjudicate(disputed index.MemoryHit, challengers []index.MemoryHit, rel con
 			Agent:         s.hit.Agent,
 			Authority:     s.hit.Authority(),
 			Verification:  s.hit.Verification,
-			Corroboration: len(asserts[text(s.hit)]),
+			Corroboration: corroboration,
 			ValidFrom:     validFrom,
+			HopDepth:      hops,
 		})
 	}
 
@@ -88,9 +110,12 @@ func adjudicate(disputed index.MemoryHit, challengers []index.MemoryHit, rel con
 	scores := make([]disputeScore, 0, len(ranked))
 	for _, r := range ranked {
 		i, _ := strconv.Atoi(r.Candidate.ID)
-		scores = append(scores, disputeScore{
-			ID: sides[i].hit.ID, Side: sides[i].name, Breakdown: r.Breakdown,
-		})
+		ds := disputeScore{ID: sides[i].hit.ID, Side: sides[i].name, Breakdown: r.Breakdown}
+		if lin != nil {
+			h := lin.hops[i]
+			ds.Hops = &h
+		}
+		scores = append(scores, ds)
 	}
 	top := scores[0]
 	return disputeSuggestion{ID: top.ID, Side: top.Side}, scores
