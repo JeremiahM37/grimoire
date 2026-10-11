@@ -622,6 +622,13 @@ func (s *Server) appendEntryChallenging(w http.ResponseWriter, r *http.Request, 
 	if restored != nil && restored.Entry.ID != "" {
 		e.ID = restored.Entry.ID
 	}
+	if restored != nil {
+		// A restored fact keeps the verdict it was written with; checking now
+		// would judge its evidence against a store that has since changed.
+		e.Verification = restored.Entry.Verification
+	} else {
+		e.Verification = s.verifyEvidence(r, m.Evidence)
+	}
 	if m.inherit != nil {
 		inheritFreshness(&e, *m.inherit)
 		// A replacement keeps the rating its predecessor earned unless the
@@ -837,6 +844,10 @@ type entryOut struct {
 	Basis string `json:"basis"`
 	// Evidence is what an agent said it read the fact from, when it said.
 	Evidence []string `json:"evidence,omitempty"`
+	// Verification is whether that evidence resolved when it was written:
+	// "verified" or "unverified". Absent when the fact cites nothing. An
+	// unverified fact cannot read as observed (see memory.Entry.Basis).
+	Verification string `json:"verification,omitempty"`
 
 	// Who asserted it: human, agent or pulled. Same argument as Trust — an
 	// agent about to overwrite a fact needs to know it is a person's
@@ -887,6 +898,7 @@ func entriesOut(hits []index.MemoryHit, explain bool) []entryOut {
 			Origin: h.Origin, Trust: trust.FromOrigin(h.Origin).String(),
 			Authority: h.Authority().String(),
 			Basis:     string(h.Basis()), Evidence: memory.SplitEvidence(h.Evidence),
+			Verification: h.Verification,
 		}
 		if h.Image != "" {
 			e.Image = &imageRef{SHA: h.Image, URL: imageURL(h.Image)}
@@ -1379,7 +1391,8 @@ func entryOf(e memory.Entry, note string) entryOut {
 		Session: e.Session, Category: e.Category, Stamp: e.Stamp, Expires: e.Expires,
 		Immutable: e.Immutable, SupersededBy: e.SupersededBy,
 		ValidFrom: e.ValidFrom, ValidTo: e.ValidTo,
-		Basis: string(e.Basis()), Evidence: memory.SplitEvidence(e.Evidence)}
+		Basis: string(e.Basis()), Evidence: memory.SplitEvidence(e.Evidence),
+		Verification: e.Verification}
 }
 
 // forgetEntry retracts one fact. By default it is struck through and kept, the

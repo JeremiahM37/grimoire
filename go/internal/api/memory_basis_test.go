@@ -39,14 +39,19 @@ func TestBasisAppearsOnEveryRecalledFact(t *testing.T) {
 
 func TestEvidencePromotesAnAgentFactToObserved(t *testing.T) {
 	t.Parallel()
-	_, h := testServer(t)
+	s, h := testServer(t)
+	// The cited note must really exist: a citation that resolves is what makes
+	// a fact observed. A forged one is covered by the verification tests below.
+	if _, err := s.Vault.Write("memory/cron.md", "# Cron\n\nbackup runs at 03:00 nightly\n", nil); err != nil {
+		t.Fatal(err)
+	}
 	remember(t, h, map[string]any{"topic": "ops", "infer": false,
 		"text":     "the backup runs at 03:00",
-		"evidence": []string{"memory/cron.md", "https://example.org/runbook"}})
+		"evidence": []string{"memory/cron.md"}})
 
 	body := noteBody(t, h, "memory/ops.md")
-	if !strings.Contains(body, "ev=memory/cron.md,https://example.org/runbook") {
-		t.Fatalf("evidence not written into the trailer:\n%s", body)
+	if !strings.Contains(body, "ev=memory/cron.md") || !strings.Contains(body, "evv=verified") {
+		t.Fatalf("evidence or its verdict not written into the trailer:\n%s", body)
 	}
 	facts := recallFacts(t, h, "?q=backup")
 	if b := basisOf(t, facts, "backup runs"); b != "observed" {
@@ -55,10 +60,59 @@ func TestEvidencePromotesAnAgentFactToObserved(t *testing.T) {
 	for _, f := range facts {
 		if strings.Contains(f["text"].(string), "backup runs") {
 			ev, _ := f["evidence"].([]any)
-			if len(ev) != 2 || ev[0] != "memory/cron.md" {
+			if len(ev) != 1 || ev[0] != "memory/cron.md" {
 				t.Fatalf("evidence not returned as a list: %v", f["evidence"])
 			}
+			if f["verification"] != "verified" {
+				t.Fatalf("verification = %v, want verified", f["verification"])
+			}
 		}
+	}
+}
+
+// Evidence that names a note the store does not hold is kept, is recorded as
+// unverified, and cannot make the fact observed.
+func TestForgedEvidenceIsKeptButCappedAtInferred(t *testing.T) {
+	t.Parallel()
+	_, h := testServer(t)
+	remember(t, h, map[string]any{"topic": "ops", "infer": false,
+		"text":     "the backup runs at 03:00",
+		"evidence": []string{"memory/never-written.md", "https://example.com/never-fetched"}})
+
+	body := noteBody(t, h, "memory/ops.md")
+	if !strings.Contains(body, "ev=memory/never-written.md,https://example.com/never-fetched") {
+		t.Fatalf("forged evidence was dropped rather than kept:\n%s", body)
+	}
+	if !strings.Contains(body, "evv=unverified") {
+		t.Fatalf("forged evidence not marked unverified:\n%s", body)
+	}
+	facts := recallFacts(t, h, "?q=backup")
+	if b := basisOf(t, facts, "backup runs"); b != "inferred" {
+		t.Fatalf("forged evidence read as %q, want inferred", b)
+	}
+	for _, f := range facts {
+		if strings.Contains(f["text"].(string), "backup runs") {
+			if f["verification"] != "unverified" {
+				t.Fatalf("verification = %v, want unverified", f["verification"])
+			}
+			if ev, _ := f["evidence"].([]any); len(ev) != 2 {
+				t.Fatalf("the claimed evidence must still be shown: %v", f["evidence"])
+			}
+		}
+	}
+}
+
+// A person's correction with forged evidence is still the person's: the cap
+// applies to agent writes only.
+func TestHumanFactWithForgedEvidenceStaysStated(t *testing.T) {
+	t.Parallel()
+	_, h := testServer(t)
+	remember(t, h, map[string]any{"topic": "ops", "infer": false, "human": true,
+		"text":     "the backup runs at 03:00",
+		"evidence": []string{"memory/never-written.md"}})
+	facts := recallFacts(t, h, "?q=backup")
+	if b := basisOf(t, facts, "backup runs"); b != "stated" {
+		t.Fatalf("a person's fact read as %q, want stated", b)
 	}
 }
 
