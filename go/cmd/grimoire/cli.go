@@ -80,7 +80,10 @@ const usage = `grimoire — local-first AI-native notes
                                       into that agent's skills dir; never touches skills it did not write
   grimoire skills mine [--agent NAME]... [--since 30d] [--min-sessions 3] [--title] [--dry-run]
                                       find command sequences repeated across sessions; drafts go to a review queue
-  grimoire skills accept ID           save one reviewed draft into the memory store as a procedure
+  grimoire skills gate ID             show a candidate's offline gate: support, false fires, failed outcomes
+  grimoire skills accept ID [--override "REASON"]
+                                      save one reviewed draft as a procedure (a failed gate needs --override)
+  grimoire skills check [--cwd DIR]   list stored skills whose preconditions hold here, and which do not
   grimoire memory impact [--since 90d] [--agent NAME] [--json]
                                       session friction before vs after each memory/skill landed (correlation only)
   grimoire agent profiles | new NAME  list agent profiles; start a profile for a new agent
