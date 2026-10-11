@@ -82,7 +82,7 @@ def run_one(binary: Path, work: Path, n: int, scope: str, mode: str, ps_dir: Pat
             raise RuntimeError(f"{tag}: clone-n7 did not run; see {log}")
         cli = bench.Client(port)
         held = [(p, k) for p in ps for k in ("R2", "R3")]
-        lat, at10, misses = [], 0, 0
+        lat, at10 = [], 0
         # warm-up: 20 discarded
         for p, k in held[:20]:
             cli.request("GET", "/api/memory?q=" + urllib.parse.quote(p["queries"][k]))
