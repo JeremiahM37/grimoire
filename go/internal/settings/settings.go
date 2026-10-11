@@ -184,6 +184,10 @@ var Fields = map[string]Field{
 	// estimate is attempted.
 	"memory_holdout_rate":  {"GRIMOIRE_MEMORY_HOLDOUT_RATE", "0"},
 	"memory_trace_min_arm": {"GRIMOIRE_MEMORY_TRACE_MIN_ARM", "10"},
+	// Experiment ips (docs/lab/ips.md): the share of injection slates whose order
+	// is shuffled, so position bias can be estimated. Only read under the ips
+	// experiment flag; 0 (the default) never shuffles.
+	"memory_position_explore": {"GRIMOIRE_MEMORY_POSITION_EXPLORE", "0"},
 	// Memory replay (docs/MEMORY_REPLAY.md): context requests are kept as
 	// situations, and automated memory edits are replayed against them first.
 	// replay_log=0 stops recording; replay_gate=0 stops holding changes (the
