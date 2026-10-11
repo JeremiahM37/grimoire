@@ -271,7 +271,8 @@ func TestMemoryScoreComponentsAreReported(t *testing.T) {
 		t.Errorf("score = %v", h.Score)
 	}
 	sum := wSemantic*h.Semantic + wKeyword*h.Keyword + wEntity*h.Entity +
-		wRecency*h.Recency + wUseful*h.Useful
+		wRecency*h.Recency + wUseful*h.Useful +
+		wPhrase*phraseScore(memory.Tokens("who owns the deploy script"), h.Text)
 	if diff := h.Score - sum; diff > 1e-9 || diff < -1e-9 {
 		t.Errorf("score %v is not the weighted sum of its parts %v", h.Score, sum)
 	}
