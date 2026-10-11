@@ -1,0 +1,193 @@
+# Sealed facts and tombstones
+
+Two limits from `MEMORY-PRIVACY.md` are addressed here.
+
+- **Limit 5.** `vis=private|sensitive` is a retrieval filter. The fact's text
+  stays in the note file, the raw note reads and the full-text index, and
+  nothing makes the owner a boundary.
+- **Limit 6.** `forget --cascade` reaches the vault, but not backups, git
+  history or sync peers. A forgotten fact can come back from any of them.
+
+`vis=sealed` and the tombstone log are the answers. Each is described below
+with what is measured here, what is designed but not measured, and what is open.
+
+## Sealed facts (`vis=sealed`)
+
+### What is written
+
+```
+- **2026-10-10 09:00 · claude** — [sealed] <!--m id=3f9c0a1b7e2d vis=sealed owner=user:jam key=0a1b… sealed=gAAAAAB…-->
+```
+
+- The text is the placeholder `[sealed]`. The fact is not in the bullet.
+- `sealed=` is the ciphertext: a Fernet token (`internal/crypto`, AES-128-CBC
+  with HMAC-SHA256, the same primitive the secret vault and encrypted notes
+  use). No new algorithm is introduced.
+- `key=` names a per-fact data key. The data key is 256 random bits, and it
+  lives only in the key store, wrapped by the vault session key (a Fernet token
+  under the session key).
+- `owner=` is the writing account: `user:<id>` on a multi-user deployment, or
+  `local` on an unrestricted one. An anonymous caller cannot seal.
+- The id is a hash of the ciphertext, not the plaintext. Hashing the plaintext
+  of a short fact would give anyone who can read the note a guessable hash of it.
+
+Sealed facts are appended, never reconciled. Reconciliation sends the new fact
+and its candidates to a model, which a sealed fact must not do. Extraction
+(`infer`) is skipped for the same reason, and so is the volatility estimate.
+
+### Who reads what
+
+| caller | `recall` with `include_private=1` |
+|---|---|
+| the owner, vault unlocked | the plaintext |
+| any other account, or the owner with the vault locked | the placeholder |
+| anonymous | nothing: no account, so no owner |
+
+Without `include_private` a sealed fact is hidden, like `private`. The index
+never holds its text, so search, context, briefing, profile, export and the
+stream never carry it. The `expand`, `hops`, `explain` and `shape=notes` views
+are not reached by the reveal: they show the placeholder, or leave the bullet
+out.
+
+Writing a sealed fact needs an unlocked vault (423 otherwise). Editing its text
+in place is refused (409): an edit would put plaintext beside the old
+ciphertext. A sealed fact is removed on forget and never struck through,
+because its key is destroyed and a struck bullet would be ciphertext no one can
+open.
+
+### Key store
+
+The key store is one JSON file, mode 0600, that holds wrapped data keys.
+
+- Default: `<vault>/.grimoire/seal-keys.json`, beside the secret vault. The
+  `.grimoire` directory is not synced to phones (`.stignore`), but it is inside
+  the vault tree, so a backup of the vault takes it too.
+- `GRIMOIRE_SEAL_KEYS=/path/to/seal-keys.json` moves it. Point it at a path
+  that backups do not cover. Crypto-shred only holds if no copy of the key
+  store exists anywhere the ciphertext does.
+
+The trade-off is real. A key store outside the vault is not restored with the
+vault, so after a move to a new machine the sealed facts cannot be read there.
+That is what crypto-shred means, but it is a choice the operator must make.
+
+### Forget and crypto-shred
+
+Forgetting a sealed fact (any forget path, cascade or not):
+
+1. removes the bullet from the note,
+2. destroys its wrapped data key (the key store entry is deleted and the file
+   rewritten),
+3. writes a tombstone for its id.
+
+After this, every copy of the ciphertext (a backup, an old git commit, a
+snapshot in the history store, a sync peer's history) is unreadable, because
+the only key that opens it no longer exists in the store. A second forget of
+the same fact succeeds with nothing to destroy.
+
+### Measured here
+
+`go test` only, deterministic, offline. These are pass/fail facts, not timings.
+
+- `internal/seal`: round trip, wrong session key fails, a shredded key returns
+  `ErrShredded`, a repeated shred is a no-op, other keys survive a shred, the
+  key store is 0600, two seals of one text share no key.
+- `internal/memory/seal_test.go`: a sealed bullet round-trips byte for byte, is
+  not read as hand-edited, is hidden and redacted, and an unknown `vis=` still
+  fails closed to private. An ordinary bullet formats byte-identically.
+- `internal/api/memory_seal_test.go`:
+  - the canary text is absent from the note bytes, search results and export;
+  - a locked vault refuses the write with 423;
+  - alice (owner) reads the text back, bob and the administrator get the
+    placeholder, over the real HTTP surface with three accounts;
+  - an in-place edit is refused and leaves the note unchanged;
+  - a saved copy of the note taken before the forget cannot be opened after it,
+    and the restored copy is stripped again on reindex.
+
+## Tombstones
+
+### What is written
+
+`memory-tombstones.md` at the vault root, one JSON object per line:
+
+```
+{"salt":"…","hash":"…","at":"2026-10-10 09:00","reason":"forget"}
+```
+
+- `hash` is `sha256(salt ‖ fact id)`. The fact id is not stored. The salt is
+  per tombstone, so two tombstones for the same id cannot be matched.
+- It is a markdown file on purpose: note sync and the peer manifest walk
+  markdown only, so a log in another format would never leave the device.
+- It is indexed as a note and appears on phones. It holds hashes and reasons,
+  not text.
+
+### Where it is applied
+
+- **Every hard removal** writes a tombstone (`removeEntry`, which the hard
+  forget and the cascade both use). A sealed fact's removal also destroys its
+  key.
+- **Reindex** strips tombstoned bullets from every memory note before the index
+  is rebuilt (`POST /api/reindex`).
+- **Sync merge** strips them from a note a peer just pushed, before the index
+  sees it (`mergeCRDT`, the peer merge route).
+- **Cloud-folder sync** (`internal/cloudsync`) writes pulled notes without that
+  hook. Tombstones reach those notes only at the next reindex. This is open:
+  see below.
+- **Write** refuses a new fact whose id is tombstoned (409). This is what
+  stops a restore of an old export from putting a forgotten fact back.
+
+A stripped bullet is removed from the file, with a snapshot of the note before
+the rewrite, so the history still has it.
+
+### Measured here
+
+- `internal/seal/seal_test.go`: the log stores no id in clear, repeated adds
+  are one tombstone, `Suppressed` matches exactly the forgotten id, and
+  `StripBullets` removes only the tombstoned line and changes nothing else.
+- `TestForgetShredsTheKeyAndNoSavedCopyOpens`: a restored copy of a forgotten
+  bullet is stripped by reindex.
+- `TestStalePeerPushCannotResurrectAForgottenFact`: a stale copy written back
+  to the note is stripped by the suppression call, and recall does not return
+  the fact. The test calls the suppression directly. It is not an end-to-end
+  sync test, and the merge route itself is not exercised.
+
+### Behaviour change
+
+`TestMemoryImageExportsAndImportsItsBytes` used to remove a bullet with
+`removeEntry` and import it again from an export. Removal now tombstones the
+id, so that import is refused. The test clears the tombstone log before the
+import, which stands for the operator's deliberate restore. Nothing else in the
+suite depended on a removed fact coming back.
+
+## What remains out of reach
+
+These are real, and the design does not claim to close them.
+
+- **Ciphertext and key together.** A copy of the note and of the key store
+  made before the forget opens the fact. Crypto-shred only holds for copies
+  that are missing the key store.
+- **Plaintext already elsewhere.** A fact written before sealing, or a
+  plaintext copy made before the forget, is still plaintext in whatever holds
+  it. A fact that was sent to a model in a prompt, or logged, stays there.
+  Cues recorded with `context` are not sealed (`addAgentCues`); a caller that
+  puts the fact in `context` puts it in the cue store.
+- **Cloud-folder sync is not hooked.** Pulled notes can carry a forgotten
+  bullet until the next reindex.
+- **Peers do not hold the key.** The key store is not synced. A sync peer
+  receives sealed bullets as ciphertext it cannot open. Sealed facts are
+  readable on the device that holds the key store, and nowhere else.
+- **Soft forget of a sealed fact.** Not offered: forget removes it.
+- **Tombstones are not authenticated.** Anyone who can write the vault file
+  can add a tombstone for any id and suppress a fact. The log is a record,
+  not a signed one. Peer tombstones are trusted as they are trusted for any
+  other note.
+- **Recall expansion views.** `expand`, `hops`, `explain` and `shape=notes`
+  do not reveal the text to the owner. Owners get it from flat recall with
+  `include_private=1`.
+- **Existence.** A sealed bullet is visible in the note file: its time, its
+  agent, that it is sealed, and its owner. Only the text is hidden.
+- **Unrestricted deployments.** With no accounts, every caller is `local` and
+  so is the owner. The boundary between people starts with accounts.
+- **Not measured:** the cost of decryption on recall, and the cost of the
+  tombstone read on every write. Both are small by construction (one key
+  unwrap per owned sealed hit, one small file read per write) but neither has
+  been timed.
