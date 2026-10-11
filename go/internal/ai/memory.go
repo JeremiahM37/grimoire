@@ -94,7 +94,8 @@ func (c *Client) DecideMemoryFrom(fact, origin string, candidates []memory.Entry
 // model cannot express the edit, rather than being asked not to make it.
 func (c *Client) DecideMemoryAs(fact, origin string, human bool, candidates []memory.Entry) memory.Decision {
 	rule := memory.DecideAs(fact, origin, human, candidates)
-	if rule.Challenges != "" {
+	if rule.Challenges != "" || rule.Contested != "" {
+		// A contested deferral belongs to the cascade, not to the model.
 		return rule
 	}
 	backend := c.Backend()

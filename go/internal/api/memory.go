@@ -533,6 +533,7 @@ func (s *Server) reconcileFact(w http.ResponseWriter, r *http.Request, rel, fact
 			byID[h.ID] = h
 		}
 		decision = s.AI.WithSurface("reconcile", agentFor(r)).DecideMemoryAs(fact, strings.TrimSpace(m.Origin), m.Human, candidates)
+		decision = s.cascadeReconcile(fact, decision, byID)
 		if decision.Target != "" {
 			target, ok := byID[decision.Target]
 			if !ok {
