@@ -7,9 +7,11 @@
 // GIF and WebP, identified by their magic bytes, never by the file name or the
 // client's Content-Type — and everything here is standard library.
 //
-// Retrieval is by caption only. A memory image has a text caption, the caption
-// is the memory's text, and the existing full-text and vector arms index that
-// text. Nothing in this package embeds pixels.
+// Recall is by caption only. A memory image has a text caption, the caption is
+// the memory's text, and the existing full-text and vector arms index that
+// text. Finding a visually similar picture is separate and pixel-based: see
+// Signature (signature.go) and Rank (similar.go). Nothing here runs a model
+// except the opt-in Captioner (caption.go).
 package memimage
 
 import (
