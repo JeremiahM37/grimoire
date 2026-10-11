@@ -130,6 +130,16 @@ type Entry struct {
 	// never changes the id, which hashes only the stamp, agent and text.
 	Evidence string
 
+	// Verification is whether the evidence resolved when it was written:
+	// VerifiedEvidence when every reference was found, UnverifiedEvidence when
+	// any was not. Empty when there was no evidence. An unverified fact is
+	// never `observed` (see basis.go), and the evidence itself is kept: a
+	// citation that did not resolve is still what the agent claimed it read.
+	// Declared as evv=verified|unverified and only set by the write path. It
+	// records that a reference exists (and that a quote is present), never
+	// that the fact is true; see docs/PROVENANCE.md.
+	Verification string
+
 	// Freshness — see fresh.go. Fresh is the declared tier ("stable",
 	// "volatile", a TTL like "7d", or empty for the learned rate), Check how
 	// to verify the value, Verified the last time an agent confirmed it.
@@ -371,6 +381,13 @@ func parseTrailer(s string) Entry {
 			e.Origin = v
 		case "ev":
 			e.Evidence = v
+		case "evv":
+			// Only the two states the write path can produce are read. Anything
+			// else is ignored rather than kept, so a hand-edited value cannot
+			// claim a verification nothing performed.
+			if v == VerifiedEvidence || v == UnverifiedEvidence {
+				e.Verification = v
+			}
 		case "by":
 			e.Human = v == "human"
 		case "chal":
@@ -460,6 +477,9 @@ func (e Entry) trailer() string {
 	}
 	if e.Evidence != "" {
 		fields = append(fields, "ev="+escapeField(e.Evidence))
+	}
+	if e.Verification == VerifiedEvidence || e.Verification == UnverifiedEvidence {
+		fields = append(fields, "evv="+e.Verification)
 	}
 	if e.Challenges != "" {
 		fields = append(fields, "chal="+escapeField(e.Challenges))
