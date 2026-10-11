@@ -98,10 +98,29 @@ func sideOf(h index.MemoryHit) disputeSide {
 // believed, which is the only population a dispute can be drawn from.
 func (s *Server) liveDisputeHits(r *http.Request) ([]index.MemoryHit, error) {
 	return s.Index.MemoryEntries(index.MemoryQuery{
-		Filter: filterFor(r, true),
-		Limit:  challengeListLimit,
-		Now:    vault.Now(),
+		Filter:         filterFor(r, true),
+		IncludePrivate: disputeSeesPrivate(r),
+		Limit:          challengeListLimit,
+		Now:            vault.Now(),
 	})
+}
+
+// disputeSeesPrivate reports whether a dispute may include a private or
+// sensitive side. The index hides those from every read unless asked, which is
+// what made a person's own dispute with a private challenger unsettleable: the
+// listing that resolve draws from never saw the challenger. The person who
+// settles a dispute must see both sides, so an unrestricted caller or admin
+// sees them without asking. Everyone else, and every agent, needs
+// include_private, which is the rule memory recall already applies.
+func disputeSeesPrivate(r *http.Request) bool {
+	if boolParam(r, "include_private") {
+		return true
+	}
+	if _, agent := isAgentInitiated(r); agent {
+		return false
+	}
+	p := principal(r)
+	return p.Unrestricted || p.IsAdmin()
 }
 
 // groupDisputes pairs each contested entry with the live challengers pointing

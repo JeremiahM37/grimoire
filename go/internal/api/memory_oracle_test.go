@@ -600,10 +600,9 @@ func runOracle(t *testing.T, ops []modelcheck.Op) {
 // signature), so a new kind of divergence still fails the run. Each one has a
 // skipped regression test that pins the documented behaviour.
 var oracleKnownFindings = map[string]string{
-	"[subject-slot]":     "F1: the value rule compares slots without the subject (memory_oracle_findings_test.go)",
-	"[supersession]":     "F4: a correction supersedes one contender and leaves another believed",
-	"[multi-contender]":  "F4: the store decides on the first contender it finds, not on every contender",
-	"[resolve-mismatch]": "F5: a dispute whose challenger is private cannot be settled",
+	"[subject-slot]":    "F1: the value rule compares slots without the subject (memory_oracle_findings_test.go)",
+	"[supersession]":    "F4: a correction supersedes one contender and leaves another believed",
+	"[multi-contender]": "F4: the store decides on the first contender it finds, not on every contender",
 }
 
 // signature names a divergence by its kind, with the numbers and quoted

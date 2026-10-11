@@ -72,7 +72,6 @@ func TestOracleF4StoreConsidersEveryContender(t *testing.T) {
 }
 
 func TestOracleF5PersonCanSettleADisputeWithPrivateChallenger(t *testing.T) {
-	t.Skip("open finding F5 (docs/lab/oracle.md): a private challenger hides the dispute from its settler")
 	runOracle(t, []modelcheck.Op{
 		{Kind: modelcheck.KRemember, Slot: 0, Value: 0, Writer: 0},
 		{Kind: modelcheck.KRemember, Slot: 0, Value: 2, Writer: 1, Private: true},
@@ -102,11 +101,6 @@ func TestOracleFindingsStillReproduce(t *testing.T) {
 			{Kind: modelcheck.KRemember, Slot: 0, Value: 0, Writer: 1},
 			{Kind: modelcheck.KRemember, Slot: 0, Value: 1, Writer: 2},
 			{Kind: modelcheck.KRemember, Slot: 0, Value: 2, Writer: 2},
-		}},
-		{"[resolve-mismatch]", []modelcheck.Op{
-			{Kind: modelcheck.KRemember, Slot: 0, Value: 0, Writer: 0},
-			{Kind: modelcheck.KRemember, Slot: 0, Value: 2, Writer: 1, Private: true},
-			{Kind: modelcheck.KResolve, Writer: 0, Target: 1001780, Challenger: 116452, Accept: false},
 		}},
 	}
 	for _, c := range cases {

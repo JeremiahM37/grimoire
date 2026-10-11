@@ -37,7 +37,11 @@ with none, or the CLI, is the person. See `isAgentInitiated` in
 ```
 
 - A dispute is listed only while both sides are believed (neither retracted,
-  superseded nor expired), and only to a caller who may see both.
+  superseded nor expired), and only to a caller who may see both. A private or
+  sensitive side is included for an unrestricted caller or admin (the person
+  who settles disputes), and for any caller with `include_private`. An agent
+  without `include_private` does not see a dispute with a private side. A sealed
+  side is always a placeholder, as everywhere else.
 - `challengers` lists every live entry that contests the disputed one.
 - Each side carries its text, authority (`human`, `agent` or `pulled`), stamp
   and evidence. Evidence is always an array, possibly empty.

@@ -365,3 +365,35 @@ func TestAcceptRetractsTheOtherChallengersAndListsThem(t *testing.T) {
 		t.Errorf("the unaccepted challenger is not a retraction in the digest: %v", row)
 	}
 }
+
+// A private challenger is part of a dispute the person settles, so the person
+// sees it without asking. An agent does not see it unless it asks for private
+// facts, the same rule memory recall applies.
+func TestPrivateChallengerIsListedToThePersonButNotToAnAgent(t *testing.T) {
+	t.Parallel()
+	_, h := testServer(t)
+	remember(t, h, map[string]any{"text": humanFact, "topic": "ops", "agent": "me", "human": true})
+	remember(t, h, map[string]any{"text": agentFact, "topic": "ops", "agent": "claude", "visibility": "private"})
+
+	if got := disputes(t, h); len(got) != 1 {
+		t.Fatalf("person's disputes = %d, want 1 with a private challenger", len(got))
+	}
+	listAs := func(path, agent string) []map[string]any {
+		req := requestFor(t, "GET", path, nil)
+		req.Header.Set("X-Grimoire-Agent", agent)
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("agent list %s = %d: %s", path, w.Code, w.Body)
+		}
+		var out []map[string]any
+		decode(t, w, &out)
+		return out
+	}
+	if got := listAs("/api/memory/disputes", "claude"); len(got) != 0 {
+		t.Errorf("agent saw %d disputes with a private challenger, want 0", len(got))
+	}
+	if got := listAs("/api/memory/disputes?include_private=1", "claude"); len(got) != 1 {
+		t.Errorf("agent with include_private saw %d disputes, want 1", len(got))
+	}
+}
