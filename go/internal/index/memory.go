@@ -361,9 +361,12 @@ func (ix *Index) memoryUses(rel string) (map[string]memoryUse, error) {
 // RecordUse counts one use of a fact: it was recalled and then reported
 // helpful. The count is index state only (see writeMemoryRows).
 func (ix *Index) RecordUse(rel, id string, at time.Time) error {
-	return ix.DB.Exec(
+	if err := ix.DB.Exec(
 		"UPDATE memory_entries SET uses=uses+1, last_used=? WHERE note=? AND id=?",
-		at.UTC().Format(time.RFC3339), rel, id)
+		at.UTC().Format(time.RFC3339), rel, id); err != nil {
+		return err
+	}
+	return ix.actrRecord(rel, id, at) // no-op unless the "actr" experiment is on
 }
 
 func (ix *Index) deleteMemoryRows(rel string) error {
@@ -825,6 +828,7 @@ func (ix *Index) rankMemory(cands []memoryRow, q MemoryQuery) []MemoryHit {
 	qTokens := memory.Tokens(q.Query)
 	ents := ix.candidateEntities(cands, qEntities)
 	links := ix.candidateLinks(cands, memory.QueryCanons(q.Query))
+	actr := ix.actrTraces(cands) // nil unless the "actr" experiment is on
 
 	out := make([]MemoryHit, 0, len(cands))
 	for _, c := range cands {
@@ -844,6 +848,9 @@ func (ix *Index) rankMemory(cands []memoryRow, q MemoryQuery) []MemoryHit {
 			}
 		}
 		h.Recency = recencyScoreWith(c.hit.Stamp, q.Now, halfLifeFor(eff))
+		if actr != nil {
+			h.Recency = actrRecencyFor(actr[entKey{c.hit.Note, c.hit.ID}], q.Now, h.Recency)
+		}
 		h.Useful = c.hit.Usefulness()
 		h.ImportanceFactor = importanceFactor(eff)
 		h.Reuse = reuseBonus(h.Uses)
