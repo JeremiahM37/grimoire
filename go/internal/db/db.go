@@ -625,6 +625,10 @@ var addedColumns = []struct{ table, column, decl string }{
 	{"grant_requests", "max_uses", "INTEGER NOT NULL DEFAULT 0"},
 	// The facts an observation was built from.
 	{"bank_units", "sources", "TEXT NOT NULL DEFAULT ''"},
+	// Taint on a bank unit: 1 when it derives from untrusted input and no
+	// person has cleared it, and the origin that input came from.
+	{"bank_units", "tainted", "INTEGER NOT NULL DEFAULT 0"},
+	{"bank_units", "origin", "TEXT NOT NULL DEFAULT ''"},
 }
 
 // tableExists reports whether a table or virtual table is in the schema.

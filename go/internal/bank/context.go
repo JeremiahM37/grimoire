@@ -5,6 +5,8 @@ import (
 	"sort"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/JeremiahM37/grimoire/go/internal/trust"
 )
 
 // DefaultContextChars is how much a session-start injection may render.
@@ -73,6 +75,12 @@ func renderContext(bankID string, items []ContextItem, dropped int) string {
 	fmt.Fprintf(&b, "<grimoire_bank_context bank=%q>\n", bankID)
 	b.WriteString("Memory from this repository's bank: a record of the past that may or may not bear " +
 		"on the task. Verify it against the code.\n")
+	for _, it := range items {
+		if trust.Marked(it.Text) {
+			b.WriteString(trust.Preamble)
+			break
+		}
+	}
 	last := ""
 	for _, it := range items {
 		if it.Kind != last {
@@ -163,12 +171,12 @@ func (e *Engine) contextItems(bankID string, o ContextOptions) ([]ContextItem, e
 	sort.SliceStable(models, func(i, j int) bool {
 		return models[i].Authority == "human" && models[j].Authority != "human"
 	})
-	for _, m := range models {
+	for i, m := range models {
 		if strings.TrimSpace(m.Body) == "" {
 			continue
 		}
 		items = append(items, ContextItem{Kind: KindModel, ID: m.ID,
-			Text: "### " + m.Name + "\n" + strings.TrimSpace(m.Body)})
+			Text: "### " + m.Name + "\n" + fenceUnit(i+1, m.Untrusted, m.Origin, strings.TrimSpace(m.Body))})
 	}
 	obs, _, _, err := e.ListObservations(bankID, ObservationQuery{Limit: 500})
 	if err != nil {
@@ -181,8 +189,9 @@ func (e *Engine) contextItems(bankID string, o ContextOptions) ([]ContextItem, e
 		}
 		return obs[i].ProofCount > obs[j].ProofCount
 	})
-	for _, ob := range obs {
-		items = append(items, ContextItem{Kind: KindObserve, ID: ob.ID, Text: "- " + oneLineText(ob.Text) + " " + ShortRef(ob.ID)})
+	for i, ob := range obs {
+		text := fenceUnit(i+1, ob.Trust == trust.NameUntrusted, ob.Origin, oneLineText(ob.Text))
+		items = append(items, ContextItem{Kind: KindObserve, ID: ob.ID, Text: "- " + text + " " + ShortRef(ob.ID)})
 	}
 	facts, _, err := e.ListFacts(bankID, FactQuery{Type: "", Limit: 500})
 	if err != nil {
@@ -199,7 +208,7 @@ func (e *Engine) contextItems(bankID string, o ContextOptions) ([]ContextItem, e
 		if f.Type == "observation" {
 			continue
 		}
-		line := "- " + oneLineText(f.Text)
+		line := "- " + fenceUnit(len(items)+1, f.Trust == trust.NameUntrusted, f.Origin, oneLineText(f.Text))
 		if f.Authority == "human" {
 			line += " [written by a person]"
 		}

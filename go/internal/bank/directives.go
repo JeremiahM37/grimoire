@@ -1,6 +1,8 @@
 package bank
 
-import "strings"
+import (
+	"strings"
+)
 
 // Directives are a bank's standing rules — "always answer in French", "never
 // quote salaries" — kept as bullets in bank.md's "## Directives" section and
@@ -15,6 +17,10 @@ type DirectiveSpec struct {
 	Tags     *[]string `json:"tags"`
 	Priority *int      `json:"priority"`
 	Active   *bool     `json:"is_active"`
+	// Derived lists the units the text was taken from. A directive taken from
+	// untrusted content is refused: an injected passage must never become a
+	// standing rule. The caller declares this; it is not inferred.
+	Derived []string `json:"derived_from,omitempty"`
 }
 
 func (s DirectiveSpec) apply(d *Directive) {
@@ -65,6 +71,9 @@ func (e *Engine) CreateDirective(bankID string, spec DirectiveSpec) (*Directive,
 	if strings.TrimSpace(d.Text) == "" {
 		return nil, invalid("a directive needs text")
 	}
+	if err := e.refuseTaintedDirective(bankID, spec); err != nil {
+		return nil, err
+	}
 	var created Directive
 	_, err := e.UpdateProfile(bankID, func(p *Profile) error {
 		for _, x := range p.Directives {
@@ -86,6 +95,9 @@ func (e *Engine) CreateDirective(bankID string, spec DirectiveSpec) (*Directive,
 // UpdateDirective patches one directive by id.
 func (e *Engine) UpdateDirective(bankID, id string, spec DirectiveSpec) (*Directive, error) {
 	var out Directive
+	if err := e.refuseTaintedDirective(bankID, spec); err != nil {
+		return nil, err
+	}
 	_, err := e.UpdateProfile(bankID, func(p *Profile) error {
 		for i := range p.Directives {
 			if p.Directives[i].ID == id {
@@ -117,4 +129,18 @@ func (e *Engine) DeleteDirective(bankID, id string) error {
 		return ErrNotFound
 	})
 	return err
+}
+
+// refuseTaintedDirective refuses a directive whose text was taken from
+// untrusted content. Standing rules are for the operator, never for a passage
+// a stranger wrote.
+func (e *Engine) refuseTaintedDirective(bankID string, spec DirectiveSpec) error {
+	tainted, err := e.anyTainted(bankID, spec.Derived)
+	if err != nil {
+		return err
+	}
+	if tainted {
+		return ErrTainted
+	}
+	return nil
 }

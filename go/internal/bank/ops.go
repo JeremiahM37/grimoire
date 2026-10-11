@@ -542,6 +542,9 @@ func (e *Engine) EnqueueRetain(bankID string, items []Item, opts RetainOptions) 
 		if it.Content == "" {
 			return "", invalid("item %d has no content", i)
 		}
+		if !validTrust(it.Trust) {
+			return "", invalid("item %d: trust must be trusted or untrusted", i)
+		}
 	}
 	// Strip before queueing: the payload is stored, so private text must never reach it.
 	if items, _ = sanitizeItemsPII(items, e.piiMode(bankID)); len(items) == 0 {

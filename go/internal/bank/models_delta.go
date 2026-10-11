@@ -322,7 +322,6 @@ func (e *Engine) refreshDelta(ctx context.Context, bankID, id string, m *MentalM
 	}
 	ss := parseMdSections(m.Body)
 	human := m.humanSections(ss)
-	newBody, held, applied := applyEdits(m.Body, edits, human)
 	now := e.now().Format(time.RFC3339)
 	sig := c.scopeSignature(m)
 	based := append([]string{}, m.BasedOn...)
@@ -336,6 +335,25 @@ func (e *Engine) refreshDelta(ctx context.Context, bankID, id string, m *MentalM
 		}
 	}
 	out.BasedOn = based
+	// Edits written from untrusted facts may not rewrite a trusted body, so
+	// the whole edit is filed as an untrusted proposal instead.
+	if origin, ok := taintedFresh(fresh); ok {
+		if !m.Untrusted {
+			full, _, _ := applyEdits(m.Body, edits, nil)
+			m.Untrusted = true
+			if m.Origin == "" {
+				m.Origin = origin
+			}
+			if err := e.writeProposal(bankID, id, m, full, based, sig, c.seenPrints(m), now); err != nil {
+				return true, err
+			}
+			out.Held = len(edits)
+			out.Outcome = "proposed"
+			out.Version = m.Version
+			return true, nil
+		}
+	}
+	newBody, held, applied := applyEdits(m.Body, edits, human)
 	out.Held = len(held)
 	if applied > 0 {
 		if e.History != nil && strings.TrimSpace(n.Body) != "" {
@@ -348,6 +366,12 @@ func (e *Engine) refreshDelta(ctx context.Context, bankID, id string, m *MentalM
 		} // else the stale sum keeps the body reading as a person's
 		m.Version++
 		m.LastRefreshed, m.scopeSig, m.BasedOn, m.seen = now, sig, based, c.seenPrints(m)
+		if origin, ok := taintedFresh(fresh); ok {
+			m.Untrusted = true
+			if m.Origin == "" {
+				m.Origin = origin
+			}
+		}
 		if _, err := e.Vault.Write(n.Path, newBody, m.frontmatter(n.Frontmatter)); err != nil {
 			return true, err
 		}
@@ -358,6 +382,9 @@ func (e *Engine) refreshDelta(ctx context.Context, bankID, id string, m *MentalM
 	}
 	if len(held) > 0 {
 		full, _, _ := applyEdits(newBody, held, nil)
+		if _, ok := taintedFresh(fresh); ok {
+			m.Untrusted = true
+		}
 		if err := e.writeProposal(bankID, id, m, full, based, sig, c.seenPrints(m), now); err != nil {
 			return true, err
 		}
@@ -369,4 +396,15 @@ func (e *Engine) refreshDelta(ctx context.Context, bankID, id string, m *MentalM
 	}
 	out.Version = m.Version
 	return true, nil
+}
+
+// taintedFresh reports whether any unit a delta refresh is editing from is
+// untrusted, and the origin of the first one.
+func taintedFresh(fresh []*unit) (string, bool) {
+	for _, u := range fresh {
+		if u.Tainted {
+			return u.Origin, true
+		}
+	}
+	return "", false
 }

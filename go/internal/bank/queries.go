@@ -392,5 +392,17 @@ func (e *Engine) GetChunk(bankID, chunkID string) (*ChunkOut, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ChunkOut{ID: chunkID, Text: text, Index: idx, Document: doc}, nil
+	return e.chunkOut(bankID, chunkID, idx, doc, text, false), nil
+}
+
+// chunkOut builds a chunk for the caller. A chunk of an untrusted document
+// carries its label, and its text is fenced with the document's origin.
+func (e *Engine) chunkOut(bankID, id string, idx int, doc, text string, truncated bool) *ChunkOut {
+	origin, untrusted := e.docOrigin(bankID, doc)
+	c := &ChunkOut{ID: id, Text: fenceUnit(idx+1, untrusted, origin, text), Index: idx, Document: doc,
+		Truncated: truncated, Trust: trustLabel(untrusted)}
+	if untrusted {
+		c.Origin = origin
+	}
+	return c
 }
