@@ -136,6 +136,10 @@ type memoryIn struct {
 	// `remember` advertises the field to agents rather than inferring it: only
 	// the caller knows what it was reading.
 	Origin string `json:"origin"`
+	// Cue and Life make this write an intention (prospect.go). Both are
+	// refused unless the prospect experiment is on.
+	Cue  string `json:"cue"`
+	Life string `json:"life"`
 
 	// Evidence is what the agent read the fact FROM: note paths, urls or entry
 	// ids. An agent-authored fact that carries it is `observed`; one that does
@@ -283,6 +287,10 @@ func (s *Server) rememberOne(w http.ResponseWriter, r *http.Request, m memoryIn)
 			"scope must be one of vault, topic, session, agent")
 		return
 	}
+	if err := intentionInput(&m); err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
 	if err := validateFresh(m); err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
@@ -341,7 +349,7 @@ func (s *Server) rememberOne(w http.ResponseWriter, r *http.Request, m memoryIn)
 			writeErr(w, http.StatusBadRequest, "explicit corrections require target_id, target_path, expected_text and no scope or infer=false")
 			return
 		}
-	} else if (m.Infer == nil || *m.Infer) && m.Visibility != memory.VisSealed {
+	} else if (m.Infer == nil || *m.Infer) && m.Visibility != memory.VisSealed && m.Cue == "" {
 		// A sealed fact is never sent to an extraction model: its text is the
 		// one thing it must not leave the device as.
 		facts = s.AI.WithSurface("extract", agentFor(r)).ExtractFacts(text)
@@ -693,6 +701,7 @@ func (s *Server) appendEntryChallenging(w http.ResponseWriter, r *http.Request, 
 		Check:      strings.TrimSpace(m.Check),
 		Importance: m.Importance,
 		Visibility: m.Visibility,
+		Cue:        m.Cue, Life: m.Life,
 	}
 	if restored != nil && restored.Entry.ID != "" {
 		e.ID = restored.Entry.ID
@@ -1112,6 +1121,10 @@ func (s *Server) recall(w http.ResponseWriter, r *http.Request) {
 	}
 	hits, err := s.Index.MemoryEntries(mq)
 	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if hits, err = s.prospectRecallHits(r, hits); err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}

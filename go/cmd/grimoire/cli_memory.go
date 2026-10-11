@@ -38,6 +38,7 @@ func cmdRemember(args []string) int {
 	for flag, field := range map[string]string{
 		"--topic": "topic", "--task": "task", "--session": "session",
 		"--category": "category", "--expires-in": "expires_in",
+		"--cue": "cue", "--life": "life", // intentions; the server refuses them unless GRIMOIRE_EXP=prospect
 	} {
 		if v, ok := flagValue(args, flag); ok {
 			body[field] = v

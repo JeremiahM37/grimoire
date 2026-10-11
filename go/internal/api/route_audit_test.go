@@ -395,6 +395,10 @@ var routeAccess = map[string]access{
 	"GET /api/source-audit":                      admin,
 	"POST /api/plugins/scaffold":                 admin,
 	"POST /api/plugins/{name}/enable":            admin,
+	// Intentions (prospect.go): a person's own reminders, read back through the
+	// same readable-note filter as recall; the ack is a write to the note.
+	"GET /api/memory/intentions":     scoped,
+	"POST /api/memory/intention/ack": authed,
 }
 
 var handleFuncRE = regexp.MustCompile(`mux\.HandleFunc\("([^"]+)"`)

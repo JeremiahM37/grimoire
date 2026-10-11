@@ -154,6 +154,11 @@ func (s *Server) memoryContext(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("stage") != "action" {
 			s.tracePrompt(r.URL.Query().Get("session"), retellRE.MatchString(query))
 		}
+		items, err = s.prospectItems(r, items)
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 		items, perm, ask := s.adherenceFilter(r, query, items, minRel)
 		if r.URL.Query().Get("rerank") == "1" {
 			items = s.rerankContext(r, query, items, minRel)
@@ -235,6 +240,11 @@ func (s *Server) memoryContext(w http.ResponseWriter, r *http.Request) {
 			items = append(items, contextItem{Path: note.path, Text: note.excerpt,
 				Authority: "unknown", Trust: "trusted", score: contextOverlap(terms, note.excerpt)})
 		}
+	}
+	items, err := s.prospectItems(r, items)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
 	}
 	s.writeContext(w, items, excluded, budget, limit, 0.3, "lexical", r.URL.Query().Get("format") == "directive", ctxLog{})
 }
