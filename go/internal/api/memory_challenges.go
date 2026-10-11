@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/JeremiahM37/grimoire/go/internal/calibrate"
 	"github.com/JeremiahM37/grimoire/go/internal/index"
 	"github.com/JeremiahM37/grimoire/go/internal/memory"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
@@ -156,6 +157,10 @@ func (s *Server) settleChallenge(w http.ResponseWriter, note, id string, concede
 		writeErr(w, http.StatusNotFound, err.Error())
 		return
 	}
+	// Scored before the surviving fact is marked human below, so a concession
+	// still credits the challenger that was right.
+	s.calibrateEvent(note, winner, calibrate.Confirmed)
+	s.calibrateEvent(note, loser, calibrate.SupersededByHuman)
 	// The challenge is cleared either way: it has been answered, and leaving it
 	// set would keep asking.
 	if err := s.mutateEntry(note, id, func(e *memory.Entry) {
