@@ -70,6 +70,11 @@ func TestAnOutrankedCallerCannotForgetAPersonsFact(t *testing.T) {
 		{"agent in body, hard", "claude", "", true},
 		{"agent in header only, soft", "", "claude", false},
 		{"agent in header only, hard", "", "claude", true},
+		// The header is what an MCP server stamps on every request. A body
+		// that claims to be the person must not override it.
+		{"header agent, body claims human, soft", "human", "claude", false},
+		{"header agent, body claims human, hard", "human", "claude", true},
+		{"header agent, body claims cli, hard", "cli", "claude", true},
 	} {
 		w := forgetWith(t, h, personID, c.hard, c.agent, "", c.header)
 		if w.Code != http.StatusForbidden {
@@ -115,5 +120,32 @@ func TestAllowedForgetsStillWork(t *testing.T) {
 	// An agent may forget a fact on its own rung, and the record names it.
 	if w := forgetWith(t, h, agentID, false, "claude", "", ""); w.Code != http.StatusOK {
 		t.Fatalf("agent forget of its own fact = %d: %s", w.Code, w.Body)
+	}
+}
+
+// A cascade forget reads the same identity as a plain one: an agent named only
+// in the body is an agent, and cannot cascade-forget what a person wrote.
+func TestCascadeForgetReadsTheAgentFromTheBodyToo(t *testing.T) {
+	t.Parallel()
+	_, h := testServer(t)
+	personID, _ := rungFixture(t, h)
+	for _, c := range []struct{ name, agent, header string }{
+		{"agent in body only", "claude", ""},
+		{"agent in header only", "", "claude"},
+		{"header agent, body claims human", "human", "claude"},
+	} {
+		body := map[string]any{"path": rungNote, "id": personID, "cascade": true}
+		if c.agent != "" {
+			body["agent"] = c.agent
+		}
+		req := requestFor(t, "POST", "/api/memory/forget", body)
+		if c.header != "" {
+			req.Header.Set("X-Grimoire-Agent", c.header)
+		}
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, req)
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("%s: cascade forget of a person's fact = %d, want 403: %s", c.name, w.Code, w.Body)
+		}
 	}
 }

@@ -247,6 +247,11 @@ func (s *Server) cascadeForget(w http.ResponseWriter, r *http.Request, note, id 
 		return
 	}
 	agentName, agent := isAgentInitiated(r)
+	if !agent && !forgetCallerIsPerson(r, in.Agent) {
+		// No agent in the header, but the body names one: that is an agent
+		// too, and must not be read as the person at the console.
+		agentName, agent = strings.TrimSpace(in.Agent), true
+	}
 	if agent && target.HumanAuthored() {
 		writeErr(w, http.StatusForbidden,
 			"a person wrote this entry; an agent cannot cascade-forget it")
