@@ -256,6 +256,11 @@ func (e *Engine) CascadeForget(bankID string, carries Carrier, redact Redactor, 
 			return acts, err
 		}
 	}
+	if justifyOn() {
+		if err := e.justifyCascade(bankID, removedFacts, o.DryRun, &acts); err != nil {
+			return acts, err
+		}
+	}
 	return acts, nil
 }
 
