@@ -29,7 +29,7 @@ import (
 
 // indexSchemaVersion is bumped when the shape of an indexed row changes in a
 // way that makes existing rows unusable.
-const indexSchemaVersion = "1"
+const indexSchemaVersion = "2"
 
 // SyncStats reports what a sync did, for the startup log and for tests that
 // need to assert the fast path was actually taken.
@@ -150,6 +150,9 @@ func (ix *Index) Sync() (SyncStats, error) {
 		}
 		changed = true
 		stats.Removed++
+	}
+	if err := ix.flushAliasesUnlessBulk(); err != nil {
+		return stats, err
 	}
 
 	if changed {

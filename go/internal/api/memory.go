@@ -986,6 +986,10 @@ type scoreBreakdown struct {
 	Entity   float64 `json:"entity"`
 	Recency  float64 `json:"recency"`
 	Useful   float64 `json:"useful"`
+	// Link is the credit an alias link gave, and LinkScope the evidence it
+	// came from (session, note, comention or unique). Absent when unlinked.
+	Link      float64 `json:"link,omitempty"`
+	LinkScope string  `json:"link_scope,omitempty"`
 }
 
 func entriesOut(hits []index.MemoryHit, explain bool) []entryOut {
@@ -1017,7 +1021,8 @@ func entriesOut(hits []index.MemoryHit, explain bool) []entryOut {
 		}
 		if explain {
 			e.Scores = &scoreBreakdown{Semantic: h.Semantic, Keyword: h.Keyword,
-				Entity: h.Entity, Recency: h.Recency, Useful: h.Useful}
+				Entity: h.Entity, Recency: h.Recency, Useful: h.Useful,
+				Link: h.Link, LinkScope: h.LinkScope}
 		}
 		out = append(out, e)
 	}

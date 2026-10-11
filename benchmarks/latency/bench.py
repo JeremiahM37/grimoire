@@ -162,24 +162,25 @@ def recall_path(mode: str, q: str, as_of: str) -> str:
         as_of=urllib.parse.quote(as_of))
 
 
-def run_size(binary: Path, work: Path, n: int, port: int) -> dict:
-    vault = work / f"vault-{n}"
+def run_size(binary: Path, work: Path, n: int, port: int, alias_scope: str = "") -> dict:
+    vault = work / f"vault-{n}{('-' + alias_scope) if alias_scope else ''}"
     if vault.exists():
         shutil.rmtree(vault)
     t_gen = time.perf_counter()
-    facts, entities = corpus.build(SEED, n)
+    facts, entities = corpus.build(SEED, n, alias_scope)
     corpus.write_vault(vault, facts)
     gen_s = time.perf_counter() - t_gen
     superseded = sum(1 for f in facts if f.superseded_by)
     human = sum(1 for f in facts if f.human)
     with_valid = sum(1 for f in facts if f.valid_from)
 
-    log = work / f"server-{n}.log"
+    log = work / f"server-{n}{('-' + alias_scope) if alias_scope else ''}.log"
     proc, out, cold_s, health = start(binary, vault, port, log)
     index_line = next((ln.split(" ", 2)[-1] for ln in log.read_text().splitlines()
                        if " indexed " in ln), "")
     cell: dict = {
         "facts": n, "entities": len(entities), "superseded": superseded,
+        "alias_scope": alias_scope or "default",
         "human_authored": human, "with_valid_from": with_valid,
         "corpus_gen_s": round(gen_s, 2), "cold_start_s": round(cold_s, 3),
         "index_log": index_line, "embedder": health.get("embedder"),
@@ -357,16 +358,20 @@ def main() -> int:
     ap.add_argument("--out", required=True, type=Path)
     ap.add_argument("--sizes", default=",".join(map(str, DEFAULT_SIZES)))
     ap.add_argument("--port", type=int, default=19311)
+    ap.add_argument("--alias-scope", default="", choices=corpus.ALIAS_SCOPES,
+                    help="'' (default corpus, unchanged) or 'session' (alias mentions share a "
+                         "session with a full-name mention; see corpus.assign_sessions)")
     args = ap.parse_args()
     args.work.mkdir(parents=True, exist_ok=True)
     sizes = [int(x) for x in args.sizes.split(",")]
     t_all = time.perf_counter()
     cells = []
     for n in sizes:
-        print(f"== N={n:,}", flush=True)
-        cells.append(run_size(args.binary, args.work, n, args.port))
+        print(f"== N={n:,} alias_scope={args.alias_scope or 'default'}", flush=True)
+        cells.append(run_size(args.binary, args.work, n, args.port, args.alias_scope))
     results = {
         "seed": SEED, "queries": N_QUERIES, "warmup": N_WARMUP,
+        "alias_scope": args.alias_scope or "default",
         "corpus_version": corpus.CORPUS_VERSION, "machine": machine(),
         "total_wall_s": round(time.perf_counter() - t_all, 1),
         "loadavg_1m_at_end": os.getloadavg()[0], "cells": cells,
