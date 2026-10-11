@@ -811,7 +811,8 @@ func (ix *Index) rankMemory(cands []memoryRow, q MemoryQuery) []MemoryHit {
 		h.ImportanceFactor = importanceFactor(eff)
 		h.Reuse = reuseBonus(h.Uses)
 		base := wSemantic*h.Semantic + wKeyword*h.Keyword +
-			wEntity*h.Entity + wRecency*h.Recency + wUseful*h.Useful
+			wEntity*h.Entity + wRecency*h.Recency + wUseful*h.Useful +
+			wPhrase*phraseScore(qTokens, c.hit.Text)
 		// An unrated agent fact has factor 1 and no reuse, so its score is the
 		// pre-importance score bit for bit (x*1 and x+0 are exact).
 		h.Score = base*h.ImportanceFactor + h.Reuse

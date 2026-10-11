@@ -40,9 +40,10 @@ func hitByID(hits []MemoryHit, id string) (MemoryHit, bool) {
 
 // legacyScore is the ranking score as it was before importance existed,
 // recomputed from the components a hit reports. Used as the baseline.
-func legacyScore(h MemoryHit, now time.Time) float64 {
+func legacyScore(h MemoryHit, now time.Time, qTokens []string) float64 {
 	return wSemantic*h.Semantic + wKeyword*h.Keyword + wEntity*h.Entity +
-		wRecency*recencyScore(h.Stamp, now) + wUseful*h.Useful
+		wRecency*recencyScore(h.Stamp, now) + wUseful*h.Useful +
+		wPhrase*phraseScore(qTokens, h.Text)
 }
 
 func TestUnratedRankingMatchesThePreImportanceBaseline(t *testing.T) {
@@ -70,14 +71,14 @@ func TestUnratedRankingMatchesThePreImportanceBaseline(t *testing.T) {
 		if h.Reuse != 0 {
 			t.Errorf("%s: reuse = %v, want 0", h.ID, h.Reuse)
 		}
-		if want := legacyScore(h, fixedNow); h.Score != want {
+		if want := legacyScore(h, fixedNow, memory.Tokens("deploy server")); h.Score != want {
 			t.Errorf("%s: score = %.17g, baseline %.17g", h.ID, h.Score, want)
 		}
 	}
 	// The order must be the order the baseline formula gives, ties included.
 	base := append([]MemoryHit(nil), hits...)
 	for i := range base {
-		base[i].Score = legacyScore(base[i], fixedNow)
+		base[i].Score = legacyScore(base[i], fixedNow, memory.Tokens("deploy server"))
 	}
 	for i := 1; i < len(base); i++ {
 		a, b := base[i-1], base[i]
