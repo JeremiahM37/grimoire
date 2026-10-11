@@ -317,6 +317,10 @@ func (s *Server) dispatchBankReasoning(name, base string, args map[string]any) (
 type callCtx struct {
 	bank   string
 	single bool
+	// remote is set for every call over the HTTP transport. Those callers may
+	// be OAuth or a tunnel, and the bridge to the API is loopback either way,
+	// so the API cannot tell them from the local agent without being told.
+	remote bool
 }
 
 var mcpBankRE = regexp.MustCompile(`^[a-z0-9][a-z0-9._:-]{0,63}$`)

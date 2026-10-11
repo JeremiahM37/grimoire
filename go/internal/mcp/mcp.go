@@ -236,6 +236,11 @@ func (s *Server) callTool(rc callCtx, req request, ok func(any) *response) *resp
 	if !s.offers(params.Name) {
 		err = fmt.Errorf("unknown tool: %s", params.Name)
 	} else if args, err = s.prepareCall(rc, params.Name, params.Arguments); err == nil {
+		if rc.remote {
+			// Set by the server, never taken from the caller: it can only make
+			// the write more restricted (see the remember dispatch).
+			args[remoteCallerArg] = true
+		}
 		result, err = s.dispatch(params.Name, args)
 	}
 	if err != nil {
@@ -619,6 +624,26 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 		}
 		if boolean(args, "immutable") {
 			body["immutable"] = true
+		}
+		if boolean(args, "event") {
+			body["event"] = true
+		}
+		// Anchors are passed through as objects; the API validates them, runs
+		// them and says which failed. A non-object item is dropped here, since
+		// it cannot be an anchor at all.
+		if raw, ok := args["anchors"].([]any); ok {
+			var list []map[string]any
+			for _, item := range raw {
+				if m, ok := item.(map[string]any); ok {
+					list = append(list, m)
+				}
+			}
+			if len(list) > 0 {
+				body["anchors"] = list
+			}
+		}
+		if boolean(args, remoteCallerArg) {
+			body["caller_remote"] = true
 		}
 		if n := num(args, "importance", 0); n > 0 {
 			body["importance"] = n

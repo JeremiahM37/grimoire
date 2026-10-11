@@ -89,6 +89,14 @@ type Entry struct {
 	Life    string
 	Retired string
 
+	// Anchors are the typed probes a claim carries, encoded by internal/anchor
+	// and declared as anc=. Event marks something that happened and stays true
+	// as history, declared as evt=1; an event carries no anchors. Both are
+	// empty for an ordinary fact and are written after every other trailer
+	// field, so every bullet written before them formats byte-identically.
+	Anchors string
+	Event   bool
+
 	// Challenges is the ID of an entry this fact contradicts but was not
 	// allowed to supersede, because that entry outranks this one's writer. It
 	// rides in the bullet like everything else, so an open disagreement is
@@ -463,6 +471,10 @@ func parseTrailer(s string) Entry {
 			e.Life = v
 		case "ret":
 			e.Retired = v
+		case "anc":
+			e.Anchors = v
+		case "evt":
+			e.Event = v == "1" || v == "true"
 		}
 	}
 	return e
@@ -609,6 +621,13 @@ func (e Entry) trailer() string {
 	}
 	if e.Retired != "" {
 		fields = append(fields, "ret="+escapeField(e.Retired))
+	}
+	// Anchors and event come last, so a bullet without them is unchanged.
+	if e.Anchors != "" {
+		fields = append(fields, "anc="+escapeField(e.Anchors))
+	}
+	if e.Event {
+		fields = append(fields, "evt=1")
 	}
 	return " <!--m " + strings.Join(fields, " ") + "-->"
 }

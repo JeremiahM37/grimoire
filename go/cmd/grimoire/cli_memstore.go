@@ -44,6 +44,8 @@ const memoryUsage = `usage:
   grimoire memory distill --out DIR [--min-age-days N] [--min-uses N]   select bake-in facts + training data (read-only; docs/PARAMETRIC.md)
   grimoire memory watch [--agent NAME] [--session ID]   (live: learned, superseded, forgotten, challenged, disputed)
   grimoire memory profile [--subject user|agent] [--agent NAME] [--budget TOKENS] [--synthesize] [--json]
+  grimoire memory anchors [--json]         run every stored anchor; list the claims whose probe no longer holds (admin)
+  grimoire memory refs [--json]            list notes that name a path or unit that no longer exists (admin)
 
 A directory memory (Claude Code's memory/) becomes a symlink to the store; a
 single file (AGENTS.md, GEMINI.md) gets a managed block holding the core.
@@ -112,6 +114,10 @@ func cmdMemory(args []string) int {
 		return memoryResolveCmd(e, rest)
 	case "image":
 		return memoryImageCmd(e, rest)
+	case "anchors":
+		return memoryAnchorsCmd(e, rest)
+	case "refs":
+		return memoryRefsCmd(e, rest)
 	}
 	return fail("unknown memory command %q\n\n%s", args[0], memoryUsage)
 }

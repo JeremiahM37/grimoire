@@ -173,6 +173,8 @@ var routeAccess = map[string]access{
 	"GET /api/memory/adherence":                                  scoped, // per-memory rates, filtered to readable memories
 	"GET /api/memory/trace":                                      scoped, // per-memory trace card; 404 for memories the caller cannot read
 	"GET /api/memory/trace/summary":                              admin,  // counts across every memory; checked in the handler
+	"GET /api/memory/anchors":                                    admin,  // runs every stored probe; no fact text returned
+	"GET /api/memory/refs":                                       admin,  // scans every note for dead references; paths only
 	"GET /api/memory/check":                                      scoped, // checks and proposals, filtered to readable memories
 	"GET /api/memory/rules":                                      admin,  // compiled checks with their evidence; checked in the handler
 	"GET /api/memory/impact":                                     admin,  // reads agent transcripts on this host; checked in the handler

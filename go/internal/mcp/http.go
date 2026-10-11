@@ -122,13 +122,16 @@ func (s *Server) serveMCP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	rc := callCtx{}
+	// Every HTTP caller is remote as far as the memory API is concerned (see
+	// callCtx.remote): anchors, which leak a bit about the server's files, are
+	// reserved for the local stdio agent.
+	rc := callCtx{remote: true}
 	if b := r.PathValue("bank"); b != "" {
 		if !validBankID(b) {
 			http.Error(w, "invalid bank id", http.StatusBadRequest)
 			return
 		}
-		rc = callCtx{bank: b, single: true}
+		rc.bank, rc.single = b, true
 	} else if b := strings.TrimSpace(r.Header.Get("X-Bank-Id")); b != "" {
 		if !validBankID(b) {
 			http.Error(w, "invalid X-Bank-Id", http.StatusBadRequest)

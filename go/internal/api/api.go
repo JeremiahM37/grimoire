@@ -104,6 +104,8 @@ type Server struct {
 
 	// the store's learned change rates; see memory_fresh.go.
 	fresh freshCache
+	// anchors caches the probe verdicts recall uses (memory_anchors.go).
+	anchors anchorCache
 
 	cueOnce  sync.Once
 	cueStore *cues.Store
@@ -233,6 +235,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/complete", s.complete)
 	mux.HandleFunc("POST /api/memory", s.remember)
 	mux.HandleFunc("GET /api/memory", s.recall)
+	mux.HandleFunc("GET /api/memory/anchors", s.adminOnly(s.memoryAnchors))
+	mux.HandleFunc("GET /api/memory/refs", s.adminOnly(s.memoryRefs))
 	mux.HandleFunc("GET /api/memory/context", s.memoryContext)
 	mux.HandleFunc("GET /api/memory/intentions", s.intentionList)
 	mux.HandleFunc("POST /api/memory/intention/ack", s.intentionAck)

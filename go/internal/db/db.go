@@ -633,6 +633,12 @@ var addedColumns = []struct{ table, column, decl string }{
 	// every fact without evidence, and for every fact written before this
 	// column; those keep the basis they always had.
 	{"memory_entries", "evv", "TEXT NOT NULL DEFAULT ''"},
+	// The probes a claim carries (memory.Entry.Anchors, encoded by
+	// internal/anchor) and whether the fact is an event. Both come from the
+	// note, so a reindex restores them; until then an old row reads as
+	// unanchored and not an event, which is what it was.
+	{"memory_entries", "anchors", "TEXT NOT NULL DEFAULT ''"},
+	{"memory_entries", "event", "INTEGER NOT NULL DEFAULT 0"},
 	// Which agent read, as distinct from which account. On a single-user
 	// deployment there is no account, so without this the trail can say a
 	// restricted note was read and not by what — which is most of the question.

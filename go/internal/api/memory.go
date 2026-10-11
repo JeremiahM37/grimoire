@@ -181,6 +181,20 @@ type memoryIn struct {
 	Fresh string `json:"fresh"`
 	Check string `json:"check"`
 
+	// Anchors are the typed probes a claim carries. They are considered only
+	// for a loopback caller that is not remote; see checkWriteAnchors.
+	Anchors []map[string]any `json:"anchors"`
+	// Event marks something that happened and stays true as history. An event
+	// carries no anchors.
+	Event bool `json:"event"`
+	// CallerRemote is set by the MCP bridge when the call arrived over HTTP or
+	// OAuth. It can only make a write MORE restricted: a loopback peer that
+	// says it is remote gets no anchors, and nothing else reads it.
+	CallerRemote bool `json:"caller_remote"`
+	// anchorsEnc is the encoded set this write stores. rememberOne sets it once
+	// the probes have run, so every fact the write creates carries the same set.
+	anchorsEnc string
+
 	// inherit is the fact this write replaces, whose history it carries.
 	inherit *memory.Entry
 
@@ -342,6 +356,13 @@ func (s *Server) rememberOne(w http.ResponseWriter, r *http.Request, m memoryIn)
 		return
 	}
 
+	anchorsEnc, anchorReports, anchorsIgnored, aerr := checkWriteAnchors(r, m)
+	if aerr != nil {
+		writeErr(w, http.StatusBadRequest, aerr.Error())
+		return
+	}
+	m.anchorsEnc = anchorsEnc
+
 	facts := []string{text}
 	if m.TargetID != "" || m.TargetPath != "" || m.ExpectedText != "" {
 		if m.TargetID == "" || m.TargetPath == "" || m.ExpectedText == "" ||
@@ -380,6 +401,19 @@ func (s *Server) rememberOne(w http.ResponseWriter, r *http.Request, m memoryIn)
 	resp := map[string]any{
 		"path": rel, "created": created, "entry": head.Text,
 		"op": head.Op, "id": head.ID, "results": results,
+	}
+	if len(m.Anchors) > 0 {
+		stored := 0
+		for _, rep := range anchorReports {
+			if rep.Result == "pass" || rep.Result == "skipped" {
+				stored++
+			}
+		}
+		resp["anchors"] = anchorReports
+		resp["anchors_stored"] = stored
+		if anchorsIgnored != "" {
+			resp["anchors_ignored"] = anchorsIgnored
+		}
 	}
 	// Gentle, non-blocking: the write already happened.
 	if ws := memstore.Lint(strings.TrimSpace(m.Category), text); len(ws) > 0 && m.Visibility != memory.VisSealed {
@@ -702,6 +736,11 @@ func (s *Server) appendEntryChallenging(w http.ResponseWriter, r *http.Request, 
 		Importance: m.Importance,
 		Visibility: m.Visibility,
 		Cue:        m.Cue, Life: m.Life,
+		Anchors: m.anchorsEnc, Event: m.Event,
+	}
+	if restored != nil {
+		// A restored fact keeps the anchors and kind it was exported with.
+		e.Anchors, e.Event = restored.Entry.Anchors, restored.Entry.Event
 	}
 	if restored != nil && restored.Entry.ID != "" {
 		e.ID = restored.Entry.ID
@@ -760,7 +799,8 @@ func (s *Server) appendEntryChallenging(w http.ResponseWriter, r *http.Request, 
 		}
 		// Evidence and check live in the ciphertext now. Nothing is written in
 		// clear, so a reader who cannot open the fact cannot see what it cites.
-		e.Evidence, e.Check = "", ""
+		// Anchors name what the fact is about, so they stay out of the clear too.
+		e.Evidence, e.Check, e.Anchors = "", "", ""
 	}
 	// A forgotten fact must not be written back under its old id.
 	if tomb, _, err := s.tombLog().Load(s.tombKey()); err == nil && seal.Suppressed(tomb, e.ID) {

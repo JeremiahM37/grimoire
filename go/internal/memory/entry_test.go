@@ -309,3 +309,54 @@ func TestMalformedCountersParseAsZero(t *testing.T) {
 		t.Errorf("got up=%d down=%d, want zeroes", got.Helpful, got.Unhelpful)
 	}
 }
+
+func TestAnchorsAndEventRoundTrip(t *testing.T) {
+	cases := []Entry{
+		{ID: "abc140", Stamp: "2026-10-11 09:00", Agent: "agent", Text: "the router is 192.168.0.1",
+			Anchors: "file_contains;path=/home/admin/lan.env;text=ROUTER_IP%3D192.168.0.1"},
+		{ID: "abc141", Stamp: "2026-10-11 09:00", Agent: "agent", Text: "two anchors",
+			Anchors: "unit_active;unit=grimoire.service|port_listening;port=9111"},
+		{ID: "abc142", Stamp: "2026-10-11 09:00", Agent: "agent", Text: "the deploy happened",
+			Event: true},
+		{ID: "abc143", Stamp: "2026-10-11 09:00", Agent: "agent", Category: "rule", Text: "anchored rule",
+			Anchors: "remote;what=https%3A%2F%2Fexample.com", Visibility: VisPrivate, SupersededBy: "abc144"},
+	}
+	for _, want := range cases {
+		line := want.Format()
+		got, ok := ParseLine(line)
+		if !ok {
+			t.Fatalf("ParseLine(%q) did not parse", line)
+		}
+		got.Line = want.Line
+		if got != want {
+			t.Errorf("round trip mismatch\n line: %s\n  got: %+v\n want: %+v", line, got, want)
+		}
+		if again := got.Format(); again != line {
+			t.Errorf("re-format not byte-identical:\n %s\n %s", line, again)
+		}
+	}
+}
+
+func TestAnchorsAndEventAreWrittenLastSoOldBulletsAreUnchanged(t *testing.T) {
+	e := Entry{ID: "abc150", Stamp: "2026-10-11 09:00", Agent: "agent", Text: "x",
+		Anchors: "port_closed;port=1", Event: true, Retired: "2026-10-12", Cue: "deploy"}
+	line := e.Format()
+	if !strings.HasSuffix(line, " ret=2026-10-12 anc=port_closed;port=1 evt=1-->") {
+		t.Fatalf("anchors and event are not the last trailer fields:\n%s", line)
+	}
+	plain := Entry{ID: "abc151", Stamp: "2026-10-11 09:00", Agent: "agent", Text: "x"}
+	if strings.Contains(plain.Format(), "anc=") || strings.Contains(plain.Format(), "evt=") {
+		t.Fatalf("an ordinary fact wrote an anchor or event field:\n%s", plain.Format())
+	}
+}
+
+func TestAHandWrittenEventTrailerIsRead(t *testing.T) {
+	e, ok := ParseLine("- **2026-10-11 09:00 · agent** — the cutover happened <!--m id=abc160 evt=1-->")
+	if !ok || !e.Event || e.Anchors != "" {
+		t.Fatalf("evt=1 not read: %+v", e)
+	}
+	e, ok = ParseLine("- **2026-10-11 09:00 · agent** — x <!--m id=abc161 evt=0 anc=-->")
+	if !ok || e.Event || e.Anchors != "" {
+		t.Fatalf("evt=0 or an empty anc= was read as set: %+v", e)
+	}
+}

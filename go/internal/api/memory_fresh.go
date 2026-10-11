@@ -79,6 +79,9 @@ func (s *Server) assessHits(hits []index.MemoryHit, out []entryOut) []entryOut {
 			continue
 		}
 		a := hits[i].Assess(now, p, theta)
+		if anchorsOn() {
+			s.applyAnchors(&a, hits[i].Entry)
+		}
 		out[i].Freshness = &a
 	}
 	return out

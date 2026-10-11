@@ -299,24 +299,25 @@ func (ix *Index) writeMemoryRowsInner(note *vault.Note) error {
 		// A sealed fact's evidence and check belong to its ciphertext. A bullet
 		// sealed before that moved them still has them in clear, and the index
 		// does not keep them: only the owner's reveal gets them back.
-		evidence, check := e.Evidence, e.Check
+		evidence, check, anchors := e.Evidence, e.Check, e.Anchors
 		if e.Visibility == memory.VisSealed {
-			evidence, check = "", ""
+			evidence, check, anchors = "", "", ""
 		}
+		event := boolInt(e.Event)
 		if err := ix.DB.Exec(
 			"INSERT OR IGNORE INTO memory_entries(id,note,text,agent,task,session,stamp,category,"+
 				"expires,immutable,superseded_by,superseded_at,helpful,unhelpful,line,"+
 				"embedding,space,acl,private,origin,human,challenges,"+
 				"fresh,chk,verified,nchange,nverify,since,shape,vol,prate,valid_from,valid_to,"+
-				"importance,hand,evidence,image,capb,visibility,evv)"+
-				" VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+				"importance,hand,evidence,image,capb,visibility,evv,anchors,event)"+
+				" VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
 			e.ID, note.Path, e.Text, e.Agent, e.Task, e.Session, e.Stamp, e.Category,
 			e.Expires, immutable, e.SupersededBy, e.SupersededAt, e.Helpful,
 			e.Unhelpful, e.Line, blob, space, acl, private, e.Origin, human, e.Challenges,
 			e.Fresh, check, e.Verified, e.Changes, e.Verifies, e.Since, e.Shape(), e.Vol, e.PriorRate,
 			canonicalValidity(e.ValidFrom), canonicalValidity(e.ValidTo),
 			e.Importance, boolInt(e.HumanAuthored()), evidence, e.Image, e.CaptionBasis, e.Visibility,
-			e.Verification,
+			e.Verification, anchors, event,
 		); err != nil {
 			return err
 		}
@@ -672,7 +673,8 @@ func (ix *Index) overScanLimit(where string, args []any, limit int) (bool, error
 const memoryColumns = "id,note,text,agent,task,session,stamp,category,expires,immutable," +
 	"superseded_by,superseded_at,helpful,unhelpful,line,embedding,space,acl," +
 	"private,origin,human,challenges,fresh,chk,verified,nchange,nverify,since,vol,prate," +
-	"valid_from,valid_to,importance,hand,uses,last_used,evidence,image,capb,visibility,evv"
+	"valid_from,valid_to,importance,hand,uses,last_used,evidence,image,capb,visibility,evv," +
+	"anchors,event"
 
 // scanMemoryRow reads one row selected with memoryColumns. It takes the Scan
 // method rather than the rows, so both the ranked query and the prune query
@@ -690,6 +692,8 @@ func scanMemoryRow(scan func(...any) error) (memoryRow, error) {
 		capb      string
 		vis       string
 		evv       string
+		anchors   string
+		event     int
 	)
 	if err := scan(&r.hit.ID, &r.hit.Note, &r.hit.Text, &r.hit.Agent,
 		&r.hit.Task, &r.hit.Session, &r.hit.Stamp, &r.hit.Category,
@@ -700,7 +704,7 @@ func scanMemoryRow(scan func(...any) error) (memoryRow, error) {
 		&r.hit.Verifies, &r.hit.Since, &r.hit.Vol, &r.hit.PriorRate,
 		&r.hit.ValidFrom, &r.hit.ValidTo,
 		&r.hit.Importance, &hand, &r.hit.Uses, &r.hit.LastUsed, &evidence,
-		&image, &capb, &vis, &evv); err != nil {
+		&image, &capb, &vis, &evv, &anchors, &event); err != nil {
 		return r, err
 	}
 	r.hit.Evidence = evidence
@@ -708,6 +712,8 @@ func scanMemoryRow(scan func(...any) error) (memoryRow, error) {
 	r.hit.CaptionBasis = capb
 	r.hit.Visibility = vis
 	r.hit.Verification = evv
+	r.hit.Anchors = anchors
+	r.hit.Event = event == 1
 	r.hit.Immutable = immutable == 1
 	r.hit.Human = human == 1
 	r.hit.HandWritten = hand == 1

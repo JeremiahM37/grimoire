@@ -429,6 +429,7 @@ func Tools() []tool {
 				"conventions). Omit it if unsure and the store learns the rate. With " +
 				"volatile or an interval also give `check`: the read-only command or place " +
 				"to verify it ('grimoire version', 'lan.env ROUTER_IP').\n" +
+				rememberAnchors + "\n" +
 				"WRITE WELL (docs/MEMORY_WRITING.md): one fact per memory; set `kind` (rule, " +
 				"procedure, preference, fact, reference); for a rule say Why and How to apply; " +
 				"give `context` (the situation it applies in); no secrets (use the credential " +
@@ -461,6 +462,12 @@ func Tools() []tool {
 				"valid_to": strProp("optional: when it stopped being true in the world, RFC3339 or YYYY-MM-DD"),
 				"immutable": map[string]any{"type": "boolean",
 					"description": "pin this fact: reconciliation may never supersede or retract it"},
+				"event": map[string]any{"type": "boolean",
+					"description": "true for something that happened and stays true as history; events carry no anchors"},
+				"anchors": map[string]any{"type": "array", "maxItems": 16, "items": map[string]any{"type": "object"},
+					"description": "for a claim: probes that check it still holds, e.g. " +
+						"{\"type\":\"file_contains\",\"path\":\"/abs/file\",\"text\":\"literal\"}. " +
+						"Only passing ones are stored; a failing one is reported back so you can fix it"},
 				"importance": map[string]any{"type": "integer", "minimum": 1, "maximum": 5,
 					"description": "how much this matters: 1 trivia, 3 ordinary, 5 load-bearing. " +
 						"Omit it to leave the fact unrated; important facts are recalled for longer " +
