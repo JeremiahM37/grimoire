@@ -1,0 +1,142 @@
+{
+  "plain": {
+    "n": 70,
+    "raw": 9,
+    "normalized": 9,
+    "recall_raw": 0.12857142857142856,
+    "recall_normalized": 0.12857142857142856
+  },
+  "obfuscated": {
+    "n": 840,
+    "raw": 30,
+    "normalized": 108,
+    "recall_raw": 0.03571428571428571,
+    "recall_normalized": 0.12857142857142856
+  },
+  "by_transform": {
+    "plain": {
+      "n": 70,
+      "raw": 9,
+      "normalized": 9,
+      "exposed_by": {
+        "raw": 9
+      }
+    },
+    "zero-width": {
+      "n": 70,
+      "raw": 1,
+      "normalized": 9,
+      "exposed_by": {
+        "zero-width": 8,
+        "raw": 1
+      }
+    },
+    "homoglyph": {
+      "n": 70,
+      "raw": 1,
+      "normalized": 9,
+      "exposed_by": {
+        "homoglyph": 8,
+        "raw": 1
+      }
+    },
+    "fullwidth": {
+      "n": 70,
+      "raw": 0,
+      "normalized": 9,
+      "exposed_by": {
+        "nfkc": 9
+      }
+    },
+    "nbsp": {
+      "n": 70,
+      "raw": 1,
+      "normalized": 9,
+      "exposed_by": {
+        "raw": 1,
+        "nfkc": 8
+      }
+    },
+    "base64": {
+      "n": 70,
+      "raw": 0,
+      "normalized": 9,
+      "exposed_by": {
+        "base64 > whitespace": 4,
+        "base64": 5
+      }
+    },
+    "hex": {
+      "n": 70,
+      "raw": 0,
+      "normalized": 9,
+      "exposed_by": {
+        "hex > whitespace": 4,
+        "hex": 5
+      }
+    },
+    "url-encoded": {
+      "n": 70,
+      "raw": 0,
+      "normalized": 9,
+      "exposed_by": {
+        "url > whitespace": 4,
+        "url": 5
+      }
+    },
+    "rot13": {
+      "n": 70,
+      "raw": 0,
+      "normalized": 9,
+      "exposed_by": {
+        "rot13": 9
+      }
+    },
+    "html-comment": {
+      "n": 70,
+      "raw": 9,
+      "normalized": 9,
+      "exposed_by": {
+        "raw": 9
+      }
+    },
+    "link-title": {
+      "n": 70,
+      "raw": 9,
+      "normalized": 9,
+      "exposed_by": {
+        "raw": 9
+      }
+    },
+    "alt-text": {
+      "n": 70,
+      "raw": 9,
+      "normalized": 9,
+      "exposed_by": {
+        "raw": 9
+      }
+    },
+    "data-url": {
+      "n": 70,
+      "raw": 0,
+      "normalized": 9,
+      "exposed_by": {
+        "base64 > whitespace": 4,
+        "base64": 5
+      }
+    }
+  },
+  "benign": {
+    "docs": 33,
+    "lines": 5884,
+    "docs_flagged_raw": 0,
+    "docs_flagged_normalized": 0,
+    "lines_flagged_raw": 0,
+    "lines_flagged_normalized": 0,
+    "doc_fp_rate_raw": 0.0,
+    "doc_fp_rate_normalized": 0.0,
+    "line_fp_rate_raw": 0.0,
+    "line_fp_rate_normalized": 0.0,
+    "flagged_docs_normalized": []
+  }
+}
