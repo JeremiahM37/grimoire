@@ -94,9 +94,163 @@ middle-initial collisions and by numeric service suffixes (`gamarr-191` vs
 `gamarr-413`), which the phrase term cannot resolve when the candidate is absent
 from the pool.
 
-Open: linking an alias-form fact to its entity needs a signal outside the
-fact's text (co-occurrence in the same note or session, or an explicit alias
-record). That is a memory-model change, not a ranking change.
+The link itself needs a signal outside the fact's text. That signal is now
+implemented as derived alias links; see the next section. It is not a change to
+the markdown or the memory model.
+
+## Alias linking (session scope)
+
+Status: implemented and measured on the synthetic benchmark in two corpus
+modes. The default corpus does not move, as designed. The session-scoped corpus
+improves at every size. The 80% target at 50,000 facts is still not reached.
+
+### What it does
+
+An alias-form fact ("Priya prefers tabs", "auth-gateway runs on db01.prod") is
+linked to a full entity only when the vault has evidence for exactly one
+entity in the strongest available scope. The code is in
+`go/internal/memory/alias.go` (pure functions) and
+`go/internal/index/memory_alias.go` (derived tables and the flush).
+
+- **Mentions.** A person is a first name, a middle initial and a last name
+  ("Priya N. Schmidt"); the canonical name keeps the initial, so two people who
+  share a first and last name stay distinct. Short forms are the first name and
+  the first+last pair. A service is a hyphenated name with a numeric suffix
+  ("auth-gateway-03"); its short forms are the stem and its first hyphen part.
+  A host ("db01.prod") has the stem "db01" as its short form.
+- **Evidence.** Each full mention writes one row per short form, with the note,
+  fact id, session and stamp.
+- **Scopes, strongest first.** Session: evidence in the same session, at any
+  time. Note: evidence in the same note within 30 days. Co-mention: a fact that
+  names another full entity X links to C when some earlier fact names both X and
+  C. Unique: the alias has only one candidate entity, at or before the fact. The
+  first scope with any candidate decides.
+- **Ambiguity.** If the deciding scope has more than one candidate, nothing is
+  linked. The scope is not allowed to fall through to a weaker one.
+- **Time limits.** Co-mention and unique evidence count only if it is no later
+  than the fact being linked. A full name first written later, in another
+  session, does not change an earlier fact. Session and note evidence are not
+  restricted this way.
+- **Confidence.** session 1.0, note 0.8, co-mention 0.7, unique 0.5. A link adds
+  `conf * 0.95` to the fact's entity score, so it stays strictly below a literal
+  full-name match (1.0). The score is the larger of that and the fact's own
+  entity overlap. Recall `explain` reports `link` and `link_scope`.
+- **Query side.** A query only gets link credit when it names a canonical entity
+  in full with an initial or a numeric suffix. "Priya Schmidt" with no initial
+  gets no boost.
+
+### Index
+
+Three derived tables, created by the schema and rebuilt from the markdown:
+`memory_mentions`, `memory_alias_src` (the evidence) and `memory_links` (the
+resolved links, with scope and confidence). Nothing is written back to a note.
+
+A note write marks the short forms it touched as dirty: the forms its evidence
+added or removed, and the forms its facts use that the table already knows.
+The flush re-resolves only the facts containing a dirty form, and writes only
+the links that changed. A full reindex defers the flush to one pass at the end.
+Deleting or rewriting the note that established an alias removes the links that
+depended on it. The index schema version is bumped to `2`, which forces one full
+rebuild on upgrade. Writes for one note go in one transaction; per-statement
+commits were the largest cost found (see Measurements).
+
+The entity arm of candidate generation also includes facts linked to a name the
+query gives in full, so a linked fact reaches the pool even above the scan bound.
+
+### Measurements
+
+Both corpus modes are in `benchmarks/latency/corpus.py`. The default mode is the
+original corpus, unchanged. `--alias-scope session` adds session trailers so
+that an alias mention shares a session with a full-name mention of the same
+entity. The first fact of each session names the entity in full. About 20% of
+sessions are alias-only and stay unresolved on purpose. Session stamps are
+spread across the vault, because facts are chunked per entity. Real sessions
+are tighter in time, so this measures the session rule without any time
+locality.
+
+Gold in top-10 for plain recall (`GET /api/memory?q=`), 200 queries per size,
+seed 20261010. Before is the unmodified HEAD binary and after is this branch.
+
+| facts | alias scope | before | after | expand before / after | hops1 before / after |
+|---:|---|---:|---:|---|---|
+| 1,000 | default | 0.885 | 0.890 | 0.880 / 0.880 | 0.885 / 0.890 |
+| 10,000 | default | 0.695 | 0.695 | 0.705 / 0.705 | 0.695 / 0.695 |
+| 50,000 | default | 0.625 | 0.625 | 0.620 / 0.620 | 0.625 / 0.625 |
+| 1,000 | session | 0.940 | 0.995 | 0.940 / 0.975 | 0.940 / 0.995 |
+| 10,000 | session | 0.845 | 0.935 | 0.845 / 0.875 | 0.845 / 0.935 |
+| 50,000 | session | 0.710 | 0.745 | 0.705 / 0.710 | 0.710 / 0.745 |
+
+The 1k and 10k "after" rows were re-run on the final build and match the
+earlier runs exactly. The 50k "after" rows come from the build before the
+per-note transaction change. Only performance changed in that change (the
+gold results at 1k and 10k did not move), but 50k was not re-run, because the
+50k benchmark is limited to two runs per mode and both were used.
+
+Index time (cold start, measured on this machine with the model2vec embedder,
+10k facts, server started alone, two runs each):
+
+| build | 10k cold start |
+|---|---:|
+| before (HEAD) | 56.4 s, 57.2 s |
+| after, one commit per alias statement (first version) | 82.0 s, 81.7 s |
+| after, one transaction per note (final) | 58.1 s, 58.0 s |
+
+The first version added about 25 s at 10k. A profile showed the time was blocked
+in fsync, not in CPU: each alias row was its own autocommit. Batching the alias
+writes into one transaction per note removed almost all of it. On the same disk
+a bulk reindex of the 10k vault took 52.8 to 58.9 s before and 56.8 to 62.4 s
+after, interleaved and with the cache disabled. The 50k cold start was measured
+only on the unbatched build (478 s before, 747 s after, with other benchmark runs
+sharing the machine), so it has not been measured since the batching change.
+
+Write p50 at 10k was 334 to 357 ms before and 343 to 373 ms after, across the
+sequential and the concurrent runs here. Those runs shared a machine with other
+benchmark jobs, so this is a rough range, not a clean overhead figure.
+
+Reproduce: `benchmarks/latency/run.sh --sizes 1000,10000 --alias-scope session`.
+`run.sh` passes arguments to `bench.py`; a default run is unchanged.
+
+### Limits
+
+- **The 80% target is not reached in the session corpus** (0.745 at 50k). The
+  alias-only sessions are unresolvable on purpose, and the link credit
+  (0.95 times 0.18 weight) may be too small against the distractors that share
+  the first name. I did not measure this, and I did not tune the weight against
+  the benchmark. The 10k gain (+9 points) suggests the link is working, and the
+  smaller 50k gain suggests the remaining misses are a ranking question. That
+  would need a diagnostic run to confirm.
+- **The default corpus barely moves**, as expected: its aliases are ambiguous by
+  construction, so the linker refuses nearly all of them. The +1 query at 1k
+  (0.885 to 0.890) appeared in both the pre-batch and the final run. It is one
+  query, and I did not investigate which fact moved.
+- **Ambiguous aliases leave no trace.** The spec's "record it as ambiguous" is
+  implemented as "link nothing". There is no table or explain field for it.
+- **Two-word short forms** ("Priya Schmidt") are resolved in facts, but they
+  cannot create evidence, and a query with that form gets no boost.
+- **Projects are not aliased.** Only person and service mentions create evidence.
+- **Constants are reasoned, not tuned.** The confidences (1.0, 0.8, 0.7, 0.5),
+  the 30-day note window, the 0.95 ceiling and the 64-key cap per fact were set
+  from the design, not from benchmark results.
+- **Common words can be short forms.** A service stem that is also an English
+  word could link in the wrong place. Evidence and scope checks make that less
+  likely, but do not rule it out. No real vault has been measured.
+- **Per-fact short forms are capped at 64** in text order, so a very long fact may
+  lose a late short form.
+
+### Alias tests
+
+- `go/internal/memory/alias_test.go`: full mention and short form extraction,
+  the initial requirement, sentence-start words, services and hosts, the key cap,
+  each scope rule, the ambiguity refusal, the note window, the co-mention and
+  unique time rules, the retroactive-relink guard, and the link ceiling.
+- `go/internal/index/memory_alias_test.go`: a session link ranks with its full
+  name and reports `link_scope`; no boost without a full name in the query; an
+  ambiguous session stays unlinked; a later full name in another session does not
+  relink an earlier fact; deleting or rewriting the establishing note removes the
+  links; a service links within its session; and a rebuild produces exactly the
+  links the incremental writes produced.
+- Existing `memory`, `index`, `db` and `api` tests pass (`env -u GRIMOIRE_SESSION
+  go test`), along with `gofmt`, `go vet`, `go build` and `staticcheck ./...`.
 
 ## Tests
 
