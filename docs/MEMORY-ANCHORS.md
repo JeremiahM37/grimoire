@@ -71,3 +71,37 @@ anchors all hold gets `action = "use"`. Each fact's probe verdict is cached for
 10 minutes. With the flag off, recall output does not change.
 
 Code: `go/internal/anchor` (probes, encoding, reference scan), `go/internal/api/memory_anchors.go`.
+
+## What was measured
+
+All on one person's live vault and real sessions, on 2026-10-11. Small samples;
+read them as direction, not rates.
+
+* **Before anchors.** Of 346 live facts, 17 (5%) could be given a typed probe
+  after the fact. 48% were history, 38% were current claims that never named
+  the thing they were about. Of the 17 probed, 3 were wrong at the time,
+  including a deployed-version fact the freshness model rated 3.8% likely stale.
+* **With the write contract.** Six real sessions were summarised by a small
+  model under the contract in the `remember` tool description. Of 71 claims, 70
+  carried an anchor. Replayed through this server: 94% of stored claims
+  anchored, 63 probes passing, 21 naming another machine (not checked from
+  here), none failing. A hand read of 14 found the anchors specific (the
+  defining line of a file, a commit), not a nearby directory.
+* **Anchors cannot be added afterwards.** Scanning 219 prose memory files for
+  paths and units that no longer exist found 108, of which a reader classed 5
+  as memory that is wrong now. 66 were on another machine, 23 were already
+  described as past, 13 existed after all. That is why `grimoire memory refs`
+  is a list of pointers to look at, not a list of errors: the reference alone
+  does not say which host it is on or whether the text means now.
+
+## Limits
+
+* A probe checks one concrete part of a claim. It holding does not prove the
+  whole sentence.
+* Anything on another machine is stored as `remote` and never checked.
+* An `anc=` trailer typed into a memory note by hand is probed like any other
+  when the `anchor` flag is on. Anyone who can edit notes can therefore learn
+  whether a path exists or a file contains a string on the server. Keep the
+  flag off where people you do not trust can edit the vault.
+* With the flag on, recall runs probes for facts it has not checked in the last
+  ten minutes, which adds their run time to that call.

@@ -87,3 +87,10 @@ Every result above comes from a corpus or a fixture we wrote. The next step is a
 pre-registered holdout on live agent work, with no flags on:
 [`benchmarks/holdout/PREREG.md`](../../benchmarks/holdout/PREREG.md). Its
 analysis script is fixed at the same commit.
+
+## Anchors (2026-10-11)
+
+A new idea tried after the sixteen above: a claim carries typed read-only probes
+for the thing it is about, checked at write and, behind the `anchor` flag, at
+recall. Write side is on for local callers; the recall side is behind the flag.
+Measurements and limits: [`MEMORY-ANCHORS.md`](../MEMORY-ANCHORS.md).
