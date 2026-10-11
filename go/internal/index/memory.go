@@ -226,7 +226,10 @@ func (ix *Index) writeMemoryRows(note *vault.Note) error {
 	if err := ix.writeMemoryRowsInner(note); err != nil {
 		return err
 	}
-	return ix.flushAliasesUnlessBulk()
+	if err := ix.flushAliasesUnlessBulk(); err != nil {
+		return err
+	}
+	return ix.captureUnlessBulk()
 }
 
 // writeMemoryRowsInner is the note's own rows: rows for the note are deleted
@@ -855,6 +858,9 @@ func (ix *Index) rankMemory(cands []memoryRow, q MemoryQuery) []MemoryHit {
 		h.Score = base*h.ImportanceFactor + h.Reuse
 		out = append(out, h)
 	}
+	if captureOn() {
+		ix.captureRank(out)
+	}
 	sort.SliceStable(out, func(i, j int) bool {
 		if out[i].Score != out[j].Score {
 			return out[i].Score > out[j].Score
@@ -1044,11 +1050,15 @@ func (ix *Index) PruneCandidates(below int, cutoff time.Time, limit int) ([]Memo
 	if limit <= 0 {
 		limit = 50
 	}
+	boosted, err := capturePruneClause()
+	if err != nil {
+		return nil, err
+	}
 	rows, err := ix.DB.Query(
 		"SELECT "+memoryColumns+" FROM memory_entries WHERE"+
 			" superseded_by='' AND immutable=0 AND human=0 AND hand=0 AND challenges=''"+
 			" AND helpful=0 AND uses=0 AND last_used='' AND agent<>'' AND stamp<>''"+
-			" AND stamp<? AND importance BETWEEN ? AND ? AND visibility=''"+
+			" AND stamp<? AND importance BETWEEN ? AND ? AND visibility=''"+boosted+
 			" ORDER BY stamp ASC, id ASC LIMIT ?",
 		cutoff.In(time.Local).Format(memory.StampFormat), memory.MinImportance, below, limit)
 	if err != nil {
