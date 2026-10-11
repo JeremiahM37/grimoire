@@ -1567,6 +1567,21 @@ func (s *Server) forgetOne(w http.ResponseWriter, r *http.Request, note, id stri
 		// on forget, so a struck bullet would be ciphertext nobody can open.
 		hard = true
 	}
+	if !hard {
+		// A fact that is no longer believed already has a successor or a
+		// retraction recorded. Striking it again would overwrite that record
+		// (the chain would stop saying what replaced it), so a soft forget of
+		// it is a no-op, answered with what is already recorded. A hard forget
+		// still removes the bullet.
+		if e, ok := s.entryAt(note, id); ok && e.Superseded() {
+			writeJSON(w, http.StatusConflict, map[string]any{
+				"path": note, "id": id, "already_superseded": true,
+				"superseded_by": e.SupersededBy, "superseded_at": e.SupersededAt,
+				"detail": "that entry is no longer believed; nothing was changed",
+			})
+			return
+		}
+	}
 	if hard {
 		if err := s.removeEntry(note, id); err != nil {
 			writeErr(w, statusForEntryErr(err), entryErrMsg(err))

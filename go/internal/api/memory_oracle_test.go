@@ -597,7 +597,6 @@ func runOracle(t *testing.T, ops []modelcheck.Op) {
 var oracleKnownFindings = map[string]string{
 	"[subject-slot]":     "F1: the value rule compares slots without the subject (memory_oracle_findings_test.go)",
 	"[lattice-forget]":   "F2: an outranked writer may retract or forget a fact above its rung",
-	"[dead-forget]":      "F3: forgetting a fact that is no longer believed rewrites its supersession pointer",
 	"[supersession]":     "F4: a correction supersedes one contender and leaves another believed",
 	"[multi-contender]":  "F4: the store decides on the first contender it finds, not on every contender",
 	"[resolve-mismatch]": "F5: a dispute whose challenger is private cannot be settled",

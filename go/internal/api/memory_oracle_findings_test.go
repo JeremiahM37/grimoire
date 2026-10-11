@@ -31,7 +31,6 @@ func TestOracleF2OutrankedWriterCannotForgetAFact(t *testing.T) {
 }
 
 func TestOracleF3ForgetOfASupersededFactKeepsItsChain(t *testing.T) {
-	t.Skip("open finding F3 (docs/lab/oracle.md): forget rewrites the supersession pointer of a superseded fact")
 	runOracle(t, []modelcheck.Op{
 		{Kind: modelcheck.KRemember, Slot: 0, Value: 1, Writer: 2},
 		{Kind: modelcheck.KRemember, Slot: 0, Value: 0, Writer: 1},
@@ -99,11 +98,6 @@ func TestOracleFindingsStillReproduce(t *testing.T) {
 		{"[lattice-forget]", []modelcheck.Op{
 			{Kind: modelcheck.KRemember, Slot: 1, Value: 2, Writer: 0},
 			{Kind: modelcheck.KHardForget, Writer: 2, Target: 445215},
-		}},
-		{"[dead-forget]", []modelcheck.Op{
-			{Kind: modelcheck.KRemember, Slot: 0, Value: 1, Writer: 2},
-			{Kind: modelcheck.KRemember, Slot: 0, Value: 0, Writer: 1},
-			{Kind: modelcheck.KForget, Writer: 0, Target: 795976},
 		}},
 		{"[supersession]", []modelcheck.Op{
 			{Kind: modelcheck.KRemember, Slot: 0, Value: 2, Writer: 1},
