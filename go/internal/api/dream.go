@@ -191,7 +191,7 @@ func (s *Server) Dream(ctx context.Context, apply, onlyIfChanged bool) (*dream.R
 	rep.Docs = len(docs)
 
 	var findings []dream.Finding
-	findings = append(findings, secscan.Scan(docs, s.knownSecrets())...)
+	findings = append(findings, secscan.ScanGuarded(docs, s.knownSecrets(), s.guardClassifier())...)
 	findings = append(findings, notecheck.CheckWith(docs, time.Now(), s.freshPriors())...)
 	for _, root := range roots {
 		var in []dream.Doc
