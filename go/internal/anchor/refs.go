@@ -10,7 +10,7 @@ import (
 // The dead-reference scan: concrete references in prose that may point at
 // something that no longer exists. Deterministic, with no model involved.
 var (
-	refPathRE = regexp.MustCompile(`(?:~|/home/admin|/mnt/bulk)/[\w./@+\-]*[\w/]`)
+	refPathRE = regexp.MustCompile(`(?:~|/home/[\w.\-]+|/mnt/[\w.\-]+)/[\w./@+\-]*[\w/]`)
 	refUnitRE = regexp.MustCompile(`\b([\w@\-]+\.(?:service|timer))\b`)
 )
 
@@ -19,10 +19,10 @@ const globChars = "*?[]{}<>$"
 
 // bareRoots are matched by the path pattern but name a whole tree, not a
 // reference to something specific, so they are not checked.
-var bareRoots = map[string]bool{"~": true, "/opt": true, "/etc": true, "/mnt/bulk": true, "/home/admin": true}
+var bareRoots = map[string]bool{"~": true, "/opt": true, "/etc": true, "/mnt": true, "/home": true}
 
 // ExtractRefs returns the reference-only anchors in a note's text: absolute
-// local paths under ~, /home/admin and /mnt/bulk (RefPath), and systemd unit
+// local paths under ~, /home/<user> and /mnt/<volume> (RefPath), and systemd unit
 // names ending .service or .timer (RefUnit). Paths with glob or template
 // characters are skipped, and each reference appears once.
 func ExtractRefs(text string) []Anchor {
