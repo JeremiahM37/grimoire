@@ -39,3 +39,23 @@ func TestBulletsWithoutImageAreByteIdentical(t *testing.T) {
 		t.Fatalf("plain bullet changed on rewrite:\n got %s\nwant %s", got, line)
 	}
 }
+
+// An inferred caption is written with the same trailer field as a stated one,
+// and it round-trips byte-identically.
+func TestInferredCaptionBasisRoundTrips(t *testing.T) {
+	sha := "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+	text := "a rack of network switches"
+	id := DeriveID("2026-10-10 09:00", "agent", text)
+	line := "- **2026-10-10 09:00 · agent** — " + text + " <!--m id=" + id +
+		" img=" + sha + " capb=inferred-->"
+	e, ok := ParseLine(line)
+	if !ok {
+		t.Fatal("bullet did not parse")
+	}
+	if e.CaptionBasis != CaptionInferred || e.Text != text {
+		t.Fatalf("parsed %+v", e)
+	}
+	if got := e.Format(); got != line {
+		t.Fatalf("round trip changed the bullet:\n got %s\nwant %s", got, line)
+	}
+}

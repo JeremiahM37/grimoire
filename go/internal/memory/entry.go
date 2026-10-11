@@ -32,7 +32,7 @@ import (
 // Caption bases for an image entry (Entry.CaptionBasis).
 const (
 	CaptionStated   = "stated"   // the caller wrote the caption
-	CaptionInferred = "inferred" // a model wrote it from the picture (not wired; see docs/IMAGE-MEMORY.md)
+	CaptionInferred = "inferred" // a configured model wrote it from the picture (opt-in; see docs/IMAGE-MEMORY.md)
 	CaptionNone     = "none"     // no caption; the placeholder text is never recalled
 )
 
