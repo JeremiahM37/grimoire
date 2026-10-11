@@ -270,6 +270,13 @@ func (ix *Index) writeMemoryRows(note *vault.Note) error {
 		// consolidation exists to clean up) became unindexable. Colliding ids
 		// mean the same stamp, agent and text: they ARE one fact, so collapsing
 		// them is the right answer rather than a workaround.
+		// A sealed fact's evidence and check belong to its ciphertext. A bullet
+		// sealed before that moved them still has them in clear, and the index
+		// does not keep them: only the owner's reveal gets them back.
+		evidence, check := e.Evidence, e.Check
+		if e.Visibility == memory.VisSealed {
+			evidence, check = "", ""
+		}
 		if err := ix.DB.Exec(
 			"INSERT OR IGNORE INTO memory_entries(id,note,text,agent,task,session,stamp,category,"+
 				"expires,immutable,superseded_by,superseded_at,helpful,unhelpful,line,"+
@@ -280,9 +287,9 @@ func (ix *Index) writeMemoryRows(note *vault.Note) error {
 			e.ID, note.Path, e.Text, e.Agent, e.Task, e.Session, e.Stamp, e.Category,
 			e.Expires, immutable, e.SupersededBy, e.SupersededAt, e.Helpful,
 			e.Unhelpful, e.Line, blob, space, acl, private, e.Origin, human, e.Challenges,
-			e.Fresh, e.Check, e.Verified, e.Changes, e.Verifies, e.Since, e.Shape(), e.Vol, e.PriorRate,
+			e.Fresh, check, e.Verified, e.Changes, e.Verifies, e.Since, e.Shape(), e.Vol, e.PriorRate,
 			canonicalValidity(e.ValidFrom), canonicalValidity(e.ValidTo),
-			e.Importance, boolInt(e.HumanAuthored()), e.Evidence, e.Image, e.CaptionBasis, e.Visibility,
+			e.Importance, boolInt(e.HumanAuthored()), evidence, e.Image, e.CaptionBasis, e.Visibility,
 			e.Verification,
 		); err != nil {
 			return err

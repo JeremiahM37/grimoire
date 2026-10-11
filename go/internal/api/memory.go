@@ -384,10 +384,12 @@ func (s *Server) rememberOne(w http.ResponseWriter, r *http.Request, m memoryIn)
 func (s *Server) reconcileFact(w http.ResponseWriter, r *http.Request, rel, fact,
 	agent, task string, m memoryIn, expires string) (memoryResult, error) {
 
-	if m.Visibility == memory.VisSealed {
+	if m.Visibility == memory.VisSealed && m.TargetID == "" {
 		// Reconciliation compares the new fact's text with the candidates'
 		// text, and sends both to a model. A sealed fact has no text the
-		// model may see, so it is appended as it is.
+		// model may see, so it is appended as it is. An explicit correction
+		// names its target and is decided below, still sealed before anything
+		// else touches the text.
 		id, err := s.appendEntryChallenging(w, r, rel, fact, agent, task, m, expires, "", "")
 		if err != nil {
 			return memoryResult{}, err
@@ -410,6 +412,12 @@ func (s *Server) reconcileFact(w http.ResponseWriter, r *http.Request, rel, fact
 			return memoryResult{}, errHandled
 		}
 		target := hits[0]
+		if target.Visibility == memory.VisSealed && m.Visibility != memory.VisSealed {
+			// Plain text beside a sealed fact's ciphertext is the leak sealing
+			// exists to prevent, so only a sealed replacement may correct one.
+			writeErr(w, http.StatusConflict, "this fact is sealed; correct it with visibility=sealed, or forget it and remember again")
+			return memoryResult{}, errHandled
+		}
 		note, readErr := s.Vault.Read(targetPath)
 		if readErr != nil {
 			writeErr(w, http.StatusConflict, "correction target changed; recall it again")
@@ -427,13 +435,27 @@ func (s *Server) reconcileFact(w http.ResponseWriter, r *http.Request, rel, fact
 			writeErr(w, http.StatusConflict, "correction target changed; recall it again")
 			return memoryResult{}, errHandled
 		}
-		if target.Text != m.ExpectedText {
+		expected := target.Text
+		if target.Visibility == memory.VisSealed {
+			// Only the owner may correct a sealed fact. The owner may name the
+			// text they know; for anyone else the placeholder is all there is.
+			owner, ok := sealOwner(r)
+			if !ok || owner != target.Owner {
+				writeErr(w, http.StatusConflict, "this fact is sealed by another account")
+				return memoryResult{}, errHandled
+			}
+			revealed := []index.MemoryHit{target}
+			s.revealSealed(r, revealed)
+			expected = revealed[0].Text
+		}
+		if expected != m.ExpectedText {
 			writeErr(w, http.StatusConflict, "correction target changed; recall it again")
 			return memoryResult{}, errHandled
 		}
 		// Writing the same text back is how an agent reports a re-check that
-		// found the fact unchanged: a confirmation, not a new belief.
-		if isConfirmation(m, fact) {
+		// found the fact unchanged: a confirmation, not a new belief. A sealed
+		// write is never a confirmation: it is a new secret.
+		if m.Visibility != memory.VisSealed && isConfirmation(m, fact) {
 			if !s.requireWrite(w, r, normPath(target.Note)) {
 				return memoryResult{}, errHandled
 			}
@@ -449,7 +471,16 @@ func (s *Server) reconcileFact(w http.ResponseWriter, r *http.Request, rel, fact
 			return memoryResult{Op: opVerified, ID: target.ID, Target: target.ID,
 				Text: target.Text, Path: target.Note, Why: "re-checked; still true"}, nil
 		}
-		decision = memory.DecideTarget(fact, strings.TrimSpace(m.Origin), m.Human, target.Entry)
+		if m.Visibility == memory.VisSealed {
+			// The verdict is about authority alone. The text is the placeholder and
+			// the copy has no text, so it can never be a NOOP and the plaintext
+			// is not in the decision.
+			tgt := target.Entry
+			tgt.Text = ""
+			decision = memory.DecideTarget(memory.SealedPlaceholder, strings.TrimSpace(m.Origin), m.Human, tgt)
+		} else {
+			decision = memory.DecideTarget(fact, strings.TrimSpace(m.Origin), m.Human, target.Entry)
+		}
 		if decision.Op == memory.OpUpdate {
 			return s.applySupersession(w, r, target, decision, fact, agent, task, m, expires, rel)
 		}
@@ -484,6 +515,11 @@ func (s *Server) reconcileFact(w http.ResponseWriter, r *http.Request, rel, fact
 		candidates := make([]memory.Entry, 0, len(hits))
 		byID := make(map[string]index.MemoryHit, len(hits))
 		for _, h := range hits {
+			if h.Visibility == memory.VisSealed {
+				// A sealed fact's text is a placeholder, so it cannot match the new
+				// fact meaningfully, and offering it would send it to a model.
+				continue
+			}
 			candidates = append(candidates, h.Entry)
 			byID[h.ID] = h
 		}
@@ -518,8 +554,10 @@ func (s *Server) reconcileFact(w http.ResponseWriter, r *http.Request, rel, fact
 			// has been challenged.
 			s.calibrateEvent(rel, decision.Challenges, calibrate.Challenged)
 		}
-		s.addAgentCues(id, m)
-		return memoryResult{Op: string(memory.OpAdd), ID: id, Text: fact,
+		if m.Visibility != memory.VisSealed {
+			s.addAgentCues(id, m)
+		}
+		return memoryResult{Op: string(memory.OpAdd), ID: id, Text: shownText(m, fact),
 			Path: rel, Why: decision.Why, Challenges: decision.Challenges}, nil
 	}
 }
@@ -539,7 +577,7 @@ func (s *Server) applySupersession(w http.ResponseWriter, r *http.Request,
 		if err != nil {
 			return memoryResult{}, err
 		}
-		return memoryResult{Op: string(memory.OpAdd), ID: id, Text: fact,
+		return memoryResult{Op: string(memory.OpAdd), ID: id, Text: shownText(m, fact),
 			Path: rel, Why: "target is immutable; kept both"}, nil
 	}
 	// Superseding is a write to the note the OLD fact lives in, which is not
@@ -555,7 +593,8 @@ func (s *Server) applySupersession(w http.ResponseWriter, r *http.Request,
 		}
 		if d.Op == memory.OpUpdate {
 			const placeholder = "fact:replay-preview"
-			b.want(placeholder, fact, []string{fact})
+			text := shownText(m, fact)
+			b.want(placeholder, text, []string{text})
 			b.remap(oldTarget, placeholder)
 		} else {
 			b.remove(oldTarget)
@@ -594,7 +633,7 @@ func (s *Server) applySupersession(w http.ResponseWriter, r *http.Request,
 		s.replayCarry(map[string]string{oldTarget: cues.FactTarget(newID)})
 	}
 	op := string(d.Op)
-	return memoryResult{Op: op, ID: newID, Text: d.Text, Target: target.ID,
+	return memoryResult{Op: op, ID: newID, Text: shownText(m, d.Text), Target: target.ID,
 		Path: rel, Why: d.Why, Replay: warn}, nil
 }
 
@@ -680,13 +719,17 @@ func (s *Server) appendEntryChallenging(w http.ResponseWriter, r *http.Request, 
 			// An exported sealed fact is never exported (export drops every hidden
 			// fact), so a restore can only carry the placeholder; keep it as is.
 			e.Owner, e.KeyID, e.Sealed = restored.Entry.Owner, restored.Entry.KeyID, restored.Entry.Sealed
+			e.Text = memory.SealedPlaceholder
 		} else {
 			owner, ok := sealOwner(r)
 			if !ok {
 				writeErr(w, http.StatusUnauthorized, "sign in to write a sealed fact")
 				return "", errHandled
 			}
-			keyID, token, err := s.sealText(owner, fact)
+			// Text, evidence and check are encrypted together, under one data key,
+			// so none of them is clear on the bullet.
+			payload := seal.EncodeSealed(seal.Payload{Text: fact, Evidence: e.Evidence, Check: e.Check})
+			keyID, token, err := s.sealText(owner, payload)
 			if err != nil {
 				writeErr(w, sealErrStatus(err), "unlock the secret vault to write a sealed fact")
 				return "", err
@@ -696,6 +739,9 @@ func (s *Server) appendEntryChallenging(w http.ResponseWriter, r *http.Request, 
 			e.Text, e.Owner, e.KeyID, e.Sealed = memory.SealedPlaceholder, owner, keyID, token
 			e.ID = memory.DeriveID(stamp, agent, token)
 		}
+		// Evidence and check live in the ciphertext now. Nothing is written in
+		// clear, so a reader who cannot open the fact cannot see what it cites.
+		e.Evidence, e.Check = "", ""
 	}
 	// A forgotten fact must not be written back under its old id.
 	if tomb, _, err := s.tombLog().Load(s.tombKey()); err == nil && seal.Suppressed(tomb, e.ID) {
