@@ -242,6 +242,9 @@ func (ix *Index) writeMemoryRowsInner(note *vault.Note) error {
 	if err := ix.deleteMemoryRows(note.Path); err != nil {
 		return err
 	}
+	if err := ix.cloneDeleteRows(note.Path); err != nil {
+		return err
+	}
 	if !IsMemoryPath(note.Path) || note.Encrypted {
 		// Never mine facts out of ciphertext: the whole point of an encrypted
 		// note is that the index cannot read it.
@@ -321,6 +324,9 @@ func (ix *Index) writeMemoryRowsInner(note *vault.Note) error {
 				return err
 			}
 		}
+	}
+	if err := ix.cloneWriteRows(note.Path, entries); err != nil {
+		return err
 	}
 	return ix.aliasWriteRows(note.Path, entries)
 }
@@ -825,6 +831,7 @@ func (ix *Index) rankMemory(cands []memoryRow, q MemoryQuery) []MemoryHit {
 	qTokens := memory.Tokens(q.Query)
 	ents := ix.candidateEntities(cands, qEntities)
 	links := ix.candidateLinks(cands, memory.QueryCanons(q.Query))
+	clones := ix.cloneAliasesFor() // nil unless the clone flag is on
 
 	out := make([]MemoryHit, 0, len(cands))
 	for _, c := range cands {
@@ -833,6 +840,9 @@ func (ix *Index) rankMemory(cands []memoryRow, q MemoryQuery) []MemoryHit {
 		h.Semantic = clamp01(cosineNorm(qVec, qNorm, c.vec))
 		h.Keyword = keywordScore(qTokens, c.hit.Text, idf)
 		k := entKey{c.hit.Note, c.hit.ID}
+		if clones != nil {
+			applyCloneAliases(&h, clones[k], qVec, qNorm, qTokens, idf)
+		}
 		h.Entity = memory.EntityOverlap(qEntities, ents[k])
 		if l, ok := links[k]; ok {
 			// A link is credit for a name the fact does not spell out. It is
