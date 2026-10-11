@@ -80,3 +80,10 @@ model or real usage data that an offline test cannot supply.
   Authority-dependent measurements on it are unreliable until that is fixed.
 - The default corpus makes first-name aliases ambiguous on purpose, which caps
   what any ranking change can do there at about 68%.
+
+## What comes next: a randomised run on real work
+
+Every result above comes from a corpus or a fixture we wrote. The next step is a
+pre-registered holdout on live agent work, with no flags on:
+[`benchmarks/holdout/PREREG.md`](../../benchmarks/holdout/PREREG.md). Its
+analysis script is fixed at the same commit.
