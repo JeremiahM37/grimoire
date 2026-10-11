@@ -127,4 +127,7 @@ Whether the decision table is published is the owner's decision after the run.
 
 ## Amendments
 
-None.
+* 2026-10-11, minutes after the start, before any item had been withheld: the
+  `--counts-only` output computed the expected withheld share from decisions
+  with an outcome only, so it read 0 when every decision so far lacked one. It
+  now averages over all decisions. The test and the outcome are unchanged.

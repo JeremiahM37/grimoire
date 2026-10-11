@@ -79,6 +79,7 @@ def load(dbs: list[sqlite3.Connection], start: int, end: int, pre: bool = False)
         win = [parts for _, parts in a[i : i + WINDOW]]
         if not win:
             dropped[d["arm"]] += 1
+            dropped["p_sum"] += d["p"]
             continue
         d["y"] = sum(1 for p in win if any(p)) / len(win)
         d["parts"] = [sum(p[j] for p in win) / len(win) for j in range(6)]
@@ -153,8 +154,8 @@ def validity(ds: list[dict], dropped: collections.Counter) -> dict:
     held = [d for d in ds if d["arm"] == "withheld"]
     shown = [d for d in ds if d["arm"] == "shown"]
     n_h, n_s = len(held) + dropped["withheld"], len(shown) + dropped["shown"]
-    exp = statistics.mean(d["p"] for d in ds) if ds else 0.0
     n = n_h + n_s
+    exp = (sum(d["p"] for d in ds) + dropped["p_sum"]) / n if n else 0.0
     return {
         "decisions": n,
         "sessions": len({d["session"] for d in ds}),
