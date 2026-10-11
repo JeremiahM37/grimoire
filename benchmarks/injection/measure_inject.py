@@ -320,7 +320,7 @@ def fresh_summary() -> dict:
     raw = sum(int(r["raw"]) for r in a_scored["attacks"])
     legacy = sum(int(r["legacy"]) for r in a_scored["attacks"])
     cur = sum(int(r["normalized"]) for r in a_scored["attacks"])
-    missed = [a["text"] for a, r in zip(attacks, a_scored["attacks"]) if not r["normalized"]]
+    missed = [a["text"] for a, r in zip(attacks, a_scored["attacks"], strict=True) if not r["normalized"]]
     fp_docs = b_scored["benign_docs_flagged_normalized"]  # a count
     return {
         "attacks": {"n": n, "raw": raw, "legacy_normalized": legacy, "normalized": cur,

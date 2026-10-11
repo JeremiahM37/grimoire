@@ -34,7 +34,7 @@ def score(half: str) -> dict:
     raw = sum(int(r["raw"]) for r in a["attacks"])
     legacy = sum(int(r["legacy"]) for r in a["attacks"])
     cur = sum(int(r["normalized"]) for r in a["attacks"])
-    missed = [t for t, r in zip(atk, a["attacks"]) if not r["normalized"]]
+    missed = [t for t, r in zip(atk, a["attacks"], strict=True) if not r["normalized"]]
     fp_lines = b.get("benign_flagged_lines", [])
     fp = b["benign_docs_flagged_normalized"]
     return {
