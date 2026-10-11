@@ -3,15 +3,21 @@
 Agent memory can hold a picture. This page says what that does and, just as
 important, what it does not.
 
-## Retrieval is by caption only
+## Recall is by caption; similarity is by pixels
 
-**An image is found through its caption, never through its pixels.** The caption
-is the text of the memory fact, and recall, full-text search and the vector arm
-all index that text. Nothing in this feature computes an image embedding, runs a
-vision model, or compares picture content. A search for "rack wiring" finds a
-picture because someone wrote "rack wiring" in its caption; a search for a colour,
-a face, or anything visible only in the pixels finds nothing unless the caption
-says so.
+There are two different questions, and they are answered differently.
+
+- **Recall** ("find the picture of the rack wiring") is **by caption only**. The
+  caption is the text of the memory fact, and recall, full-text search and the
+  vector arm all index that text. A search for a colour, a face, or anything
+  visible only in the pixels finds nothing unless the caption says so.
+- **Similarity** ("is there already a picture that looks like this one") is
+  **by pixels**, with no model and no caption. It is described in
+  [Visual similarity](#visual-similarity) below. It answers only with visual
+  similarity; it never reports what a picture shows.
+
+A caption can be written by the caller, or, if an operator configures one, by a
+vision model ([Automatic captions](#automatic-captions), off by default).
 
 Consequences to plan for:
 
@@ -22,11 +28,9 @@ Consequences to plan for:
   recalled**. Its placeholder text (`image (uncaptioned)`) is excluded from every
   recall, search and graph query. The response says `"searchable": false`, and
   the CLI prints `NOT searchable`.
-- Caption basis is recorded as `stated` (the caller wrote it) or `none`.
-  `inferred` (a model wrote the caption from the picture) exists in the data model
-  but is **not produced**: the AI layer (`internal/ai`) only sends text prompts to
-  its backends and no existing OpenAI-compatible or Anthropic path accepts image
-  content, so there is no vision path to use. Captions are never invented.
+- Caption basis is recorded as `stated` (the caller wrote it), `inferred` (a
+  configured vision model wrote it, see below) or `none`. Captions are never
+  invented by this code: with no captioner configured, nothing writes one.
 
 ## Interfaces
 
@@ -34,6 +38,8 @@ Consequences to plan for:
 |---|---|
 | HTTP | `POST /api/memory/image` — JSON `{"data_base64","caption","topic"}` or multipart with a `file` part and `caption`, `topic` fields |
 | HTTP | `GET /api/memory/image/{sha}` — the bytes, served only to a caller who can see an entry that refers to them |
+| HTTP | `GET /api/memory/image?similar_to=<sha>[&max=<bits>]` — visually similar pictures the caller can see (see below) |
+| HTTP | `POST /api/memory/image/similar` — the upload body; returns the similar visible pictures and **stores nothing** |
 | MCP | `remember_image` (`data_base64`, `caption`, `topic`) |
 | CLI | `grimoire memory image FILE [--caption TEXT] [--topic T]` |
 | Recall | each hit with an image carries `"image": {"sha","mime","bytes","url"}` and `"caption_basis"` |
@@ -60,7 +66,7 @@ A stored picture answers with `{path, id, text, caption_basis, searchable, image
   where the hash is of the **bytes actually stored** (after metadata removal).
   Identical uploads share one file.
 - The memory fact records the hash as `img=<sha256>` and the basis as
-  `capb=stated|none` in its trailer. Both fields are appended after every existing
+  `capb=stated|inferred|none` in its trailer. Both fields are appended after every existing
   field, so bullets written before this feature format byte-identically.
 - The directory is flat. The extension is not recorded in the fact; the store
   finds the file by probing the four formats.
@@ -126,12 +132,108 @@ API uses. The consequences:
 - The import body is capped at 16 MiB in total, so an export with many large
   pictures may not fit in one import.
 
+## Visual similarity
+
+`GET /api/memory/image?similar_to=<sha>` and `POST /api/memory/image/similar`
+compare **pixel fingerprints**. Standard library only: PNG, JPEG and GIF decode
+with `image/*`. WebP has **no signature**, because decoding it needs
+`golang.org/x/image`, which is not vendored; a WebP picture is still stored and
+still recalled by caption, and a similarity query on it answers 422.
+
+**The fingerprint** (`internal/memimage/signature.go`) is two things, stored in
+the index table `image_signatures` keyed by content address:
+
+- a 64-bit **difference hash**: the picture is reduced to a 9x8 grid of mean
+  luminances, and each bit records whether a cell is brighter than its right
+  neighbour;
+- a **4x4x4 RGB histogram** (64 bins), which the hash ignores, so it is what tells
+  a recolour apart from a re-crop.
+
+Matches are ranked by Hamming distance on the hash (differing bits, of 64), then
+by histogram distance (0 to 1), then by content address, so the order is stable.
+The default threshold is **10 bits**; `max=<0..64>` changes it.
+
+**What was measured** (`go test ./internal/memimage -run 'Similarity|Textured' -v`,
+generated pictures, so these are idealised; the textured case is the harder one):
+
+| Case | dHash distance (of 64) | Colour distance (0-1) |
+|---|---|---|
+| identical bytes | 0 | 0 |
+| same scene, half size, PNG | 0 | 0.008 |
+| same scene, JPEG q85 re-encode | 5 | — |
+| same scene, recoloured (tint) | 0 | 0.569 |
+| unrelated (seeded noise) | 26 | — |
+| textured scene, 2x2 box-resized and JPEG | 5 (unrelated: 29) | — |
+
+Read the table honestly: the hash is blind to a uniform tint that preserves
+luminance order, which is why the histogram exists; the threshold of 10 leaves a
+wide gap between "same picture, re-encoded or resized" (5) and "unrelated" (26 to
+29) on these pictures, and **a gap measured on generated pictures is not a
+guarantee for real photographs**. Real photographs with heavy crops, rotation,
+flips or large colour edits are not measured here and are not expected to match.
+
+**Who can see a match.** The candidate set is exactly the pictures the caller may
+see through `GET /api/memory/image/{sha}`: the same non-private, visibility-free
+row filter and the same ACL check. A picture behind a private or sensitive entry
+is never compared, never returned, and a `similar_to` probe for it answers 404
+like an absent hash. The upload probe writes nothing to memory or to the vault.
+
+**Cost.** The first similarity query decodes each visible picture once and writes
+its fingerprint into the index; later queries read the rows. The index is a cache
+keyed by an immutable content address, so a reindex does not need to clear it. When a picture is
+collected its row is left behind; nothing reads it, because only visible
+pictures are ever looked up.
+
+## Automatic captions
+
+**Off by default.** A picture is sent to a model only when an operator configures
+one, and only for an upload that carries **no** caption:
+
+| Setting (env) | Meaning |
+|---|---|
+| `memory_caption_url` (`GRIMOIRE_MEMORY_CAPTION_URL`) | Ollama base URL, or an OpenAI-compatible base ending in `/v1` |
+| `memory_caption_model` (`GRIMOIRE_MEMORY_CAPTION_MODEL`) | a vision-capable model; both are required |
+| `memory_caption_backend` (`GRIMOIRE_MEMORY_CAPTION_BACKEND`) | `ollama` (default) or `openai` |
+| `memory_caption_allow_private` (`GRIMOIRE_MEMORY_CAPTION_ALLOW_PRIVATE`) | `1` to allow loopback and private networks |
+| `GRIMOIRE_MEMORY_CAPTION_API_KEY` | bearer token, environment only, never in `settings.json` |
+
+Behaviour, each covered by a test:
+
+- **A human caption always wins.** If the caller supplied a caption the captioner
+  is not called and the caption is recorded as `stated`.
+- **The write check runs first.** A caller who could not store the picture does
+  not cause it to be sent anywhere.
+- **The picture sent is the stored bytes**, with EXIF already removed, one request
+  per upload, with a 60-second timeout and a 64 KiB cap on the reply.
+- **Failure is not an error for the upload.** An unreachable captioner, an error
+  status, an empty or malformed reply, or a refused address stores the picture
+  uncaptioned (`none`, not searchable), exactly as with no captioner.
+- **The address guard.** The connection is checked at dial time against every
+  address the name resolves to. Link-local and cloud-metadata addresses are
+  refused always; loopback and private networks only with
+  `memory_caption_allow_private`. Proxies are not used and redirects are not
+  followed. The URL must be http or https with no credentials.
+- The reply is cleaned to one line and capped at 500 characters. An inferred
+  caption is stored and recalled like any other caption, so **a wrong model
+  caption is a wrong memory until someone corrects it**. Basis `inferred` is the
+  only marker of that; the response carries `caption_basis: "inferred"`.
+
+The prompt asks for what is visible and tells the model not to guess who is
+shown or where it was taken. That is a request, not a guarantee.
+
 ## Limits, stated plainly
 
-- Retrieval is caption-only. There is no pixel search, no visual similarity, and
-  no OCR.
-- Captions are whatever the caller wrote. No caption, no search.
-- No automatic captioning exists. The `inferred` basis is reserved and unused.
+- Recall is caption-only. A picture is found by a search for words in its caption.
+- Similarity is **pixel similarity only**. It cannot tell you what a picture
+  shows, and two different scenes that share a bright top half can score as near.
+- Similarity is not invariant to rotation, flips, crops or large colour edits, and
+  its numbers above come from generated pictures, not a photograph corpus.
+- Captions are whatever the caller wrote, or what the configured model wrote.
+  No caption from either source, no recall.
+- Uncaptioned pictures are not recalled, but they **are** returned by similarity
+  queries, because a similarity match does not need a caption to be meaningful.
+- Automatic captioning is opt-in and sends the picture to the configured endpoint.
+  It is not sent to a hosted service unless you configure one.
 - EXIF removal covers JPEG and PNG only, as listed above.
 - Pictures are commons, not per-owner.
 - Only the four formats are accepted; animated GIF and WebP are stored as the

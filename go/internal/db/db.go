@@ -275,6 +275,12 @@ CREATE INDEX IF NOT EXISTS idx_memory_entities_entity ON memory_entities(entity)
 CREATE INDEX IF NOT EXISTS idx_memory_entities_note ON memory_entities(note);
 -- Identity and authorization. A deployment with no rows in users behaves
 -- exactly as the single-user server always did; see internal/auth.
+-- Perceptual fingerprint of a stored picture, keyed by its content address.
+-- Derived from the bytes, so it is a cache: a missing row is recomputed from the
+-- file, and a reindex need not touch it (the content address never changes).
+CREATE TABLE IF NOT EXISTS image_signatures(
+  sha TEXT PRIMARY KEY, dhash INTEGER NOT NULL, hist BLOB NOT NULL
+);
 CREATE TABLE IF NOT EXISTS users(
   id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, display TEXT,
   pwhash TEXT NOT NULL, role TEXT NOT NULL, created TEXT
