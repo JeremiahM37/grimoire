@@ -252,7 +252,7 @@ func scanDoc(doc dream.Doc, known []string, readings lineReadings) []dream.Findi
 // injectionPatterns are instruction-shaped phrases aimed at a model. They are
 // matched case-insensitively. Each one is a phrase no ordinary note needs, so
 // the list stays narrow on purpose: a noisy check gets switched off.
-var injectionPatterns = []*regexp.Regexp{
+var legacyInjectionPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)\b(?:ignore|disregard|forget)\s+(?:all\s+|any\s+)?(?:previous|prior|above|earlier)\s+(?:instructions|rules|context)\b`),
 	regexp.MustCompile(`(?i)\byou are now\b`),
 	regexp.MustCompile(`(?i)\bnew (?:system )?instructions\b`),
