@@ -132,14 +132,34 @@ func TestSkillsExportMineAcceptAndImpact(t *testing.T) {
 	if entries, _ := filepath.Glob(filepath.Join(store, "procedure_*")); len(entries) != 0 {
 		t.Fatal("mine must not add memories")
 	}
-	if out, code = runCmd(t, "skills", "accept", cands[0].ID, "--dir", store); code != 0 {
-		t.Fatalf("accept = %d:\n%s", code, out)
+	// The fixture has no sessions outside the pattern, so false fires cannot be
+	// measured and the gate fails: accept must refuse, and say why.
+	if out, code = runCmd(t, "skills", "gate", cands[0].ID); code == 0 || !strings.Contains(out, "not measured") {
+		t.Fatalf("gate = %d:\n%s", code, out)
+	}
+	if _, code = runCmd(t, "skills", "accept", cands[0].ID, "--dir", store); code == 0 {
+		t.Fatal("accept without override must be refused")
+	}
+	if entries, _ := filepath.Glob(filepath.Join(store, "procedure_*")); len(entries) != 0 {
+		t.Fatalf("a refused accept wrote %v", entries)
+	}
+	if out, code = runCmd(t, "skills", "accept", cands[0].ID, "--dir", store, "--override", "fixture: four sessions, reviewed by hand"); code != 0 {
+		t.Fatalf("accept with override = %d:\n%s", code, out)
 	}
 	if entries, _ := filepath.Glob(filepath.Join(store, "procedure_*")); len(entries) != 1 {
 		t.Fatalf("accept wrote %v", entries)
+	} else if b, _ := os.ReadFile(entries[0]); !strings.Contains(string(b), "skill_gate: override") {
+		t.Errorf("override not recorded in the saved note:\n%s", b)
 	}
 	if _, code = runCmd(t, "skills", "accept", cands[0].ID, "--dir", store); code == 0 {
 		t.Error("accepting twice must not overwrite")
+	}
+
+	// check: with no programs on PATH the saved skill's command preconditions
+	// are unmet, and the listing says which.
+	t.Setenv("PATH", t.TempDir())
+	if out, code = runCmd(t, "skills", "check", "--dir", store, "--cwd", t.TempDir()); code != 0 || !strings.Contains(out, "unmet") || !strings.Contains(out, "command:git") {
+		t.Errorf("check = %d:\n%s", code, out)
 	}
 
 	// remove: only what export wrote.
