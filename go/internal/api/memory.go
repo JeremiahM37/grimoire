@@ -13,6 +13,7 @@ import (
 
 	"github.com/JeremiahM37/grimoire/go/internal/calibrate"
 	"github.com/JeremiahM37/grimoire/go/internal/cues"
+	"github.com/JeremiahM37/grimoire/go/internal/exp"
 	"github.com/JeremiahM37/grimoire/go/internal/fts"
 	"github.com/JeremiahM37/grimoire/go/internal/index"
 	"github.com/JeremiahM37/grimoire/go/internal/markdown"
@@ -959,6 +960,9 @@ type entryOut struct {
 	// "verified" or "unverified". Absent when the fact cites nothing. An
 	// unverified fact cannot read as observed (see memory.Entry.Basis).
 	Verification string `json:"verification,omitempty"`
+	// Hops is the hop depth from the fact's source. Only on an explain response
+	// under the "lineage" experiment.
+	Hops *int `json:"hops,omitempty"`
 
 	// Who asserted it: human, agent or pulled. Same argument as Trust — an
 	// agent about to overwrite a fact needs to know it is a person's
@@ -994,6 +998,12 @@ type scoreBreakdown struct {
 
 func entriesOut(hits []index.MemoryHit, explain bool) []entryOut {
 	out := make([]entryOut, 0, len(hits))
+	// Under the "lineage" experiment an explanation shows each fact's hop depth
+	// (see memory_lineage.go). Off, hops is nil and nothing is added.
+	var hops map[string]int
+	if explain && exp.On(lineageFlag) {
+		hops = lineageHops(hits)
+	}
 	for _, h := range hits {
 		text := h.Text
 		if explain && h.Redacted() {
@@ -1018,6 +1028,9 @@ func entriesOut(hits []index.MemoryHit, explain bool) []entryOut {
 		if h.Image != "" {
 			e.Image = &imageRef{SHA: h.Image, URL: imageURL(h.Image)}
 			e.CaptionBasis = h.CaptionBasis
+		}
+		if hv, ok := hops[h.ID]; ok {
+			e.Hops = &hv
 		}
 		if explain {
 			e.Scores = &scoreBreakdown{Semantic: h.Semantic, Keyword: h.Keyword,
