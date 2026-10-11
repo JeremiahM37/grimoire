@@ -1,0 +1,70 @@
+{
+  "dry_run": false,
+  "status": "run",
+  "backend": "claude",
+  "reader": "haiku",
+  "judge": "haiku",
+  "conversations": 1,
+  "questions": 20,
+  "skipped_unrubriced": 0,
+  "arms": {
+    "grimoire": {
+      "overall_score_pct": 66.8,
+      "overall_strict_pct": 45.0,
+      "n": 20,
+      "median_approx_context_tokens": 6436,
+      "by_ability": {
+        "abstention": {
+          "n": 2,
+          "score_pct": 50.0,
+          "strict_pct": 50.0
+        },
+        "contradiction_resolution": {
+          "n": 2,
+          "score_pct": 50.0,
+          "strict_pct": 0.0
+        },
+        "event_ordering": {
+          "n": 2,
+          "score_pct": 63.3,
+          "strict_pct": 0.0
+        },
+        "information_extraction": {
+          "n": 2,
+          "score_pct": 50.0,
+          "strict_pct": 50.0
+        },
+        "instruction_following": {
+          "n": 2,
+          "score_pct": 100.0,
+          "strict_pct": 100.0
+        },
+        "knowledge_update": {
+          "n": 2,
+          "score_pct": 100.0,
+          "strict_pct": 100.0
+        },
+        "multi_session_reasoning": {
+          "n": 2,
+          "score_pct": 75.0,
+          "strict_pct": 50.0
+        },
+        "preference_following": {
+          "n": 2,
+          "score_pct": 50.0,
+          "strict_pct": 0.0
+        },
+        "summarization": {
+          "n": 2,
+          "score_pct": 30.0,
+          "strict_pct": 0.0
+        },
+        "temporal_reasoning": {
+          "n": 2,
+          "score_pct": 100.0,
+          "strict_pct": 100.0
+        }
+      }
+    }
+  }
+}

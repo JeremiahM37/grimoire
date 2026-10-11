@@ -1,0 +1,60 @@
+{"task": "T01", "arm": "off", "rep": 1, "answer": "I don't know. This directory is empty and has no Quarry project, and my notes don't name its test command.", "passed": false, "retrieved_fact": true, "error": null}
+{"task": "T01", "arm": "off", "rep": 2, "answer": "I don't know. Nothing in this environment identifies a Quarry project or its test command, and the working directory is empty. Point me to the Quarry repo or its test config and I can look it up.", "passed": false, "retrieved_fact": true, "error": null}
+{"task": "T01", "arm": "off", "rep": 3, "answer": "I don't know. The working directory (`/tmp/evalkit-empty-cwd`) is empty and not a git repository, so I can't check Quarry's test setup.", "passed": false, "retrieved_fact": true, "error": null}
+{"task": "T01", "arm": "on", "rep": 1, "answer": "make verify-quarry", "passed": true, "retrieved_fact": true, "error": null}
+{"task": "T01", "arm": "on", "rep": 2, "answer": "make verify-quarry", "passed": true, "retrieved_fact": true, "error": null}
+{"task": "T01", "arm": "on", "rep": 3, "answer": "`make verify-quarry`", "passed": true, "retrieved_fact": true, "error": null}
+{"task": "T02", "arm": "off", "rep": 1, "answer": "I don't know. I can't find Quarry's branch naming convention in this environment.", "passed": false, "retrieved_fact": false, "error": null}
+{"task": "T02", "arm": "off", "rep": 2, "answer": "I don't know. I have no Quarry repository or documentation in this environment to check.", "passed": false, "retrieved_fact": false, "error": null}
+{"task": "T02", "arm": "off", "rep": 3, "answer": "I don't know. I can't find Quarry's branch conventions in this environment, which isn't a git repository.", "passed": false, "retrieved_fact": false, "error": null}
+{"task": "T02", "arm": "on", "rep": 1, "answer": "I don't have that information. My notes only cover Quarry's release schedule (cut on Thursdays at 14:00 UTC). The branch pattern I have on record, `hb/release-<major>`, is for Harbor, not Quarry.", "passed": false, "retrieved_fact": false, "error": null}
+{"task": "T02", "arm": "on", "rep": 2, "answer": "I don't know. My notes only cover Quarry's release schedule (Thursdays at 14:00 UTC), not its branch naming.", "passed": false, "retrieved_fact": false, "error": null}
+{"task": "T02", "arm": "on", "rep": 3, "answer": "I don't have that in my notes. I only have Quarry's release schedule (cut Thursdays at 14:00 UTC). Check the Quarry repo's docs or release process for the branch pattern.", "passed": false, "retrieved_fact": false, "error": null}
+{"task": "T03", "arm": "off", "rep": 1, "answer": "I don't know. I have no Quarry documentation or config source in this environment.", "passed": false, "retrieved_fact": true, "error": null}
+{"task": "T03", "arm": "off", "rep": 2, "answer": "I don't know. I don't have Quarry's config documentation.", "passed": false, "retrieved_fact": true, "error": null}
+{"task": "T03", "arm": "off", "rep": 3, "answer": "I don't know. I have no Quarry config reference here, and the working directory is empty.", "passed": false, "retrieved_fact": true, "error": null}
+{"task": "T03", "arm": "on", "rep": 1, "answer": "quarry.blob_cache_root", "passed": true, "retrieved_fact": true, "error": null}
+{"task": "T03", "arm": "on", "rep": 2, "answer": "`quarry.blob_cache_root`", "passed": true, "retrieved_fact": true, "error": null}
+{"task": "T03", "arm": "on", "rep": 3, "answer": "quarry.blob_cache_root", "passed": true, "retrieved_fact": true, "error": null}
+{"task": "T04", "arm": "off", "rep": 1, "answer": "I don't know. I have no information about a Quarry dev server's port.", "passed": false, "retrieved_fact": false, "error": null}
+{"task": "T04", "arm": "off", "rep": 2, "answer": "I don't know. Nothing I have access to specifies Quarry's dev server port.", "passed": false, "retrieved_fact": false, "error": null}
+{"task": "T04", "arm": "off", "rep": 3, "answer": "I don't know. I have no information about a Quarry project in this environment.", "passed": false, "retrieved_fact": false, "error": null}
+{"task": "T04", "arm": "on", "rep": 1, "answer": "I don't have the Quarry dev server's port. My memory only lists Harbor's, which is 8630.", "passed": false, "retrieved_fact": false, "error": null}
+{"task": "T04", "arm": "on", "rep": 2, "answer": "I don't know. The only stored port I have is for a different project (Harbor, port 8630), and nothing I have covers Quarry.", "passed": false, "retrieved_fact": false, "error": null}
+{"task": "T04", "arm": "on", "rep": 3, "answer": "I don't know. My available notes only give the port for Harbor's dev server (8630), not Quarry's.", "passed": false, "retrieved_fact": false, "error": null}
+{"task": "T05", "arm": "off", "rep": 1, "answer": "I don't know. Nothing in the current directory (/tmp/evalkit-empty-cwd) indicates a Quarry project, and my memories don't mention it.", "passed": false, "retrieved_fact": false, "error": null}
+{"task": "T05", "arm": "off", "rep": 2, "answer": "I can't tell from here. The working directory is empty and isn't a git repository, so I can't find Quarry's linter or its config file.", "passed": false, "retrieved_fact": false, "error": null}
+{"task": "T05", "arm": "off", "rep": 3, "answer": "I don't know. I can't find a Quarry project here, since the working directory is empty and not a git repository.", "passed": false, "retrieved_fact": false, "error": null}
+{"task": "T05", "arm": "on", "rep": 1, "answer": "I don't know. The retrieved project memory is empty, and I have no record of a Quarry project.", "passed": false, "retrieved_fact": false, "error": null}
+{"task": "T05", "arm": "on", "rep": 2, "answer": "I don't know. The project memory is empty, and I have no access to a Quarry codebase from this working directory.", "passed": false, "retrieved_fact": false, "error": null}
+{"task": "T05", "arm": "on", "rep": 3, "answer": "I can't determine this: the retrieved project memory is empty, and I have no information about Quarry's linter or its config file.", "passed": false, "retrieved_fact": false, "error": null}
+{"task": "T06", "arm": "off", "rep": 1, "answer": "I can't tell from here. The working directory is empty and has no CODEOWNERS file or repository history. Check the Quarry repo's `CODEOWNERS` file for `db/migrations`.", "passed": false, "retrieved_fact": false, "error": null}
+{"task": "T06", "arm": "off", "rep": 2, "answer": "I don't know. The working directory is empty and isn't a git repo, so I can't find a CODEOWNERS file or approval policy.", "passed": false, "retrieved_fact": false, "error": null}
+{"task": "T06", "arm": "off", "rep": 3, "answer": "I don't have that information. The working directory is empty, so I can't check a CODEOWNERS file or repo docs. Check Quarry's CODEOWNERS file or contributing guide.", "passed": false, "retrieved_fact": false, "error": null}
+{"task": "T06", "arm": "on", "rep": 1, "answer": "I don't have a record of an approval rule for Quarry changes under db/migrations. The only stored rule covers Harbor's schema/ directory, which needs one approval from the platform-team.", "passed": false, "retrieved_fact": false, "error": null}
+{"task": "T06", "arm": "on", "rep": 2, "answer": "I don't know. The retrieved memory covers Harbor's `schema/` rule, not Quarry's `db/migrations`.", "passed": false, "retrieved_fact": false, "error": null}
+{"task": "T06", "arm": "on", "rep": 3, "answer": "I don't have a record of a review rule for Quarry changes under db/migrations. The only rule I found is for Harbor's schema/ directory, which requires one platform-team approval.", "passed": false, "retrieved_fact": false, "error": null}
+{"task": "T07", "arm": "off", "rep": 1, "answer": "I can't tell from here. The working directory is empty, so I can't inspect a Quarry project's migrations. If you point me to the project, I can check how its files are numbered.", "passed": false, "retrieved_fact": false, "error": null}
+{"task": "T07", "arm": "off", "rep": 2, "answer": "I don't have reliable information about Quarry's migration file numbering, and the working directory is empty, so I can't check it. Point me to the project or its docs and I can look.", "passed": false, "retrieved_fact": false, "error": null}
+{"task": "T07", "arm": "off", "rep": 3, "answer": "I don't know Quarry's migration numbering scheme for certain. Check the project's migrations directory or its docs.", "passed": false, "retrieved_fact": false, "error": null}
+{"task": "T07", "arm": "on", "rep": 1, "answer": "I don't know. The retrieved project memory is empty, and the working directory has no Quarry files to check.", "passed": false, "retrieved_fact": false, "error": null}
+{"task": "T07", "arm": "on", "rep": 2, "answer": "I don't know. The project memory is empty and the working directory has no Quarry files.", "passed": false, "retrieved_fact": false, "error": null}
+{"task": "T07", "arm": "on", "rep": 3, "answer": "I don't have that information. The project memory is empty and the working directory has no Quarry files.", "passed": false, "retrieved_fact": false, "error": null}
+{"task": "T08", "arm": "off", "rep": 1, "answer": "I don't know. I can't find a documented \"Quarry\" trace log level variable, so please check the Quarry documentation or its config reference.", "passed": false, "retrieved_fact": true, "error": null}
+{"task": "T08", "arm": "off", "rep": 2, "answer": "I don't know. I have no reliable information about a \"Quarry\" tool's trace log level variable.", "passed": false, "retrieved_fact": true, "error": null}
+{"task": "T08", "arm": "off", "rep": 3, "answer": "I don't know. I can't find a Quarry trace log level setting in this environment, and I won't guess a variable name.", "passed": false, "retrieved_fact": true, "error": null}
+{"task": "T08", "arm": "on", "rep": 1, "answer": "QUARRY_TRACE_LEVEL", "passed": true, "retrieved_fact": true, "error": null}
+{"task": "T08", "arm": "on", "rep": 2, "answer": "QUARRY_TRACE_LEVEL", "passed": true, "retrieved_fact": true, "error": null}
+{"task": "T08", "arm": "on", "rep": 3, "answer": "QUARRY_TRACE_LEVEL", "passed": true, "retrieved_fact": true, "error": null}
+{"task": "T09", "arm": "off", "rep": 1, "answer": "I don't know.", "passed": false, "retrieved_fact": true, "error": null}
+{"task": "T09", "arm": "off", "rep": 2, "answer": "I don't know. I can't find a documented release schedule for Quarry.", "passed": false, "retrieved_fact": true, "error": null}
+{"task": "T09", "arm": "off", "rep": 3, "answer": "I don't know. I can't verify Quarry's release schedule.", "passed": false, "retrieved_fact": true, "error": null}
+{"task": "T09", "arm": "on", "rep": 1, "answer": "Thursdays at 14:00 UTC.", "passed": true, "retrieved_fact": true, "error": null}
+{"task": "T09", "arm": "on", "rep": 2, "answer": "Thursdays at 14:00 UTC", "passed": true, "retrieved_fact": true, "error": null}
+{"task": "T09", "arm": "on", "rep": 3, "answer": "Thursdays at 14:00 UTC", "passed": true, "retrieved_fact": true, "error": null}
+{"task": "T10", "arm": "off", "rep": 1, "answer": "I don't know. I have no information about a Quarry commit message convention.", "passed": false, "retrieved_fact": true, "error": null}
+{"task": "T10", "arm": "off", "rep": 2, "answer": "I don't know. I have no information about a Quarry commit convention.", "passed": false, "retrieved_fact": true, "error": null}
+{"task": "T10", "arm": "off", "rep": 3, "answer": "I don't know. I have no information about a Quarry commit convention.", "passed": false, "retrieved_fact": true, "error": null}
+{"task": "T10", "arm": "on", "rep": 1, "answer": "qry-ticket:", "passed": true, "retrieved_fact": true, "error": null}
+{"task": "T10", "arm": "on", "rep": 2, "answer": "qry-ticket:", "passed": true, "retrieved_fact": true, "error": null}
+{"task": "T10", "arm": "on", "rep": 3, "answer": "qry-ticket:", "passed": true, "retrieved_fact": true, "error": null}

@@ -1,0 +1,20 @@
+{"qid": "1:contradiction_resolution:0", "arm": "grimoire", "flags": [true, true, true, false], "score": 0.75, "all": false}
+{"qid": "1:abstention:0", "arm": "grimoire", "flags": [true], "score": 1.0, "all": true}
+{"qid": "1:abstention:1", "arm": "grimoire", "flags": [false], "score": 0.0, "all": false}
+{"qid": "1:contradiction_resolution:1", "arm": "grimoire", "flags": [false, true, false, false], "score": 0.25, "all": false}
+{"qid": "1:information_extraction:0", "arm": "grimoire", "flags": [true], "score": 1.0, "all": true}
+{"qid": "1:information_extraction:1", "arm": "grimoire", "flags": [false, false, false, false, false, false], "score": 0.0, "all": false}
+{"qid": "1:event_ordering:1", "arm": "grimoire", "flags": [false, false, true, true, true], "score": 0.6, "all": false}
+{"qid": "1:instruction_following:0", "arm": "grimoire", "flags": [true], "score": 1.0, "all": true}
+{"qid": "1:knowledge_update:0", "arm": "grimoire", "flags": [true], "score": 1.0, "all": true}
+{"qid": "1:instruction_following:1", "arm": "grimoire", "flags": [true], "score": 1.0, "all": true}
+{"qid": "1:knowledge_update:1", "arm": "grimoire", "flags": [true], "score": 1.0, "all": true}
+{"qid": "1:event_ordering:0", "arm": "grimoire", "flags": [true, false, true], "score": 0.6666666666666666, "all": false}
+{"qid": "1:multi_session_reasoning:0", "arm": "grimoire", "flags": [true, true], "score": 1.0, "all": true}
+{"qid": "1:multi_session_reasoning:1", "arm": "grimoire", "flags": [false, true, true, false], "score": 0.5, "all": false}
+{"qid": "1:preference_following:0", "arm": "grimoire", "flags": [true, false], "score": 0.5, "all": false}
+{"qid": "1:temporal_reasoning:1", "arm": "grimoire", "flags": [true, true], "score": 1.0, "all": true}
+{"qid": "1:preference_following:1", "arm": "grimoire", "flags": [false, true], "score": 0.5, "all": false}
+{"qid": "1:temporal_reasoning:0", "arm": "grimoire", "flags": [true, true], "score": 1.0, "all": true}
+{"qid": "1:summarization:1", "arm": "grimoire", "flags": [false, false, false, false, false], "score": 0.0, "all": false}
+{"qid": "1:summarization:0", "arm": "grimoire", "flags": [true, true, false, false, true], "score": 0.6, "all": false}

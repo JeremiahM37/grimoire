@@ -1,0 +1,34 @@
+{
+  "status": "run",
+  "judge_model": "haiku (LoCoMo JUDGE_PROMPT unchanged; LoCoMo used claude-sonnet-5)",
+  "calls": 40,
+  "errors": 0,
+  "unparseable_judge_output": 0,
+  "wrong_answers": {
+    "n": 30,
+    "judge_accepted": 0,
+    "leniency": 0.0,
+    "leniency_ci95": [
+      0.0,
+      0.1135
+    ],
+    "checker_accepted": 0
+  },
+  "correct_paraphrases": {
+    "n": 10,
+    "judge_accepted": 9,
+    "judge_false_reject_rate": 0.1,
+    "checker_accepted": 10
+  },
+  "gold_answers_checker_accepted": "30/30",
+  "disagreements": [
+    {
+      "qid": "c2q103",
+      "kind": "paraphrase",
+      "answer": "It was Max, I think.",
+      "judge": false,
+      "checker": true
+    }
+  ],
+  "limit": "28-30 hand-written triples from one benchmark; the wrong answers are authored, not sampled from a model, so the leniency rate is specific to these triples"
+}
