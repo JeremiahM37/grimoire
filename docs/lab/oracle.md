@@ -175,6 +175,72 @@ reported a correct refusal as a divergence. And where several live facts
 outrank a write, the rule does not say which a challenge names, so the runner
 accepts any outranking fact and adopts the store's choice for later checks.
 
+## Fix pass (branch lab/writefix)
+
+Four findings were repaired, each in its own commit, with its regression test
+un-skipped and its reproduce-guard entry and known-class key removed, so a
+regression fails the run. F1 and F4 are unchanged (F4 is documented as current
+behaviour in `docs/MEMORY_WRITING.md`).
+
+| finding | status | what changed |
+|---|---|---|
+| F2 outranked forget | **fixed** | A plain soft or hard forget takes the caller's rung (`memory_forget_rung.go`) and answers 403 below the entry's rung, nothing written. The caller is a person with no agent or the CLI, an agent from the body or the identity header, or pulled when it also declares `origin`. The header-only agent was previously treated as a person. The oracle now sends a pulled writer's origin on forget, as it does on remember. |
+| F3 dead forget | **fixed** | A soft forget of a superseded or retracted entry answers 409 with `superseded_by` and changes nothing. A hard forget still removes it. |
+| F5 private dispute | **fixed** | The dispute listing (and so resolve) sets the index's `IncludePrivate` for an unrestricted caller or admin, and for any caller with `include_private`. Agents without the flag do not see a private side. Sealed sides stay placeholders. |
+| F6 other challengers | **fixed** | `keep` and `accept_challenger` settle every challenger. The named one only chooses the survivor under accept. The response gains `retracted`. Each note is written once per resolution. |
+| F1 subject slot | open | Not changed (another package owns it). |
+| F4 contenders | open | Documented as current behaviour, both shapes, in `MEMORY_WRITING.md`. |
+
+### Sweep, before and after
+
+Sequences of 30 operations. "Clean" is the remainder. The 1500-seed runs were
+done on the base commit `ad5fad6` and on this branch with the same commands as
+the measurements above.
+
+| universe | run | diverging | F1 | F2 | F3 | F4 | F5 | F6 | clean |
+|---|---|---|---|---|---|---|---|---|---|
+| two subjects | before | 1479 | 895 | 305 | 194 | 80 | 3 | 2 | 21 |
+| two subjects | after | 1363 | 1172 | 0 | 0 | 191 | 0 | 0 | 137 |
+| one subject | before | 1423 | 0 | 524 | 522 | 354 | 11 | 12 | 77 |
+| one subject | after | 749 | 0 | 0 | 0 | 749 | 0 | 0 | 751 |
+
+Default run (120 seeds, the one in `go test ./internal/api`):
+
+| run | diverging | F1 | F2 | F3 | F4 | F5 | F6 |
+|---|---|---|---|---|---|---|---|
+| before | 119 | 67 | 23 | 19 | 9 | 1 | 0 |
+| after | 108 | 89 | 0 | 0 | 19 | 0 | 0 |
+
+The F4 column in "after" is shape A plus shape B: 16 plus 3 in the default run,
+and 191 in the two-subject sweep. F1 and F4 rise because sequences that used to
+stop at a fixed class now reach the next one: the first divergence moves, and the
+total number of sequences that diverge falls. No new divergence class appeared in
+any run; the known-finding keys now name only F1 and F4.
+
+Commands are the same as in the Measurements section. The 1500-seed two-subject
+run took 86 s before and 128 s after, because more operations now execute per
+sequence before a divergence.
+
+Full package after the fix pass: `go test ./internal/api` passes (613 tests, 4
+skipped: the three open F1 and F4 regression tests, and `TestReplayEval`, which
+needs `REPLAY_EVAL_VAULT`). `gofmt -l .`, `go vet ./...`, `staticcheck ./...`
+and `go build ./...` are clean.
+
+### Limits of the fix pass
+
+- Not gone, but not fixed here: `cascadeForget` takes its identity from the
+  header only. A cascade whose agent is named in the body with no header is
+  treated as a person, so it can remove a person's carrier entries. Read from
+  `memory_cascade.go`, not reproduced. The MCP cascade sends the header, so it
+  is not affected; a direct HTTP caller that puts `agent` in the body is.
+- The rung check uses the `origin` a caller declares. A pulled caller that
+  declares no origin is treated as an agent, so it can forget an agent's entry
+  that the lattice forbids it. A person's entry is still protected. The MCP forget
+  does not forward `origin`, so an MCP client is always an agent here.
+- F2 and F5 rest on the same readings of the documents as before: that a person
+  may settle a private side, and that an agent may not forget an entry on a
+  higher rung.
+
 ## Harness bugs found on the way (and fixed)
 
 These were mine, not the product's, and are recorded so the next reader does
@@ -208,7 +274,7 @@ names a forgotten successor's id, so forgotten-text checks compare `id` fields.
 
 ## Verdict
 
-GRADUATE (as tests). The package has no flag to graduate. It ships as tests
+GRADUATE (as tests). The package has no flag to graduate. Updated by the fix pass above: the known classes are now F1 and F4 only. It ships as tests
 that run by default in about 11 s. The default run is green only because its
 six known classes (F1 to F6, F4 in two shapes) are listed. Each listed class is
 an open product finding, not a passing case, and the skipped regression tests
