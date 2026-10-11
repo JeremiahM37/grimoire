@@ -49,7 +49,7 @@ are one subject to the slot rules; two people with one name are one slot.
 | `justify` | Derived facts record their premises; invalidation is exact | truth maintenance, build systems | Incremental invalidation equals a full recompute on 2,000 random graphs | keep behind flag |
 | `prospect` | Prospective memory: a fact with a cue that fires a reminder | prospective-memory research, checklists | Virtual-week fixture: 44/44 firings, 0 false | keep behind flag |
 | `capture` | Retroactive importance after a correction | synaptic tagging and capture | Planted timeline: 31/31 related facts protected, 0 unrelated | keep behind flag |
-| `conformal` | Sized, abstaining context injection | conformal prediction | still being measured when this was written | not in this change |
+| `conformal` | Sized, abstaining context injection | conformal prediction | Coverage target met only at the loosest setting and only at 1k (0.69 vs 0.80 at 10k; 12 points short under shift). Abstention works: injecting into a no-answer query falls from 40% to 11-14% | not merged; abstention worth revisiting |
 | `actr` | Base-level activation from the use trace | ACT-R | Small predictive signal; the bias guard cannot be wired without randomized exposure | keep behind flag |
 | `ips` | Learning to rank from the randomized holdout | click models, off-policy evaluation | Recovers planted weights only from ~16,000 logged slates; the live log has none held out | keep behind flag |
 | `convex` | Convex score fusion | retrieval | The scorer was already a weighted sum; differences within noise | not merged |
