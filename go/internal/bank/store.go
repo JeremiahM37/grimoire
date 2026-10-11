@@ -450,11 +450,12 @@ func (e *Engine) indexFacts(bankID string, note *vault.Note) error {
 				blob = index.Pack(vecs[i])
 			}
 			res, err := tx.Exec("INSERT OR IGNORE INTO bank_units(bank,id,doc,chunk,type,kind,text,context,"+
-				"occ_start,occ_end,mentioned,tags,entities,causes,proof,human,doc_removed,challenges,metadata,path,line,embedding)"+
-				" VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+				"occ_start,occ_end,mentioned,tags,entities,causes,proof,human,doc_removed,challenges,metadata,path,line,embedding,tainted,origin)"+
+				" VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
 				bankID, f.ID, doc, f.Chunk, f.Type, f.Kind, f.Text, info.Context,
 				ms(f.OccStart), ms(f.OccEnd), ms(f.Mentioned), joinList(f.Tags), joinList(f.Entities),
-				joinList(f.Causes), f.Proof, human, removed, f.Challenges, meta, note.Path, f.Line, blob)
+				joinList(f.Causes), f.Proof, human, removed, f.Challenges, meta, note.Path, f.Line, blob,
+				boolInt(f.Tainted), f.Origin)
 			if err != nil {
 				return err
 			}
@@ -523,10 +524,11 @@ func (e *Engine) indexObservations(bankID string, note *vault.Note) error {
 				blob = index.Pack(vecs[i])
 			}
 			res, err := tx.Exec("INSERT OR IGNORE INTO bank_units(bank,id,doc,chunk,type,kind,text,context,"+
-				"occ_start,occ_end,mentioned,tags,entities,causes,proof,human,doc_removed,challenges,metadata,path,line,embedding,sources)"+
-				" VALUES(?,?,'',-1,'observation','',?,'',?,?,?,?,'','',?,?,0,?,'',?,?,?,?)",
+				"occ_start,occ_end,mentioned,tags,entities,causes,proof,human,doc_removed,challenges,metadata,path,line,embedding,sources,tainted,origin)"+
+				" VALUES(?,?,'',-1,'observation','',?,'',?,?,?,?,'','',?,?,0,?,'',?,?,?,?,?,?)",
 				bankID, o.ID, o.Text, ms(o.OccStart), ms(o.OccEnd), ms(o.Mentioned), joinList(o.Tags),
-				len(o.Sources), human, o.Challenges, note.Path, o.Line, blob, joinList(o.Sources))
+				len(o.Sources), human, o.Challenges, note.Path, o.Line, blob, joinList(o.Sources),
+				boolInt(o.Tainted), o.Origin)
 			if err != nil {
 				return err
 			}
@@ -572,6 +574,10 @@ type unit struct {
 	Path       string
 	// Sources are an observation's evidence facts.
 	Sources []string
+	// Tainted is set for content derived from untrusted input that no person
+	// has cleared; Origin names where that input came from. See taint.go.
+	Tainted bool
+	Origin  string
 }
 
 func (u *unit) eventMS() int64 {
@@ -660,7 +666,7 @@ func (e *Engine) cache(bankID string) (*bankCache, error) {
 
 func (e *Engine) loadCache(bankID string, rev int64) (*bankCache, error) {
 	rows, err := e.Index.DB.Query("SELECT rid,id,doc,chunk,type,kind,text,context,occ_start,occ_end,mentioned,"+
-		"tags,entities,causes,proof,human,doc_removed,challenges,metadata,path,embedding,sources"+
+		"tags,entities,causes,proof,human,doc_removed,challenges,metadata,path,embedding,sources,tainted,origin"+
 		" FROM bank_units WHERE bank=? ORDER BY path, line, rid", bankID)
 	if err != nil {
 		return nil, err
@@ -672,16 +678,17 @@ func (e *Engine) loadCache(bankID string, rev int64) (*bankCache, error) {
 	for rows.Next() {
 		var u unit
 		var tags, ents, cs, srcs string
-		var human, removed int
+		var human, removed, tainted int
 		var blob []byte
 		if err := rows.Scan(&u.rid, &u.ID, &u.Doc, &u.Chunk, &u.Type, &u.Kind, &u.Text, &u.Context,
 			&u.OccStart, &u.OccEnd, &u.Mentioned, &tags, &ents, &cs, &u.Proof, &human, &removed,
-			&u.Challenges, &u.Metadata, &u.Path, &blob, &srcs); err != nil {
+			&u.Challenges, &u.Metadata, &u.Path, &blob, &srcs, &tainted, &u.Origin); err != nil {
 			rows.Close()
 			return nil, err
 		}
 		u.Tags, u.Entities, u.Sources = splitList(tags), splitList(ents), splitList(srcs)
 		u.Human, u.DocRemoved = human == 1, removed == 1
+		u.Tainted = tainted == 1
 		c.byID[u.ID] = int32(len(c.units))
 		c.byRID[u.rid] = int32(len(c.units))
 		c.units = append(c.units, u)

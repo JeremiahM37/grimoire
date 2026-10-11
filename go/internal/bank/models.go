@@ -115,6 +115,11 @@ type MentalModel struct {
 	StaleReason string    `json:"stale_reason,omitempty"`
 	Proposal    *Proposal `json:"pending_proposal,omitempty"`
 	Updated     string    `json:"updated,omitempty"`
+	// Untrusted is set when the answer was written from untrusted memory and
+	// no person has cleared it (`trust: untrusted` in the note). Origin names
+	// the source of that input. See taint.go.
+	Untrusted bool   `json:"untrusted,omitempty"`
+	Origin    string `json:"origin,omitempty"`
 
 	scopeSig string
 	bodySum  string
@@ -130,8 +135,12 @@ type Proposal struct {
 	BasedOn     []string `json:"based_on"`
 	ProposedAt  string   `json:"created_at"`
 	BaseVersion int      `json:"base_version"`
-	scopeSig    string
-	seen        []string
+	// Untrusted carries the model's taint: accepting a proposal does not
+	// clear it (PromoteModel does).
+	Untrusted bool   `json:"untrusted,omitempty"`
+	Origin    string `json:"origin,omitempty"`
+	scopeSig  string
+	seen      []string
 }
 
 // ModelSpec creates or patches a model. Nil pointers are "not sent".
@@ -190,6 +199,7 @@ func parseModel(bankID, rel string, fm *markdown.Frontmatter, body string) *Ment
 		Body: strings.TrimSpace(body), Updated: fm.StringVal("updated"),
 		scopeSig: fm.StringVal("scope_sig"), bodySum: fm.StringVal("body_sum"),
 		RefreshMode: fm.StringVal("refresh_mode"), seen: listOf(fm, "seen"), sectionSums: listOf(fm, "section_sums")}
+	m.Untrusted, m.Origin = docUntrustedFM(fm), strings.TrimSpace(fm.StringVal("origin"))
 	if m.RefreshMode != "delta" {
 		m.RefreshMode = "full"
 	}
@@ -254,6 +264,15 @@ func (m *MentalModel) frontmatter(base *markdown.Frontmatter) *markdown.Frontmat
 		fm.Set("body_sum", m.bodySum)
 	} else {
 		fm.Delete("body_sum")
+	}
+	if m.Untrusted {
+		fm.Set("trust", trustDeclaredUntrusted)
+		if m.Origin != "" {
+			fm.Set("origin", oneLine(m.Origin))
+		}
+	} else {
+		fm.Delete("trust")
+		fm.Delete("origin")
 	}
 	return fm
 }
@@ -337,6 +356,7 @@ func (e *Engine) readProposal(bankID, id string) *Proposal {
 	}
 	return &Proposal{Body: strings.TrimSpace(n.Body), BasedOn: listOf(n.Frontmatter, "based_on"),
 		ProposedAt: n.Frontmatter.StringVal("proposed_at"), BaseVersion: intOr(n.Frontmatter.StringVal("base_version"), 0),
+		Untrusted: docUntrustedFM(n.Frontmatter), Origin: strings.TrimSpace(n.Frontmatter.StringVal("origin")),
 		scopeSig: n.Frontmatter.StringVal("scope_sig"), seen: listOf(n.Frontmatter, "seen")}
 }
 
@@ -352,11 +372,23 @@ func (e *Engine) writeProposal(bankID, id string, m *MentalModel, text string, b
 	fm.Set("based_on", listValue(based))
 	fm.Set("scope_sig", sig)
 	setListOrDelete(fm, "seen", seen)
+	if m.Untrusted {
+		fm.Set("trust", trustDeclaredUntrusted)
+		if m.Origin != "" {
+			fm.Set("origin", oneLine(m.Origin))
+		}
+	}
 	rel := ProposalPath(bankID, id)
 	if old, err := e.Vault.Read(rel); err == nil && e.History != nil {
 		e.History.Snapshot(rel, old.Body)
 	}
-	if _, err := e.Vault.Write(rel, text, e.keepFrontmatter(rel, fm)); err != nil {
+	pfm := e.keepFrontmatter(rel, fm)
+	if !m.Untrusted {
+		// A proposal rewritten from trusted memory must not keep an old taint.
+		pfm.Delete("trust")
+		pfm.Delete("origin")
+	}
+	if _, err := e.Vault.Write(rel, text, pfm); err != nil {
 		return err
 	}
 	_, err := e.Index.Upsert(rel)
@@ -493,7 +525,8 @@ func (e *Engine) ListModels(bankID string, q ModelQuery) ([]MentalModel, error) 
 		if !q.Detail {
 			m.Body = ""
 			if m.Proposal != nil {
-				m.Proposal = &Proposal{ProposedAt: m.Proposal.ProposedAt, BaseVersion: m.Proposal.BaseVersion, BasedOn: m.Proposal.BasedOn}
+				m.Proposal = &Proposal{ProposedAt: m.Proposal.ProposedAt, BaseVersion: m.Proposal.BaseVersion, BasedOn: m.Proposal.BasedOn,
+					Untrusted: m.Proposal.Untrusted, Origin: m.Proposal.Origin}
 			}
 		}
 		out = append(out, *m)
@@ -829,7 +862,17 @@ func (e *Engine) RefreshModelWith(ctx context.Context, bankID, id string, opts R
 		return nil, err
 	}
 	now := e.now().Format(time.RFC3339)
-	if m.edited() {
+	// A trusted answer may not be replaced by one written from untrusted
+	// memory: that would supersede trusted content. It is filed as a proposal.
+	// The proposal itself is marked untrusted, since that is what it is.
+	supersedes := res.Untrusted && !m.Untrusted
+	if res.Untrusted {
+		m.Untrusted = true
+		if m.Origin == "" {
+			m.Origin = res.UntrustedOrigin
+		}
+	}
+	if m.edited() || supersedes {
 		if err := e.writeProposal(bankID, id, m, text, based, sig, c.seenPrints(m), now); err != nil {
 			return nil, err
 		}
@@ -884,6 +927,12 @@ func (e *Engine) AcceptProposal(bankID, id string) (*MentalModel, error) {
 	}
 	m.Version++
 	m.LastRefreshed = e.now().Format(time.RFC3339)
+	if p.Untrusted {
+		m.Untrusted = true
+		if m.Origin == "" {
+			m.Origin = p.Origin
+		}
+	}
 	m.BasedOn, m.scopeSig, m.bodySum = p.BasedOn, p.scopeSig, bodySum(p.Body)
 	m.seen, m.sectionSums = p.seen, mdSectionSumList(parseMdSections(p.Body), nil, nil)
 	if _, err := e.Vault.Write(n.Path, p.Body, m.frontmatter(n.Frontmatter)); err != nil {
@@ -1035,9 +1084,44 @@ func (e *Engine) staleAutoModels(bankID string) ([]string, error) {
 	}
 	var out []string
 	for _, m := range models {
-		if m.Refresh == "auto" && m.IsStale {
+		// A model a person wrote is never refreshed on its own: a refresh
+		// would only file a proposal, and nothing should queue work to do that.
+		if m.Refresh == "auto" && m.IsStale && m.Authority != "human" {
 			out = append(out, m.ID)
 		}
 	}
 	return out, nil
+}
+
+// PromoteModel clears the taint on a mental model. Only a person may do it,
+// and the reason is kept in the note's `promo` key. Clearing taint does not
+// change who wrote the body.
+func (e *Engine) PromoteModel(bankID, id, reason string, person bool) (*MentalModel, error) {
+	if !person {
+		return nil, ErrPersonOnly
+	}
+	reason = oneLine(reason)
+	if reason == "" {
+		return nil, invalid("promotion needs a reason")
+	}
+	lock := e.bankLock(bankID)
+	lock.Lock()
+	defer lock.Unlock()
+	m, n, err := e.readModel(bankID, id)
+	if err != nil {
+		return nil, err
+	}
+	if !m.Untrusted {
+		return nil, invalid("model %s is already trusted", id)
+	}
+	m.Untrusted = false
+	fm := m.frontmatter(n.Frontmatter)
+	fm.Set("promo", reason)
+	if _, err := e.Vault.Write(n.Path, m.Body, fm); err != nil {
+		return nil, err
+	}
+	if _, err := e.Index.Upsert(n.Path); err != nil {
+		return nil, err
+	}
+	return e.getModelLocked(bankID, id)
 }

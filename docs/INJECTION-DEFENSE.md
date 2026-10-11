@@ -72,13 +72,45 @@ the conservative choice, and it costs consolidation quality on notes that
 contain connector content. It is not the "derive and carry the label" design
 the work package first named.
 
-**Open.** Bank observations are consolidated from bank facts, and bank facts
-carry no origin field at all. An observation built from an injected fact is
-therefore indistinguishable from one built from an operator's fact. Its
-authority is `agent`, so it cannot supersede a human observation, but it is
-not labelled untrusted. Closing this needs an origin on retained facts and an
-`obs` trailer that survives the round trip. That is a format change with its
-own round-trip tests, and it was not made here.
+**Done: memory banks carry taint.** Retained content now has an origin, and
+taint travels with it. Facts and observations get a `tnt=untrusted` trailer
+and an `org=` origin (absent for trusted units, so old files do not change);
+bank documents and mental models carry the same `origin` and `trust` keys
+notes do. Derivation is a max over inputs: an observation, consolidated unit,
+reflection answer or mental model built from any untrusted input is untrusted,
+and taint is never dropped by summarising. Untrusted content is labelled on
+every recall result and fenced with `trust.Fence` wherever it is rendered into
+a prompt (consolidation, reflect, session context, disclosure, chunks).
+Untrusted material cannot become a directive, cannot supersede or retire a
+trusted observation, cannot overwrite a trusted mental model (it is filed as an
+untrusted proposal), and is never auto-refreshed into a model a person wrote.
+Only a person clears taint, with a recorded reason (`tnt=promoted promo=`, the
+`promote` routes, admin-gated). The dream sweep's untrusted-instruction check
+now also covers bank lines carrying `tnt=untrusted`. Code: `bank/taint.go`;
+tests: `bank/taint_test.go`, `dream/secscan` `TestBankTaintedLineIsUntrustedInstruction`.
+
+What this does not give, stated plainly:
+
+- **It relies on the caller declaring the origin.** Nothing can see that a
+  string came from a web page. An item that declares nothing is trusted, the
+  same default a note with no origin gets. A connector or importer that feeds a
+  bank must set `origin`; the HTTP retain API does not infer it.
+- **An agent can omit the identity header and still reach the promote routes**
+  with an admin token. The gate is "admin, and no agent named", which is a
+  claim, not an identity. Promotion of a fact from a `tnt` trailer is also
+  refused for agents only at the API layer; the bank functions trust the
+  `person` argument the caller passes.
+- **Taint is per unit, not per sentence.** A retain group is tainted as a whole
+  if any item in it is untrusted, so a trusted sentence retained with a web page
+  in the same call is tainted too. That over-taints; it does not under-taint.
+- **Directive refusal checks the ids the caller declares** (`derived_from`). An
+  agent that types a rule from a recalled passage without naming its source is
+  not caught. Ids that do not resolve count as untrusted.
+- **Edits by a person do not clear taint.** A tainted fact a person corrects stays
+  tainted until promoted, and so does a model a person has rewritten.
+- **Conflict detection and duplicate merging were not audited for taint.** A
+  tainted fact can still set `chal=` on a person's fact (a challenge does not
+  change the person's text, but it does mark it disputed).
 
 ## Pattern families
 

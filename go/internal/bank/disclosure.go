@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/JeremiahM37/grimoire/go/internal/trust"
 )
 
 // Progressive disclosure: a cheap index of what a bank holds, a timeline
@@ -30,6 +32,9 @@ type IndexEntry struct {
 	Title string `json:"title"`
 	Date  string `json:"date,omitempty"`
 	Human bool   `json:"human,omitempty"`
+	// Trust is "untrusted" for an entry derived from untrusted input; its
+	// title and text are fenced.
+	Trust string `json:"trust,omitempty"`
 	// Tokens is a rough cost of fetching the entry in full.
 	Tokens int `json:"tokens"`
 }
@@ -79,9 +84,10 @@ func (e *Engine) entries(bankID string) ([]disclosed, error) {
 		if f.Type == "observation" {
 			continue
 		}
+		un := f.Trust == trust.NameUntrusted
 		out = append(out, disclosed{entry: IndexEntry{Ref: ShortRef(f.ID), ID: f.ID, Type: "fact",
-			Title: titleOf(f.Text), Date: isoDay(factWhen(f)), Human: f.Authority == "human",
-			Tokens: roughTokens(f.Text)}, text: f.Text})
+			Title: fenceUnit(len(out)+1, un, f.Origin, titleOf(f.Text)), Date: isoDay(factWhen(f)), Human: f.Authority == "human",
+			Trust: trustLabel(un), Tokens: roughTokens(f.Text)}, text: fenceUnit(len(out)+1, un, f.Origin, f.Text)})
 	}
 	obs, _, _, err := e.ListObservations(bankID, ObservationQuery{Limit: 1 << 30})
 	if err != nil {
@@ -92,9 +98,10 @@ func (e *Engine) entries(bankID string) ([]disclosed, error) {
 		if d == "" {
 			d = o.MentionedAt
 		}
+		un := o.Trust == trust.NameUntrusted
 		out = append(out, disclosed{entry: IndexEntry{Ref: ShortRef(o.ID), ID: o.ID, Type: "observation",
-			Title: titleOf(o.Text), Date: isoDay(d), Human: o.Authority == "human",
-			Tokens: roughTokens(o.Text)}, text: o.Text})
+			Title: fenceUnit(len(out)+1, un, o.Origin, titleOf(o.Text)), Date: isoDay(d), Human: o.Authority == "human",
+			Trust: trustLabel(un), Tokens: roughTokens(o.Text)}, text: fenceUnit(len(out)+1, un, o.Origin, o.Text)})
 	}
 	return out, nil
 }

@@ -47,6 +47,8 @@ A fact is a bullet with a machine trailer:
 | `tags` | tags, for filtering recall |
 | `chal` | the human fact this one contradicts (see below) |
 | `doc_removed` | a person's fact whose source text no longer exists |
+| `tnt` | `untrusted` when the fact derives from untrusted content no person has cleared; `promoted` with `promo=<reason>` when a person cleared it. Absent means trusted |
+| `org` | where untrusted content came from (`web:example.com`, `connector:slack:C1`); only written with `tnt` |
 
 Everything in SQLite (`bank_*` tables) is a cache built from these files by the
 ordinary index pass. A reindex rebuilds a bank without calling a model;
@@ -103,7 +105,9 @@ are replaced with `[REDACTED:kind]` first; the session hook sets it.
     "metadata": {"channel": "sms"},
     "entities": [{"text": "Dana"}],       // hints added to every fact; resolve_entities=false keeps them literal
     "tags": ["support"],
-    "update_mode": "replace"              // or "append"
+    "update_mode": "replace",             // or "append"
+    "origin": "web:example.com",          // where it came from; untrusted unless empty or self (see Origin and taint)
+    "trust": "untrusted"                  // optional downgrade; "trusted" is ignored
   }],
   "document_tags": ["…"] }
 ```
@@ -309,6 +313,24 @@ Ollama, OpenAI-compatible servers and Claude.
 - **Without a model** reflect quotes what recall finds (`mode: extractive`).
 
 A finished reflect fires the `reflect.completed` webhook.
+
+## Origin and taint
+
+A retain item may declare where its content came from: `origin` (`web:host`,
+`connector:kind:id`, `tool:name`) and `trust` (`untrusted` to downgrade). An
+item with no origin, or a self origin (`self`, `user`, `me`, `local`), is a
+direct statement and is trusted. A caller cannot upgrade an item to trusted:
+`trust: trusted` is accepted and changes nothing. Only a person clears taint,
+with `POST /api/banks/{bank}/units/{id}/promote` or
+`…/mental-models/{id}/promote` and a `reason`.
+
+A document with untrusted content carries `origin` and `trust: untrusted` in its
+frontmatter, as every note does. A document with none is trusted, and its file
+does not change. Taint is a max over inputs and is sticky: observations, reflect
+answers and mental models derived from untrusted units are untrusted. Untrusted
+recall results carry `trust` and `origin`; untrusted text is fenced where a
+prompt is built. See [INJECTION-DEFENSE.md](INJECTION-DEFENSE.md#taint-what-is-carried-and-what-is-not)
+for what is and is not covered.
 
 ## Observations and consolidation
 

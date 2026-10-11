@@ -45,6 +45,7 @@ const bankUsage = `usage: grimoire bank COMMAND [args] [--url URL] [--token T] [
   retain BANK [TEXT...] [--file F | --dir D] [--document-id ID] [--timestamp T|mtime]
               [--context C] [--tags a,b] [--mode concise|verbatim|chunks]
               [--update-mode replace|append] [--async [--wait]]   (stdin when no text/file/dir)
+              [--trust untrusted [--origin WHERE]]   mark content that came from somewhere else
   recall BANK QUERY [--budget low|mid|high] [--max-tokens N] [--types a,b]
               [--tags a,b] [--tags-match any|all|any_strict|all_strict] [--chunks] [--trace]
   reflect BANK QUERY [--budget B] [--max-tokens N] [--context C] [--schema FILE]
@@ -79,7 +80,7 @@ var bankValued = map[string]bool{
 	"--disposition": true, "--skepticism": true, "--literalism": true, "--empathy": true,
 	"--directive": true, "--remove-directive": true, "--config": true,
 	"--file": true, "--dir": true, "--dest": true, "--cutoff": true, "--since": true, "--min-sessions": true, "--min": true, "--document-id": true, "--timestamp": true,
-	"--context": true, "--tags": true, "--mode": true, "--update-mode": true,
+	"--context": true, "--tags": true, "--mode": true, "--update-mode": true, "--origin": true, "--trust": true,
 	"--budget": true, "--max-tokens": true, "--types": true, "--tags-match": true,
 	"--schema": true, "--type": true, "--q": true, "--limit": true, "--offset": true,
 	"--query": true, "--id": true, "--status": true, "--bank": true,
@@ -653,6 +654,8 @@ type retainItem struct {
 	Tags       []string          `json:"tags,omitempty"`
 	Metadata   map[string]string `json:"metadata,omitempty"`
 	UpdateMode string            `json:"update_mode,omitempty"`
+	Origin     string            `json:"origin,omitempty"`
+	Trust      string            `json:"trust,omitempty"`
 }
 
 type retainDoc struct {
@@ -718,7 +721,8 @@ func bankRetain(c *bankClient, f *bankFlags) error {
 	}
 	ts := f.str("--timestamp", "")
 	base := retainItem{Context: f.str("--context", ""), Tags: f.list("--tags"),
-		UpdateMode: f.str("--update-mode", "")}
+		UpdateMode: f.str("--update-mode", ""),
+		Origin:     f.str("--origin", ""), Trust: f.str("--trust", "")}
 	if ts != "mtime" {
 		base.Timestamp = ts
 	}

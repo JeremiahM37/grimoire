@@ -13,6 +13,7 @@ import (
 
 	"github.com/JeremiahM37/grimoire/go/internal/ai"
 	"github.com/JeremiahM37/grimoire/go/internal/memory"
+	"github.com/JeremiahM37/grimoire/go/internal/trust"
 )
 
 // Consolidation turns facts into observations: it reads the facts no
@@ -353,8 +354,10 @@ func (cs *consolidation) ask(ctx context.Context, batch []int32) (*obsActions, m
 		Authority string   `json:"authority"`
 		Proof     int      `json:"proof_count"`
 		Sources   []srcOut `json:"source_memories,omitempty"`
+		Untrusted bool     `json:"untrusted,omitempty"`
 	}
 	existing := []obsOut{}
+	n := 0
 	for _, id := range shownOrder {
 		o, ok := byID[id]
 		if !ok {
@@ -367,9 +370,19 @@ func (cs *consolidation) ask(ctx context.Context, batch []int32) (*obsActions, m
 		item := obsOut{ID: o.ID, Text: o.Text, Authority: a, Proof: len(o.Sources)}
 		for _, sid := range o.Sources[:min(len(o.Sources), 4)] {
 			if sp, ok := c.byID[sid]; ok {
-				item.Sources = append(item.Sources, srcOut{Text: runeCut(c.units[sp].Text, 300),
+				st := runeCut(c.units[sp].Text, 300)
+				if c.units[sp].Tainted {
+					n++
+					st = fenceUnit(n, true, c.units[sp].Origin, st)
+				}
+				item.Sources = append(item.Sources, srcOut{Text: st,
 					Mentioned: fmtTime(fromMS(c.units[sp].Mentioned))})
 			}
+		}
+		if o.Tainted {
+			n++
+			item.Text = fenceUnit(n, true, o.Origin, o.Text)
+			item.Untrusted = true
 		}
 		existing = append(existing, item)
 	}
@@ -382,7 +395,8 @@ func (cs *consolidation) ask(ctx context.Context, batch []int32) (*obsActions, m
 	b.WriteString(mission + "\n\n## New facts\n\n")
 	for _, p := range batch {
 		u := &c.units[p]
-		fmt.Fprintf(&b, "[%s] %s", u.ID, u.Text)
+		n++
+		fmt.Fprintf(&b, "[%s] %s", u.ID, fenceUnit(n, u.Tainted, u.Origin, u.Text))
 		var when []string
 		if u.OccStart != 0 {
 			when = append(when, "occurred="+fmtTime(fromMS(u.OccStart)))
@@ -403,9 +417,13 @@ func (cs *consolidation) ask(ctx context.Context, batch []int32) (*obsActions, m
 	}
 	raw, _ := json.MarshalIndent(existing, "", "  ")
 	b.WriteString("\n## Existing observations\n\n" + string(raw) + "\n")
+	prompt := b.String()
+	if trust.Marked(prompt) {
+		prompt = trust.Preamble + "\n" + prompt
+	}
 	var lastErr error
 	for attempt := 0; attempt < 2; attempt++ {
-		comp, err := cs.client.CompleteWith(ctx, b.String(), ai.CompleteOpts{System: consolidationSystem,
+		comp, err := cs.client.CompleteWith(ctx, prompt, ai.CompleteOpts{System: consolidationSystem,
 			Temperature: ai.Temp(0), MaxTokens: 8000, JSON: true})
 		cs.res.Usage.add(comp.Usage.Input, comp.Usage.Output)
 		if err != nil {
@@ -501,8 +519,24 @@ func (cs *consolidation) apply(acts *obsActions, batch []int32, shown map[string
 			}
 		}
 	}
+	// Taint is a max over the batch units an observation is built from.
+	taintFrom := func(o *Observation, srcs []string) {
+		for _, sid := range srcs {
+			if u := inBatch[sid]; u != nil && u.Tainted {
+				o.Tainted = true
+				if o.Origin == "" {
+					o.Origin = u.Origin
+				}
+			}
+		}
+	}
+	batchTainted := false
+	for _, p := range batch {
+		batchTainted = batchTainted || c.units[p].Tainted
+	}
 	addSources := func(o *Observation, srcs []string, ev []Evidence) {
 		o.Sources = unionTags(o.Sources, srcs)
+		taintFrom(o, srcs)
 		for _, x := range ev {
 			dup := false
 			for _, y := range o.Evidence {
@@ -526,7 +560,9 @@ func (cs *consolidation) apply(acts *obsActions, batch []int32, shown map[string
 	}
 	// challenge files the model's version beside a person's observation,
 	// revising an earlier challenge of the same observation if there is one.
-	challenge := func(humanID, text string, srcs []string, ev []Evidence) {
+	// tainted is set when the text was written from an untrusted batch even
+	// though it cites no source of its own (a challenge given as a reason).
+	challenge := func(humanID, text string, srcs []string, ev []Evidence, tainted bool) {
 		cs.res.Challenges++
 		for i := range of.Current {
 			o := &of.Current[i]
@@ -538,11 +574,13 @@ func (cs *consolidation) apply(acts *obsActions, batch []int32, shown map[string
 					o.Text = text
 				}
 				addSources(o, srcs, ev)
+				o.Tainted = o.Tainted || tainted
 				return
 			}
 		}
 		o := Observation{ID: newObsID(cs.bankID, text, now), Text: text, Challenges: humanID}
 		addSources(&o, srcs, ev)
+		o.Tainted = o.Tainted || tainted
 		of.Current = append(of.Current, o)
 	}
 	// twin finds a current observation that says the same thing.
@@ -572,7 +610,13 @@ func (cs *consolidation) apply(acts *obsActions, batch []int32, shown map[string
 			if reason == "" {
 				reason = "Later facts may no longer support this."
 			}
-			challenge(id, oneLine(reason), nil, nil)
+			challenge(id, oneLine(reason), nil, nil, batchTainted)
+			continue
+		}
+		// Retiring a trusted observation on the strength of untrusted facts
+		// is a supersede by another name.
+		if !of.Current[i].Tainted && batchTainted {
+			cs.res.Unresolved++
 			continue
 		}
 		retire(i, true)
@@ -614,7 +658,13 @@ func (cs *consolidation) apply(acts *obsActions, batch []int32, shown map[string
 				// person's text is not touched even to add sources.
 				continue
 			}
-			challenge(id, text, srcs, ev)
+			challenge(id, text, srcs, ev, false)
+			continue
+		}
+		// Rewriting the text of a trusted observation from untrusted facts
+		// would replace trusted content with injected content. Refused.
+		if !of.Current[i].Tainted && taintedAmong(inBatch, srcs) {
+			cs.res.Unresolved++
 			continue
 		}
 		o := &of.Current[i]

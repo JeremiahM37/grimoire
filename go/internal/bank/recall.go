@@ -98,6 +98,11 @@ type RecallFact struct {
 	// Authority is who stands behind the fact: "human" for what a person
 	// wrote or corrected, "agent" for what a model extracted.
 	Authority string `json:"authority"`
+	// Trust is "untrusted" for content derived from untrusted input that no
+	// person has cleared (see taint.go); Origin names where that input came
+	// from. Untrusted text is fenced where it is rendered into a prompt.
+	Trust  string `json:"trust"`
+	Origin string `json:"origin,omitempty"`
 	// DisputedBy names a human fact this one contradicts. A disputed fact is
 	// still returned — the disagreement is information — but always below
 	// the human fact it disagrees with.
@@ -123,6 +128,10 @@ type ChunkOut struct {
 	Index     int    `json:"chunk_index"`
 	Document  string `json:"document_id"`
 	Truncated bool   `json:"truncated"`
+	// Trust and Origin label a chunk of an untrusted document; its text is
+	// fenced.
+	Trust  string `json:"trust"`
+	Origin string `json:"origin,omitempty"`
 }
 
 // ArmHit is one candidate as an arm ranked it, for the trace.
@@ -695,6 +704,10 @@ func (c *bankCache) factOut(bankID string, pos int32) RecallFact {
 	}
 	if u.Human {
 		rf.Authority = "human"
+	}
+	rf.Trust = trustLabel(u.Tainted)
+	if u.Tainted {
+		rf.Origin = u.Origin
 	}
 	if u.Type == "observation" {
 		rf.SourceFactIDs = u.Sources
@@ -1495,14 +1508,14 @@ func (e *Engine) recallChunks(c *bankCache, bankID string, cands []*candidate, b
 		id := ChunkID(bankID, k.doc, k.idx)
 		t := CountTokens(text)
 		if used+t <= budget {
-			out[id] = ChunkOut{ID: id, Text: text, Index: k.idx, Document: k.doc}
+			out[id] = *e.chunkOut(bankID, id, k.idx, k.doc, text, false)
 			used += t
 			continue
 		}
 		// The first chunk that does not fit is cut to what remains, and
 		// packing stops.
 		if room := budget - used; room > 0 {
-			out[id] = ChunkOut{ID: id, Text: truncateTokens(text, room), Index: k.idx, Document: k.doc, Truncated: true}
+			out[id] = *e.chunkOut(bankID, id, k.idx, k.doc, truncateTokens(text, room), true)
 		}
 		break
 	}

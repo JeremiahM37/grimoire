@@ -28,6 +28,11 @@ type Document struct {
 	Content     string            `json:"content,omitempty"`
 	Created     string            `json:"created,omitempty"`
 	Updated     string            `json:"updated,omitempty"`
+	// Origin and Untrusted record where untrusted content came from. They are
+	// written as the `origin` and `trust` keys every note carries, so the
+	// vault and the bank agree (see taint.go). Absent means trusted.
+	Origin    string `json:"origin,omitempty"`
+	Untrusted bool   `json:"untrusted,omitempty"`
 }
 
 // Frontmatter renders the document's frontmatter.
@@ -51,6 +56,12 @@ func (d *Document) Frontmatter() *markdown.Frontmatter {
 	}
 	fm.Set("chunk_size", strconv.Itoa(d.ChunkSize))
 	fm.Set("chunk_hashes", listValue(d.ChunkHashes))
+	if d.Untrusted {
+		fm.Set("trust", trustDeclaredUntrusted)
+		if d.Origin != "" {
+			fm.Set("origin", oneLine(d.Origin))
+		}
+	}
 	return fm
 }
 
@@ -91,6 +102,8 @@ func ParseDocument(fm *markdown.Frontmatter, body, fallbackID string) *Document 
 	d.Content = strings.TrimSpace(body)
 	d.Created = fm.StringVal("created")
 	d.Updated = fm.StringVal("updated")
+	d.Origin = strings.TrimSpace(fm.StringVal("origin"))
+	d.Untrusted = docUntrustedFM(fm)
 	return d
 }
 

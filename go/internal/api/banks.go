@@ -114,6 +114,10 @@ func writeBankErr(w http.ResponseWriter, err error) {
 			"code": "model_required"})
 	case errors.Is(err, bank.ErrTerminal):
 		writeErr(w, http.StatusConflict, "the operation has already finished")
+	case errors.Is(err, bank.ErrTainted):
+		writeErr(w, http.StatusConflict, "derived from untrusted content; a person must promote it first")
+	case errors.Is(err, bank.ErrPersonOnly):
+		writeErr(w, http.StatusForbidden, "only a person may promote untrusted content")
 	default:
 		writeErr(w, http.StatusInternalServerError, err.Error())
 	}
@@ -262,12 +266,15 @@ type itemIn struct {
 	Tags            json.RawMessage   `json:"tags"`
 	UpdateMode      string            `json:"update_mode"`
 	ScanSecrets     bool              `json:"scan_secrets"`
+	// Origin and Trust declare where the content came from (see bank/taint.go).
+	Origin string `json:"origin"`
+	Trust  string `json:"trust"`
 }
 
 func (in itemIn) item() (bank.Item, error) {
 	it := bank.Item{Context: in.Context, DocumentID: strings.TrimSpace(in.DocumentID),
 		Entities: in.Entities, ResolveEntities: in.ResolveEntities, UpdateMode: in.UpdateMode,
-		ScanSecrets: in.ScanSecrets}
+		ScanSecrets: in.ScanSecrets, Origin: strings.TrimSpace(in.Origin), Trust: strings.TrimSpace(in.Trust)}
 	var str string
 	if json.Unmarshal(in.Content, &str) == nil {
 		it.Content = str
