@@ -13,6 +13,7 @@ of truth and a person can read it:
 | `normal` (default) | ordinary fact. Not written to the bullet; a bullet with no `vis=` is normal. |
 | `private` | hidden from default reads. |
 | `sensitive` | hidden from default reads, and its text is redacted wherever an explanation or receipt would repeat it. |
+| `sealed` | hidden from default reads like `private`, and its text is not in the note at all: it is encrypted under a per-fact key. Only the writing account reads it back. See [MEMORY-SEAL.md](MEMORY-SEAL.md). |
 
 Set it with `remember` (`visibility` in the API and MCP, `--visibility` in the
 CLI). A replacement inherits its predecessor's visibility unless the writer
@@ -52,13 +53,16 @@ short secret is a guess target. The receipt says only that a forget happened.
 
 ## What the tag does not guarantee
 
-- **It is not an owner boundary.** Agent memory lives in the shared commons
+- **It is not an owner boundary, except for `sealed`.** A sealed fact is the
+  one that is: another account gets the placeholder even with `include_private`.
+  Everything below is about `private` and `sensitive`. Agent memory lives in the shared commons
   by design: `remember` writes `memory/<topic>.md`, which every account can
   read (`auth.PrincipalFor`). A member who passes `include_private=1` reads
   another member's private fact. Anonymous callers still read no commons
   memory at all. `private` and `vis=` are retrieval filters, not access
   control; see `SECURITY-LEAKPROBE.md`, design finding D1 and D3.
-- **It does not encrypt or hide the file.** The bullet is plaintext in
+- **It does not encrypt or hide the file, unless the fact is `sealed`.** A
+  `private` or `sensitive` bullet is plaintext in
   `memory/<topic>.md`. Anyone who can read that note by path (`GET
   /api/notes/memory/…`), or open the vault directly, reads the fact. The vault
   syncs to the phone, and the vault export, backups and git history carry it
@@ -89,5 +93,7 @@ short secret is a guess target. The receipt says only that a forget happened.
   facts, blocks) are written from the note with hidden bullets removed
 - `go/internal/api/memory.go`, `memory_cascade.go`, `memory_stream.go`,
   `memory_portability.go`, `dream.go`: the per-surface choices above
+- `go/internal/seal/`: the sealed-fact key store and the tombstone log
+- `go/internal/api/memory_seal.go`: owner check, reveal, forget and tombstone hooks
 - `go/internal/api/leakprobe_test.go`: `TestLeakprobeHiddenMemoryStaysHidden`
   and the seeded canaries `vis-private` and `vis-sensitive`

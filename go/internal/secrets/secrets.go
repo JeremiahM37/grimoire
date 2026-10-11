@@ -402,6 +402,19 @@ func (v *Vault) UnsealText(body string) (string, error) {
 	return string(plain), nil
 }
 
+// WithSessionKey runs fn with the unlocked session key, for callers that wrap
+// their own per-item keys under it (sealed memory facts). The vault lock is
+// held while fn runs, so fn must not call back into this vault.
+func (v *Vault) WithSessionKey(fn func(key []byte) error) error {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	if !v.unlockedLocked() {
+		return ErrLocked
+	}
+	v.lastActivity = Now()
+	return fn(v.key)
+}
+
 // IsEncrypted reports whether a body is sealed.
 func IsEncrypted(body string) bool {
 	return strings.HasPrefix(strings.TrimLeft(body, " \t\r\n"), EncPrefix)

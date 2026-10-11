@@ -17,6 +17,7 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/markdown"
 	"github.com/JeremiahM37/grimoire/go/internal/memory"
 	"github.com/JeremiahM37/grimoire/go/internal/memstore"
+	"github.com/JeremiahM37/grimoire/go/internal/seal"
 	"github.com/JeremiahM37/grimoire/go/internal/trust"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
 )
@@ -338,7 +339,9 @@ func (s *Server) rememberOne(w http.ResponseWriter, r *http.Request, m memoryIn)
 			writeErr(w, http.StatusBadRequest, "explicit corrections require target_id, target_path, expected_text and no scope or infer=false")
 			return
 		}
-	} else if m.Infer == nil || *m.Infer {
+	} else if (m.Infer == nil || *m.Infer) && m.Visibility != memory.VisSealed {
+		// A sealed fact is never sent to an extraction model: its text is the
+		// one thing it must not leave the device as.
 		facts = s.AI.WithSurface("extract", agentFor(r)).ExtractFacts(text)
 	}
 
@@ -369,7 +372,7 @@ func (s *Server) rememberOne(w http.ResponseWriter, r *http.Request, m memoryIn)
 		"op": head.Op, "id": head.ID, "results": results,
 	}
 	// Gentle, non-blocking: the write already happened.
-	if ws := memstore.Lint(strings.TrimSpace(m.Category), text); len(ws) > 0 {
+	if ws := memstore.Lint(strings.TrimSpace(m.Category), text); len(ws) > 0 && m.Visibility != memory.VisSealed {
 		resp["warnings"] = ws
 	}
 	writeJSON(w, http.StatusCreated, resp)
@@ -379,6 +382,18 @@ func (s *Server) rememberOne(w http.ResponseWriter, r *http.Request, m memoryIn)
 // means the response has already been written.
 func (s *Server) reconcileFact(w http.ResponseWriter, r *http.Request, rel, fact,
 	agent, task string, m memoryIn, expires string) (memoryResult, error) {
+
+	if m.Visibility == memory.VisSealed {
+		// Reconciliation compares the new fact's text with the candidates'
+		// text, and sends both to a model. A sealed fact has no text the
+		// model may see, so it is appended as it is.
+		id, err := s.appendEntryChallenging(w, r, rel, fact, agent, task, m, expires, "", "")
+		if err != nil {
+			return memoryResult{}, err
+		}
+		return memoryResult{Op: string(memory.OpAdd), ID: id, Text: memory.SealedPlaceholder,
+			Path: rel, Why: "sealed: appended without reconciliation"}, nil
+	}
 
 	decision := memory.Decision{Op: memory.OpAdd, Text: fact, Why: "reconciliation disabled"}
 	if m.TargetID != "" {
@@ -649,7 +664,34 @@ func (s *Server) appendEntryChallenging(w http.ResponseWriter, r *http.Request, 
 	// prior a decision model can improve. Never for an untrusted fact: its
 	// text is someone else's, and is not sent to a third-party service. A
 	// restored fact is not re-judged: it is put back as it was.
-	if restored == nil && e.Fresh == "" && e.Vol == 0 && !e.Untrusted() {
+	if e.Visibility == memory.VisSealed {
+		if restored != nil {
+			// An exported sealed fact is never exported (export drops every hidden
+			// fact), so a restore can only carry the placeholder; keep it as is.
+			e.Owner, e.KeyID, e.Sealed = restored.Entry.Owner, restored.Entry.KeyID, restored.Entry.Sealed
+		} else {
+			owner, ok := sealOwner(r)
+			if !ok {
+				writeErr(w, http.StatusUnauthorized, "sign in to write a sealed fact")
+				return "", errHandled
+			}
+			keyID, token, err := s.sealText(fact)
+			if err != nil {
+				writeErr(w, sealErrStatus(err), "unlock the secret vault to write a sealed fact")
+				return "", err
+			}
+			// The fact's text and every id-derived field come from the ciphertext
+			// from here on, so the plaintext is in no field that is written.
+			e.Text, e.Owner, e.KeyID, e.Sealed = memory.SealedPlaceholder, owner, keyID, token
+			e.ID = memory.DeriveID(stamp, agent, token)
+		}
+	}
+	// A forgotten fact must not be written back under its old id.
+	if tomb, err := seal.NewTombLog(s.Vault.Root).Load(); err == nil && seal.Suppressed(tomb, e.ID) {
+		writeErr(w, http.StatusConflict, "this fact was forgotten and will not be written back")
+		return "", errHandled
+	}
+	if restored == nil && e.Fresh == "" && e.Vol == 0 && !e.Untrusted() && e.Visibility != memory.VisSealed {
 		e.Vol, e.PriorRate = s.askVolatility(fact)
 	}
 
@@ -985,6 +1027,7 @@ func (s *Server) recall(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	s.revealSealed(r, hits)
 	out := s.markProcedures(s.assessHits(hits, entriesOut(hits, boolParam(r, "explain"))))
 	s.fillImageRefs(out)
 	writeJSON(w, http.StatusOK, out)
@@ -1333,6 +1376,12 @@ func (s *Server) patchEntry(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if in.Text != nil && strings.TrimSpace(*in.Text) != "" && s.entryIsSealed(note, strings.TrimSpace(in.ID)) {
+		// The text of a sealed fact is ciphertext. An edit would replace the
+		// placeholder with plaintext while the old ciphertext stayed beside it.
+		writeErr(w, http.StatusConflict, "a sealed fact cannot be edited in place; forget it and remember again")
+		return
+	}
 	var warn *replayWarning
 	if in.Text != nil && strings.TrimSpace(*in.Text) != "" {
 		// A person's edit is never blocked; replay only says what it costs.
@@ -1422,6 +1471,11 @@ func (s *Server) forgetOne(w http.ResponseWriter, r *http.Request, note, id stri
 	if !s.requireWrite(w, r, note) {
 		return
 	}
+	if !hard && s.entryIsSealed(note, id) {
+		// A sealed fact is removed, never struck through: its key is destroyed
+		// on forget, so a struck bullet would be ciphertext nobody can open.
+		hard = true
+	}
 	if hard {
 		if err := s.removeEntry(note, id); err != nil {
 			writeErr(w, statusForEntryErr(err), entryErrMsg(err))
@@ -1486,6 +1540,13 @@ func (s *Server) removeEntry(note, id string) error {
 	}
 	// The last bullet that used this picture is gone, so the picture goes.
 	s.gcImage(imageOfLine(removed))
+	if e, ok := memory.ParseLine(removed); ok {
+		// Tombstone after the removal is written: a failure before that leaves
+		// the fact where it was, not gone with no record of why.
+		if err := s.tombstoneRemoved(e); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

@@ -17,6 +17,7 @@ import (
 
 	"github.com/JeremiahM37/grimoire/go/internal/memimage"
 	"github.com/JeremiahM37/grimoire/go/internal/memory"
+	"github.com/JeremiahM37/grimoire/go/internal/seal"
 )
 
 // testPNG is a real, valid 4x4 PNG from the standard library. Each call with a
@@ -318,6 +319,12 @@ func TestMemoryImageExportsAndImportsItsBytes(t *testing.T) {
 	}
 	if _, _, ok := memimage.Find(s.Vault.Root, got.Image.SHA); ok {
 		t.Fatal("picture should be gone before the import")
+	}
+	// Removing a bullet is a forget, so its id is tombstoned, and an import
+	// refuses a forgotten id. Restoring it here is the operator's deliberate
+	// act, which clears the record first; that is what this test is about.
+	if err := os.Remove(seal.NewTombLog(s.Vault.Root).Path); err != nil {
+		t.Fatal(err)
 	}
 	// The removed fact is no longer exported, so the record comes from the
 	// export taken before the loss.

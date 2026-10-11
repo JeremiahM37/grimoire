@@ -53,7 +53,7 @@ const usage = `grimoire — local-first AI-native notes
   grimoire document-import FILE       import a document through the server API
   grimoire remember TEXT [--topic T] [--session S] [--category C]
                     [--expires-in 72h] [--immutable] [--verbatim] [--human]
-                    [--importance 1-5] [--visibility normal|private|sensitive]
+                    [--importance 1-5] [--visibility normal|private|sensitive|sealed]
                                       record a fact, reconciled against what is known
   grimoire recall [QUERY] [--agent A] [--session S] [--category C]
                   [--limit N] [--all] [--as-of RFC3339] [--why] [--include-private]

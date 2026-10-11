@@ -177,6 +177,9 @@ func (s *Server) mergeCRDT(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, statusForVaultErr(err), err.Error())
 		return
 	}
+	// A peer that still has a forgotten fact pushes it back; the tombstone
+	// removes it before the index sees the note.
+	s.suppressTombstoned(rel)
 	note, err := s.Index.Upsert(rel)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
