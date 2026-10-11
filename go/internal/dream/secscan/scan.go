@@ -254,7 +254,7 @@ func scanDoc(doc dream.Doc, known []string, readings lineReadings) []dream.Findi
 // the list stays narrow on purpose: a noisy check gets switched off.
 var legacyInjectionPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)\b(?:ignore|disregard|forget)\s+(?:all\s+|any\s+)?(?:previous|prior|above|earlier)\s+(?:instructions|rules|context)\b`),
-	regexp.MustCompile(`(?i)\byou are now\b`),
+	regexp.MustCompile(`(?i)\byou are now (?:a|an|the|in|my|our|operating|acting|free|allowed|authori[sz]ed|unrestricted|required)\b`),
 	regexp.MustCompile(`(?i)\bnew (?:system )?instructions\b`),
 	// "system prompt" alone is how people TALK about prompts; only an
 	// attempt to reveal or replace one is aimed at a model.

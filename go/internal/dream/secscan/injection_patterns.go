@@ -21,8 +21,11 @@ import "regexp"
 // seeing the findings it exists for.
 var familyPatterns = []*regexp.Regexp{
 	// Override: an instruction to drop what came before.
-	regexp.MustCompile(`(?i)\b(?:ignore|disregard|forget|skip|override|bypass|drop)\s+(?:all\s+|any\s+|the\s+|your\s+|of\s+)*(?:(?:previous|prior|above|earlier|other|existing|original|preceding|foregoing|outdated|old|following|current|system)\s+)+(?:instructions?|rules|context|notes?|runbooks?|messages?|guidance|directives?|prompts?|guidelines|configuration|setup)\b`),
+	regexp.MustCompile(`(?i)\b(?:ignore|disregard|forget|skip|override|bypass|drop)\s+(?:all\s+|any\s+|the\s+|your\s+|its\s+|their\s+|his\s+|her\s+|of\s+)*(?:(?:previous|prior|above|earlier|other|existing|original|preceding|foregoing|outdated|old|following|current|system)\s+)+(?:instructions?|rules|context|notes?|runbooks?|messages?|guidance|directives?|prompts?|guidelines|configuration|setup)\b`),
 	regexp.MustCompile(`(?i)\b(?:ignore|disregard|forget)\s+(?:the|these|those|all|any|that)\s+(?:runbooks?|markers?|fences?|delimiters?)\b`),
+	regexp.MustCompile(`(?i)\b(?:ignore|disregard|forget)\s+(?:the\s+)?(?:rest|remainder|everything else|all of)\b[^.\n]{0,30}\b(?:context|conversation|notes|instructions|rules|above|before)\b`),
+	regexp.MustCompile(`(?i)\b(?:disregard|ignore|skip)\s+(?:the|this|that)\s+(?:user'?s?|their)\s+(?:question|request|message|query)\b`),
+	regexp.MustCompile(`(?i)\b(?:operator|system|assistant)[-_ ]instruction\s*:`),
 	regexp.MustCompile(`(?i)\b(?:your|the|these|previous|prior)\s+(?:previous\s+|prior\s+)?(?:instructions?|rules|guidance|notes?|runbooks?)\s+(?:were|are|is|have been|has been)\s+(?:obsolete|void|a test|cancell?ed|superseded|out of date|no longer (?:valid|apply|active))\b`),
 	regexp.MustCompile(`(?i)\b(?:instructions?|rules|runbooks?)\s+(?:above|before|previously)\s+(?:are|is)\s+(?:now\s+)?(?:obsolete|void|out of date|superseded)\b`),
 	regexp.MustCompile(`(?i)\bthe (?:real|actual) (?:task|instruction|request) (?:is|was)\s+to\b`),
@@ -30,7 +33,12 @@ var familyPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)\bfence (?:you are reading |here )?is (?:a )?(?:rendering artifact|mistake)\b`),
 
 	// Role and identity reassignment.
-	regexp.MustCompile(`(?i)\byou (?:are|'re) (?:now|actually|no longer)\b`),
+	regexp.MustCompile(`(?i)\b(?:stop|cease|quit) following (?:the |your |their |its )?(?:operator|system|original|earlier|previous|developer|safety)\b`),
+	regexp.MustCompile(`(?i)\bfollow (?:mine|my instructions|these instructions instead)\b`),
+	regexp.MustCompile(`(?i)\btreat (?:this|these|that|the|it)\b[^.\n]{0,40}\bas (?:your|an?|the) (?:new|updated|real|current) (?:system prompt|instructions?|instruction set|orders|standing orders|guidance|rules)\b`),
+	regexp.MustCompile(`(?i)\byou are (?:a|an) [a-z ]{0,30}(?:agent|assistant|bot|admin|administrator|operator) with (?:full|unrestricted|admin|root)\b`),
+	regexp.MustCompile(`(?i)\b(?:the |you |assistant |model |bot )?(?:model|assistant|bot|llm) reading this\b`),
+	regexp.MustCompile(`(?i)\byou (?:are|'re) (?:now (?:a|an|the|in|my|our|operating|acting|free|allowed|authori[sz]ed|unrestricted|required|(?-i:[A-Z][A-Z0-9]{1,}))|actually|no longer)\b`),
 	regexp.MustCompile(`(?i)\byou (?:are|'re) not (?:actually|really) (?:a|an|the)\b`),
 	regexp.MustCompile(`(?i)\byou (?:are|'re) (?:a|an) (?:[a-z-]+ ){0,3}echo\b`),
 	regexp.MustCompile(`(?i)\b(?:act|behave|pretend) as (?:if you (?:are|were)|an? (?:unrestricted|unfiltered|different|new))\b|\bpretend (?:to be|you are)\b`),
@@ -39,10 +47,14 @@ var familyPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)\b(?:diagnostic|jailbreak)\s+mode\b`),
 
 	// System prompt, credentials and authority.
-	regexp.MustCompile(`(?i)\b(?:reveal|print|repeat|show|dump|output|disclose|leak|paste|recite)\s+(?:all\s+|the\s+|your\s+|any\s+)?(?:(?:hidden|internal|secret|original|full)\s+)?(?:system prompt|system instructions|hidden instructions|your instructions|your prompt)\b`),
+	regexp.MustCompile(`(?i)\b(?:reveal|print|repeat|show|dump|output|disclose|leak|paste|recite)\s+(?:all\s+|the\s+|your\s+|its\s+|their\s+|any\s+)?(?:(?:hidden|internal|secret|original|full)\s+)?(?:system prompt|system instructions|hidden instructions|your instructions|your prompt)\b`),
 	regexp.MustCompile(`(?i)\b(?:disclose|reveal|list|name|enumerate|describe|paste|dump|print)\b[^.\n]{0,40}\b(?:credentials?|secrets?|api tokens?|tokens?|keys?)\b[^.\n]{0,20}\b(?:you (?:hold|have|can see|can read|can access|know)|in the vault|held)\b`),
 	regexp.MustCompile(`(?i)\b(?:any|your|held|the)\s+(?:api\s+)?(?:tokens?|credentials?|secrets?)\s+(?:you|that you)\s+(?:hold|have|can see|can read|can access)\b`),
 	regexp.MustCompile(`(?i)\b(?:paste|dump|print|reveal|output|show)\s+(?:the\s+)?contents\s+of\s+(?:the\s+)?(?:credential|secret|token|key)\s*vault\b`),
+	regexp.MustCompile(`(?i)\b(?:paste|dump|print|reveal|output|show)\s+(?:the\s+)?(?:\w+\s+)?(?:contents|secrets|credentials|passwords|keys)\s+(?:of|from)?\s*(?:the\s+)?(?:vault|credential store|secrets store|keychain)\b`),
+	regexp.MustCompile(`(?i)\b(?:reply|respond|answer|output)\s+with\s+(?:your|the)\s+(?:access list|credentials?|api keys?|secrets?|passwords?|tokens?|system prompt|instructions?)\b`),
+	regexp.MustCompile(`(?i)\banswer\s+with\s+(?:the\s+)?(?:single\s+|only\s+)?(?:word|token|string|phrase|code)\b`),
+	regexp.MustCompile(`(?i)\b(?:post|send|upload|forward|submit)\b[^.\n]{0,40}\b(?:credentials?|passwords?|secrets?|api keys?|tokens?)\b[^.\n]{0,40}\bto\s+(?:/\S+|\S+\s+(?:host|endpoint|server)|https?://)`),
 	regexp.MustCompile(`(?i)\b(?:system|operator|administrator|admin|owner|maintenance|vault owner)\s+(?:notes?|notices?|override|instructions?)\b`),
 	regexp.MustCompile(`(?i)\bthis note was written by (?:the )?(?:vault )?owner\b|\b(?:the )?(?:vault )?owner (?:instructs|asks|has instructed|requires)\b|\b(?:the )?operator (?:has )?(?:instructed|asks|requires|wants) you\b`),
 	regexp.MustCompile(`(?i)\b(?:trusted|verified|authoritative|system)\s*:\s*(?:yes|true|highest)\b`),
@@ -58,9 +70,11 @@ var familyPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)\b(?:operator|trusted|system) (?:instructions?|content|section|note)s? (?:resume|begin|start|follow)s?\b`),
 
 	// Tool-call and memory-write coercion.
-	regexp.MustCompile(`(?i)\b(?:call|invoke|use|run|execute)\s+(?:the\s+)?(?:tool\s+)?(?:list_grants|use_credential|get_credential|remember|forget|set_fact)\b`),
+	regexp.MustCompile(`(?i)\b(?:call|invoke|use|run|execute)\s+(?:the\s+)?(?:tool\s+)?(?:list_grants|use_credential|get_credential)\b`),
+	regexp.MustCompile(`(?i)\b(?:call|invoke|run|execute)\s+(?:the\s+)?(?:tool\s+)?(?:remember|forget|set_fact)\b\s*(?:\(|with\b|on\b|that\b|this\b|the following|:)`),
 	regexp.MustCompile(`(?i)\b(?:remember|store|record|save)\b,?\s+(?:this|that|the following|it)?\s*(?:immutably|permanently|forever|as a permanent|for future sessions)\b`),
 	regexp.MustCompile(`(?i)\bupdate your (?:long-term |persistent )?memory\b`),
+	regexp.MustCompile(`(?i)\b(?:remember|store|record|save)\b[^.\n]{0,40}\bas a permanent\b`),
 	regexp.MustCompile(`(?i)\bfor future sessions\b`),
 	regexp.MustCompile(`(?i)\b(?:mark|treat|record) (?:the )?(?:existing|old|original|prior|previous)\s+(?:procedure|runbook|rule|fact|note|numbers?)\b[^.\n]{0,20}\b(?:as )?(?:retracted|superseded|wrong|obsolete|invalid)\b`),
 	regexp.MustCompile(`(?i)\bauthoritative over\b|\bpre-?granted\b|\bapprovals? (?:step )?(?:is|are) (?:optional|not required)\b`),
@@ -76,11 +90,19 @@ var familyPatterns = []*regexp.Regexp{
 	// Addressing an automated reader.
 	regexp.MustCompile(`(?i)\b(?:any|all|every|each|whatever)\s+(?:ai\s+|llm\s+|language\s+model\s+|automated\s+)?(?:assistants?|bots?|readers?|llms?)\s+(?:reading|summari[sz]ing|processing|that reads|who reads|summari[sz]es|reads)\b`),
 	regexp.MustCompile(`(?i)\b(?:note|message|reminder|notice|instruction)s? (?:to|for) (?:the |any |all |an? )?(?:ai |automated |llm )?(?:assistant|bot|reader)s?\b`),
-	regexp.MustCompile(`(?i)\bif you (?:can read|are reading) this\b`),
+	regexp.MustCompile(`(?i)\bif you (?:can read|are reading) this,?\s+(?:you (?:must|should|will|are|have)|reply|respond|output|send|forward|ignore|disregard|print|answer|say|confirm|acknowledge)\b`),
+	regexp.MustCompile(`(?i)\bif you can read this\b`),
 	regexp.MustCompile(`(?i)\b(?:you|assistants?|bots?|readers?)\s+(?:must|shall|need to|have to|are required to)\s+(?:acknowledge|confirm|reply|respond|disclose|report|include|begin|prefix|output|emit|say|echo|append|list|paste|forward|send|post|upload|sync)\b`),
 	regexp.MustCompile(`(?i)\bdo not (?:tell|inform|mention to|mention|show|report) (?:this |it |that |the (?:step|sync|upload|request) )?(?:to )?(?:the )?(?:user|summary|answer|reply|operator)\b`),
 	regexp.MustCompile(`(?i)\bno need to (?:mention|tell|report|disclose|inform)\b`),
 	regexp.MustCompile(`(?i)\breport only the (?:answer|result|reply) (?:to|for) (?:the )?user\b`),
+
+	// Non-English counterparts of the override and reveal shapes, written from
+	// each language's core wording (Spanish, French, German, Chinese).
+	regexp.MustCompile(`(?i)ignor(?:a|e|ar|ez|iere|ieren)\s+(?:todas\s+|tous\s+|toutes\s+|die\s+|les\s+|las\s+)?(?:las\s+|les\s+|die\s+)?(?:instrucciones|reglas|consignes|instructions|anweisungen|vorgaben|regeln)\s+(?:anteriores|previas|précédentes|précédent|antérieures|vorherigen|bisherigen|früheren|vorigen)`),
+	regexp.MustCompile(`(?i)(?:olvida|oubliez|oublie|vergiss)\s+(?:todas\s+las\s+|toutes\s+les\s+|les\s+|alle\s+|die\s+)?(?:reglas|instrucciones|consignes|règles|instructions|regeln|anweisungen|bisherigen|vorherigen)`),
+	regexp.MustCompile(`(?i)(?:muestra|revela|imprime)\s+(?:el\s+)?(?:prompt|mensaje)\s+del\s+sistema|(?:gib|zeig)\s+(?:den\s+)?systemprompt\s+aus`),
+	regexp.MustCompile(`忽略(?:之前|以上|先前|前面)的?(?:所有)?(?:指令|指示|规则|说明)|忘记(?:之前|以上|所有)的?(?:指令|规则)|(?:输出|显示|打印|泄露)(?:你的)?(?:系统提示词|系统提示)`),
 
 	// Sending something to a destination.
 	regexp.MustCompile(`(?i)\b(?:send|sending|post|posting|upload|uploading|forward|forwarding|submit|submitting|resubmit|re-submit|mirror|mirroring|transmit|push|paste|pasting|file|filing|sync|syncing|copy|copying|back ?up|backing up|deliver|email|exfiltrate)\b[^.\n]{0,100}?\b(?:to|at|into)\s+(?:https?://|ftp://|[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,})`),
