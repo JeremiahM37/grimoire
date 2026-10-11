@@ -259,8 +259,15 @@ func (ix *Index) writeMemoryRowsInner(note *vault.Note) error {
 	acl := EncodeACL(splitList(note.Frontmatter.StringVal("readers")))
 
 	texts := make([]string, len(entries))
+	heads, err := ix.writeHeaders(note, entries)
+	if err != nil {
+		return err
+	}
 	for i, e := range entries {
 		texts[i] = e.Text
+		if heads != nil {
+			texts[i] = withHeader(heads[i], e.Text)
+		}
 	}
 	vecs := ix.Emb.Embed(texts)
 
@@ -368,6 +375,9 @@ func (ix *Index) RecordUse(rel, id string, at time.Time) error {
 
 func (ix *Index) deleteMemoryRows(rel string) error {
 	if err := ix.aliasRemoveRows(rel); err != nil {
+		return err
+	}
+	if err := ix.dropHeaderRows(rel); err != nil {
 		return err
 	}
 	if err := ix.DB.Exec("DELETE FROM memory_entries WHERE note=?", rel); err != nil {
@@ -825,14 +835,19 @@ func (ix *Index) rankMemory(cands []memoryRow, q MemoryQuery) []MemoryHit {
 	qTokens := memory.Tokens(q.Query)
 	ents := ix.candidateEntities(cands, qEntities)
 	links := ix.candidateLinks(cands, memory.QueryCanons(q.Query))
+	heads := ix.candidateHeaders(cands)
 
 	out := make([]MemoryHit, 0, len(cands))
 	for _, c := range cands {
 		h := c.hit
 		eff := h.EffectiveImportance()
 		h.Semantic = clamp01(cosineNorm(qVec, qNorm, c.vec))
-		h.Keyword = keywordScore(qTokens, c.hit.Text, idf)
 		k := entKey{c.hit.Note, c.hit.ID}
+		kwText := c.hit.Text
+		if hd, ok := heads[k]; ok {
+			kwText = withHeader(hd, kwText)
+		}
+		h.Keyword = keywordScore(qTokens, kwText, idf)
 		h.Entity = memory.EntityOverlap(qEntities, ents[k])
 		if l, ok := links[k]; ok {
 			// A link is credit for a name the fact does not spell out. It is

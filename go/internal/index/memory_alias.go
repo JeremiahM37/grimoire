@@ -251,7 +251,10 @@ func (ix *Index) flushAliases() error {
 			"DELETE FROM memory_links WHERE note=? AND id=? AND alias=?",
 			[]any{lk.note, lk.id, lk.alias}})
 	}
-	return ix.execAliasBatch(changes)
+	if err := ix.execAliasBatch(changes); err != nil {
+		return err
+	}
+	return ix.refreshHeadersAfterLinks(changes)
 }
 
 // flushAliasesUnlessBulk runs the flush outside a bulk rebuild, which runs its
