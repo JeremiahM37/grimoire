@@ -160,3 +160,23 @@ func TestMCPRetainIsAsyncAndToolsAreWired(t *testing.T) {
 		}
 	}
 }
+
+// An agent that retains something it read elsewhere must be able to say so:
+// the MCP tool forwards trust and origin, which is what marks the content
+// untrusted in the bank.
+func TestMCPRetainForwardsTrustAndOrigin(t *testing.T) {
+	s, seen := bankStub(t)
+	s.Bank = "b"
+	if _, err := s.dispatch("retain", map[string]any{"content": "text from a web page",
+		"trust": "untrusted", "origin": "https://example.com/page"}); err != nil {
+		t.Fatal(err)
+	}
+	items, _ := (*seen)[0].body["items"].([]any)
+	if len(items) != 1 {
+		t.Fatalf("retain body = %v", (*seen)[0].body)
+	}
+	item, _ := items[0].(map[string]any)
+	if item["trust"] != "untrusted" || item["origin"] != "https://example.com/page" {
+		t.Errorf("retain item = %v, want trust and origin forwarded", item)
+	}
+}
