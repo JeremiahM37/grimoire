@@ -110,8 +110,28 @@ the same fact succeeds with nothing to destroy.
 `memory-tombstones.md` at the vault root, one JSON object per line:
 
 ```
-{"salt":"…","hash":"…","at":"2026-10-10 09:00","reason":"forget"}
+{"salt":"…","hash":"…","at":"2026-10-10 09:00","reason":"forget","mac":"…"}
 ```
+
+- `mac` is an HMAC-SHA256 over salt, hash, time and reason. Its key is
+  HMAC-SHA256 of the label `grimoire/seal/tombstone-mac/v1`, keyed by the vault
+  session key (the derivation uses `crypto/hmac`, as `internal/crypto` does; no
+  new algorithm). A passphrase change re-signs signed lines under the new
+  session key before the key is swapped.
+- Each line is checked when the log is loaded:
+
+| status | when | effect |
+|---|---|---|
+| `verified` | `mac` checks under the session key | suppresses |
+| `unsigned` | no `mac`: written while locked, or before signing existed | suppresses; reported as unsigned |
+| `unverified` | `mac` present, vault locked, so it cannot be checked | suppresses; reported as unverified, and logged by count |
+| `rejected` | `mac` present and wrong | ignored and logged by count; the line stays in the file as evidence |
+
+  A locked server therefore still refuses to resurrect a forgotten fact, but
+  it cannot tell a forged signed-looking line from a real one until it is
+  unlocked. A forged line that is not signed is indistinguishable from an
+  unsigned one: anyone with write access to the vault file can add an unsigned
+  tombstone, and that is the open part of this design.
 
 - `hash` is `sha256(salt ‖ fact id)`. The fact id is not stored. The salt is
   per tombstone, so two tombstones for the same id cannot be matched.
@@ -129,9 +149,10 @@ the same fact succeeds with nothing to destroy.
   is rebuilt (`POST /api/reindex`).
 - **Sync merge** strips them from a note a peer just pushed, before the index
   sees it (`mergeCRDT`, the peer merge route).
-- **Cloud-folder sync** (`internal/cloudsync`) writes pulled notes without that
-  hook. Tombstones reach those notes only at the next reindex. This is open:
-  see below.
+- **Cloud-folder pull** (`internal/cloudsync`) strips tombstoned bullets at
+  write time, through `Engine.Filter`, which the API sets to the same strip.
+  A pulled note is therefore never written with a forgotten bullet in it, even
+  before a reindex.
 - **Write** refuses a new fact whose id is tombstoned (409). This is what
   stops a restore of an old export from putting a forgotten fact back.
 
@@ -145,10 +166,27 @@ the rewrite, so the history still has it.
   `StripBullets` removes only the tombstoned line and changes nothing else.
 - `TestForgetShredsTheKeyAndNoSavedCopyOpens`: a restored copy of a forgotten
   bullet is stripped by reindex.
-- `TestStalePeerPushCannotResurrectAForgottenFact`: a stale copy written back
-  to the note is stripped by the suppression call, and recall does not return
-  the fact. The test calls the suppression directly. It is not an end-to-end
-  sync test, and the merge route itself is not exercised.
+- `internal/seal`: MAC verification (a forged line is rejected, a line signed
+  under another key is rejected, unsigned lines suppress and are reported, a
+  locked load reports unverified), re-signing on a passphrase change, and the
+  keystore rewrap.
+- `TestStalePeerCRDTPushCannotResurrectAForgottenFact`: a peer's document
+  fetched before the forget is pushed through `POST /api/crdt/merge`; the note
+  does not contain the fact afterwards, and recall does not return it.
+  **Measured, and it does not show the guard is needed.** With the
+  suppression call removed from the merge route, the test still passes: the
+  CRDT's own deletion wins for this shape, because the peer's atoms share
+  history with the local deletion. The guard is defence in depth for shapes
+  the CRDT does not cover. I did not find a realistic shape that reaches it.
+- `TestCloudFolderPullCannotResurrectAForgottenFact`: device A forgets, device B
+  (still holding the fact) publishes a newer version, and A pulls it through
+  the real folder sync. The fact is absent after the pull. **Measured, and it
+  does not show the guard is needed either:** with `Engine.Filter` disabled
+  the test still passes, for the same CRDT reason.
+- `TestPassphraseChangeKeepsSealedFactsAndTombstones`: after
+  `POST /api/vault/change-passphrase`, the sealed fact is still readable by its
+  owner, and a tombstone written before the change still verifies and
+  suppresses.
 
 ### Behaviour change
 
@@ -170,16 +208,16 @@ These are real, and the design does not claim to close them.
   it. A fact that was sent to a model in a prompt, or logged, stays there.
   Cues recorded with `context` are not sealed (`addAgentCues`); a caller that
   puts the fact in `context` puts it in the cue store.
-- **Cloud-folder sync is not hooked.** Pulled notes can carry a forgotten
-  bullet until the next reindex.
 - **Peers do not hold the key.** The key store is not synced. A sync peer
   receives sealed bullets as ciphertext it cannot open. Sealed facts are
   readable on the device that holds the key store, and nowhere else.
 - **Soft forget of a sealed fact.** Not offered: forget removes it.
-- **Tombstones are not authenticated.** Anyone who can write the vault file
-  can add a tombstone for any id and suppress a fact. The log is a record,
-  not a signed one. Peer tombstones are trusted as they are trusted for any
-  other note.
+- **Unsigned tombstones are not authenticated.** Anyone who can write the
+  vault file can add an unsigned tombstone and suppress a fact. Signed lines
+  resist this only while the vault is unlocked. Peers receive the log as a
+  note, and a peer's signed line verifies only if it was signed under the
+  same session key, which the two devices share only by sharing the
+  passphrase.
 - **Recall expansion views.** `expand`, `hops`, `explain` and `shape=notes`
   do not reveal the text to the owner. Owners get it from flat recall with
   `include_private=1`.

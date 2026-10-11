@@ -132,6 +132,9 @@ type Server struct {
 // ordering explicit documents the same hazard the Python side has, where a
 // greedy /notes/{path} would otherwise swallow /notes/random.
 func (s *Server) Routes() http.Handler {
+	if s.Cloud != nil && s.Cloud.Filter == nil {
+		s.Cloud.Filter = s.tombstoneFilter
+	}
 	if s.Knowledge == nil && s.Index != nil && s.Vault != nil {
 		s.Knowledge = knowledge.New(s.Index, s.Vault)
 	}

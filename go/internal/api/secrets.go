@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/JeremiahM37/grimoire/go/internal/seal"
 	"github.com/JeremiahM37/grimoire/go/internal/secrets"
 )
 
@@ -258,6 +259,15 @@ func (s *Server) changePassphrase(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	reseal := func(oldKey, newKey []byte) error {
+		// Sealed-fact keys and signed tombstones are wrapped under the session
+		// key too. Moving them here, before the swap, keeps them valid through
+		// the same failure rule the notes follow.
+		if err := s.sealKeys().Rewrap(oldKey, newKey); err != nil {
+			return err
+		}
+		if _, err := s.tombLog().Resign(seal.MACKey(oldKey), seal.MACKey(newKey)); err != nil {
+			return err
+		}
 		rels, err := s.Vault.Walk()
 		if err != nil {
 			return err
