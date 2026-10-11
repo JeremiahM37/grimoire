@@ -304,3 +304,96 @@ func TestAcceptNamesTheChallengerWhenSeveralContest(t *testing.T) {
 		t.Errorf("disputes after accept = %d, want 0", len(got))
 	}
 }
+
+// A dispute is settled as a whole: naming one of several challengers must not
+// leave the others believed, and the response lists what was retracted.
+func TestKeepWithSeveralChallengersRetractsEveryOne(t *testing.T) {
+	t.Parallel()
+	_, h := testServer(t)
+	contested(t, h)
+	remember(t, h, map[string]any{"text": "Billing Postgres runs on port 5433", "topic": "ops", "agent": "codex"})
+	open := disputes(t, h)
+	if len(open) != 1 || len(open[0]["challengers"].([]any)) != 2 {
+		t.Fatalf("want one dispute with two challengers, got %v", open)
+	}
+	pick := open[0]["challengers"].([]any)[1].(map[string]any)["id"]
+
+	w := resolve(t, h, map[string]any{"id": open[0]["id"], "resolution": "keep", "challenger": pick})
+	if w.Code != http.StatusOK {
+		t.Fatalf("keep = %d: %s", w.Code, w.Body)
+	}
+	var res map[string]any
+	decode(t, w, &res)
+	if got, _ := res["retracted"].([]any); len(got) != 2 {
+		t.Errorf("retracted = %v, want both challengers", res["retracted"])
+	}
+	if got := disputes(t, h); len(got) != 0 {
+		t.Errorf("disputes after keep = %d, want 0", len(got))
+	}
+	for _, text := range []string{agentFact, "Billing Postgres runs on port 5433"} {
+		row := changeRow(changesSince(t, h), text)
+		if row == nil || row["kind"] != "retracted" || row["agent"] != "human" {
+			t.Errorf("challenger %q is not a human retraction: %v", text, row)
+		}
+	}
+}
+
+func TestAcceptRetractsTheOtherChallengersAndListsThem(t *testing.T) {
+	t.Parallel()
+	_, h := testServer(t)
+	contested(t, h)
+	remember(t, h, map[string]any{"text": "Billing Postgres runs on port 5433", "topic": "ops", "agent": "codex"})
+	open := disputes(t, h)
+	challengers := open[0]["challengers"].([]any)
+	pick := challengers[1].(map[string]any)["id"]
+	other := challengers[0].(map[string]any)["id"]
+
+	w := resolve(t, h, map[string]any{"id": open[0]["id"], "resolution": "accept_challenger", "challenger": pick})
+	if w.Code != http.StatusOK {
+		t.Fatalf("accept = %d: %s", w.Code, w.Body)
+	}
+	var res map[string]any
+	decode(t, w, &res)
+	got, _ := res["retracted"].([]any)
+	if len(got) != 1 || got[0] != other {
+		t.Errorf("retracted = %v, want only the other challenger %v", res["retracted"], other)
+	}
+	if d := disputes(t, h); len(d) != 0 {
+		t.Errorf("disputes after accept = %d, want 0", len(d))
+	}
+	if row := changeRow(changesSince(t, h), agentFact); row == nil || row["kind"] != "retracted" {
+		t.Errorf("the unaccepted challenger is not a retraction in the digest: %v", row)
+	}
+}
+
+// A private challenger is part of a dispute the person settles, so the person
+// sees it without asking. An agent does not see it unless it asks for private
+// facts, the same rule memory recall applies.
+func TestPrivateChallengerIsListedToThePersonButNotToAnAgent(t *testing.T) {
+	t.Parallel()
+	_, h := testServer(t)
+	remember(t, h, map[string]any{"text": humanFact, "topic": "ops", "agent": "me", "human": true})
+	remember(t, h, map[string]any{"text": agentFact, "topic": "ops", "agent": "claude", "visibility": "private"})
+
+	if got := disputes(t, h); len(got) != 1 {
+		t.Fatalf("person's disputes = %d, want 1 with a private challenger", len(got))
+	}
+	listAs := func(path, agent string) []map[string]any {
+		req := requestFor(t, "GET", path, nil)
+		req.Header.Set("X-Grimoire-Agent", agent)
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("agent list %s = %d: %s", path, w.Code, w.Body)
+		}
+		var out []map[string]any
+		decode(t, w, &out)
+		return out
+	}
+	if got := listAs("/api/memory/disputes", "claude"); len(got) != 0 {
+		t.Errorf("agent saw %d disputes with a private challenger, want 0", len(got))
+	}
+	if got := listAs("/api/memory/disputes?include_private=1", "claude"); len(got) != 1 {
+		t.Errorf("agent with include_private saw %d disputes, want 1", len(got))
+	}
+}

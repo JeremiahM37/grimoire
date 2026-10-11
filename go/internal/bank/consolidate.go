@@ -534,7 +534,9 @@ func (cs *consolidation) apply(acts *obsActions, batch []int32, shown map[string
 	for _, p := range batch {
 		batchTainted = batchTainted || c.units[p].Tainted
 	}
+	notes := map[string][][]string{} // justify: each support set per observation
 	addSources := func(o *Observation, srcs []string, ev []Evidence) {
+		notes[o.ID] = append(notes[o.ID], srcs)
 		o.Sources = unionTags(o.Sources, srcs)
 		taintFrom(o, srcs)
 		for _, x := range ev {
@@ -706,7 +708,10 @@ func (cs *consolidation) apply(acts *obsActions, batch []int32, shown map[string
 		of.Current = append(of.Current, o)
 		cs.res.Created++
 	}
-	return e.writeObservations(cs.bankID, of, old)
+	if err := e.writeObservations(cs.bankID, of, old); err != nil {
+		return err
+	}
+	return e.justifyObservations(cs.bankID, c, of.Current, notes)
 }
 
 func newObsID(bankID, text string, now time.Time) string {

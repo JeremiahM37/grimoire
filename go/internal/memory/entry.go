@@ -79,6 +79,16 @@ type Entry struct {
 	Sealed string
 	KeyID  string
 
+	// Cue, Life and Retired make a fact an intention (see internal/prospect).
+	// Cue is the situation that brings it back, declared as cue=; Life is its
+	// lifecycle, life=once or life=until:<date> (empty means standing); Retired
+	// is the day a once-intention was acknowledged after firing, ret=. All
+	// three are empty for an ordinary fact and written last, so every bullet
+	// written before intentions formats byte-identically.
+	Cue     string
+	Life    string
+	Retired string
+
 	// Challenges is the ID of an entry this fact contradicts but was not
 	// allowed to supersede, because that entry outranks this one's writer. It
 	// rides in the bullet like everything else, so an open disagreement is
@@ -447,6 +457,12 @@ func parseTrailer(s string) Entry {
 			if f, err := strconv.ParseFloat(v, 64); err == nil && f > 0 && f <= 1 {
 				e.Vol = f
 			}
+		case "cue":
+			e.Cue = v
+		case "life":
+			e.Life = v
+		case "ret":
+			e.Retired = v
 		}
 	}
 	return e
@@ -583,6 +599,16 @@ func (e Entry) trailer() string {
 	}
 	if e.Sealed != "" {
 		fields = append(fields, "sealed="+escapeField(e.Sealed))
+	}
+	// Intention fields come after the sealed ones, for the same reason.
+	if e.Cue != "" {
+		fields = append(fields, "cue="+escapeField(e.Cue))
+	}
+	if e.Life != "" {
+		fields = append(fields, "life="+escapeField(e.Life))
+	}
+	if e.Retired != "" {
+		fields = append(fields, "ret="+escapeField(e.Retired))
 	}
 	return " <!--m " + strings.Join(fields, " ") + "-->"
 }

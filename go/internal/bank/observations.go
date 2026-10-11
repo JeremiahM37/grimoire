@@ -413,6 +413,11 @@ type ObservationOut struct {
 	Of           string `json:"of,omitempty"`
 	SupersededAt string `json:"superseded_at,omitempty"`
 	Deleted      bool   `json:"deleted,omitempty"`
+	// Stale is set, with StaleReason, when the justify store finds the
+	// observation no longer supported by what it was derived from. Only the
+	// "justify" experiment sets it.
+	Stale       bool   `json:"stale,omitempty"`
+	StaleReason string `json:"stale_reason,omitempty"`
 }
 
 func (o Observation) out() ObservationOut {
@@ -496,6 +501,9 @@ func (e *Engine) ListObservations(bankID string, q ObservationQuery) (items, his
 		}
 		items = append(items, o.out())
 	}
+	if err := e.markObservations(bankID, items); err != nil {
+		return nil, nil, 0, err
+	}
 	if q.IncludeHistory {
 		history = []ObservationOut{}
 		for _, o := range of.History {
@@ -517,6 +525,11 @@ func (e *Engine) GetObservation(bankID, id string) (*ObservationOut, []Observati
 	for _, o := range of.Current {
 		if o.ID == id {
 			out := o.out()
+			marked := []ObservationOut{out}
+			if err := e.markObservations(bankID, marked); err != nil {
+				return nil, nil, err
+			}
+			out = marked[0]
 			hist := []ObservationOut{}
 			for _, h := range of.History {
 				if h.Of == id {

@@ -226,7 +226,10 @@ func (ix *Index) writeMemoryRows(note *vault.Note) error {
 	if err := ix.writeMemoryRowsInner(note); err != nil {
 		return err
 	}
-	return ix.flushAliasesUnlessBulk()
+	if err := ix.flushAliasesUnlessBulk(); err != nil {
+		return err
+	}
+	return ix.captureUnlessBulk()
 }
 
 // writeMemoryRowsInner is the note's own rows: rows for the note are deleted
@@ -240,6 +243,9 @@ func (ix *Index) writeMemoryRowsInner(note *vault.Note) error {
 		return err
 	}
 	if err := ix.deleteMemoryRows(note.Path); err != nil {
+		return err
+	}
+	if err := ix.cloneDeleteRows(note.Path); err != nil {
 		return err
 	}
 	if !IsMemoryPath(note.Path) || note.Encrypted {
@@ -259,8 +265,15 @@ func (ix *Index) writeMemoryRowsInner(note *vault.Note) error {
 	acl := EncodeACL(splitList(note.Frontmatter.StringVal("readers")))
 
 	texts := make([]string, len(entries))
+	heads, err := ix.writeHeaders(note, entries)
+	if err != nil {
+		return err
+	}
 	for i, e := range entries {
 		texts[i] = e.Text
+		if heads != nil {
+			texts[i] = withHeader(heads[i], e.Text)
+		}
 	}
 	vecs := ix.Emb.Embed(texts)
 
@@ -322,6 +335,9 @@ func (ix *Index) writeMemoryRowsInner(note *vault.Note) error {
 			}
 		}
 	}
+	if err := ix.cloneWriteRows(note.Path, entries); err != nil {
+		return err
+	}
 	return ix.aliasWriteRows(note.Path, entries)
 }
 
@@ -361,13 +377,19 @@ func (ix *Index) memoryUses(rel string) (map[string]memoryUse, error) {
 // RecordUse counts one use of a fact: it was recalled and then reported
 // helpful. The count is index state only (see writeMemoryRows).
 func (ix *Index) RecordUse(rel, id string, at time.Time) error {
-	return ix.DB.Exec(
+	if err := ix.DB.Exec(
 		"UPDATE memory_entries SET uses=uses+1, last_used=? WHERE note=? AND id=?",
-		at.UTC().Format(time.RFC3339), rel, id)
+		at.UTC().Format(time.RFC3339), rel, id); err != nil {
+		return err
+	}
+	return ix.actrRecord(rel, id, at) // no-op unless the "actr" experiment is on
 }
 
 func (ix *Index) deleteMemoryRows(rel string) error {
 	if err := ix.aliasRemoveRows(rel); err != nil {
+		return err
+	}
+	if err := ix.dropHeaderRows(rel); err != nil {
 		return err
 	}
 	if err := ix.DB.Exec("DELETE FROM memory_entries WHERE note=?", rel); err != nil {
@@ -825,14 +847,25 @@ func (ix *Index) rankMemory(cands []memoryRow, q MemoryQuery) []MemoryHit {
 	qTokens := memory.Tokens(q.Query)
 	ents := ix.candidateEntities(cands, qEntities)
 	links := ix.candidateLinks(cands, memory.QueryCanons(q.Query))
+	actr := ix.actrTraces(cands)  // nil unless the "actr" experiment is on
+	lw := ix.learnedRankWeights() // nil unless the ips experiment has stored weights
+	heads := ix.candidateHeaders(cands)
+	clones := ix.cloneAliasesFor() // nil unless the clone flag is on
 
 	out := make([]MemoryHit, 0, len(cands))
 	for _, c := range cands {
 		h := c.hit
 		eff := h.EffectiveImportance()
 		h.Semantic = clamp01(cosineNorm(qVec, qNorm, c.vec))
-		h.Keyword = keywordScore(qTokens, c.hit.Text, idf)
 		k := entKey{c.hit.Note, c.hit.ID}
+		kwText := c.hit.Text
+		if hd, ok := heads[k]; ok {
+			kwText = withHeader(hd, kwText)
+		}
+		h.Keyword = keywordScore(qTokens, kwText, idf)
+		if clones != nil {
+			applyCloneAliases(&h, clones[k], qVec, qNorm, qTokens, idf)
+		}
 		h.Entity = memory.EntityOverlap(qEntities, ents[k])
 		if l, ok := links[k]; ok {
 			// A link is credit for a name the fact does not spell out. It is
@@ -844,16 +877,25 @@ func (ix *Index) rankMemory(cands []memoryRow, q MemoryQuery) []MemoryHit {
 			}
 		}
 		h.Recency = recencyScoreWith(c.hit.Stamp, q.Now, halfLifeFor(eff))
+		if actr != nil {
+			h.Recency = actrRecencyFor(actr[entKey{c.hit.Note, c.hit.ID}], q.Now, h.Recency)
+		}
 		h.Useful = c.hit.Usefulness()
 		h.ImportanceFactor = importanceFactor(eff)
 		h.Reuse = reuseBonus(h.Uses)
 		base := wSemantic*h.Semantic + wKeyword*h.Keyword +
 			wEntity*h.Entity + wRecency*h.Recency + wUseful*h.Useful +
 			wPhrase*phraseScore(qTokens, c.hit.Text)
+		if lw != nil {
+			base = learnedBase(lw, h, phraseScore(qTokens, c.hit.Text))
+		}
 		// An unrated agent fact has factor 1 and no reuse, so its score is the
 		// pre-importance score bit for bit (x*1 and x+0 are exact).
 		h.Score = base*h.ImportanceFactor + h.Reuse
 		out = append(out, h)
+	}
+	if captureOn() {
+		ix.captureRank(out)
 	}
 	sort.SliceStable(out, func(i, j int) bool {
 		if out[i].Score != out[j].Score {
@@ -1044,11 +1086,15 @@ func (ix *Index) PruneCandidates(below int, cutoff time.Time, limit int) ([]Memo
 	if limit <= 0 {
 		limit = 50
 	}
+	boosted, err := capturePruneClause()
+	if err != nil {
+		return nil, err
+	}
 	rows, err := ix.DB.Query(
 		"SELECT "+memoryColumns+" FROM memory_entries WHERE"+
 			" superseded_by='' AND immutable=0 AND human=0 AND hand=0 AND challenges=''"+
 			" AND helpful=0 AND uses=0 AND last_used='' AND agent<>'' AND stamp<>''"+
-			" AND stamp<? AND importance BETWEEN ? AND ? AND visibility=''"+
+			" AND stamp<? AND importance BETWEEN ? AND ? AND visibility=''"+boosted+
 			" ORDER BY stamp ASC, id ASC LIMIT ?",
 		cutoff.In(time.Local).Format(memory.StampFormat), memory.MinImportance, below, limit)
 	if err != nil {

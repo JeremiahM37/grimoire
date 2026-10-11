@@ -25,6 +25,7 @@ const memoryUsage = `usage:
   grimoire memory receipts                 forget receipts (from forget --cascade)
   grimoire memory prefix [--since TOKEN] [--max-tokens N]   durable-memory block for a cached prompt prefix
   grimoire memory disputes                 facts a person recorded that an agent contests
+  grimoire memory audit-supersessions      past supersessions the gate now judges distinct (--restore ID --path NOTE)
   grimoire memory agents                   per-agent reliability from correction signals (admin)
   grimoire memory resolve ID keep|accept|merge [text] [--challenger ID] [--path P]
   grimoire memory image FILE [--caption TEXT] [--topic T]  store a picture (caption-only retrieval)
@@ -37,6 +38,7 @@ const memoryUsage = `usage:
   grimoire memory index --write [--force]   (replays the new index first; held if it loses useful recalls)
   grimoire memory impact [--since 90d] [--agent NAME] [--min N] [--json]
   grimoire memory trace [--target fact:ID|note:PATH] [--days 30] [--json]
+  grimoire memory learn-rank [--days N] [--json]   fit ranking weights on the exposure log (read-only; experiment ips)
   grimoire memory impact --retells [--cutoff 2026-10-09] [--budget 2000] [--since D] [--all-sessions] [--json]
   grimoire memory prune [--dry-run | --apply] [--max N] [--below 1-3] [--json]
   grimoire memory distill --out DIR [--min-age-days N] [--min-uses N]   select bake-in facts + training data (read-only; docs/PARAMETRIC.md)
@@ -82,6 +84,8 @@ func cmdMemory(args []string) int {
 		return memoryTraceCmd(e, rest)
 	case "replay":
 		return memoryReplayCmd(e, rest)
+	case "learn-rank":
+		return memoryLearnRankCmd(e, rest)
 	case "export":
 		return memoryExportCmd(e, rest)
 	case "import":
@@ -100,6 +104,8 @@ func cmdMemory(args []string) int {
 		return memoryReceiptsCmd(e, rest)
 	case "agents":
 		return memoryAgentsCmd(e, rest)
+	case "audit-supersessions":
+		return memoryAuditCmd(e, rest)
 	case "disputes":
 		return memoryDisputesCmd(e, rest)
 	case "resolve":

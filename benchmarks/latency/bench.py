@@ -90,8 +90,15 @@ def machine() -> dict:
     }
 
 
+SERVER_PASSTHROUGH = ("GRIMOIRE_EXP", "GRIMOIRE_HEADER_FIELDS",
+                      "GRIMOIRE_CLONE_SELECTION", "GRIMOIRE_CLONE_LLM_FILE")
+
+
 def server_env(vault: Path, port: int) -> dict:
-    env = {k: v for k, v in os.environ.items() if not k.startswith("GRIMOIRE_")}
+    # Experiment flags (GRIMOIRE_EXP) and their companion settings must reach
+    # the server, or a flag-on measurement silently runs the flag-off path.
+    env = {k: v for k, v in os.environ.items()
+           if not k.startswith("GRIMOIRE_") or k in SERVER_PASSTHROUGH}
     env.update({
         "GRIMOIRE_VAULT": str(vault), "GRIMOIRE_PORT": str(port),
         "GRIMOIRE_HOST": "127.0.0.1", "GRIMOIRE_NO_WATCHER": "1",

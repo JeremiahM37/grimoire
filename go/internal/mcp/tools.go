@@ -435,7 +435,7 @@ func Tools() []tool {
 				"vault); nothing the repo or git already records; update an existing memory " +
 				"rather than adding a near-duplicate. The reply may carry `warnings`: fix them " +
 				"with a corrected remember, they never block the write.",
-			InputSchema: obj(map[string]any{
+			InputSchema: obj(withIntention(map[string]any{
 				"text":          strProp("what to remember"),
 				"target_id":     strProp("for a known correction: exact fact id from recall; requires target_path and expected_text; human corrections remain protected"),
 				"target_path":   strProp("note path of the fact being corrected"),
@@ -478,7 +478,7 @@ func Tools() []tool {
 				"cues": map[string]any{"type": "array", "items": map[string]any{"type": "string"},
 					"description": "up to 8 situations in which this should come to mind: a request, " +
 						"a command, or a file path (e.g. 'deploy grimoire', '/etc/lectern.env')"},
-			}, "text"),
+			}), "text"),
 		},
 		{
 			Name: "remember_image",

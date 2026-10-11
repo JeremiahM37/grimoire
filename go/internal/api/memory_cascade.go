@@ -173,6 +173,7 @@ type forgetIn struct {
 	Path    string `json:"path"`
 	ID      string `json:"id"`
 	Agent   string `json:"agent,omitempty"`
+	Origin  string `json:"origin,omitempty"`
 	Hard    bool   `json:"hard,omitempty"`
 	Cascade bool   `json:"cascade,omitempty"`
 	DryRun  bool   `json:"dry_run,omitempty"`
@@ -202,7 +203,7 @@ func (s *Server) forgetPost(w http.ResponseWriter, r *http.Request) {
 		s.cascadeForget(w, r, note, id, in)
 		return
 	}
-	s.forgetOne(w, r, note, id, in.Hard, in.Agent)
+	s.forgetOne(w, r, note, id, in.Hard, in.Agent, in.Origin)
 }
 
 // isAgentInitiated reports whether the request came from an agent. A caller
@@ -246,6 +247,11 @@ func (s *Server) cascadeForget(w http.ResponseWriter, r *http.Request, note, id 
 		return
 	}
 	agentName, agent := isAgentInitiated(r)
+	if !agent && !forgetCallerIsPerson(r, in.Agent) {
+		// No agent in the header, but the body names one: that is an agent
+		// too, and must not be read as the person at the console.
+		agentName, agent = strings.TrimSpace(in.Agent), true
+	}
 	if agent && target.HumanAuthored() {
 		writeErr(w, http.StatusForbidden,
 			"a person wrote this entry; an agent cannot cascade-forget it")

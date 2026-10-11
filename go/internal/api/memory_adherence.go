@@ -67,6 +67,7 @@ func (s *Server) logInjections(lg ctxLog, picked []contextItem, tags []string, f
 			Path: it.Path, FactID: it.ID, Stage: lg.stage, Relevance: it.score,
 			Kind: it.Kind, PWithhold: lg.pwith[it.Key], Tool: tool, Pend: pend, TU: lg.tu,
 			Ask: lg.ask[itemTarget(it)]}
+		rows[i].Pos, rows[i].Slate, rows[i].Explored, rows[i].Feats = ipsFields(lg, it)
 		if fps != nil {
 			rows[i].FPKnown, rows[i].FPN = true, len(fps[i])
 		}

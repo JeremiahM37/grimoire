@@ -34,6 +34,11 @@ type contextItem struct {
 	Kind   string `json:"kind,omitempty"`
 	score  float64
 	pinned bool // a person pinned it (immutable): never withheld by the holdout
+	// Exposure for the ranking learner (memory_ips.go): the 1-based slate
+	// position, whether the slate was shuffled, and the ranking features.
+	pos      int
+	explored bool
+	feat     []float64
 }
 
 var contextNoise = strings.Fields("please can could would should will do does did how what when where why which who me my we our you your it this that these those help want need now just also really anything something tell explain use using work working fix add make get know thanks thank okay ok yes no continue proceed hello hi")
@@ -154,6 +159,11 @@ func (s *Server) memoryContext(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("stage") != "action" {
 			s.tracePrompt(r.URL.Query().Get("session"), retellRE.MatchString(query))
 		}
+		items, err = s.prospectItems(r, items)
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 		items, perm, ask := s.adherenceFilter(r, query, items, minRel)
 		if r.URL.Query().Get("rerank") == "1" {
 			items = s.rerankContext(r, query, items, minRel)
@@ -236,6 +246,11 @@ func (s *Server) memoryContext(w http.ResponseWriter, r *http.Request) {
 				Authority: "unknown", Trust: "trusted", score: contextOverlap(terms, note.excerpt)})
 		}
 	}
+	items, err := s.prospectItems(r, items)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 	s.writeContext(w, items, excluded, budget, limit, 0.3, "lexical", r.URL.Query().Get("format") == "directive", ctxLog{})
 }
 
@@ -253,6 +268,7 @@ type ctxLog struct {
 	tool, pend, tu string
 	ask            map[string]bool
 	pwith          map[string]float64
+	slate          string // exposure slate id for the ranking learner (memory_ips.go)
 	// What memory replay keeps about the request (docs/MEMORY_REPLAY.md).
 	minRel float64
 	limit  int
@@ -309,6 +325,9 @@ func (s *Server) writeContext(w http.ResponseWriter, items []contextItem, exclud
 		if len(picked) == limit {
 			break
 		}
+	}
+	if lg.log && lg.session != "" && len(picked) > 0 && ipsOn() {
+		picked, lg = s.ipsPositions(picked, lg)
 	}
 	keys := make([]string, len(picked))
 	for i, it := range picked {
@@ -488,6 +507,9 @@ func (s *Server) hybridContext(r *http.Request, query string, terms, paths []str
 		item := contextItem{Path: hit.Note, ID: hit.ID, Text: hit.Text,
 			Authority: hit.Authority().String(), Trust: "trusted",
 			score: relevance(hit.Semantic, contextOverlap(terms, hit.Text))}
+		if ipsOn() {
+			item.feat = index.RankFeatures(hit)
+		}
 		if a := hit.Assess(now, priors, theta); a.Action == memory.ActionVerify {
 			item.Verify = "re-check"
 			if a.Check != "" {

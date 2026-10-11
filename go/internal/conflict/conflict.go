@@ -69,6 +69,10 @@ type Candidate struct {
 	Corroboration int
 	// ValidFrom is when the fact became true. Zero means unknown.
 	ValidFrom time.Time
+	// HopDepth is how many derivations or relays separate the fact from its
+	// source (0 for a direct statement). It only breaks an exact tie in Rank,
+	// after authority and total, so it never changes a total.
+	HopDepth int
 }
 
 // Breakdown is the weighted contribution of each term, and their sum. The
@@ -118,6 +122,9 @@ func Rank(cands []Candidate, o Options) []Scored {
 		}
 		if ta, tb := out[i].Breakdown.Total, out[j].Breakdown.Total; ta != tb {
 			return ta > tb
+		}
+		if a.HopDepth != b.HopDepth {
+			return a.HopDepth < b.HopDepth
 		}
 		if !a.ValidFrom.Equal(b.ValidFrom) {
 			return a.ValidFrom.After(b.ValidFrom)

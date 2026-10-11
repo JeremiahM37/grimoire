@@ -13,6 +13,7 @@ import (
 
 	"github.com/JeremiahM37/grimoire/go/internal/calibrate"
 	"github.com/JeremiahM37/grimoire/go/internal/cues"
+	"github.com/JeremiahM37/grimoire/go/internal/exp"
 	"github.com/JeremiahM37/grimoire/go/internal/fts"
 	"github.com/JeremiahM37/grimoire/go/internal/index"
 	"github.com/JeremiahM37/grimoire/go/internal/markdown"
@@ -135,6 +136,10 @@ type memoryIn struct {
 	// `remember` advertises the field to agents rather than inferring it: only
 	// the caller knows what it was reading.
 	Origin string `json:"origin"`
+	// Cue and Life make this write an intention (prospect.go). Both are
+	// refused unless the prospect experiment is on.
+	Cue  string `json:"cue"`
+	Life string `json:"life"`
 
 	// Evidence is what the agent read the fact FROM: note paths, urls or entry
 	// ids. An agent-authored fact that carries it is `observed`; one that does
@@ -282,6 +287,10 @@ func (s *Server) rememberOne(w http.ResponseWriter, r *http.Request, m memoryIn)
 			"scope must be one of vault, topic, session, agent")
 		return
 	}
+	if err := intentionInput(&m); err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
 	if err := validateFresh(m); err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
@@ -340,7 +349,7 @@ func (s *Server) rememberOne(w http.ResponseWriter, r *http.Request, m memoryIn)
 			writeErr(w, http.StatusBadRequest, "explicit corrections require target_id, target_path, expected_text and no scope or infer=false")
 			return
 		}
-	} else if (m.Infer == nil || *m.Infer) && m.Visibility != memory.VisSealed {
+	} else if (m.Infer == nil || *m.Infer) && m.Visibility != memory.VisSealed && m.Cue == "" {
 		// A sealed fact is never sent to an extraction model: its text is the
 		// one thing it must not leave the device as.
 		facts = s.AI.WithSurface("extract", agentFor(r)).ExtractFacts(text)
@@ -532,6 +541,7 @@ func (s *Server) reconcileFact(w http.ResponseWriter, r *http.Request, rel, fact
 			byID[h.ID] = h
 		}
 		decision = s.AI.WithSurface("reconcile", agentFor(r)).DecideMemoryAs(fact, strings.TrimSpace(m.Origin), m.Human, candidates)
+		decision = s.cascadeReconcile(fact, decision, byID)
 		if decision.Target != "" {
 			target, ok := byID[decision.Target]
 			if !ok {
@@ -691,6 +701,7 @@ func (s *Server) appendEntryChallenging(w http.ResponseWriter, r *http.Request, 
 		Check:      strings.TrimSpace(m.Check),
 		Importance: m.Importance,
 		Visibility: m.Visibility,
+		Cue:        m.Cue, Life: m.Life,
 	}
 	if restored != nil && restored.Entry.ID != "" {
 		e.ID = restored.Entry.ID
@@ -939,6 +950,10 @@ type entryOut struct {
 	// comment did.
 	Origin string `json:"origin,omitempty"`
 	Trust  string `json:"trust"`
+	// Marker is set only under the "guard" experiment, on untrusted text in
+	// the recall response: the random marker that stands for each space in
+	// Text, and the rule for reading it (memory_guard.go).
+	Marker string `json:"marker,omitempty"`
 
 	// AgentReliability is the conservative reliability of the agent that wrote
 	// this fact. Set only on explain responses, and only for agent-written facts.
@@ -959,6 +974,9 @@ type entryOut struct {
 	// "verified" or "unverified". Absent when the fact cites nothing. An
 	// unverified fact cannot read as observed (see memory.Entry.Basis).
 	Verification string `json:"verification,omitempty"`
+	// Hops is the hop depth from the fact's source. Only on an explain response
+	// under the "lineage" experiment.
+	Hops *int `json:"hops,omitempty"`
 
 	// Who asserted it: human, agent or pulled. Same argument as Trust — an
 	// agent about to overwrite a fact needs to know it is a person's
@@ -994,6 +1012,12 @@ type scoreBreakdown struct {
 
 func entriesOut(hits []index.MemoryHit, explain bool) []entryOut {
 	out := make([]entryOut, 0, len(hits))
+	// Under the "lineage" experiment an explanation shows each fact's hop depth
+	// (see memory_lineage.go). Off, hops is nil and nothing is added.
+	var hops map[string]int
+	if explain && exp.On(lineageFlag) {
+		hops = lineageHops(hits)
+	}
 	for _, h := range hits {
 		text := h.Text
 		if explain && h.Redacted() {
@@ -1018,6 +1042,9 @@ func entriesOut(hits []index.MemoryHit, explain bool) []entryOut {
 		if h.Image != "" {
 			e.Image = &imageRef{SHA: h.Image, URL: imageURL(h.Image)}
 			e.CaptionBasis = h.CaptionBasis
+		}
+		if hv, ok := hops[h.ID]; ok {
+			e.Hops = &hv
 		}
 		if explain {
 			e.Scores = &scoreBreakdown{Semantic: h.Semantic, Keyword: h.Keyword,
@@ -1101,11 +1128,16 @@ func (s *Server) recall(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	if hits, err = s.prospectRecallHits(r, hits); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 	s.revealSealed(r, hits)
 	out := s.markProcedures(s.assessHits(hits, entriesOut(hits, boolParam(r, "explain"))))
 	if boolParam(r, "explain") {
 		s.attachReliability(out)
 	}
+	markUntrustedRecall(out)
 	s.noteRecalled(hits)
 	s.fillImageRefs(out)
 	writeJSON(w, http.StatusOK, out)
@@ -1539,20 +1571,46 @@ func (s *Server) forgetEntry(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "not a memory note")
 		return
 	}
-	s.forgetOne(w, r, note, id, boolParam(r, "hard"), r.URL.Query().Get("agent"))
+	s.forgetOne(w, r, note, id, boolParam(r, "hard"), r.URL.Query().Get("agent"),
+		r.URL.Query().Get("origin"))
 }
 
 // forgetOne is the plain forget behind both DELETE /api/memory/entry and
 // POST /api/memory/forget without cascade. The path and id are checked by the
 // caller.
-func (s *Server) forgetOne(w http.ResponseWriter, r *http.Request, note, id string, hard bool, agent string) {
+func (s *Server) forgetOne(w http.ResponseWriter, r *http.Request, note, id string, hard bool, agent, origin string) {
 	if !s.requireWrite(w, r, note) {
+		return
+	}
+	// The lattice: a caller below the entry's rung may not forget it, whether
+	// the forget is soft or hard. Refused before anything is written.
+	rung := forgetRung(r, agent, origin)
+	if e, ok := s.entryAt(note, id); ok && rung < e.Authority() {
+		writeJSON(w, http.StatusForbidden, map[string]any{
+			"path": note, "id": id, "detail": "this entry was written at the " +
+				e.Authority().String() + " rung; a " + rung.String() + " caller cannot forget it",
+		})
 		return
 	}
 	if !hard && s.entryIsSealed(note, id) {
 		// A sealed fact is removed, never struck through: its key is destroyed
 		// on forget, so a struck bullet would be ciphertext nobody can open.
 		hard = true
+	}
+	if !hard {
+		// A fact that is no longer believed already has a successor or a
+		// retraction recorded. Striking it again would overwrite that record
+		// (the chain would stop saying what replaced it), so a soft forget of
+		// it is a no-op, answered with what is already recorded. A hard forget
+		// still removes the bullet.
+		if e, ok := s.entryAt(note, id); ok && e.Superseded() {
+			writeJSON(w, http.StatusConflict, map[string]any{
+				"path": note, "id": id, "already_superseded": true,
+				"superseded_by": e.SupersededBy, "superseded_at": e.SupersededAt,
+				"detail": "that entry is no longer believed; nothing was changed",
+			})
+			return
+		}
 	}
 	if hard {
 		if err := s.removeEntry(note, id); err != nil {

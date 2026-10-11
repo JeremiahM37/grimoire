@@ -32,6 +32,9 @@ it fixes is advertising.
 | 20 | Contradictions are flagged but not weighed | Disputes carry a suggested winner and a per-term breakdown (authority, verification, corroboration, recency, reliability); a human side always outranks a non-human one and nothing auto-resolves (`PROVENANCE.md`) | **measured here** (tests); the weights are judgement, not fitted to adjudications |
 | 21 | Knowledge can only be retrieved, never baked in | `grimoire memory distill` selects only facts safe to bake (not private or sealed, not superseded or disputed, verified, aged, used) and writes train and held-out chat JSONL, abstain examples, an exclusion report and a manifest for staleness diffs (`PARAMETRIC.md`) | design; it exports data and trains nothing, and weights cannot be forgotten like a note |
 | 22 | Procedures are prose, with no checkable preconditions | A skill can carry structured preconditions and postconditions; `skills check` reports which are unmet before a skill is applied (`SKILL-GATE.md`) | **measured here** (fixtures); only file, command, env and fact predicates exist |
+| 23 | A new fact silently replaces an unrelated true one | Supersession by shared vocabulary is the documented limit of the slot rules. A replacement gate asks a decision model whether the new fact replaces the old or both can be true (`lab/cascade.md`, behind a flag), and `grimoire memory audit-supersessions` lists past supersessions the gate judges distinct so a person can restore them | **measured here**: on generated collision pairs the rules supersede 100% and the gate about 0%; on the author's vault 4 of 14 real supersessions struck a true fact, and the gate flags 3 of those 4 while wrongly flagging 2 of 8 real updates. Off by default; needs a decision model on the write path |
+| 24 | Write-path semantics are only example-tested | A reference model of the documented rules is run against the real server on random operation sequences, with conservation invariants (`lab/oracle.md`) | **measured here**: found six divergence classes; four are fixed, one is row 23, one (deciding on a single contender) is documented as current behaviour |
+| 25 | Memory cannot hold an intention | A fact can carry a cue (path, command, date, term) that fires a reminder when the context matches (`lab/prospect.md`, behind a flag) | **measured here** on a scripted fixture only: 44 of 44 due firings, none spurious |
 
 ## Still open
 
@@ -70,6 +73,11 @@ it fixes is advertising.
 - **Code call edges are partly resolved.** Go resolves within a package by type;
   everything crossing a package boundary, and Python and TS/JS typing, stays
   unresolved or heuristic.
+- **Subject identity is textual.** The system tells two subjects apart by their
+  words. That is the common cause of false supersession (row 23), of the
+  rejected slot-collapse experiment, and of alias links that real notes do not
+  produce. Sixteen experiments are recorded in `lab/README.md`; none graduated
+  to on-by-default.
 - **Recall at 50k stays below target.** The synthetic corpus makes first-name
   aliases ambiguous on purpose, so about a third of queries are not answerable
   from text. Alias linking helps only where a full name appears in the same

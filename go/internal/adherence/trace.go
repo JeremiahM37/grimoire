@@ -125,6 +125,9 @@ func migrateTrace(db *sql.DB) error {
 			}
 		}
 	}
+	if err := migrateIPS(db); err != nil {
+		return err
+	}
 	_, err = db.Exec(`CREATE INDEX IF NOT EXISTS injections_pend ON injections(session, rem)`)
 	return err
 }
@@ -458,6 +461,11 @@ func (s *Store) TracePrompt(session string, corrected bool, now time.Time) (int,
 type Withheld struct {
 	Session, Tag, Key, Target, Kind, Stage, Tool string
 	Relevance, PWithhold                         float64
+	// Exposure fields for the ranking learner (ips.go). Zero means not logged.
+	Pos      int
+	Slate    string
+	Explored bool
+	Feats    string
 }
 
 // LogWithheld records would-have-injected rows.
@@ -472,8 +480,8 @@ func (s *Store) LogWithheld(items []Withheld, now time.Time) error {
 		return err
 	}
 	for _, w := range items {
-		if _, err := tx.Exec(`INSERT INTO trace_withheld(session,tag,key,target,kind,stage,tool,relevance,p_withhold,ts) VALUES(?,?,?,?,?,?,?,?,?,?)`,
-			w.Session, w.Tag, w.Key, w.Target, w.Kind, w.Stage, w.Tool, w.Relevance, w.PWithhold, now.Unix()); err != nil {
+		if _, err := tx.Exec(`INSERT INTO trace_withheld(session,tag,key,target,kind,stage,tool,relevance,p_withhold,ts,pos,slate,explored,feats) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			w.Session, w.Tag, w.Key, w.Target, w.Kind, w.Stage, w.Tool, w.Relevance, w.PWithhold, now.Unix(), w.Pos, w.Slate, b2i(w.Explored), w.Feats); err != nil {
 			tx.Rollback()
 			return err
 		}

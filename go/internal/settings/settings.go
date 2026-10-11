@@ -114,6 +114,16 @@ var Fields = map[string]Field{
 	// facts from a real store and held up leave-one-out (log loss 0.60 raw,
 	// 0.36 calibrated). "1,0" turns calibration off.
 	"decision_calibration": {"GRIMOIRE_DECISION_CALIBRATION", "1.837,-2.493"},
+	// The `cascade` experiment (see internal/cascade): a contested supersession
+	// is decided by a local Laya head at cascade_laya_url (a laya-serve model
+	// named cascade_laya_model), escalated to Jev (decision_url) only inside the
+	// uncertain band cascade_band on the calibrated probability. Empty URLs and
+	// no decision server mean "keep both". Calibrations are "a,b" Platt pairs.
+	"cascade_laya_url":         {"GRIMOIRE_CASCADE_LAYA_URL", ""},
+	"cascade_laya_model":       {"GRIMOIRE_CASCADE_LAYA_MODEL", "cascade"},
+	"cascade_laya_calibration": {"GRIMOIRE_CASCADE_LAYA_CALIBRATION", "1,0"},
+	"cascade_jev_calibration":  {"GRIMOIRE_CASCADE_JEV_CALIBRATION", "1.876,-0.304"},
+	"cascade_band":             {"GRIMOIRE_CASCADE_BAND", "0.05,0.65"},
 	// Re-tell judge: a typed-decision model asked whether a prompt restates a
 	// memory on file, so the prompt before it can be learned as that memory's
 	// cue (docs/MEMORY_USE.md). Off when retell_url is empty. The key falls back
@@ -184,6 +194,10 @@ var Fields = map[string]Field{
 	// estimate is attempted.
 	"memory_holdout_rate":  {"GRIMOIRE_MEMORY_HOLDOUT_RATE", "0"},
 	"memory_trace_min_arm": {"GRIMOIRE_MEMORY_TRACE_MIN_ARM", "10"},
+	// Experiment ips (docs/lab/ips.md): the share of injection slates whose order
+	// is shuffled, so position bias can be estimated. Only read under the ips
+	// experiment flag; 0 (the default) never shuffles.
+	"memory_position_explore": {"GRIMOIRE_MEMORY_POSITION_EXPLORE", "0"},
 	// Memory replay (docs/MEMORY_REPLAY.md): context requests are kept as
 	// situations, and automated memory edits are replayed against them first.
 	// replay_log=0 stops recording; replay_gate=0 stops holding changes (the

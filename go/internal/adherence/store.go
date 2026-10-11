@@ -128,6 +128,11 @@ type Injection struct {
 	Tool, Pend string
 	TU         string
 	Ask        bool
+	// Exposure fields for the ranking learner (ips.go). Zero means not logged.
+	Pos      int
+	Slate    string
+	Explored bool
+	Feats    string
 }
 
 // Tags returns the shortest hex prefix of each key (at least min characters)
@@ -191,9 +196,9 @@ func (s *Store) Log(items []Injection, now time.Time) error {
 		if !it.FPKnown {
 			it.FPN = -1
 		}
-		if _, err := tx.Exec(`INSERT INTO injections(session,tag,key,target,path,fact_id,stage,relevance,ts,fp_n,kind,p_withhold,tool,pend,tu,ask) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		if _, err := tx.Exec(`INSERT INTO injections(session,tag,key,target,path,fact_id,stage,relevance,ts,fp_n,kind,p_withhold,tool,pend,tu,ask,pos,slate,explored,feats) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 			it.Session, it.Tag, it.Key, it.Target, it.Path, it.FactID, it.Stage, it.Relevance, now.Unix(), it.FPN,
-			it.Kind, it.PWithhold, it.Tool, it.Pend, it.TU, b2i(it.Ask)); err != nil {
+			it.Kind, it.PWithhold, it.Tool, it.Pend, it.TU, b2i(it.Ask), it.Pos, it.Slate, b2i(it.Explored), it.Feats); err != nil {
 			tx.Rollback()
 			return err
 		}
