@@ -70,6 +70,15 @@ type Entry struct {
 	// MEMORY-PRIVACY.md: this is a retrieval filter, not an owner boundary.
 	Visibility string
 
+	// Owner, Sealed and KeyID exist only on a vis=sealed fact (see seal.go in
+	// internal/seal and MEMORY-SEAL.md). Owner is the account that may read the
+	// text back. Sealed is the fact's ciphertext, a Fernet token under a
+	// per-fact data key. KeyID names that data key in the vault's key store.
+	// The bullet's own Text is SealedPlaceholder, never the fact.
+	Owner  string
+	Sealed string
+	KeyID  string
+
 	// Challenges is the ID of an entry this fact contradicts but was not
 	// allowed to supersede, because that entry outranks this one's writer. It
 	// rides in the bullet like everything else, so an open disagreement is
@@ -333,7 +342,17 @@ func (e Entry) idMatchesContent() bool {
 			base = base[:i]
 		}
 	}
-	return base == DeriveID(e.Stamp, e.Agent, e.Text)
+	return base == DeriveID(e.Stamp, e.Agent, e.idContent())
+}
+
+// idContent is what the id is a hash of. A sealed fact's text is a placeholder,
+// so its id is over the ciphertext instead: hashing the plaintext of a short
+// fact would hand anyone who can read the note a guessable hash of it.
+func (e Entry) idContent() string {
+	if e.Sealed != "" {
+		return e.Sealed
+	}
+	return e.Text
 }
 
 func parseTrailer(s string) Entry {
@@ -401,6 +420,12 @@ func parseTrailer(s string) Entry {
 			e.Image = v
 		case "capb":
 			e.CaptionBasis = v
+		case "owner":
+			e.Owner = v
+		case "key":
+			e.KeyID = v
+		case "sealed":
+			e.Sealed = v
 		case "vol":
 			if f, err := strconv.ParseFloat(v, 64); err == nil && f > 0 && f <= 1 {
 				e.Vol = f
@@ -467,7 +492,7 @@ func (e Entry) trailer() string {
 	if e.Importance >= MinImportance && e.Importance <= MaxImportance {
 		fields = append(fields, "imp="+strconv.Itoa(e.Importance))
 	}
-	if e.Visibility == VisPrivate || e.Visibility == VisSensitive {
+	if e.Visibility == VisPrivate || e.Visibility == VisSensitive || e.Visibility == VisSealed {
 		fields = append(fields, "vis="+e.Visibility)
 	}
 	if e.Human || e.HandWritten {
@@ -528,6 +553,17 @@ func (e Entry) trailer() string {
 	if e.CaptionBasis != "" {
 		fields = append(fields, "capb="+escapeField(e.CaptionBasis))
 	}
+	// Sealed fields come last, for the same reason as img and capb: every
+	// bullet written before sealing formats byte-identically.
+	if e.Owner != "" {
+		fields = append(fields, "owner="+escapeField(e.Owner))
+	}
+	if e.KeyID != "" {
+		fields = append(fields, "key="+escapeField(e.KeyID))
+	}
+	if e.Sealed != "" {
+		fields = append(fields, "sealed="+escapeField(e.Sealed))
+	}
 	return " <!--m " + strings.Join(fields, " ") + "-->"
 }
 
@@ -563,7 +599,16 @@ const (
 	VisNormal    = "normal"
 	VisPrivate   = "private"
 	VisSensitive = "sensitive"
+	// VisSealed hides the fact like VisPrivate, but the text is not in the
+	// note at all: it is encrypted under a per-fact key, and only Owner may
+	// read it back. See MEMORY-SEAL.md.
+	VisSealed = "sealed"
 )
+
+// SealedPlaceholder is the text a sealed bullet carries in place of the fact.
+// It is what every reader except the owner sees, and it is all the index ever
+// holds for the fact.
+const SealedPlaceholder = "[sealed]"
 
 // parseVisibility reads a vis= value. Anything that is not normal, private or
 // sensitive is treated as private: a hand-edited typo must hide a fact, not
@@ -574,6 +619,8 @@ func parseVisibility(v string) string {
 		return ""
 	case VisSensitive:
 		return VisSensitive
+	case VisSealed:
+		return VisSealed
 	default:
 		return VisPrivate
 	}
@@ -589,17 +636,21 @@ func NormVisibility(v string) (string, error) {
 		return VisPrivate, nil
 	case VisSensitive:
 		return VisSensitive, nil
+	case VisSealed:
+		return VisSealed, nil
 	}
 	return "", fmt.Errorf("visibility must be normal, private or sensitive")
 }
 
 // Hidden reports whether default reads must leave this fact out: private and
 // sensitive facts are both hidden, and differ only in redaction.
-func (e Entry) Hidden() bool { return e.Visibility == VisPrivate || e.Visibility == VisSensitive }
+func (e Entry) Hidden() bool {
+	return e.Visibility == VisPrivate || e.Visibility == VisSensitive || e.Visibility == VisSealed
+}
 
 // Redacted reports whether this fact's text must not appear in an explanation
 // or a receipt, even to a caller that asked for hidden facts.
-func (e Entry) Redacted() bool { return e.Visibility == VisSensitive }
+func (e Entry) Redacted() bool { return e.Visibility == VisSensitive || e.Visibility == VisSealed }
 
 // RedactedText stands in for the text of a sensitive fact.
 const RedactedText = "[redacted: sensitive]"
