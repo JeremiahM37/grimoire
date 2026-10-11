@@ -1,0 +1,40 @@
+{"qid": "c0q37", "kind": "wrong", "answer": "A still life of flowers in a vase.", "judge": false, "checker": false, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c5q87", "kind": "wrong", "answer": "About three hours.", "judge": false, "checker": false, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c8q5", "kind": "wrong", "answer": "He visited the United States in May 2023.", "judge": false, "checker": false, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c6q85", "kind": "wrong", "answer": "Daisy is a golden retriever mix.", "judge": false, "checker": false, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c4q100", "kind": "wrong", "answer": "Three years.", "judge": false, "checker": false, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c8q79", "kind": "wrong", "answer": "February 2023.", "judge": false, "checker": false, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c2q103", "kind": "wrong", "answer": "Buddy.", "judge": false, "checker": false, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c5q32", "kind": "wrong", "answer": "A small tattoo of a bird.", "judge": false, "checker": false, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c5q95", "kind": "wrong", "answer": "Roses.", "judge": false, "checker": false, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c9q127", "kind": "wrong", "answer": "Shibuya.", "judge": false, "checker": false, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c2q111", "kind": "wrong", "answer": "Hatha yoga.", "judge": false, "checker": false, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c3q96", "kind": "wrong", "answer": "Romantic comedies and musicals.", "judge": false, "checker": false, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c7q43", "kind": "wrong", "answer": "Last week of April, 2023.", "judge": false, "checker": false, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c9q16", "kind": "wrong", "answer": "June 2023.", "judge": false, "checker": false, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c8q17", "kind": "wrong", "answer": "Monday before 27 July 2023.", "judge": false, "checker": false, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c4q117", "kind": "wrong", "answer": "Winning championships.", "judge": false, "checker": false, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c0q151", "kind": "wrong", "answer": "Went to the beach.", "judge": false, "checker": false, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c3q60", "kind": "wrong", "answer": "A PlayStation 5.", "judge": false, "checker": false, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c2q57", "kind": "wrong", "answer": "Toy drive, environmental cleanup and animal shelters.", "judge": false, "checker": false, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c3q97", "kind": "wrong", "answer": "A novel.", "judge": false, "checker": false, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c6q122", "kind": "wrong", "answer": "$15.", "judge": false, "checker": false, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c7q81", "kind": "wrong", "answer": "In November 2023.", "judge": false, "checker": false, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c2q53", "kind": "wrong", "answer": "2021.", "judge": false, "checker": false, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c0q59", "kind": "wrong", "answer": "Yes, very religious.", "judge": false, "checker": false, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c5q76", "kind": "wrong", "answer": "About thirty minutes.", "judge": false, "checker": false, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c1q76", "kind": "wrong", "answer": "Anxiety about the event.", "judge": false, "checker": false, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c4q151", "kind": "wrong", "answer": "Their upcoming vacation plans.", "judge": false, "checker": false, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c8q155", "kind": "wrong", "answer": "Exhausting and dangerous.", "judge": false, "checker": false, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c3q180", "kind": "wrong", "answer": "Only leafy greens.", "judge": false, "checker": false, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c5q15", "kind": "wrong", "answer": "Vet bills are too high.", "judge": false, "checker": false, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c0q37", "kind": "paraphrase", "answer": "A sunset painting.", "judge": true, "checker": true, "raw": "{\"correct\": true}", "error": null}
+{"qid": "c5q87", "kind": "paraphrase", "answer": "It took around two hours.", "judge": true, "checker": true, "raw": "{\"correct\": true}", "error": null}
+{"qid": "c6q85", "kind": "paraphrase", "answer": "She's a Labrador.", "judge": true, "checker": true, "raw": "{\"correct\": true}", "error": null}
+{"qid": "c2q103", "kind": "paraphrase", "answer": "It was Max, I think.", "judge": false, "checker": true, "raw": "{\"correct\": false}", "error": null}
+{"qid": "c5q95", "kind": "paraphrase", "answer": "Peruvian lilies, she tends them.", "judge": true, "checker": true, "raw": "{\"correct\": true}", "error": null}
+{"qid": "c9q16", "kind": "paraphrase", "answer": "In July 2023.", "judge": true, "checker": true, "raw": "{\"correct\": true}", "error": null}
+{"qid": "c3q60", "kind": "paraphrase", "answer": "He has a Nintendo Switch.", "judge": true, "checker": true, "raw": "{\"correct\": true}", "error": null}
+{"qid": "c6q122", "kind": "paraphrase", "answer": "$10 per class.", "judge": true, "checker": true, "raw": "{\"correct\": true}", "error": null}
+{"qid": "c2q53", "kind": "paraphrase", "answer": "In 2022.", "judge": true, "checker": true, "raw": "{\"correct\": true}", "error": null}
+{"qid": "c8q155", "kind": "paraphrase", "answer": "He calls it peaceful.", "judge": true, "checker": true, "raw": "{\"correct\": true}", "error": null}
