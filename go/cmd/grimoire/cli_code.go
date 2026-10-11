@@ -100,13 +100,17 @@ func cmdCode(args []string) int {
 			fmt.Println("no indexed call to that name")
 			return 0
 		}
-		fmt.Println("matched by name, not resolved: treat as leads to check")
+		fmt.Println("matched by name; confidence says how each call was resolved (resolved, heuristic, unresolved)")
 		for _, cl := range out.Callers {
 			from := cl.Caller
 			if from == "" {
 				from = "(package level)"
 			}
-			fmt.Printf("%s\t%s:%d\n", from, filepath.Join(cl.Root, cl.Path), cl.Line)
+			conf := cl.Confidence
+			if conf == "" {
+				conf = "unknown"
+			}
+			fmt.Printf("%s\t%s\t%s:%d\n", from, conf, filepath.Join(cl.Root, cl.Path), cl.Line)
 		}
 		return 0
 

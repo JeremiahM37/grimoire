@@ -141,7 +141,7 @@ const usage = `grimoire — local-first AI-native notes
   grimoire ground prepare|timeline|answer   grounded answers: time annotation, timeline, gather/answer/check
   grimoire code index PATH            index a repository's symbols and calls (admin token)
   grimoire code symbol NAME [--kind K] [--root R]   where a name is defined
-  grimoire code callers NAME          call sites by name (approximate, not resolved)
+  grimoire code callers NAME          call sites by name, or pkg#Name for resolved calls only
   grimoire code outline FILE          what one source file declares and imports
   grimoire completion bash|zsh|fish   print a completion script for subcommand names
                                       e.g. source <(grimoire completion zsh)

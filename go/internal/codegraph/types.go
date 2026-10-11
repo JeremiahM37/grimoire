@@ -54,17 +54,38 @@ func (s Symbol) Qualified() string {
 	return s.Scope + "." + s.Name
 }
 
+// Confidence labels how a call edge was resolved to Target.
+//
+//   - resolved: the target was established by type information (Go) or by a
+//     lexical rule that cannot be wrong about the declaration (self/this of an
+//     enclosing class that defines the method).
+//   - heuristic: the target is the likely one, from a name in this file or an
+//     import, but shadowing or dynamic dispatch could make it another.
+//   - unresolved: no target was established. Target is then empty, or names an
+//     external package (importpath.Name) that is not in the repository.
+const (
+	ConfResolved   = "resolved"
+	ConfHeuristic  = "heuristic"
+	ConfUnresolved = "unresolved"
+)
+
 // Edge is one reference from a file. For a call, Caller is the qualified name
 // of the enclosing function (empty for a call at package level) and Callee is
 // the called identifier with Qual the identifier it was selected from
-// (`pkg` in pkg.Save(), empty for a bare Save()). For an import, Callee is the
-// import path (or module specifier), and Qual is the local alias if any.
+// (`pkg` in pkg.Save(), empty for a bare Save()). Target is the declaration the
+// call reaches, written as "<file or package dir>#<Qualified>" for one in the
+// repository (Go uses the package directory, so "#Save" is the root package),
+// or as "<module>.<Name>" for a name outside it; Confidence says which. For an
+// import, Callee is the import path (or module specifier), and Qual is the
+// local alias if any; imports carry no Target or Confidence.
 type Edge struct {
-	Kind   string `json:"kind"`
-	Line   int    `json:"line"`
-	Caller string `json:"caller,omitempty"`
-	Callee string `json:"callee"`
-	Qual   string `json:"qual,omitempty"`
+	Kind       string `json:"kind"`
+	Line       int    `json:"line"`
+	Caller     string `json:"caller,omitempty"`
+	Callee     string `json:"callee"`
+	Qual       string `json:"qual,omitempty"`
+	Target     string `json:"target,omitempty"`
+	Confidence string `json:"confidence,omitempty"`
 }
 
 // FileGraph is everything extracted from one source file.
@@ -105,9 +126,9 @@ func Extract(name string, src []byte) (FileGraph, error) {
 	case LangGo:
 		return extractGo(name, src)
 	case LangPython:
-		return extractPython(src), nil
+		return extractPython(name, src), nil
 	case LangTypeScript, LangJavaScript:
-		return extractScript(LangFor(name), src), nil
+		return extractScript(name, LangFor(name), src), nil
 	}
 	return FileGraph{}, errUnsupported
 }

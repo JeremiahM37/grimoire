@@ -177,7 +177,7 @@ func (s *Server) codeCallers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"callers": calls, "count": len(calls),
-		"note": "matched by name; calls are not resolved to a target, so this is approximate"})
+		"note": "a bare name matches every call to it, so the answer is approximate; each call carries a confidence (resolved, heuristic or unresolved), and a target such as pkg#Name matches only the calls that resolved to that declaration"})
 }
 
 func (s *Server) codeOutline(w http.ResponseWriter, r *http.Request) {

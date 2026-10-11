@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 
@@ -34,7 +35,7 @@ func NewStore(database *db.DB) *Store { return &Store{DB: database} }
 type Stats struct {
 	Root      string `json:"root"`
 	Files     int    `json:"files"`     // source files found
-	Indexed   int    `json:"indexed"`   // parsed because new or changed
+	Indexed   int    `json:"indexed"`   // written: new, changed, or a Go sibling of a change
 	Unchanged int    `json:"unchanged"` // hash matched; not re-parsed
 	Removed   int    `json:"removed"`   // were indexed, now gone
 	Failed    int    `json:"failed"`    // could not be read or parsed
@@ -51,6 +52,12 @@ type Stats struct {
 // skipped without being parsed, and a file that has disappeared has its rows
 // removed. Each changed file is written in its own transaction under the index
 // write lock, so a large repository does not hold the lock for its whole run.
+//
+// Go is the exception to per-file skipping. Its calls resolve against the other
+// files of the same package directory, so when any Go file in a directory
+// changes, or one is removed, every Go file in that directory is re-resolved
+// together. Files in other directories are left alone. Stats.Indexed counts the
+// files written this run, which includes such siblings.
 func (s *Store) Index(root string) (Stats, error) {
 	s.runMu.Lock()
 	defer s.runMu.Unlock()
@@ -78,9 +85,23 @@ func (s *Store) Index(root string) (Stats, error) {
 	st.TooLarge = tooLarge
 	st.Files = len(files)
 
+	// Call edges written before they carried a confidence cannot be trusted
+	// until their files are parsed again, and their files would otherwise be
+	// skipped as unchanged. So one run after an upgrade re-parses everything.
+	stale, err := s.staleCallEdges(root)
+	if err != nil {
+		return st, err
+	}
+
 	seen := make(map[string]bool, len(files))
+	goFiles := map[string][]walkResult{} // Go files by directory
+	goSame := map[string]bool{}          // Go files whose hash matched
+	dirty := map[string]bool{}           // directories whose Go files must be re-resolved
 	for _, f := range files {
 		seen[f.rel] = true
+		if f.lang == LangGo {
+			goFiles[path.Dir(f.rel)] = append(goFiles[path.Dir(f.rel)], f)
+		}
 		src, err := os.ReadFile(f.abs)
 		if err != nil {
 			st.Failed++
@@ -92,8 +113,15 @@ func (s *Store) Index(root string) (Stats, error) {
 		}
 		sum := sha256.Sum256(src)
 		hash := hex.EncodeToString(sum[:])
-		if old, ok := existing[f.rel]; ok && old == hash {
+		if old, ok := existing[f.rel]; ok && old == hash && !stale {
 			st.Unchanged++
+			if f.lang == LangGo {
+				goSame[f.rel] = true
+			}
+			continue
+		}
+		if f.lang == LangGo {
+			dirty[path.Dir(f.rel)] = true
 			continue
 		}
 		fg, err := Extract(f.rel, src)
@@ -118,6 +146,20 @@ func (s *Store) Index(root string) (Stats, error) {
 			return st, err
 		}
 		st.Removed++
+		if LangFor(rel) == LangGo {
+			dirty[path.Dir(rel)] = true
+		}
+	}
+
+	dirs := make([]string, 0, len(dirty))
+	for d := range dirty {
+		dirs = append(dirs, d)
+	}
+	sort.Strings(dirs)
+	for _, d := range dirs {
+		if err := s.indexGoDir(root, goFiles[d], goSame, &st); err != nil {
+			return st, err
+		}
 	}
 
 	if err := s.DB.Conn().QueryRow(
@@ -126,6 +168,55 @@ func (s *Store) Index(root string) (Stats, error) {
 		return st, err
 	}
 	return st, nil
+}
+
+// indexGoDir reads every Go file of one directory and extracts them together,
+// so that calls resolve across the files of the package. A file that cannot be
+// read was already recorded as failed by Index and is left out here.
+func (s *Store) indexGoDir(root string, files []walkResult, same map[string]bool, st *Stats) error {
+	var srcs []goSource
+	hashes := map[string]string{}
+	for _, f := range files {
+		src, err := os.ReadFile(f.abs)
+		if err != nil {
+			continue
+		}
+		sum := sha256.Sum256(src)
+		hashes[f.rel] = hex.EncodeToString(sum[:])
+		srcs = append(srcs, goSource{rel: f.rel, src: src})
+	}
+	if len(srcs) == 0 {
+		return nil
+	}
+	dir := path.Dir(srcs[0].rel)
+	results := extractGoDir(dir, srcs)
+	for _, src := range srcs {
+		res := results[src.rel]
+		if same[src.rel] {
+			st.Unchanged--
+		}
+		if res.err != nil {
+			st.Failed++
+			if err := s.write(root, src.rel, hashes[src.rel], LangGo, res.err.Error(), FileGraph{}); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := s.write(root, src.rel, hashes[src.rel], LangGo, "", res.g); err != nil {
+			return err
+		}
+		st.Indexed++
+	}
+	return nil
+}
+
+// staleCallEdges reports whether any call edge under root was written before
+// edges carried a confidence.
+func (s *Store) staleCallEdges(root string) (bool, error) {
+	var n int
+	err := s.DB.Conn().QueryRow(
+		"SELECT EXISTS(SELECT 1 FROM code_edges WHERE root=? AND kind='call' AND confidence='')", root).Scan(&n)
+	return n == 1, err
 }
 
 // hashes returns the stored content hash of every indexed file under root.
@@ -171,8 +262,8 @@ func (s *Store) write(root, rel, hash, lang, errMsg string, fg FileGraph) error 
 		}
 	}
 	for _, e := range fg.Edges {
-		if _, err := tx.Exec(`INSERT INTO code_edges(root, path, line, kind, caller, callee, qual)
-			VALUES(?,?,?,?,?,?,?)`, root, rel, e.Line, e.Kind, e.Caller, e.Callee, e.Qual); err != nil {
+		if _, err := tx.Exec(`INSERT INTO code_edges(root, path, line, kind, caller, callee, qual, target, confidence)
+			VALUES(?,?,?,?,?,?,?,?,?)`, root, rel, e.Line, e.Kind, e.Caller, e.Callee, e.Qual, e.Target, e.Confidence); err != nil {
 			return err
 		}
 	}
@@ -254,31 +345,36 @@ func (s *Store) Symbols(name, kind, root string, limit int) ([]Hit, error) {
 
 // Caller is one call site.
 type Caller struct {
-	Root   string `json:"root"`
-	Path   string `json:"path"`
-	Line   int    `json:"line"`
-	Caller string `json:"caller,omitempty"`
-	Callee string `json:"callee"`
-	Qual   string `json:"qual,omitempty"`
+	Root       string `json:"root"`
+	Path       string `json:"path"`
+	Line       int    `json:"line"`
+	Caller     string `json:"caller,omitempty"`
+	Callee     string `json:"callee"`
+	Qual       string `json:"qual,omitempty"`
+	Target     string `json:"target,omitempty"`
+	Confidence string `json:"confidence"`
 }
 
-// Callers finds call sites of a name. The match is by name, not by resolved
-// target: "Save" finds every call to something called Save on any type. A
-// dotted name "pkg.Save" narrows to calls written as pkg.Save(). Method calls
-// on a variable (x.Save()) are recorded with the variable as the qualifier, so
-// a type-qualified query such as "Store.Save" does not find them. Use the bare
-// name for the broadest answer.
+// Callers finds call sites of a name. A bare name ("Save") matches every call
+// to something called Save, whatever it resolved to. A dotted name ("Store.Save")
+// matches calls written through that qualifier, and calls whose resolved target
+// is that declaration. A name with a "#" is a target exactly as Edge.Target
+// spells it ("store#Save", "internal/x#Store.Save"), which is the precise form:
+// it finds only the calls that resolved to that one declaration.
 func (s *Store) Callers(name string, limit int) ([]Caller, error) {
-	callee, qual := name, ""
-	if i := strings.LastIndex(name, "."); i >= 0 {
-		qual, callee = name[:i], name[i+1:]
-	}
-	q := `SELECT root, path, line, caller, callee, qual FROM code_edges
-		WHERE kind = 'call' AND callee = ?`
-	args := []any{callee}
-	if qual != "" {
-		q += " AND qual = ?"
-		args = append(args, qual)
+	q := `SELECT root, path, line, caller, callee, qual, target, confidence FROM code_edges WHERE kind = 'call' AND `
+	var args []any
+	switch {
+	case strings.Contains(name, "#"):
+		q += "target = ?"
+		args = append(args, name)
+	case strings.Contains(name, "."):
+		i := strings.LastIndex(name, ".")
+		q += `((callee = ? AND qual = ?) OR (instr(target, '#') > 0 AND substr(target, instr(target, '#') + 1) = ?))`
+		args = append(args, name[i+1:], name[:i], name)
+	default:
+		q += "callee = ?"
+		args = append(args, name)
 	}
 	q += " ORDER BY root, path, line LIMIT ?"
 	args = append(args, limit)
@@ -290,7 +386,7 @@ func (s *Store) Callers(name string, limit int) ([]Caller, error) {
 	out := []Caller{}
 	for rows.Next() {
 		var c Caller
-		if err := rows.Scan(&c.Root, &c.Path, &c.Line, &c.Caller, &c.Callee, &c.Qual); err != nil {
+		if err := rows.Scan(&c.Root, &c.Path, &c.Line, &c.Caller, &c.Callee, &c.Qual, &c.Target, &c.Confidence); err != nil {
 			return nil, err
 		}
 		out = append(out, c)
