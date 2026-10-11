@@ -42,3 +42,26 @@ act on; the dream lists memories that break them.
 The dream reports the same checks over the whole store as `memory_quality`
 findings (Info, capped at 30 per run). Nothing is rewritten or removed: the fix
 is a better `remember`, or editing the note.
+
+## What a write does when the slot holds more than one fact
+
+This is current behaviour, not the intended rule. It is an open finding (F4 in
+`docs/lab/oracle.md`), and no code changed for it.
+
+The intended rule is in `ARCHITECTURE.md` and `authority.go`: a write supersedes
+every live fact in its slot at its own rung or below, and is recorded alongside
+any live fact that outranks it. The store does not apply it to every contender.
+It decides on the first contender it reaches, so a slot with two or more live
+facts can end up in one of two shapes:
+
+- **Shape A.** An agent writes `6543`; a pulled source writes `6432`, recorded
+  as a challenger of the agent's fact; an agent then writes `5432`. The store
+  supersedes one fact, so the pulled `6432` stays believed beside `5432`.
+- **Shape B.** An agent writes `5432`; a pulled source writes `6432`, recorded as
+  a challenger of the agent's fact; a pulled source then writes `6543`. The store
+  supersedes the same-rung `6432` and never considers the agent's fact above it,
+  so `6543` is not recorded alongside `5432`.
+
+Until this is fixed, a fact that looks settled can have a live contender beside
+it. Check `GET /api/memory?q=...` for every live value in a slot, not only the
+first answer, before relying on a single value.
