@@ -44,11 +44,12 @@ func contextTerms(query string) []string {
 		ignored[term] = true
 	}
 	var terms []string
-	for _, term := range memory.Tokens(query) {
-		if len(term) < 3 || ignored[term] {
+	for _, raw := range memory.Tokens(query) {
+		if len(raw) < 3 || ignored[raw] {
 			continue
 		}
-		ignored[term] = true
+		ignored[raw] = true
+		term := memory.Stem(raw)
 		terms = append(terms, term)
 		if len(terms) == 24 {
 			break
@@ -62,7 +63,7 @@ func contextOverlap(terms []string, text string) float64 {
 		return 1
 	}
 	have := make(map[string]bool)
-	for _, term := range memory.Tokens(text) {
+	for _, term := range memory.StemTokens(text) {
 		have[term] = true
 	}
 	matched := 0

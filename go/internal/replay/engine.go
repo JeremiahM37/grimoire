@@ -170,11 +170,12 @@ func Terms(query string) []string {
 		ignored[w] = true
 	}
 	var terms []string
-	for _, term := range memory.Tokens(query) {
-		if len(term) < 3 || ignored[term] {
+	for _, raw := range memory.Tokens(query) {
+		if len(raw) < 3 || ignored[raw] {
 			continue
 		}
-		ignored[term] = true
+		ignored[raw] = true
+		term := memory.Stem(raw)
 		terms = append(terms, term)
 		if len(terms) == 24 {
 			break
@@ -185,7 +186,7 @@ func Terms(query string) []string {
 
 func termSet(text string) map[string]struct{} {
 	m := map[string]struct{}{}
-	for _, t := range memory.Tokens(text) {
+	for _, t := range memory.StemTokens(text) {
 		m[t] = struct{}{}
 	}
 	return m
