@@ -245,6 +245,9 @@ func (ix *Index) writeMemoryRowsInner(note *vault.Note) error {
 	if err := ix.deleteMemoryRows(note.Path); err != nil {
 		return err
 	}
+	if err := ix.cloneDeleteRows(note.Path); err != nil {
+		return err
+	}
 	if !IsMemoryPath(note.Path) || note.Encrypted {
 		// Never mine facts out of ciphertext: the whole point of an encrypted
 		// note is that the index cannot read it.
@@ -331,6 +334,9 @@ func (ix *Index) writeMemoryRowsInner(note *vault.Note) error {
 				return err
 			}
 		}
+	}
+	if err := ix.cloneWriteRows(note.Path, entries); err != nil {
+		return err
 	}
 	return ix.aliasWriteRows(note.Path, entries)
 }
@@ -844,6 +850,7 @@ func (ix *Index) rankMemory(cands []memoryRow, q MemoryQuery) []MemoryHit {
 	actr := ix.actrTraces(cands)  // nil unless the "actr" experiment is on
 	lw := ix.learnedRankWeights() // nil unless the ips experiment has stored weights
 	heads := ix.candidateHeaders(cands)
+	clones := ix.cloneAliasesFor() // nil unless the clone flag is on
 
 	out := make([]MemoryHit, 0, len(cands))
 	for _, c := range cands {
@@ -856,6 +863,9 @@ func (ix *Index) rankMemory(cands []memoryRow, q MemoryQuery) []MemoryHit {
 			kwText = withHeader(hd, kwText)
 		}
 		h.Keyword = keywordScore(qTokens, kwText, idf)
+		if clones != nil {
+			applyCloneAliases(&h, clones[k], qVec, qNorm, qTokens, idf)
+		}
 		h.Entity = memory.EntityOverlap(qEntities, ents[k])
 		if l, ok := links[k]; ok {
 			// A link is credit for a name the fact does not spell out. It is

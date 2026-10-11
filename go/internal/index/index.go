@@ -79,6 +79,8 @@ type Index struct {
 	resolverFields
 	// the short forms awaiting alias re-resolution; see memory_alias.go
 	aliasFields
+	// the write-time alias texts behind the clone flag; see memory_clone.go
+	cloneFields
 }
 
 func New(database *db.DB, v *vault.Vault, e Embedder) *Index {
@@ -109,6 +111,9 @@ func (ix *Index) Reindex() (int, error) {
 	// Patching per note would cost more than the one rebuild this replaces.
 	defer ix.endBulk()
 	ix.beginBulk()
+	if err := ix.cloneBeginReindex(); err != nil {
+		return 0, err
+	}
 
 	// Bump before the deletes, not only inside writeNoteRows. A rebuild that
 	// ends up writing no notes — an emptied or moved vault — would otherwise
@@ -151,6 +156,9 @@ func (ix *Index) Reindex() (int, error) {
 		return n, err
 	}
 	if err := ix.refreshCapture(); err != nil {
+		return n, err
+	}
+	if err := ix.cloneEndReindex(); err != nil {
 		return n, err
 	}
 	if err := ix.setMeta(aliasTablesKey, aliasTablesVersion); err != nil {
