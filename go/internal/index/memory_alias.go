@@ -481,3 +481,67 @@ func anys(xs []string) []any {
 	}
 	return out
 }
+
+// aliasTablesKey records that the alias tables were built for this index, and
+// under which rules. Bump aliasTablesVersion when extraction or resolution
+// changes in a way that makes stored links wrong; the next sync rebuilds them.
+const (
+	aliasTablesKey     = "alias_tables"
+	aliasTablesVersion = "1"
+)
+
+// aliasBackfill builds the alias tables from the memory rows the index already
+// holds, once, when they have never been built or were built under older
+// rules. It reads no note and embeds nothing: the tables are a function of
+// each fact's text, session and stamp, all of which are in memory_entries. The
+// caller holds the write lock.
+func (ix *Index) aliasBackfill() error {
+	have, err := ix.meta(aliasTablesKey)
+	if err != nil {
+		return err
+	}
+	if have == aliasTablesVersion {
+		return nil
+	}
+	for _, tbl := range []string{"memory_mentions", "memory_alias_src", "memory_links"} {
+		if err := ix.DB.Exec("DELETE FROM " + tbl); err != nil {
+			return err
+		}
+	}
+	rows, err := ix.DB.Query("SELECT note,id,text,session,stamp FROM memory_entries ORDER BY note, line")
+	if err != nil {
+		return err
+	}
+	type noteFacts struct {
+		rel     string
+		entries []memory.Entry
+	}
+	var notes []noteFacts
+	for rows.Next() {
+		var rel string
+		var e memory.Entry
+		if err := rows.Scan(&rel, &e.ID, &e.Text, &e.Session, &e.Stamp); err != nil {
+			rows.Close()
+			return err
+		}
+		if n := len(notes); n == 0 || notes[n-1].rel != rel {
+			notes = append(notes, noteFacts{rel: rel})
+		}
+		notes[len(notes)-1].entries = append(notes[len(notes)-1].entries, e)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
+	// The database is one connection: the read is closed before any write.
+	rows.Close()
+	for _, n := range notes {
+		if err := ix.aliasWriteRows(n.rel, n.entries); err != nil {
+			return err
+		}
+	}
+	if err := ix.flushAliases(); err != nil {
+		return err
+	}
+	return ix.setMeta(aliasTablesKey, aliasTablesVersion)
+}

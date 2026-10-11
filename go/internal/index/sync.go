@@ -29,7 +29,7 @@ import (
 
 // indexSchemaVersion is bumped when the shape of an indexed row changes in a
 // way that makes existing rows unusable.
-const indexSchemaVersion = "2"
+const indexSchemaVersion = "1"
 
 // SyncStats reports what a sync did, for the startup log and for tests that
 // need to assert the fast path was actually taken.
@@ -107,6 +107,13 @@ func (ix *Index) Sync() (SyncStats, error) {
 	// end beats patching per note.
 	defer ix.endBulk()
 	ix.beginBulk()
+
+	// An index built before alias links existed has no alias rows. They derive
+	// from memory rows already in the database, so they are filled in here
+	// rather than by a full rebuild, which would re-embed every note.
+	if err := ix.aliasBackfill(); err != nil {
+		return stats, err
+	}
 
 	changed := false
 	for _, rel := range rels {

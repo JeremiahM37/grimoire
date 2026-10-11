@@ -101,6 +101,11 @@ func FullMentions(text string) []Mention {
 	}
 	lower := strings.ToLower(text)
 	for _, m := range serviceRE.FindAllStringSubmatch(lower, -1) {
+		if looksLikeYear(m[2]) {
+			// "windows-wipe-2026" and "sprint-2025" are dated slugs, not numbered
+			// instances of a service, and their stems are ordinary words.
+			continue
+		}
 		keys := []string{m[1]}
 		if i := strings.IndexByte(m[1], '-'); i > 0 {
 			keys = append(keys, m[1][:i])
@@ -335,4 +340,9 @@ func nearStamp(a, b time.Time) bool {
 // LinkScore is what a link adds to a query's entity score.
 func LinkScore(conf float64) float64 {
 	return conf * LinkCeiling
+}
+
+// looksLikeYear reports whether a numeric suffix reads as a calendar year.
+func looksLikeYear(digits string) bool {
+	return len(digits) == 4 && (strings.HasPrefix(digits, "19") || strings.HasPrefix(digits, "20"))
 }

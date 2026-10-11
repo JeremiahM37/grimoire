@@ -150,8 +150,9 @@ added or removed, and the forms its facts use that the table already knows.
 The flush re-resolves only the facts containing a dirty form, and writes only
 the links that changed. A full reindex defers the flush to one pass at the end.
 Deleting or rewriting the note that established an alias removes the links that
-depended on it. The index schema version is bumped to `2`, which forces one full
-rebuild on upgrade. Writes for one note go in one transaction; per-statement
+depended on it. An index built before alias links existed is upgraded by a
+one-time backfill from the memory rows it already holds (no note is re-read and
+nothing is re-embedded), tracked by an `alias_tables` marker. Writes for one note go in one transaction; per-statement
 commits were the largest cost found (see Measurements).
 
 The entity arm of candidate generation also includes facts linked to a name the
@@ -279,3 +280,19 @@ worktree venv linked to the main checkout's venv for the lint step).
 - Latency numbers are from a shared machine with varying load.
 - No held-out split was needed because no parameter was tuned on the benchmark.
   The one weight was set from the vector invariant and reported in full.
+
+### On a real vault
+
+The synthetic corpus writes people as "First M. Last" and services as
+`name-NN`. Real notes mostly do not. On the author's own vault (1,968 notes,
+365 memory facts) the upgrade ran as a 0.5 second backfill with no rebuild, and
+found three full-name mentions (run ids such as `run-102`) and **no links**.
+An earlier build linked eight facts through a false entity, `windows-wipe-2026`,
+a slug ending in a year; year suffixes are now excluded and a test pins it.
+
+So this is a mechanism that is correct and measured on a corpus shaped to
+exercise it, with no demonstrated benefit on real data yet. Widening what counts
+as a full name (two-word names with no initial, product names, host labels)
+is what would make it matter in practice, and each widening needs a false-link
+measurement on real notes before it ships.
+

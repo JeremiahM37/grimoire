@@ -150,6 +150,9 @@ func (ix *Index) Reindex() (int, error) {
 	if err := ix.flushAliases(); err != nil {
 		return n, err
 	}
+	if err := ix.setMeta(aliasTablesKey, aliasTablesVersion); err != nil {
+		return n, err
+	}
 	return n, nil
 }
 

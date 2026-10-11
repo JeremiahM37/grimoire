@@ -231,3 +231,54 @@ func TestIncrementalLinksEqualARebuild(t *testing.T) {
 		t.Errorf("incremental links differ from a rebuild:\n incremental %v\n rebuilt     %v", incremental, rebuilt)
 	}
 }
+
+// An index built before alias links existed is upgraded by filling the alias
+// tables from the memory rows it already holds. It must reach the same links
+// as a rebuild, and it must not be a rebuild: that would re-embed every note.
+func TestAliasTablesAreBackfilledWithoutAFullRebuild(t *testing.T) {
+	ix := testIndex(t)
+	memNote(t, ix, "memory/a.md",
+		sessEntry("alias1", "s1", "2026-08-01 09:00", "Priya prefers tabs over spaces"),
+		sessEntry("svc", "s3", "2026-08-03 09:00", "gamarr listens on port 5057"))
+	memNote(t, ix, "memory/b.md",
+		sessEntry("full1", "s1", "2026-08-04 09:00", "Priya N. Schmidt owns the release checklist"),
+		sessEntry("full2", "s3", "2026-08-05 09:00", "gamarr-191 listens on port 5057"))
+	if _, err := ix.Reindex(); err != nil {
+		t.Fatal(err)
+	}
+	if err := ix.RecordSignature(); err != nil {
+		t.Fatal(err)
+	}
+	want := linkSnapshot(t, ix)
+	if len(want) == 0 {
+		t.Fatal("scenario produced no links; the comparison would prove nothing")
+	}
+
+	// Make it look like an index from before alias links: no rows, no marker.
+	for _, q := range []string{"DELETE FROM memory_mentions", "DELETE FROM memory_alias_src",
+		"DELETE FROM memory_links", "DELETE FROM meta WHERE key='" + aliasTablesKey + "'"} {
+		if err := ix.DB.Exec(q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	stats, err := ix.Sync()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.FullRebuild {
+		t.Fatal("the upgrade ran a full rebuild")
+	}
+	if got := linkSnapshot(t, ix); !reflect.DeepEqual(got, want) {
+		t.Errorf("backfilled links differ from a rebuild:\n backfill %v\n rebuild  %v", got, want)
+	}
+	// A second sync has nothing to do.
+	if err := ix.DB.Exec("DELETE FROM memory_links"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ix.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	if n := len(linkSnapshot(t, ix)); n != 0 {
+		t.Errorf("a second sync rebuilt the alias tables again (%d links)", n)
+	}
+}

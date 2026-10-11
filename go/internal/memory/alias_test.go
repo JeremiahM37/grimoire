@@ -233,3 +233,18 @@ func TestLinkScoreStaysBelowAFullNameMatch(t *testing.T) {
 		}
 	}
 }
+
+// A slug that ends in a year is a dated name, not a numbered service instance.
+// Treating it as one made "windows" an alias for "windows-wipe-2026" on a real
+// vault, which is a link between unrelated facts.
+func TestDatedSlugIsNotAServiceEntity(t *testing.T) {
+	t.Parallel()
+	for _, text := range []string{"see windows-wipe-2026 for the plan", "sprint-2025 retro notes", "tax-return-1999 filed"} {
+		if ms := FullMentions(text); len(ms) != 0 {
+			t.Errorf("FullMentions(%q) = %v, want none", text, ms)
+		}
+	}
+	if ms := FullMentions("auth-gateway-03 and pgbouncer-523 restarted"); len(ms) != 2 {
+		t.Errorf("numbered services must still be found, got %v", ms)
+	}
+}
