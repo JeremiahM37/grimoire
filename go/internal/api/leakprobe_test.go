@@ -528,6 +528,7 @@ func lpProbes(w *lpWorld) []lpProbe {
 		{route: "POST /api/memory/batch", path: "/api/memory/batch", body: map[string]any{"items": []map[string]any{}}, kind: lpWrite},
 		{route: "POST /api/memory/feedback", path: "/api/memory/feedback", body: map[string]any{"id": "x"}, kind: lpWrite},
 		{route: "POST /api/memory/prune", path: "/api/memory/prune", body: map[string]any{"apply": false}, kind: lpList},
+		{route: "GET /api/memory/agents/reliability", path: "/api/memory/agents/reliability", kind: lpList},
 		{route: "POST /api/memory/forget", path: "/api/memory/forget", body: map[string]any{"id": "x", "cascade": true, "dry_run": true}, kind: lpWrite},
 		{route: "GET /api/memory/receipts", path: "/api/memory/receipts", kind: lpList},
 		{route: "PATCH /api/memory/entry", path: "/api/memory/entry", method: "PATCH", body: map[string]any{"text": "x"}, kind: lpWrite},
@@ -550,6 +551,11 @@ func lpProbes(w *lpWorld) []lpProbe {
 		// picture that exists but is hidden (see TestMemoryImageACL).
 		{route: "POST /api/memory/image", path: "/api/memory/image", body: map[string]any{"caption": "x", "data_base64": ""}, kind: lpWrite},
 		{route: "GET /api/memory/image/{sha}", path: "/api/memory/image/" + strings.Repeat("a", 64), kind: lpByID},
+		// Visual similarity: a probe for an absent hash answers 404 exactly as a
+		// hidden one does, and the upload probe stores nothing and compares only
+		// against pictures the caller may see (TestMemoryImageSimilarHidesPrivate).
+		{route: "GET /api/memory/image", path: "/api/memory/image?similar_to=" + strings.Repeat("a", 64), kind: lpByID},
+		{route: "POST /api/memory/image/similar", path: "/api/memory/image/similar", body: map[string]any{"data_base64": ""}, kind: lpList},
 
 		// --- banks: a bank the caller cannot read answers as absent ---
 		{route: "GET /api/banks", path: "/api/banks", kind: lpList},

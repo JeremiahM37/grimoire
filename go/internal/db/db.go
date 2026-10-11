@@ -275,6 +275,12 @@ CREATE INDEX IF NOT EXISTS idx_memory_entities_entity ON memory_entities(entity)
 CREATE INDEX IF NOT EXISTS idx_memory_entities_note ON memory_entities(note);
 -- Identity and authorization. A deployment with no rows in users behaves
 -- exactly as the single-user server always did; see internal/auth.
+-- Perceptual fingerprint of a stored picture, keyed by its content address.
+-- Derived from the bytes, so it is a cache: a missing row is recomputed from the
+-- file, and a reindex need not touch it (the content address never changes).
+CREATE TABLE IF NOT EXISTS image_signatures(
+  sha TEXT PRIMARY KEY, dhash INTEGER NOT NULL, hist BLOB NOT NULL
+);
 CREATE TABLE IF NOT EXISTS users(
   id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, display TEXT,
   pwhash TEXT NOT NULL, role TEXT NOT NULL, created TEXT
@@ -379,7 +385,8 @@ CREATE INDEX IF NOT EXISTS idx_code_symbols_name ON code_symbols(name);
 CREATE INDEX IF NOT EXISTS idx_code_symbols_file ON code_symbols(root, path);
 CREATE TABLE IF NOT EXISTS code_edges(
   root TEXT NOT NULL, path TEXT NOT NULL, line INTEGER NOT NULL, kind TEXT NOT NULL,
-  caller TEXT NOT NULL DEFAULT '', callee TEXT NOT NULL, qual TEXT NOT NULL DEFAULT ''
+  caller TEXT NOT NULL DEFAULT '', callee TEXT NOT NULL, qual TEXT NOT NULL DEFAULT '',
+  target TEXT NOT NULL DEFAULT '', confidence TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_code_edges_callee ON code_edges(callee);
 CREATE INDEX IF NOT EXISTS idx_code_edges_file ON code_edges(root, path);
@@ -512,10 +519,15 @@ const lateIndexes = `
 CREATE INDEX IF NOT EXISTS idx_notes_space ON notes(space);
 CREATE INDEX IF NOT EXISTS idx_vectors_space ON vectors(space);
 CREATE INDEX IF NOT EXISTS idx_notes_untrusted ON notes(untrusted);
+CREATE INDEX IF NOT EXISTS idx_code_edges_target ON code_edges(target);
 `
 
 // addedColumns are columns introduced after their table shipped.
 var addedColumns = []struct{ table, column, decl string }{
+	// Call edges gained a resolved target and a confidence. Older rows read as
+	// empty, which the code graph treats as stale and re-parses once.
+	{"code_edges", "target", "TEXT NOT NULL DEFAULT ''"},
+	{"code_edges", "confidence", "TEXT NOT NULL DEFAULT ''"},
 	{"notes", "space", "TEXT NOT NULL DEFAULT 'commons'"},
 	{"vectors", "space", "TEXT NOT NULL DEFAULT 'commons'"},
 	// A per-note reader list, for documents whose source knows who may read
@@ -594,6 +606,10 @@ var addedColumns = []struct{ table, column, decl string }{
 	// 'private' and 'sensitive' are hidden from default reads. Additive, so an
 	// existing index reads every old row as normal until it is reindexed.
 	{"memory_entries", "visibility", "TEXT NOT NULL DEFAULT ''"},
+	// Whether a fact's evidence resolved when it was written (evv=). Empty for
+	// every fact without evidence, and for every fact written before this
+	// column; those keep the basis they always had.
+	{"memory_entries", "evv", "TEXT NOT NULL DEFAULT ''"},
 	// Which agent read, as distinct from which account. On a single-user
 	// deployment there is no account, so without this the trail can say a
 	// restricted note was read and not by what — which is most of the question.

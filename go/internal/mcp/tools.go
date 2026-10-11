@@ -465,10 +465,11 @@ func Tools() []tool {
 					"description": "how much this matters: 1 trivia, 3 ordinary, 5 load-bearing. " +
 						"Omit it to leave the fact unrated; important facts are recalled for longer " +
 						"and trivia yields sooner. Use 5 only for things that would hurt to forget"},
-				"visibility": strProp("optional: normal (default), private, or sensitive. A private fact " +
+				"visibility": strProp("optional: normal (default), private, sensitive, or sealed. A private fact " +
 					"is left out of recall, profile, context and changes unless the reader asks for hidden " +
 					"facts, and is never exported or streamed. A sensitive fact is hidden the same way and " +
-					"is also redacted from explanations and receipts"),
+					"is also redacted from explanations and receipts. A sealed fact is encrypted under a per-fact key: " +
+					"only the account that wrote it reads the text back, and forgetting it destroys the key"),
 				"fresh": strProp("how it goes stale: 'stable', 'volatile', or a re-check interval like '7d'"),
 				"check": strProp("read-only way to verify it: a command, file or URL"),
 				"context": strProp("what you were asked to do when you learned this. If the user " +

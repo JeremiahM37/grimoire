@@ -82,6 +82,12 @@ func (e Entry) Basis() Basis {
 	if e.synthesised() {
 		return BasisInferred
 	}
+	if e.Verification == UnverifiedEvidence {
+		// Evidence that did not resolve is a citation, not an observation. The
+		// cap applies whatever the category says, because the category is the
+		// writer's own word and the citation is what failed to check.
+		return BasisInferred
+	}
 	if e.Evidence != "" || observedCategories[strings.ToLower(strings.TrimSpace(e.Category))] {
 		return BasisObserved
 	}
@@ -127,6 +133,13 @@ func ParseBases(csv string) ([]Basis, error) {
 	}
 	return out, nil
 }
+
+// Verification states for Entry.Verification. They are what the write path
+// records after checking evidence (internal/attest); nothing else sets them.
+const (
+	VerifiedEvidence   = "verified"
+	UnverifiedEvidence = "unverified"
+)
 
 // EvidenceSep separates evidence items in the trailer. A comma is not allowed
 // inside an item, which NormalizeEvidence enforces, so the split is exact.

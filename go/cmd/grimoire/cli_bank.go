@@ -83,7 +83,7 @@ var bankValued = map[string]bool{
 	"--budget": true, "--max-tokens": true, "--types": true, "--tags-match": true,
 	"--schema": true, "--type": true, "--q": true, "--limit": true, "--offset": true,
 	"--query": true, "--id": true, "--status": true, "--bank": true,
-	"--max-diff-bytes": true, "--max-files": true, "--batch": true,
+	"--max-diff-bytes": true, "--max-files": true, "--batch": true, "--override": true, "--cwd": true,
 	"--fact-types": true, "--folder": true, "--body": true, "--body-file": true,
 	"--text": true, "--priority": true, "--min-score": true, "--timeout": true,
 }

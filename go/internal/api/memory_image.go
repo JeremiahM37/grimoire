@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -16,9 +17,9 @@ import (
 
 // Image memory. A memory bullet can point at an image: its text is the caption
 // and `img=<sha256>` names the bytes, which live in the vault attachment store
-// (memimage.Dir). Retrieval is by caption only: the caption is the bullet's
-// text, and the existing full-text and vector arms index that text. No pixels
-// are embedded anywhere.
+// (memimage.Dir). Recall is by caption: the caption is the bullet's text, and
+// the existing full-text and vector arms index that text. Visual similarity
+// (memory_image_similar.go) is a separate lookup over pixel fingerprints.
 
 const (
 	uncaptionedText = "image (uncaptioned)"
@@ -61,29 +62,37 @@ type imageRequest struct {
 // is a description of a picture, and two pictures of similar things must not
 // supersede each other the way two competing facts do.
 func (s *Server) postImage(w http.ResponseWriter, r *http.Request) {
-	maxBytes := imageMaxBytes()
+	raw, req, maxBytes, ok := readImageUpload(w, r)
+	if !ok {
+		return
+	}
+	s.prepared(w, r, req, raw, maxBytes)
+}
+
+// readImageUpload reads the bytes and fields of an upload in either body
+// encoding. It answers the error itself and reports ok=false when it has.
+func readImageUpload(w http.ResponseWriter, r *http.Request) (raw []byte, req imageRequest, maxBytes int64, ok bool) {
+	maxBytes = imageMaxBytes()
 	// base64 inflates by 4/3; the slack covers the JSON envelope.
 	r.Body = http.MaxBytesReader(w, r.Body, maxBytes*2+64<<10)
 
-	var raw []byte
-	var req imageRequest
 	ct := r.Header.Get("Content-Type")
 	switch {
 	case strings.HasPrefix(ct, "multipart/form-data"):
 		if err := r.ParseMultipartForm(maxBytes + 64<<10); err != nil {
 			writeErr(w, http.StatusBadRequest, "expected a multipart upload with a file field, or JSON with data_base64")
-			return
+			return nil, req, maxBytes, false
 		}
 		file, _, err := r.FormFile("file")
 		if err != nil {
 			writeErr(w, http.StatusBadRequest, "missing file field")
-			return
+			return nil, req, maxBytes, false
 		}
 		defer file.Close()
 		raw, err = io.ReadAll(io.LimitReader(file, maxBytes+1))
 		if err != nil {
 			writeErr(w, http.StatusBadRequest, err.Error())
-			return
+			return nil, req, maxBytes, false
 		}
 		req.Caption = r.FormValue("caption")
 		req.Topic = r.FormValue("topic")
@@ -91,20 +100,20 @@ func (s *Server) postImage(w http.ResponseWriter, r *http.Request) {
 	default:
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			writeErr(w, http.StatusBadRequest, "invalid json")
-			return
+			return nil, req, maxBytes, false
 		}
 		if int64(len(req.DataBase64)) > maxBytes*4/3+4 {
 			writeErr(w, http.StatusRequestEntityTooLarge, fmt.Sprintf("image too large: the limit is %d bytes", maxBytes))
-			return
+			return nil, req, maxBytes, false
 		}
 		decoded, err := base64.StdEncoding.DecodeString(req.DataBase64)
 		if err != nil {
 			writeErr(w, http.StatusBadRequest, "data_base64 is not valid base64")
-			return
+			return nil, req, maxBytes, false
 		}
 		raw = decoded
 	}
-	s.prepared(w, r, req, raw, maxBytes)
+	return raw, req, maxBytes, true
 }
 
 // prepared is the second half of postImage, shared by both body encodings.
@@ -124,12 +133,6 @@ func (s *Server) prepared(w http.ResponseWriter, r *http.Request, req imageReque
 		writeErr(w, http.StatusBadRequest, fmt.Sprintf("caption must be at most %d characters", maxCaptionChars))
 		return
 	}
-	basis := memory.CaptionStated
-	if caption == "" {
-		// No caption and no model to write one: the bytes are kept, but the
-		// bullet is flagged so recall never presents the placeholder as a fact.
-		caption, basis = uncaptionedText, memory.CaptionNone
-	}
 
 	agent, ok := writerAgent(r, req.Agent)
 	if !ok {
@@ -137,8 +140,15 @@ func (s *Server) prepared(w http.ResponseWriter, r *http.Request, req imageReque
 		return
 	}
 	rel := normPath(s.memoryRel(req.Topic))
+	// The write check comes before captioning: a picture must not leave the
+	// box for a caller who could not have stored it anyway.
 	if !s.requireWrite(w, r, rel) {
 		return
+	}
+	basis := memory.CaptionStated
+	if caption == "" {
+		// A human caption always wins; only an empty one is ever inferred.
+		caption, basis = s.inferCaption(r, p)
 	}
 	if err := memimage.Store(s.Vault.Root, p); err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
@@ -159,6 +169,26 @@ func (s *Server) prepared(w http.ResponseWriter, r *http.Request, req imageReque
 		"image":      imageRef{SHA: p.SHA, MIME: mime, Bytes: size, URL: imageURL(p.SHA)},
 		"stripped":   p.Stripped,
 	})
+}
+
+// inferCaption asks the configured captioner for a caption when the caller gave
+// none. With no captioner, or when it fails, the picture is stored as it was
+// before this existed: uncaptioned, flagged so recall never shows the
+// placeholder, and not an error for the upload.
+func (s *Server) inferCaption(r *http.Request, p memimage.Prepared) (string, string) {
+	if s.Settings == nil {
+		return uncaptionedText, memory.CaptionNone
+	}
+	c := memimage.CaptionerFrom(s.Settings)
+	if c == nil {
+		return uncaptionedText, memory.CaptionNone
+	}
+	text, err := c.Caption(r.Context(), p.Data, p.Format)
+	if err != nil {
+		log.Printf("memory image: automatic caption failed, stored uncaptioned: %v", err)
+		return uncaptionedText, memory.CaptionNone
+	}
+	return text, memory.CaptionInferred
 }
 
 // writerAgent names the author of a write the way rememberOne does: a verified

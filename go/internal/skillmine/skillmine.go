@@ -62,6 +62,26 @@ type Candidate struct {
 	Title       string // deterministic unless a Titler replaced it
 	Description string
 	Titled      bool // a model wrote Title/Description
+
+	// Gate is the offline check of this candidate against the recorded
+	// sessions (skillgate.Apply sets it). Nil until it has run.
+	Gate *Gate `json:",omitempty"`
+}
+
+// Gate is the record of the offline check a candidate passed or failed. It is
+// data only; the rules and the numbers behind it live in skillgate.
+type Gate struct {
+	Pass          bool     `json:"pass"`
+	Reasons       []string `json:"reasons,omitempty"`  // why it failed; empty when it passed
+	Trigger       string   `json:"trigger"`            // the text the trigger was matched with
+	Support       int      `json:"support"`            // distinct sessions containing the pattern
+	Sources       []string `json:"sources"`            // their ids (provenance)
+	FailedSources int      `json:"failed_sources"`     // of those, ended in a failed shell call
+	KnownSources  int      `json:"known_sources"`      // of those, with a recorded shell outcome
+	HeldOut       int      `json:"held_out"`           // distinct sessions without the pattern
+	HeldOutFires  int      `json:"held_out_fires"`     // of those, the trigger fired anyway
+	FalseFireRate float64  `json:"false_fire_rate"`    // HeldOutFires / HeldOut
+	Override      string   `json:"override,omitempty"` // a person's reason for accepting despite Pass=false
 }
 
 // Titler may rewrite a candidate's title and description. It is given the
@@ -184,6 +204,30 @@ func Retitle(cs []Candidate, t Titler) {
 		}
 		cs[i].Titled = true
 	}
+}
+
+// Units reduces a session to its normalised, de-duplicated shell steps, the
+// sequence Mine searches. It is exported for the offline gate.
+func Units(s transcript.Session) []string {
+	u, _ := sequence(s)
+	return u
+}
+
+// ContainsRun reports whether run occurs as a contiguous part of units.
+func ContainsRun(units, run []string) bool {
+	return len(run) > 0 && contains(units, run)
+}
+
+// Outcome says how a session's shell work ended: known is false when it ran no
+// shell command at all; failed is true when its last shell command reported an
+// error. A session that ended in failure may still have contained the pattern.
+func Outcome(s transcript.Session) (known, failed bool) {
+	for _, t := range s.Turns {
+		if t.Role == transcript.RoleTool && shellTool(t.Tool) {
+			known, failed = true, t.ToolError
+		}
+	}
+	return known, failed
 }
 
 func idOf(units []string) string {

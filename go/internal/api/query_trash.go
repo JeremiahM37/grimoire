@@ -296,6 +296,7 @@ func (s *Server) restoreTrash(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	s.suppressTombstoned(destRel)
 	note, err := s.Index.Upsert(destRel)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())

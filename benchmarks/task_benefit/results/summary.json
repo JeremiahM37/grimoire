@@ -1,0 +1,135 @@
+{
+  "status": "run",
+  "calls": 60,
+  "errors": 0,
+  "per_task": {
+    "T01": {
+      "off": [
+        0,
+        3
+      ],
+      "on": [
+        3,
+        3
+      ],
+      "retrieved": true
+    },
+    "T02": {
+      "off": [
+        0,
+        3
+      ],
+      "on": [
+        0,
+        3
+      ],
+      "retrieved": false
+    },
+    "T03": {
+      "off": [
+        0,
+        3
+      ],
+      "on": [
+        3,
+        3
+      ],
+      "retrieved": true
+    },
+    "T04": {
+      "off": [
+        0,
+        3
+      ],
+      "on": [
+        0,
+        3
+      ],
+      "retrieved": false
+    },
+    "T05": {
+      "off": [
+        0,
+        3
+      ],
+      "on": [
+        0,
+        3
+      ],
+      "retrieved": false
+    },
+    "T06": {
+      "off": [
+        0,
+        3
+      ],
+      "on": [
+        0,
+        3
+      ],
+      "retrieved": false
+    },
+    "T07": {
+      "off": [
+        0,
+        3
+      ],
+      "on": [
+        0,
+        3
+      ],
+      "retrieved": false
+    },
+    "T08": {
+      "off": [
+        0,
+        3
+      ],
+      "on": [
+        3,
+        3
+      ],
+      "retrieved": true
+    },
+    "T09": {
+      "off": [
+        0,
+        3
+      ],
+      "on": [
+        3,
+        3
+      ],
+      "retrieved": true
+    },
+    "T10": {
+      "off": [
+        0,
+        3
+      ],
+      "on": [
+        3,
+        3
+      ],
+      "retrieved": true
+    }
+  },
+  "totals": {
+    "off": [
+      0,
+      30
+    ],
+    "on": [
+      15,
+      30
+    ]
+  },
+  "retrieval_hits_on_arm": 5,
+  "sign_test": {
+    "tasks_on_better": 5,
+    "tasks_off_better": 0,
+    "p_two_sided": 0.0625,
+    "unit": "task (pass rate over reps), ties dropped"
+  },
+  "limit": "10 fictional-project tasks cannot establish a general effect"
+}

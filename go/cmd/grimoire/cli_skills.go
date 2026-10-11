@@ -14,6 +14,7 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/api"
 	"github.com/JeremiahM37/grimoire/go/internal/memstore"
 	"github.com/JeremiahM37/grimoire/go/internal/skillexport"
+	"github.com/JeremiahM37/grimoire/go/internal/skillgate"
 	"github.com/JeremiahM37/grimoire/go/internal/skillmine"
 	"github.com/JeremiahM37/grimoire/go/internal/transcript"
 )
@@ -21,7 +22,9 @@ import (
 const skillsUsage = `usage:
   grimoire skills export --agent NAME [--dry-run] [--remove] [--force] [--dest DIR] [--dir STORE]
   grimoire skills mine [--agent NAME]... [--since 30d] [--min-sessions 3] [--limit 20] [--max-files 2000] [--title] [--dry-run]
-  grimoire skills accept ID [--dir STORE]
+  grimoire skills gate ID
+  grimoire skills accept ID [--override "REASON"] [--dir STORE]
+  grimoire skills check [--cwd DIR] [--dir STORE]
 
 export writes each procedure memory in the store as a skill folder (SKILL.md with a
 name and a description built from the memory's cues, plus scripts/ when it holds shell
@@ -32,7 +35,13 @@ did not write is never touched; one it wrote and you edited is skipped unless --
 mine reads the agents' session transcripts (profiles with a transcripts section), finds
 command sequences that recur across at least --min-sessions sessions, and writes drafts
 to a review queue in the vault's .grimoire/ folder. Nothing becomes a memory until you
-run accept. --title lets the configured model title a candidate; it decides nothing else.`
+run accept. --title lets the configured model title a candidate; it decides nothing else.
+Every candidate is also gated offline against the same sessions (support, trigger
+false fires, failed outcomes). accept refuses a failed gate unless you give
+--override with the reason, which is recorded in the skill's frontmatter.
+
+gate prints a candidate's verdict and the numbers behind it. check lists the stored
+skills whose preconditions hold in the working directory, and which do not, and why.`
 
 func cmdSkills(args []string) int {
 	if len(args) == 0 || args[0] == "help" {
@@ -50,6 +59,10 @@ func cmdSkills(args []string) int {
 		return skillsMine(f)
 	case "accept":
 		return skillsAccept(f)
+	case "gate":
+		return skillsGate(f)
+	case "check":
+		return skillsCheck(f)
 	}
 	return fail("unknown skills command %q\n\n%s", args[0], skillsUsage)
 }
@@ -200,6 +213,7 @@ func skillsMine(f *bankFlags) int {
 		fmt.Sscanf(v, "%d", &limit)
 	}
 	cands := skillmine.Mine(sessions, skillmine.Options{MinSessions: min, Limit: limit})
+	skillgate.Apply(cands, sessions, skillgate.Options{})
 
 	e, err := openEnv()
 	if err != nil {
@@ -215,7 +229,7 @@ func skillsMine(f *bankFlags) int {
 	}
 	fmt.Printf("%d candidate(s) from %d sessions\n", len(cands), len(sessions))
 	for _, c := range cands {
-		fmt.Printf("  %s  %2d sessions  %s\n", c.ID, c.Sessions, c.Title)
+		fmt.Printf("  %s  %2d sessions  %-40s  %s\n", c.ID, c.Sessions, c.Title, gateSummary(c.Gate))
 	}
 	if f.on["--dry-run"] || len(cands) == 0 {
 		return 0
@@ -284,6 +298,20 @@ func skillsAccept(f *bankFlags) int {
 		if !strings.HasPrefix(c.ID, f.pos[0]) {
 			continue
 		}
+		if c.Gate == nil {
+			return fail("%s has no gate result (queued before the gate existed); run: grimoire skills mine", c.ID)
+		}
+		override := f.str("--override", "")
+		if !c.Gate.Pass {
+			if override == "" {
+				return fail("%s failed the offline gate:\n%s\naccept it anyway with --override \"reason\"", c.ID, reasonLines(c.Gate))
+			}
+			c.Gate.Override = override
+		}
+		stamped, err := skillgate.Stamp(skillmine.Draft(c), skillgate.FromCandidate(c), c.Gate)
+		if err != nil {
+			return fail("%v", err)
+		}
 		store := e.storeDir(storeArgs(f))
 		if err := os.MkdirAll(store, 0o755); err != nil {
 			return fail("%v", err)
@@ -293,7 +321,7 @@ func skillsAccept(f *bankFlags) int {
 		if err != nil {
 			return fail("%s already exists; nothing written", path)
 		}
-		_, werr := fh.WriteString(skillmine.Draft(c))
+		_, werr := fh.WriteString(stamped)
 		if cerr := fh.Close(); werr != nil || cerr != nil {
 			return fail("could not write %s", path)
 		}
@@ -306,4 +334,119 @@ func skillsAccept(f *bankFlags) int {
 	}
 	sort.Strings(ids)
 	return fail("no candidate %q in the queue (have: %s)", f.pos[0], strings.Join(ids, ", "))
+}
+
+func gateSummary(g *skillmine.Gate) string {
+	switch {
+	case g == nil:
+		return "gate: not run"
+	case g.Pass:
+		return fmt.Sprintf("gate: pass (%d sessions, %d/%d false fires)", g.Support, g.HeldOutFires, g.HeldOut)
+	case g.Override != "":
+		return "gate: FAILED, overridden"
+	}
+	return "gate: FAILED (" + strings.Join(g.Reasons, "; ") + ")"
+}
+
+func reasonLines(g *skillmine.Gate) string {
+	var b strings.Builder
+	for _, r := range g.Reasons {
+		b.WriteString("  - " + r + "\n")
+	}
+	return strings.TrimRight(b.String(), "\n")
+}
+
+func skillsGate(f *bankFlags) int {
+	if len(f.pos) != 1 {
+		return fail("usage: grimoire skills gate ID   (ids are in the review queue)")
+	}
+	e, err := openEnv()
+	if err != nil {
+		return fail("%v", err)
+	}
+	defer e.close()
+	c, ok := queuedCandidate(e, f.pos[0])
+	if !ok {
+		return fail("no candidate %q in the queue; run: grimoire skills mine", f.pos[0])
+	}
+	g := c.Gate
+	if g == nil {
+		return fail("%s has no gate result; run: grimoire skills mine", c.ID)
+	}
+	fmt.Printf("%s  %s\n", c.ID, c.Title)
+	state := "FAILED"
+	if g.Pass {
+		state = "pass"
+	}
+	fmt.Printf("gate:            %s\n", state)
+	fmt.Printf("trigger:         %q\n", g.Trigger)
+	fmt.Printf("support:         %d independent sessions contain the pattern\n", g.Support)
+	fmt.Printf("failed outcomes: %d of %d sessions with a recorded outcome\n", g.FailedSources, g.KnownSources)
+	fmt.Printf("held out:        %d sessions without the pattern; trigger fired on %d (%.0f%%)\n", g.HeldOut, g.HeldOutFires, 100*g.FalseFireRate)
+	for _, r := range g.Reasons {
+		fmt.Println("  - " + r)
+	}
+	if g.Override != "" {
+		fmt.Printf("override:        %s\n", g.Override)
+	}
+	fmt.Println("(a statistical check over recorded sessions; it does not show the skill works)")
+	if !g.Pass && g.Override == "" {
+		return 1
+	}
+	return 0
+}
+
+func queuedCandidate(e *env, prefix string) (skillmine.Candidate, bool) {
+	_, js := queuePaths(e)
+	raw, err := os.ReadFile(js)
+	if err != nil {
+		return skillmine.Candidate{}, false
+	}
+	var cands []skillmine.Candidate
+	if json.Unmarshal(raw, &cands) != nil {
+		return skillmine.Candidate{}, false
+	}
+	for _, c := range cands {
+		if strings.HasPrefix(c.ID, prefix) {
+			return c, true
+		}
+	}
+	return skillmine.Candidate{}, false
+}
+
+// skillsCheck lists stored skills and whether their preconditions hold here.
+// Notes without a spec are ordinary procedures and are only counted.
+func skillsCheck(f *bankFlags) int {
+	e, err := openEnv()
+	if err != nil {
+		return fail("%v", err)
+	}
+	defer e.close()
+	store := e.storeDir(storeArgs(f))
+	notes, err := memstore.LoadDir(store)
+	if err != nil {
+		return fail("cannot read the memory store %s: %v", store, err)
+	}
+	cwd := f.str("--cwd", "")
+	if cwd == "" {
+		if cwd, err = os.Getwd(); err != nil {
+			return fail("%v", err)
+		}
+	}
+	ctx := skillgate.NewContext(cwd, nil)
+	plain := 0
+	for _, n := range notes {
+		s, ok := skillgate.SpecOf(n)
+		if !ok {
+			plain++
+			continue
+		}
+		if applies, unmet := skillgate.Applicable(s, ctx); applies {
+			fmt.Printf("applicable  %s\n", n.Title)
+		} else {
+			fmt.Printf("unmet       %s  (%s)\n", n.Title, strings.Join(unmet, ", "))
+		}
+	}
+	fmt.Printf("%d procedure(s) with no spec, not checked; cwd %s\n", plain, cwd)
+	return 0
 }

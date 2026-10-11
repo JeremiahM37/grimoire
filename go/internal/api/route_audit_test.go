@@ -175,6 +175,7 @@ var routeAccess = map[string]access{
 	"GET /api/memory/rules":                                      admin,  // compiled checks with their evidence; checked in the handler
 	"GET /api/memory/impact":                                     admin,  // reads agent transcripts on this host; checked in the handler
 	"GET /api/memory/replay":                                     admin,  // corpus stats
+	"GET /api/memory/agents/reliability":                         admin,  // per-agent correction counts and reliability
 	"POST /api/memory/replay":                                    admin,  // replays a proposed change; answers quote past requests
 	"POST /api/memory/replay/seed":                               admin,  // loads seed situations
 	"GET /api/memory/export":                                     scoped, // every fact the caller may read
@@ -182,6 +183,8 @@ var routeAccess = map[string]access{
 	"GET /api/memory/receipts":                                   scoped, // receipts are listed only for entries the caller may read
 	"POST /api/memory/image":                                     authed, // a write; requires write access to the topic note
 	"GET /api/memory/image/{sha}":                                scoped, // served only when a visible, non-private entry references it
+	"GET /api/memory/image":                                      scoped, // similar_to: only pictures the caller can see are compared or returned
+	"POST /api/memory/image/similar":                             scoped, // read-only probe over the same visible set; stores nothing
 	"GET /api/memory/changes":                                    scoped, // fact text, so the same filter as recall
 	"GET /api/memory/stream":                                     authed, // SSE of the changes feed; text per event passes canRead at emit time
 	"GET /api/memory/profile":                                    scoped, // synthesized from facts the caller may read

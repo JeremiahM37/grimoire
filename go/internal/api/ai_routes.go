@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/JeremiahM37/grimoire/go/internal/memory"
 	"io"
 	"net/http"
 	"os"
@@ -143,6 +144,15 @@ func (s *Server) consolidateMemory(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		before := note.Body
+		// A note with a private, sensitive or sealed fact is neither sent to a
+		// model nor rewritten: the rewrite could drop or merge the hidden
+		// bullet without shredding its key, and the prompt would carry its
+		// ciphertext, key id and owner (or a private fact's text).
+		if memory.HasHidden(before) {
+			held = append(held, map[string]any{"path": rel,
+				"reason": "the note holds private, sensitive or sealed facts and is not consolidated"})
+			continue
+		}
 		after := s.AI.WithSurface("consolidate", agentFor(r)).ConsolidateMemory(before)
 		if after == "" || strings.TrimSpace(after) == strings.TrimSpace(before) {
 			continue

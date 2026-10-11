@@ -25,6 +25,7 @@ const memoryUsage = `usage:
   grimoire memory receipts                 forget receipts (from forget --cascade)
   grimoire memory prefix [--since TOKEN] [--max-tokens N]   durable-memory block for a cached prompt prefix
   grimoire memory disputes                 facts a person recorded that an agent contests
+  grimoire memory agents                   per-agent reliability from correction signals (admin)
   grimoire memory resolve ID keep|accept|merge [text] [--challenger ID] [--path P]
   grimoire memory image FILE [--caption TEXT] [--topic T]  store a picture (caption-only retrieval)
   grimoire memory link --agent NAME --path P [--kind dir|file] [--dir STORE] [--merge] [--dry-run]
@@ -38,6 +39,7 @@ const memoryUsage = `usage:
   grimoire memory trace [--target fact:ID|note:PATH] [--days 30] [--json]
   grimoire memory impact --retells [--cutoff 2026-10-09] [--budget 2000] [--since D] [--all-sessions] [--json]
   grimoire memory prune [--dry-run | --apply] [--max N] [--below 1-3] [--json]
+  grimoire memory distill --out DIR [--min-age-days N] [--min-uses N]   select bake-in facts + training data (read-only; docs/PARAMETRIC.md)
   grimoire memory watch [--agent NAME] [--session ID]   (live: learned, superseded, forgotten, challenged, disputed)
   grimoire memory profile [--subject user|agent] [--agent NAME] [--budget TOKENS] [--synthesize] [--json]
 
@@ -86,6 +88,8 @@ func cmdMemory(args []string) int {
 		return memoryImportCmd(e, rest)
 	case "prune":
 		return memoryPruneCmd(e, rest)
+	case "distill":
+		return memoryDistillCmd(e, rest)
 	case "watch":
 		return memoryWatchCmd(e, rest)
 	case "profile":
@@ -94,6 +98,8 @@ func cmdMemory(args []string) int {
 		return memoryPrefixCmd(e, rest)
 	case "receipts":
 		return memoryReceiptsCmd(e, rest)
+	case "agents":
+		return memoryAgentsCmd(e, rest)
 	case "disputes":
 		return memoryDisputesCmd(e, rest)
 	case "resolve":

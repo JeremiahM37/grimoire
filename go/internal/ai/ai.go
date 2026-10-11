@@ -657,7 +657,12 @@ func DedupLines(body string) string {
 // first, so a bad rewrite is one rollback away.
 func (c *Client) ConsolidateMemory(body string) string {
 	backend := c.Backend()
-	if backend == "" {
+	// A note that holds a pulled entry is never rewritten by a model. A rewrite
+	// can merge that entry into a trusted line or drop its org= trailer, and the
+	// result would read as the operator's own memory: the taint would be
+	// derived away. DedupLines removes only exact repeats and keeps every
+	// surviving line byte-for-byte, trailers included, so the origin survives.
+	if backend == "" || hasPulledEntry(body) {
 		return DedupLines(body)
 	}
 	out, err := c.Complete("Consolidate this agent memory note. Merge redundant entries; when two "+
@@ -675,6 +680,17 @@ func (c *Client) ConsolidateMemory(body string) string {
 		return DedupLines(body)
 	}
 	return out + "\n"
+}
+
+// hasPulledEntry reports whether a memory note holds an entry whose origin is
+// untrusted, i.e. text other people can write.
+func hasPulledEntry(body string) bool {
+	for _, e := range memory.Parse(body) {
+		if e.Untrusted() {
+			return true
+		}
+	}
+	return false
 }
 
 // Transcribe converts an audio memo to text using a local whisper HTTP service

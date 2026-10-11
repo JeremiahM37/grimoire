@@ -99,6 +99,14 @@ behind the fact, not to what is believed, so it has no row of its own.
 - **Web**: a Disputes panel in the React frontend, opened from the command
   palette ("Memory disputes").
 
+## Suggestion
+
+The listing also carries `suggestion` (`{id, side}`) and `breakdown` (every side
+scored, best first). They say which claim the evidence favours and why, so the
+person can weigh it. They are advice: resolving is still the person's act, and
+a person's own fact always ranks above an agent's. The scoring and its limits
+are in `docs/PROVENANCE.md`.
+
 ## Relation to challenges
 
 `/api/memory/challenges` and `POST /api/memory/challenge` (uphold or concede)

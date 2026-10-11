@@ -53,7 +53,7 @@ const usage = `grimoire — local-first AI-native notes
   grimoire document-import FILE       import a document through the server API
   grimoire remember TEXT [--topic T] [--session S] [--category C]
                     [--expires-in 72h] [--immutable] [--verbatim] [--human]
-                    [--importance 1-5] [--visibility normal|private|sensitive]
+                    [--importance 1-5] [--visibility normal|private|sensitive|sealed]
                                       record a fact, reconciled against what is known
   grimoire recall [QUERY] [--agent A] [--session S] [--category C]
                   [--limit N] [--all] [--as-of RFC3339] [--why] [--include-private]
@@ -80,7 +80,10 @@ const usage = `grimoire — local-first AI-native notes
                                       into that agent's skills dir; never touches skills it did not write
   grimoire skills mine [--agent NAME]... [--since 30d] [--min-sessions 3] [--title] [--dry-run]
                                       find command sequences repeated across sessions; drafts go to a review queue
-  grimoire skills accept ID           save one reviewed draft into the memory store as a procedure
+  grimoire skills gate ID             show a candidate's offline gate: support, false fires, failed outcomes
+  grimoire skills accept ID [--override "REASON"]
+                                      save one reviewed draft as a procedure (a failed gate needs --override)
+  grimoire skills check [--cwd DIR]   list stored skills whose preconditions hold here, and which do not
   grimoire memory impact [--since 90d] [--agent NAME] [--json]
                                       session friction before vs after each memory/skill landed (correlation only)
   grimoire agent profiles | new NAME  list agent profiles; start a profile for a new agent
@@ -141,7 +144,7 @@ const usage = `grimoire — local-first AI-native notes
   grimoire ground prepare|timeline|answer   grounded answers: time annotation, timeline, gather/answer/check
   grimoire code index PATH            index a repository's symbols and calls (admin token)
   grimoire code symbol NAME [--kind K] [--root R]   where a name is defined
-  grimoire code callers NAME          call sites by name (approximate, not resolved)
+  grimoire code callers NAME          call sites by name, or pkg#Name for resolved calls only
   grimoire code outline FILE          what one source file declares and imports
   grimoire completion bash|zsh|fish   print a completion script for subcommand names
                                       e.g. source <(grimoire completion zsh)

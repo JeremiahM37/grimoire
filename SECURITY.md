@@ -144,6 +144,11 @@ touches disk, the SQLite index, FTS search, the vector store / RAG, the e-ink
 trashing, pinning, or tag-renaming an encrypted note operates on the ciphertext
 and never needs the key. Editing requires an unlocked vault.
 
+A single agent memory fact can be sealed the same way (`vis=sealed`): its text
+is encrypted under a per-fact key, only the writing account reads it back, and
+forgetting it destroys the key. See [docs/MEMORY-SEAL.md](docs/MEMORY-SEAL.md)
+for what this does and does not reach.
+
 ## HTTP surface
 
 - **Security headers on every response:** a strict `Content-Security-Policy`

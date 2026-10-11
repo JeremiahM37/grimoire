@@ -13,6 +13,7 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/codegraph"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -132,6 +133,9 @@ type Server struct {
 // ordering explicit documents the same hazard the Python side has, where a
 // greedy /notes/{path} would otherwise swallow /notes/random.
 func (s *Server) Routes() http.Handler {
+	if s.Cloud != nil && s.Cloud.Filter == nil {
+		s.Cloud.Filter = s.tombstoneFilter
+	}
 	if s.Knowledge == nil && s.Index != nil && s.Vault != nil {
 		s.Knowledge = knowledge.New(s.Index, s.Vault)
 	}
@@ -253,6 +257,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/memory/outcome", s.memoryOutcome)
 	mux.HandleFunc("GET /api/memory/adherence", s.adherenceReport)
 	mux.HandleFunc("GET /api/memory/trace", s.traceCard)
+	mux.HandleFunc("GET /api/memory/agents/reliability", s.adminOnly(s.agentReliability))
 	mux.HandleFunc("GET /api/memory/trace/summary", s.traceSummary)
 	mux.HandleFunc("GET /api/memory/check", s.listChecks)
 	mux.HandleFunc("POST /api/memory/check", s.setCheck)
@@ -282,6 +287,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/memory/forget", s.forgetPost)
 	mux.HandleFunc("POST /api/memory/image", s.postImage)
 	mux.HandleFunc("GET /api/memory/image/{sha}", s.getImage)
+	mux.HandleFunc("GET /api/memory/image", s.getSimilarImages)
+	mux.HandleFunc("POST /api/memory/image/similar", s.postSimilarImage)
 	mux.HandleFunc("GET /api/memory/receipts", s.listReceiptsHandler)
 	mux.HandleFunc("GET /api/briefing", s.briefing)
 	mux.HandleFunc("GET /api/trust", s.trustOverview)
@@ -497,10 +504,18 @@ func writeErr(w http.ResponseWriter, status int, detail string) {
 }
 
 // normPath applies the same normalization the Python side does: strip a leading
-// slash and ensure the .md suffix.
+// slash and ensure the .md suffix. It also cleans the path lexically, the way
+// the vault will when it opens the file, so an access check and the read it
+// guards always see the same name; a path that still climbs out of the vault
+// after cleaning is returned empty. Without the clean, "public/../private/x"
+// is checked against the wrong space and then read as "private/x".
 func normPath(p string) string {
 	p = strings.TrimPrefix(strings.TrimSpace(p), "/")
 	if p == "" {
+		return ""
+	}
+	p = path.Clean(p)
+	if p == "." || p == ".." || strings.HasPrefix(p, "../") {
 		return ""
 	}
 	if !strings.HasSuffix(p, ".md") {
@@ -599,6 +614,9 @@ func (s *Server) health(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (s *Server) reindex(w http.ResponseWriter, _ *http.Request) {
+	// Forgotten facts that came back by copy are removed before the index is
+	// rebuilt from the files, so they never reach the index at all.
+	s.suppressAllTombstoned()
 	n, err := s.Index.Reindex()
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
@@ -849,6 +867,8 @@ func (s *Server) createNote(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, statusForVaultErr(err), err.Error())
 		return
 	}
+	// A fact that was forgotten must not return through a plain note write.
+	s.suppressTombstoned(rel)
 	note, err := s.Index.Upsert(rel)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
@@ -980,6 +1000,8 @@ func (s *Server) updateNote(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, statusForVaultErr(err), err.Error())
 		return
 	}
+	// A fact that was forgotten must not return through a plain note write.
+	s.suppressTombstoned(rel)
 	note, err := s.Index.Upsert(rel)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())

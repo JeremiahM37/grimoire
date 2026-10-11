@@ -42,6 +42,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))             # goserver
 sys.path.insert(0, str(HERE.parent / "locomo"))  # retrieve_go.api/context_for, reader/judge model ids
 
+import budget  # noqa: E402  (shared live-call cap, benchmarks/budget.py)
 import goserver  # noqa: E402
 from run_locomo import JUDGE_MODEL, READER_MODEL  # noqa: E402  (same models as LoCoMo)
 
@@ -182,9 +183,15 @@ def download(out_dir: Path, splits=None, max_rows=None) -> None:
 
 # ---- models (pluggable endpoint) -------------------------------------------
 
+# Set by cmd_run for a live `claude` run. Every CLI call reserves a slot first.
+_BUDGET = None
+
+
 def _claude(prompt: str, model: str, timeout: int = 300) -> str:
     """Same CLI invocation as LoCoMo's claude_call, with a system prompt that
     does not force brevity (summaries need room)."""
+    if _BUDGET is not None:
+        _BUDGET.spend(f"beam:{model}")
     empty = Path(tempfile.gettempdir()) / "beam-empty-cwd"
     empty.mkdir(exist_ok=True)
     p = subprocess.run(
@@ -450,6 +457,14 @@ def cmd_run(args, dry: bool) -> int:
     model_name = args.model or READER_MODEL
     model = Model(backend, model_name, args.judge_model or JUDGE_MODEL,
                   base_url=args.base_url, fixture_refs=refs)
+    global _BUDGET
+    if not dry and backend == "claude":
+        # one reader call and one judge call per question per arm
+        planned = 2 * len(qs) * len(arms)
+        cap = getattr(args, "max_calls", None) or budget.RUN_CAP
+        if planned > cap:
+            raise SystemExit(f"plan needs {planned} live calls, above --max-calls {cap}")
+        _BUDGET = budget.Budget("beam", run_cap=cap)
     args.parallel = args.parallel or PARALLEL
     banner = ("DRY RUN - synthetic fixture, stub model. Plumbing check only, NOT a result."
               if dry else "")
@@ -520,6 +535,8 @@ def main(argv=None) -> int:
     r.add_argument("--port", type=int, default=GRIMOIRE_PORT)
     r.add_argument("--limit", type=int, help="first N conversations (smoke test)")
     r.add_argument("--parallel", type=int)
+    r.add_argument("--max-calls", type=int, default=budget.RUN_CAP,
+                   help="live-call cap for this run (shared ledger cap still applies)")
     r.add_argument("--out")
 
     rp = sub.add_parser("report", help="print the table from an existing run")

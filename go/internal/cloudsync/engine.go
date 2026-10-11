@@ -60,6 +60,9 @@ type Engine struct {
 	// Snapshot records a note's previous body in version history before sync
 	// overwrites it. Optional.
 	Snapshot func(rel, body string)
+	// Filter, if set, rewrites a note's content on its way into the vault. The
+	// API uses it to strip forgotten memory facts from pulled notes.
+	Filter func(rel string, content []byte) []byte
 
 	Now func() time.Time
 
@@ -846,6 +849,9 @@ func (r *round) writeLocal(rel string, content []byte, mtimeMs int64, expect str
 	if readErr == nil && isNote(rel) && r.e.Snapshot != nil {
 		_, body := splitRaw(string(old))
 		r.e.Snapshot(rel, body)
+	}
+	if r.e.Filter != nil {
+		content = r.e.Filter(rel, content)
 	}
 	if err := writeAtomic(p, content, 0o644); err != nil {
 		return err

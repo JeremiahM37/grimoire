@@ -74,6 +74,13 @@ var Fields = map[string]Field{
 	// Memory-bank webhooks refuse loopback and private-network targets
 	// unless this is on; link-local and cloud metadata stay refused.
 	"webhook_allow_private": {"GRIMOIRE_WEBHOOK_ALLOW_PRIVATE", ""},
+	// Automatic captions for memory pictures stored without one. Off unless a
+	// URL and model are set; the picture is sent there once. See
+	// internal/memimage/caption.go. The API key is environment-only.
+	"memory_caption_backend":       {"GRIMOIRE_MEMORY_CAPTION_BACKEND", "ollama"},
+	"memory_caption_url":           {"GRIMOIRE_MEMORY_CAPTION_URL", ""},
+	"memory_caption_model":         {"GRIMOIRE_MEMORY_CAPTION_MODEL", ""},
+	"memory_caption_allow_private": {"GRIMOIRE_MEMORY_CAPTION_ALLOW_PRIVATE", ""},
 	// Background workers for memory-bank operations (async retain,
 	// consolidation, mental-model refresh). 0 turns them off.
 	"bank_workers": {"GRIMOIRE_BANK_WORKERS", "2"},

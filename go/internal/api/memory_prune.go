@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/JeremiahM37/grimoire/go/internal/calibrate"
 	"github.com/JeremiahM37/grimoire/go/internal/index"
 	"github.com/JeremiahM37/grimoire/go/internal/memory"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
@@ -96,7 +97,10 @@ func (s *Server) pruneMemory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cutoff := vault.Now().Add(-pruneAfter)
-	found, err := s.Index.PruneCandidates(in.Below, cutoff, in.Max)
+	// The whole eligible set is read, then ordered by what it has earned (see
+	// orderPruneCandidates), so a bounded proposal list is the least-used
+	// facts rather than the oldest rows.
+	found, err := s.Index.PruneCandidates(in.Below, cutoff, pruneMaxCap)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -104,7 +108,10 @@ func (s *Server) pruneMemory(w http.ResponseWriter, r *http.Request) {
 	// Only facts the caller may write are candidates for it: a prune is a
 	// write, and the caller's reach is the same as for `forget`.
 	var cands []index.MemoryHit
-	for _, h := range found {
+	for _, h := range s.orderPruneCandidates(found, vault.Now()) {
+		if len(cands) >= in.Max {
+			break
+		}
 		if s.canWrite(r, h.Note) {
 			cands = append(cands, h)
 		}
@@ -150,6 +157,41 @@ func (s *Server) pruneMemory(w http.ResponseWriter, r *http.Request) {
 		"apply": true, "below": in.Below, "max": in.Max,
 		"candidates": rows, "removed": removed,
 	})
+}
+
+// orderPruneCandidates puts eviction candidates in the order they should be
+// proposed: never recalled and never used first, then the oldest. A fact that
+// has been recalled or used is ranked behind one that has not, and a fact used
+// UseProtect times or more is not a candidate at all (calibrate.Protected).
+//
+// The ordering is a proposal only. The retraction still re-checks the file
+// before writing, exactly as before.
+func (s *Server) orderPruneCandidates(hits []index.MemoryHit, now time.Time) []index.MemoryHit {
+	st, stErr := s.calibrationStore()
+	facts := make([]calibrate.Fact, 0, len(hits))
+	byKey := make(map[string]index.MemoryHit, len(hits))
+	for _, h := range hits {
+		f := calibrate.Fact{
+			Note: h.Note, ID: h.ID, Agent: h.Agent, Importance: h.Importance,
+			Used: h.Uses, Immutable: h.Immutable, Human: h.HumanAuthored(),
+			Open: h.Challenges != "", Superseded: h.Superseded(), Private: h.Visibility != "",
+		}
+		if at, ok := parseStampLocal(h.Stamp); ok {
+			f.AgeDays = now.Sub(at).Hours() / 24
+		}
+		if stErr == nil {
+			if n, err := st.Recalled(h.Note, h.ID); err == nil {
+				f.Recalled = n
+			}
+		}
+		facts = append(facts, f)
+		byKey[h.Note+"\x00"+h.ID] = h
+	}
+	out := make([]index.MemoryHit, 0, len(facts))
+	for _, f := range calibrate.ProposalOrder(facts) {
+		out = append(out, byKey[f.Note+"\x00"+f.ID])
+	}
+	return out
 }
 
 // entryInBody finds one entry by id in a note body.

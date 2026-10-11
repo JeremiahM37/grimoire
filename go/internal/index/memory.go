@@ -275,14 +275,15 @@ func (ix *Index) writeMemoryRows(note *vault.Note) error {
 				"expires,immutable,superseded_by,superseded_at,helpful,unhelpful,line,"+
 				"embedding,space,acl,private,origin,human,challenges,"+
 				"fresh,chk,verified,nchange,nverify,since,shape,vol,prate,valid_from,valid_to,"+
-				"importance,hand,evidence,image,capb,visibility)"+
-				" VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+				"importance,hand,evidence,image,capb,visibility,evv)"+
+				" VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
 			e.ID, note.Path, e.Text, e.Agent, e.Task, e.Session, e.Stamp, e.Category,
 			e.Expires, immutable, e.SupersededBy, e.SupersededAt, e.Helpful,
 			e.Unhelpful, e.Line, blob, space, acl, private, e.Origin, human, e.Challenges,
 			e.Fresh, e.Check, e.Verified, e.Changes, e.Verifies, e.Since, e.Shape(), e.Vol, e.PriorRate,
 			canonicalValidity(e.ValidFrom), canonicalValidity(e.ValidTo),
 			e.Importance, boolInt(e.HumanAuthored()), e.Evidence, e.Image, e.CaptionBasis, e.Visibility,
+			e.Verification,
 		); err != nil {
 			return err
 		}
@@ -626,7 +627,7 @@ func (ix *Index) overScanLimit(where string, args []any, limit int) (bool, error
 const memoryColumns = "id,note,text,agent,task,session,stamp,category,expires,immutable," +
 	"superseded_by,superseded_at,helpful,unhelpful,line,embedding,space,acl," +
 	"private,origin,human,challenges,fresh,chk,verified,nchange,nverify,since,vol,prate," +
-	"valid_from,valid_to,importance,hand,uses,last_used,evidence,image,capb,visibility"
+	"valid_from,valid_to,importance,hand,uses,last_used,evidence,image,capb,visibility,evv"
 
 // scanMemoryRow reads one row selected with memoryColumns. It takes the Scan
 // method rather than the rows, so both the ranked query and the prune query
@@ -643,6 +644,7 @@ func scanMemoryRow(scan func(...any) error) (memoryRow, error) {
 		image     string
 		capb      string
 		vis       string
+		evv       string
 	)
 	if err := scan(&r.hit.ID, &r.hit.Note, &r.hit.Text, &r.hit.Agent,
 		&r.hit.Task, &r.hit.Session, &r.hit.Stamp, &r.hit.Category,
@@ -653,13 +655,14 @@ func scanMemoryRow(scan func(...any) error) (memoryRow, error) {
 		&r.hit.Verifies, &r.hit.Since, &r.hit.Vol, &r.hit.PriorRate,
 		&r.hit.ValidFrom, &r.hit.ValidTo,
 		&r.hit.Importance, &hand, &r.hit.Uses, &r.hit.LastUsed, &evidence,
-		&image, &capb, &vis); err != nil {
+		&image, &capb, &vis, &evv); err != nil {
 		return r, err
 	}
 	r.hit.Evidence = evidence
 	r.hit.Image = image
 	r.hit.CaptionBasis = capb
 	r.hit.Visibility = vis
+	r.hit.Verification = evv
 	r.hit.Immutable = immutable == 1
 	r.hit.Human = human == 1
 	r.hit.HandWritten = hand == 1
@@ -811,7 +814,8 @@ func (ix *Index) rankMemory(cands []memoryRow, q MemoryQuery) []MemoryHit {
 		h.ImportanceFactor = importanceFactor(eff)
 		h.Reuse = reuseBonus(h.Uses)
 		base := wSemantic*h.Semantic + wKeyword*h.Keyword +
-			wEntity*h.Entity + wRecency*h.Recency + wUseful*h.Useful
+			wEntity*h.Entity + wRecency*h.Recency + wUseful*h.Useful +
+			wPhrase*phraseScore(qTokens, c.hit.Text)
 		// An unrated agent fact has factor 1 and no reuse, so its score is the
 		// pre-importance score bit for bit (x*1 and x+0 are exact).
 		h.Score = base*h.ImportanceFactor + h.Reuse
