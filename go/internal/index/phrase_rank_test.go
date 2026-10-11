@@ -32,7 +32,7 @@ func TestPhraseScoreNeedsARunOfTwo(t *testing.T) {
 func TestPhraseScoreIsFractionOfTheQuery(t *testing.T) {
 	q := memory.Tokens("priya schmidt owns")
 	got := phraseScore(q, "priya schmidt owns the rotation")
-	if want := 3.0 / 3.0; got != want {
+	if want := 1.0; got != want {
 		t.Errorf("full run = %v, want %v", got, want)
 	}
 	got = phraseScore(q, "priya schmidt works in utc")

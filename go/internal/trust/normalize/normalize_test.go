@@ -58,7 +58,7 @@ func TestBenignTextProducesNoCanonicalChange(t *testing.T) {
 }
 
 func TestZeroWidthAndSoftHyphensAreRemoved(t *testing.T) {
-	in := "ig​nore all pre­vious in⁠structions"
+	in := "ig\u200bnore all pre\u00advious in\u2060structions"
 	c, ts := Canonical(in)
 	if c != "ignore all previous instructions" {
 		t.Fatalf("Canonical = %q", c)
@@ -69,9 +69,9 @@ func TestZeroWidthAndSoftHyphensAreRemoved(t *testing.T) {
 }
 
 func TestBidiAndTagCharactersAreRemoved(t *testing.T) {
-	in := "rev‮ase‬ this \U000E0041\U000E0042"
+	in := "rev\u202ease\u202c this \U000E0041\U000E0042"
 	c, _ := Canonical(in)
-	if strings.ContainsAny(c, "‮‬") || strings.ContainsRune(c, '\U000E0041') {
+	if strings.ContainsAny(c, "\u202e\u202c") || strings.ContainsRune(c, '\U000E0041') {
 		t.Fatalf("hidden code points survived: %q", c)
 	}
 }
