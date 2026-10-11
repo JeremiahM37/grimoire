@@ -146,6 +146,29 @@ CREATE TRIGGER IF NOT EXISTS memory_entries_fts_au AFTER UPDATE OF text ON memor
   INSERT INTO memory_fts(memory_fts, rowid, text) VALUES ('delete', old.rowid, old.text);
   INSERT INTO memory_fts(rowid, text) VALUES (new.rowid, new.text);
 END;
+-- Alias links for memory (internal/memory/alias.go). All three are derived from
+-- the markdown and rebuilt by the index; none is written back to a note.
+-- memory_mentions: the full entity names each fact contains.
+-- memory_alias_src: the evidence for a short form, one row per (form, entity,
+-- fact). Its session and stamp are the scopes the linker reads.
+-- memory_links: the resolved link for a (fact, short form), with its scope.
+CREATE TABLE IF NOT EXISTS memory_mentions(
+  note TEXT NOT NULL, id TEXT NOT NULL, canon TEXT NOT NULL,
+  PRIMARY KEY(note, id, canon)
+);
+CREATE TABLE IF NOT EXISTS memory_alias_src(
+  alias TEXT NOT NULL, canon TEXT NOT NULL, note TEXT NOT NULL, id TEXT NOT NULL,
+  session TEXT NOT NULL DEFAULT '', stamp TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY(alias, canon, note, id)
+);
+CREATE INDEX IF NOT EXISTS idx_memory_alias_src_note ON memory_alias_src(note);
+CREATE TABLE IF NOT EXISTS memory_links(
+  note TEXT NOT NULL, id TEXT NOT NULL, alias TEXT NOT NULL,
+  entity TEXT NOT NULL, scope TEXT NOT NULL, conf REAL NOT NULL,
+  PRIMARY KEY(note, id, alias)
+);
+CREATE INDEX IF NOT EXISTS idx_memory_links_entity ON memory_links(entity);
+CREATE INDEX IF NOT EXISTS idx_memory_links_alias ON memory_links(alias);
 -- Every model call grimoire made itself: ask, rerank, intent, summarize, embed.
 -- NOT an agent's own token spend, which never passes through this process.
 CREATE TABLE IF NOT EXISTS model_calls(

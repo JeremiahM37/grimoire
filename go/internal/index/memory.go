@@ -41,8 +41,13 @@ type MemoryHit struct {
 	Semantic float64
 	Keyword  float64
 	Entity   float64
-	Recency  float64
-	Useful   float64
+	// Link is the entity credit a link to a name in the query gave this fact
+	// (already included in Entity when it is the larger), and LinkScope is the
+	// evidence the link came from. Zero and empty for an unlinked fact.
+	Link      float64
+	LinkScope string
+	Recency   float64
+	Useful    float64
 
 	// ImportanceFactor is the multiplier the fact's importance applied to its
 	// score: exactly 1 for an unrated agent fact, so an unrated store is
@@ -215,10 +220,18 @@ func reuseBonus(uses int) float64 {
 	return wReuse * (1 - math.Exp(-float64(uses)/reuseScale))
 }
 
-// writeMemoryRows re-derives one note's entries. The caller holds the write
-// lock; rows for the note are deleted first, so this is idempotent and a
-// reindex converges.
+// writeMemoryRows re-derives one note's entries and then re-resolves the alias
+// links they touch (memory_alias.go). The caller holds the write lock.
 func (ix *Index) writeMemoryRows(note *vault.Note) error {
+	if err := ix.writeMemoryRowsInner(note); err != nil {
+		return err
+	}
+	return ix.flushAliasesUnlessBulk()
+}
+
+// writeMemoryRowsInner is the note's own rows: rows for the note are deleted
+// first, so this is idempotent and a reindex converges.
+func (ix *Index) writeMemoryRowsInner(note *vault.Note) error {
 	// Use counts are derived index state, but a note is rewritten every time
 	// one of its facts changes. Carrying them across that rewrite is what makes
 	// them mean anything; a full reindex is the one thing allowed to reset them.
@@ -302,7 +315,7 @@ func (ix *Index) writeMemoryRows(note *vault.Note) error {
 			}
 		}
 	}
-	return nil
+	return ix.aliasWriteRows(note.Path, entries)
 }
 
 func boolInt(b bool) int {
@@ -347,6 +360,9 @@ func (ix *Index) RecordUse(rel, id string, at time.Time) error {
 }
 
 func (ix *Index) deleteMemoryRows(rel string) error {
+	if err := ix.aliasRemoveRows(rel); err != nil {
+		return err
+	}
 	if err := ix.DB.Exec("DELETE FROM memory_entries WHERE note=?", rel); err != nil {
 		return err
 	}
@@ -801,6 +817,7 @@ func (ix *Index) rankMemory(cands []memoryRow, q MemoryQuery) []MemoryHit {
 	idf := entryIDF(cands)
 	qTokens := memory.Tokens(q.Query)
 	ents := ix.candidateEntities(cands, qEntities)
+	links := ix.candidateLinks(cands, memory.QueryCanons(q.Query))
 
 	out := make([]MemoryHit, 0, len(cands))
 	for _, c := range cands {
@@ -808,7 +825,17 @@ func (ix *Index) rankMemory(cands []memoryRow, q MemoryQuery) []MemoryHit {
 		eff := h.EffectiveImportance()
 		h.Semantic = clamp01(cosineNorm(qVec, qNorm, c.vec))
 		h.Keyword = keywordScore(qTokens, c.hit.Text, idf)
-		h.Entity = memory.EntityOverlap(qEntities, ents[entKey{c.hit.Note, c.hit.ID}])
+		k := entKey{c.hit.Note, c.hit.ID}
+		h.Entity = memory.EntityOverlap(qEntities, ents[k])
+		if l, ok := links[k]; ok {
+			// A link is credit for a name the fact does not spell out. It is
+			// capped below a literal full-name match (memory.LinkCeiling), and
+			// it only lifts Entity when it beats what the text itself earned.
+			h.Link, h.LinkScope = l.score, l.scope
+			if l.score > h.Entity {
+				h.Entity = l.score
+			}
+		}
 		h.Recency = recencyScoreWith(c.hit.Stamp, q.Now, halfLifeFor(eff))
 		h.Useful = c.hit.Usefulness()
 		h.ImportanceFactor = importanceFactor(eff)

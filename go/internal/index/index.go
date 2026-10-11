@@ -77,6 +77,8 @@ type Index struct {
 	cacheFields
 	// the wiki-link lookup maps, patched on write; see resolve.go
 	resolverFields
+	// the short forms awaiting alias re-resolution; see memory_alias.go
+	aliasFields
 }
 
 func New(database *db.DB, v *vault.Vault, e Embedder) *Index {
@@ -115,7 +117,8 @@ func (ix *Index) Reindex() (int, error) {
 	// indefinitely without any error.
 	ix.bumpRev()
 
-	for _, tbl := range []string{"notes", "links", "tags", "fts", "fts_map", "facts", "vectors"} {
+	for _, tbl := range []string{"notes", "links", "tags", "fts", "fts_map", "facts", "vectors",
+		"memory_mentions", "memory_alias_src", "memory_links"} {
 		if err := ix.DB.Exec("DELETE FROM " + tbl); err != nil {
 			return 0, err
 		}
@@ -141,6 +144,10 @@ func (ix *Index) Reindex() (int, error) {
 		n++
 	}
 	if err := ix.resolveAll(); err != nil {
+		return n, err
+	}
+	// Alias links were deferred per note; one pass resolves them all.
+	if err := ix.flushAliases(); err != nil {
 		return n, err
 	}
 	return n, nil
@@ -205,6 +212,9 @@ func (ix *Index) Remove(rel string) error {
 	ix.writeMu.Lock()
 	defer ix.writeMu.Unlock()
 	if err := ix.removeRows(rel); err != nil {
+		return err
+	}
+	if err := ix.flushAliasesUnlessBulk(); err != nil {
 		return err
 	}
 	ix.bumpRev()
