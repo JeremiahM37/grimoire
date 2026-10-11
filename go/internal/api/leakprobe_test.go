@@ -593,6 +593,8 @@ func lpProbes(w *lpWorld) []lpProbe {
 		{route: "POST /api/banks/{bank}/import", path: "/api/banks/alicebank/import", body: map[string]any{}, kind: lpWrite},
 		{route: "PATCH /api/banks/{bank}", path: "/api/banks/alicebank", method: "PATCH", body: map[string]any{"mission": "x"}, kind: lpWrite},
 		{route: "DELETE /api/banks/{bank}", path: "/api/banks/alicebank", method: "DELETE", kind: lpWrite},
+		{route: "POST /api/banks/{bank}/units/{id}/promote", path: "/api/banks/alicebank/units/priya/promote", body: map[string]any{"reason": "x"}, kind: lpWrite},
+		{route: "POST /api/banks/{bank}/mental-models/{id}/promote", path: "/api/banks/alicebank/mental-models/priya/promote", body: map[string]any{"reason": "x"}, kind: lpWrite},
 
 		// --- publishing: only the publish:true, not-private note may leave ---
 		{route: "GET /published", path: "/published", kind: lpList},
