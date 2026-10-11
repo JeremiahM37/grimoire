@@ -57,6 +57,12 @@ type Decision struct {
 	// of noise. A challenge says which fact was contested, by what, and leaves
 	// a person something to resolve.
 	Challenges string
+
+	// Contested is the ID of an entry this fact would have superseded on
+	// overlap alone, but whose statement names a different subject (see
+	// contest.go). Set only under the `cascade` experiment. The decision is
+	// then OpAdd: the caller may consult the cascade and supersede after all.
+	Contested string
 }
 
 // stopwords are dropped before comparing facts. The list is deliberately
@@ -291,6 +297,9 @@ func DecideAs(fact, origin string, human bool, candidates []Entry) Decision {
 					return Decision{Op: OpDelete, Target: c.ID,
 						Why: "retracts: " + c.Text}
 				}
+				if deferContested(fact, c) {
+					return contestedDecision(fact, c)
+				}
 				return Decision{Op: OpUpdate, Text: fact, Target: c.ID,
 					Why: "supersedes: " + c.Text}
 			}
@@ -305,6 +314,9 @@ func DecideAs(fact, origin string, human bool, candidates []Entry) Decision {
 			if kind, ok := ValueUpdate(c.Text, fact); ok {
 				if c.Immutable || outranked(incoming, c) {
 					return DecideTarget(fact, origin, human, c)
+				}
+				if deferContested(fact, c) {
+					return contestedDecision(fact, c)
 				}
 				return Decision{Op: OpUpdate, Text: fact, Target: c.ID,
 					Why: "supersedes (" + kind + " value changed): " + c.Text}
