@@ -58,6 +58,13 @@ func Scan(docs []dream.Doc, knownSecrets []string) []dream.Finding {
 	return scanWith(docs, knownSecrets, normalize.Expand)
 }
 
+// ScanGuarded is Scan with the decision-model signal for untrusted lines. It
+// is what the dream sweep calls; with the "guard" experiment off, or a nil
+// classifier, it returns exactly what Scan returns.
+func ScanGuarded(docs []dream.Doc, knownSecrets []string, clf *Classifier) []dream.Finding {
+	return scanWithClassifier(docs, knownSecrets, normalize.Expand, clf)
+}
+
 // lineReadings returns the forms of one line the injection check judges.
 type lineReadings func(line string) []normalize.Variant
 
@@ -65,10 +72,16 @@ type lineReadings func(line string) []normalize.Variant
 // raw-only reading to measure what the check saw before canonicalisation; the
 // vault always uses normalize.Expand.
 func scanWith(docs []dream.Doc, knownSecrets []string, readings lineReadings) []dream.Finding {
+	return scanWithClassifier(docs, knownSecrets, readings, nil)
+}
+
+// scanWithClassifier is scanWith plus an optional decision-model signal for
+// untrusted lines (guard_classify.go). A nil classifier is the pattern scanner.
+func scanWithClassifier(docs []dream.Doc, knownSecrets []string, readings lineReadings, clf *Classifier) []dream.Finding {
 	known := usableSecrets(knownSecrets)
 	var out []dream.Finding
 	for _, d := range docs {
-		out = append(out, scanDoc(d, known, readings)...)
+		out = append(out, scanDoc(d, known, readings, clf)...)
 	}
 	out = collapse(out)
 	sort.SliceStable(out, func(i, j int) bool {
@@ -106,7 +119,7 @@ func usableSecrets(in []string) []string {
 }
 
 // scanDoc runs every per-document check over one document.
-func scanDoc(doc dream.Doc, known []string, readings lineReadings) []dream.Finding {
+func scanDoc(doc dream.Doc, known []string, readings lineReadings, clf *Classifier) []dream.Finding {
 	var out []dream.Finding
 	lines := strings.Split(doc.Body, "\n")
 
@@ -171,6 +184,7 @@ func scanDoc(doc dream.Doc, known []string, readings lineReadings) []dream.Findi
 		// as typed. The first reading that matches is the finding, and it
 		// names the steps that exposed it, so a reviewer can see why a line
 		// that looks harmless on screen was flagged.
+		matched := false
 		for _, v := range readings(line) {
 			if !injectionLine(v.Text) {
 				continue
@@ -185,7 +199,16 @@ func scanDoc(doc dream.Doc, known []string, readings lineReadings) []dream.Findi
 				msg += " (exposed by " + strings.Join(v.Transforms, " > ") + ")"
 			}
 			out = append(out, finding(checkInjection, sev, doc.Path, n, msg, excerpt(v.Text, known)))
+			matched = true
 			break
+		}
+		// The decision model is asked only about untrusted text the phrase
+		// patterns did not match. Off, or with no server, clf is nil and this
+		// is a no-op.
+		if !matched && untrusted[n] && clf.Flags(line) {
+			out = append(out, finding(checkInjection, dream.High, doc.Path, n,
+				"untrusted text that a decision model reads as directing an AI reading it; no phrase pattern matched",
+				excerpt(line, known)))
 		}
 
 		if counts, dangerous := hiddenRunes(line, i == 0); len(counts) > 0 {
