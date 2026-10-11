@@ -302,6 +302,17 @@ These are real, and the design does not claim to close them.
   and the prompt would carry the ciphertext. Cascade forget of a sealed fact
   runs the plain forget (there is no text to match), and a write that goes
   through the note API re-applies the tombstone log.
+- **The tombstone log does not really hide ids.** A line stores a salted
+  hash of a 12-hex fact id. That keeps ids out of a casual read, but 48 bits
+  is searchable, and anyone holding an old copy of a note already has its ids,
+  so treat the log as revealing which known facts were forgotten.
+- **One token is one owner.** Ownership is the account behind the request. If
+  several clients share one bearer token (for example every OAuth client of a
+  single MCP front end), they are one owner and read each other's sealed facts.
+- **Reviewed and found sound.** The key store never syncs (both sync paths skip
+  `.grimoire` and dotfiles), memory banks never ingest note memory, and
+  decryption happens at one call site, for the owner, with nothing after it
+  sending the text to a model or a log.
 - **Passphrase change.** Wrapped keys and tombstone signatures move to the new
   session key before the swap and are moved back if any later step fails.
 - **Recall expansion views.** `expand`, `hops`, `explain` and `shape=notes`
