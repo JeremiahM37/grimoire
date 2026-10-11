@@ -63,6 +63,9 @@ type disputeSide struct {
 	Stamp     string   `json:"stamp,omitempty"`
 	Authority string   `json:"authority"`
 	Evidence  []string `json:"evidence"`
+	// Verification is whether the evidence resolved when it was written; see
+	// memory.Entry.Verification.
+	Verification string `json:"verification,omitempty"`
 }
 
 // disputeOut is one disputed entry and every fact currently contesting it.
@@ -71,6 +74,11 @@ type disputeOut struct {
 	Path        string        `json:"path"`
 	Disputed    disputeSide   `json:"disputed"`
 	Challengers []disputeSide `json:"challengers"`
+	// Suggestion is the side the evidence favours, and Breakdown is every side
+	// scored, best first, with the reason for each term (see conflict). It is
+	// advice for the person adjudicating: it never resolves the dispute.
+	Suggestion disputeSuggestion `json:"suggestion"`
+	Breakdown  []disputeScore    `json:"breakdown"`
 }
 
 func sideOf(h index.MemoryHit) disputeSide {
@@ -80,7 +88,7 @@ func sideOf(h index.MemoryHit) disputeSide {
 	}
 	return disputeSide{
 		ID: h.ID, Path: h.Note, Text: h.Text, Agent: h.Agent, Stamp: h.Stamp,
-		Authority: h.Authority().String(), Evidence: ev,
+		Authority: h.Authority().String(), Evidence: ev, Verification: h.Verification,
 	}
 }
 
@@ -128,6 +136,7 @@ func groupDisputes(hits []index.MemoryHit) []disputeOut {
 		for _, c := range challengers {
 			row.Challengers = append(row.Challengers, sideOf(c))
 		}
+		row.Suggestion, row.Breakdown = adjudicate(d, challengers)
 		out = append(out, row)
 	}
 	// Newest disagreement first, so a person reads what most recently needs

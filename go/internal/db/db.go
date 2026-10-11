@@ -606,6 +606,10 @@ var addedColumns = []struct{ table, column, decl string }{
 	// 'private' and 'sensitive' are hidden from default reads. Additive, so an
 	// existing index reads every old row as normal until it is reindexed.
 	{"memory_entries", "visibility", "TEXT NOT NULL DEFAULT ''"},
+	// Whether a fact's evidence resolved when it was written (evv=). Empty for
+	// every fact without evidence, and for every fact written before this
+	// column; those keep the basis they always had.
+	{"memory_entries", "evv", "TEXT NOT NULL DEFAULT ''"},
 	// Which agent read, as distinct from which account. On a single-user
 	// deployment there is no account, so without this the trail can say a
 	// restricted note was read and not by what — which is most of the question.
