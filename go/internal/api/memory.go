@@ -940,6 +940,10 @@ type entryOut struct {
 	// comment did.
 	Origin string `json:"origin,omitempty"`
 	Trust  string `json:"trust"`
+	// Marker is set only under the "guard" experiment, on untrusted text in
+	// the recall response: the random marker that stands for each space in
+	// Text, and the rule for reading it (memory_guard.go).
+	Marker string `json:"marker,omitempty"`
 
 	// AgentReliability is the conservative reliability of the agent that wrote
 	// this fact. Set only on explain responses, and only for agent-written facts.
@@ -1119,6 +1123,7 @@ func (s *Server) recall(w http.ResponseWriter, r *http.Request) {
 	if boolParam(r, "explain") {
 		s.attachReliability(out)
 	}
+	markUntrustedRecall(out)
 	s.noteRecalled(hits)
 	s.fillImageRefs(out)
 	writeJSON(w, http.StatusOK, out)

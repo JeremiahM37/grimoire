@@ -50,6 +50,14 @@ func Neutralize(s string) string {
 // Fence wraps one untrusted passage. The origin travels INSIDE the block, so a
 // reader that quotes the passage back also quotes where it came from.
 func Fence(n int, origin, body string) string {
+	if SpotlightOn() {
+		return spotlightFence(n, origin, body)
+	}
+	return fenceUnmarked(n, origin, body)
+}
+
+// fenceUnmarked is the fence without datamarking. It is the flag-off path.
+func fenceUnmarked(n int, origin, body string) string {
 	if origin == "" {
 		origin = "unknown"
 	}
