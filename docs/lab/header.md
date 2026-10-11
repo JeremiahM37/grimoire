@@ -131,3 +131,25 @@ on that vault.
 - The `header` side table is created lazily; an index built with the flag off
   and queried with it on falls back to text-only keyword matching and does not
   re-embed (no re-index happens on flag change).
+
+## Finalist run at 50,000 facts (orchestrator, 2026-10-11)
+
+Same build (integration branch at c60cb2a), flag off then on, fields
+`title,entities`, n=200 queries per cell, plain recall. Run sequentially on a
+shared host, so the latency column is indicative only.
+
+| corpus | gold@10 off | gold@10 on | p50 off | p50 on |
+|---|---:|---:|---:|---:|
+| session alias scope | 0.745 | 0.835 | 610 ms | 609 ms |
+| default (aliases ambiguous on purpose) | 0.625 | 0.605 | 430 ms | 682 ms |
+
+The session corpus gains 18 queries of 200 and passes the 80% target that the
+recall work set for 50k. The default corpus loses 4, which is at the edge of
+the noise band and in the direction the near-duplicate measurement predicts:
+where no entity link exists, the header adds shared text and nothing else.
+
+Verdict unchanged: KEEP BEHIND FLAG. The gain depends entirely on alias links,
+and on the author's real vault the alias linker produces none, so turning this
+on there would add index cost for no measured benefit. It becomes worth
+graduating when the linker recognises the name forms real notes use.
+Reproduce: `/mnt/bulk/lab-work/final50k/run.sh`.
