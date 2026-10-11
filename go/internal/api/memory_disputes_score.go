@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/JeremiahM37/grimoire/go/internal/calibrate"
 	"github.com/JeremiahM37/grimoire/go/internal/conflict"
 	"github.com/JeremiahM37/grimoire/go/internal/index"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
@@ -39,7 +40,7 @@ const stampLayout = "2006-01-02 15:04"
 // is scored on its own terms, but corroboration is judged within the dispute:
 // a side counts as corroborated only by other sides in it that assert the same
 // text from an independent origin.
-func adjudicate(disputed index.MemoryHit, challengers []index.MemoryHit) (disputeSuggestion, []disputeScore) {
+func adjudicate(disputed index.MemoryHit, challengers []index.MemoryHit, rel conflict.ReliabilityFn) (disputeSuggestion, []disputeScore) {
 	type side struct {
 		hit  index.MemoryHit
 		name string
@@ -83,7 +84,7 @@ func adjudicate(disputed index.MemoryHit, challengers []index.MemoryHit) (disput
 		})
 	}
 
-	ranked := conflict.Rank(cands, conflict.Options{Now: now})
+	ranked := conflict.Rank(cands, conflict.Options{Now: now, Reliability: rel})
 	scores := make([]disputeScore, 0, len(ranked))
 	for _, r := range ranked {
 		i, _ := strconv.Atoi(r.Candidate.ID)
@@ -93,4 +94,26 @@ func adjudicate(disputed index.MemoryHit, challengers []index.MemoryHit) (disput
 	}
 	top := scores[0]
 	return disputeSuggestion{ID: top.ID, Side: top.Side}, scores
+}
+
+// minReliabilityEvents is how many correction events an agent needs before its
+// learned reliability moves a dispute suggestion. Below it the agent is scored
+// as unknown (the neutral default), so a new agent is not penalised for having
+// no record.
+const minReliabilityEvents = 5
+
+// learnedReliability supplies conflict.Options.Reliability from the calibrate
+// counters. It returns nil (the neutral default) when there is no index.
+func (s *Server) learnedReliability() conflict.ReliabilityFn {
+	st, err := s.calibrationStore()
+	if err != nil {
+		return nil
+	}
+	return func(agent string) float64 {
+		c, err := st.Counts(agent)
+		if err != nil || c.Total() < minReliabilityEvents {
+			return conflict.DefaultReliability
+		}
+		return calibrate.Reliability(c)
+	}
 }

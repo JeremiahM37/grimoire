@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/JeremiahM37/grimoire/go/internal/conflict"
 	"github.com/JeremiahM37/grimoire/go/internal/index"
 	"github.com/JeremiahM37/grimoire/go/internal/memory"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
@@ -107,7 +108,7 @@ func (s *Server) liveDisputeHits(r *http.Request) ([]index.MemoryHit, error) {
 // dispute any more, and is left out for the same reason challenges.go leaves
 // it out: asking a person to rule on something that no longer stands is asking
 // about nothing.
-func groupDisputes(hits []index.MemoryHit) []disputeOut {
+func groupDisputes(hits []index.MemoryHit, rel conflict.ReliabilityFn) []disputeOut {
 	now := vault.Now()
 	byID := make(map[string]index.MemoryHit, len(hits))
 	for _, h := range hits {
@@ -136,7 +137,7 @@ func groupDisputes(hits []index.MemoryHit) []disputeOut {
 		for _, c := range challengers {
 			row.Challengers = append(row.Challengers, sideOf(c))
 		}
-		row.Suggestion, row.Breakdown = adjudicate(d, challengers)
+		row.Suggestion, row.Breakdown = adjudicate(d, challengers, rel)
 		out = append(out, row)
 	}
 	// Newest disagreement first, so a person reads what most recently needs
@@ -157,7 +158,7 @@ func (s *Server) listDisputes(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, groupDisputes(hits))
+	writeJSON(w, http.StatusOK, groupDisputes(hits, s.learnedReliability()))
 }
 
 type disputeIn struct {
