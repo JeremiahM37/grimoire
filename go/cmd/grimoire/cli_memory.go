@@ -26,7 +26,7 @@ func cmdRemember(args []string) int {
 	text := strings.TrimSpace(stdinOrArgs(positional(args)))
 	if text == "" {
 		return fail("usage: grimoire remember TEXT [--topic T] [--session S] " +
-			"[--category C] [--expires-in 72h] [--immutable] [--human] [--importance 1-5] [--visibility normal|private|sensitive]")
+			"[--category C] [--expires-in 72h] [--immutable] [--human] [--importance 1-5] [--visibility normal|private|sensitive|sealed]")
 	}
 	e, err := openEnv()
 	if err != nil {

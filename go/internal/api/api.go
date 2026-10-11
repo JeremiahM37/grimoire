@@ -599,6 +599,9 @@ func (s *Server) health(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (s *Server) reindex(w http.ResponseWriter, _ *http.Request) {
+	// Forgotten facts that came back by copy are removed before the index is
+	// rebuilt from the files, so they never reach the index at all.
+	s.suppressAllTombstoned()
 	n, err := s.Index.Reindex()
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
