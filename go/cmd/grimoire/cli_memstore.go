@@ -37,6 +37,7 @@ const memoryUsage = `usage:
   grimoire memory index --write [--force]   (replays the new index first; held if it loses useful recalls)
   grimoire memory impact [--since 90d] [--agent NAME] [--min N] [--json]
   grimoire memory trace [--target fact:ID|note:PATH] [--days 30] [--json]
+  grimoire memory learn-rank [--days N] [--json]   fit ranking weights on the exposure log (read-only; experiment ips)
   grimoire memory impact --retells [--cutoff 2026-10-09] [--budget 2000] [--since D] [--all-sessions] [--json]
   grimoire memory prune [--dry-run | --apply] [--max N] [--below 1-3] [--json]
   grimoire memory distill --out DIR [--min-age-days N] [--min-uses N]   select bake-in facts + training data (read-only; docs/PARAMETRIC.md)
@@ -82,6 +83,8 @@ func cmdMemory(args []string) int {
 		return memoryTraceCmd(e, rest)
 	case "replay":
 		return memoryReplayCmd(e, rest)
+	case "learn-rank":
+		return memoryLearnRankCmd(e, rest)
 	case "export":
 		return memoryExportCmd(e, rest)
 	case "import":
