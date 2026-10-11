@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/JeremiahM37/grimoire/go/internal/calibrate"
 	"github.com/JeremiahM37/grimoire/go/internal/cues"
 	"github.com/JeremiahM37/grimoire/go/internal/fts"
 	"github.com/JeremiahM37/grimoire/go/internal/index"
@@ -425,6 +426,11 @@ func (s *Server) reconcileFact(w http.ResponseWriter, r *http.Request, rel, fact
 				writeErr(w, statusForVaultErr(err), err.Error())
 				return memoryResult{}, errHandled
 			}
+			if agent != target.Agent {
+				// Only an independent writer confirms; a re-check by the same
+				// agent is not evidence about its own claim.
+				s.calibrateEvent(target.Note, target.ID, calibrate.Confirmed)
+			}
 			return memoryResult{Op: opVerified, ID: target.ID, Target: target.ID,
 				Text: target.Text, Path: target.Note, Why: "re-checked; still true"}, nil
 		}
@@ -491,6 +497,11 @@ func (s *Server) reconcileFact(w http.ResponseWriter, r *http.Request, rel, fact
 			"", decision.Challenges)
 		if err != nil {
 			return memoryResult{}, err
+		}
+		if decision.Challenges != "" {
+			// The fact this one contradicts was not overwritten, so its writer
+			// has been challenged.
+			s.calibrateEvent(rel, decision.Challenges, calibrate.Challenged)
 		}
 		s.addAgentCues(id, m)
 		return memoryResult{Op: string(memory.OpAdd), ID: id, Text: fact,
@@ -826,6 +837,10 @@ type entryOut struct {
 	Origin string `json:"origin,omitempty"`
 	Trust  string `json:"trust"`
 
+	// AgentReliability is the conservative reliability of the agent that wrote
+	// this fact. Set only on explain responses, and only for agent-written facts.
+	AgentReliability *float64 `json:"agent_reliability,omitempty"`
+
 	// Image is set when the fact is about a picture; its text is the caption.
 	// CaptionBasis is stated, inferred or none (see memory.CaptionStated).
 	Image        *imageRef `json:"image,omitempty"`
@@ -974,6 +989,10 @@ func (s *Server) recall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := s.markProcedures(s.assessHits(hits, entriesOut(hits, boolParam(r, "explain"))))
+	if boolParam(r, "explain") {
+		s.attachReliability(out)
+	}
+	s.noteRecalled(hits)
 	s.fillImageRefs(out)
 	writeJSON(w, http.StatusOK, out)
 }
@@ -1428,6 +1447,9 @@ func (s *Server) forgetOne(w http.ResponseWriter, r *http.Request, note, id stri
 	if err := s.retractEntry(note, id, who); err != nil {
 		writeErr(w, statusForEntryErr(err), entryErrMsg(err))
 		return
+	}
+	if who == "human" {
+		s.calibrateEvent(note, id, calibrate.Deleted)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"path": note, "id": id, "retracted": true})
 }

@@ -175,6 +175,7 @@ var routeAccess = map[string]access{
 	"GET /api/memory/rules":                                      admin,  // compiled checks with their evidence; checked in the handler
 	"GET /api/memory/impact":                                     admin,  // reads agent transcripts on this host; checked in the handler
 	"GET /api/memory/replay":                                     admin,  // corpus stats
+	"GET /api/memory/agents/reliability":                         admin,  // per-agent correction counts and reliability
 	"POST /api/memory/replay":                                    admin,  // replays a proposed change; answers quote past requests
 	"POST /api/memory/replay/seed":                               admin,  // loads seed situations
 	"GET /api/memory/export":                                     scoped, // every fact the caller may read

@@ -253,6 +253,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/memory/outcome", s.memoryOutcome)
 	mux.HandleFunc("GET /api/memory/adherence", s.adherenceReport)
 	mux.HandleFunc("GET /api/memory/trace", s.traceCard)
+	mux.HandleFunc("GET /api/memory/agents/reliability", s.adminOnly(s.agentReliability))
 	mux.HandleFunc("GET /api/memory/trace/summary", s.traceSummary)
 	mux.HandleFunc("GET /api/memory/check", s.listChecks)
 	mux.HandleFunc("POST /api/memory/check", s.setCheck)

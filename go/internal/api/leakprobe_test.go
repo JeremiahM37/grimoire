@@ -528,6 +528,7 @@ func lpProbes(w *lpWorld) []lpProbe {
 		{route: "POST /api/memory/batch", path: "/api/memory/batch", body: map[string]any{"items": []map[string]any{}}, kind: lpWrite},
 		{route: "POST /api/memory/feedback", path: "/api/memory/feedback", body: map[string]any{"id": "x"}, kind: lpWrite},
 		{route: "POST /api/memory/prune", path: "/api/memory/prune", body: map[string]any{"apply": false}, kind: lpList},
+		{route: "GET /api/memory/agents/reliability", path: "/api/memory/agents/reliability", kind: lpList},
 		{route: "POST /api/memory/forget", path: "/api/memory/forget", body: map[string]any{"id": "x", "cascade": true, "dry_run": true}, kind: lpWrite},
 		{route: "GET /api/memory/receipts", path: "/api/memory/receipts", kind: lpList},
 		{route: "PATCH /api/memory/entry", path: "/api/memory/entry", method: "PATCH", body: map[string]any{"text": "x"}, kind: lpWrite},

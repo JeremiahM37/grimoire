@@ -25,6 +25,7 @@ const memoryUsage = `usage:
   grimoire memory receipts                 forget receipts (from forget --cascade)
   grimoire memory prefix [--since TOKEN] [--max-tokens N]   durable-memory block for a cached prompt prefix
   grimoire memory disputes                 facts a person recorded that an agent contests
+  grimoire memory agents                   per-agent reliability from correction signals (admin)
   grimoire memory resolve ID keep|accept|merge [text] [--challenger ID] [--path P]
   grimoire memory image FILE [--caption TEXT] [--topic T]  store a picture (caption-only retrieval)
   grimoire memory link --agent NAME --path P [--kind dir|file] [--dir STORE] [--merge] [--dry-run]
@@ -94,6 +95,8 @@ func cmdMemory(args []string) int {
 		return memoryPrefixCmd(e, rest)
 	case "receipts":
 		return memoryReceiptsCmd(e, rest)
+	case "agents":
+		return memoryAgentsCmd(e, rest)
 	case "disputes":
 		return memoryDisputesCmd(e, rest)
 	case "resolve":
