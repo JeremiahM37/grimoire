@@ -31,9 +31,29 @@ with what is measured here, what is designed but not measured, and what is open.
 - The id is a hash of the ciphertext, not the plaintext. Hashing the plaintext
   of a short fact would give anyone who can read the note a guessable hash of it.
 
-Sealed facts are appended, never reconciled. Reconciliation sends the new fact
-and its candidates to a model, which a sealed fact must not do. Extraction
-(`infer`) is skipped for the same reason, and so is the volatility estimate.
+A sealed write is not reconciled against other facts: reconciliation sends the
+new fact and its candidates to a model, which a sealed fact must not do. Sealed
+facts are never offered as candidates to a model or an embedder, and their text
+is the placeholder anyway. Extraction (`infer`) is skipped for the same reason,
+and so is the volatility estimate. Sealing happens before any of those steps.
+
+**Evidence and check are sealed too.** The ciphertext holds a small envelope
+(`{text, evidence, check}`, prefixed so it cannot be mistaken for bare text),
+encrypted under the same data key. The bullet carries no `ev=` and no `chk=`.
+`evv=` (whether the evidence resolved) stays, because it carries no content.
+The owner's reveal restores evidence and check; everyone else gets neither.
+
+**Corrections of a sealed fact.** A correction names its target
+(`target_id`, `target_path`, `expected_text`):
+
+| request | result |
+|---|---|
+| plain write aimed at a sealed fact | 409, nothing is read or sent |
+| `visibility=sealed` by another account | 409 |
+| `visibility=sealed` by the owner | the owner's `expected_text` is checked against the revealed text; the replacement is sealed before anything else, and supersedes the old fact by the ordinary authority rule |
+
+A sealed write is never a confirmation, and a plain correction of a plain fact
+is unchanged.
 
 ### Who reads what
 
@@ -102,6 +122,24 @@ the same fact succeeds with nothing to destroy.
   - an in-place edit is refused and leaves the note unchanged;
   - a saved copy of the note taken before the forget cannot be opened after it,
     and the restored copy is stripped again on reindex.
+- `internal/seal/envelope_test.go`: the envelope round trips; bare text, bare
+  text that looks like JSON, and a malformed envelope all decode as bare text.
+- `internal/api/memory_seal_meta_test.go`:
+  - the evidence and check canaries are absent from the note bytes, the index
+    rows, the write response, export and search; the owner gets the evidence
+    back from recall, and the other accounts do not;
+  - a bare-text ciphertext written before envelopes still opens for its owner,
+    and its legacy evidence is not in the index;
+  - a recording model and embedder (httptest fake, and a wrapped `Embedder`)
+    are given every string a sealed write, a sealed correction and a plain write
+    produce: neither the text nor the evidence appears in any of them, and the
+    plain write does reach the model, so the test is not vacuous;
+  - a plain bullet keeps its `ev=` and `check=` on the bullet.
+- Not measured: the replay preview. The change that stops it embedding a sealed
+  replacement's text is by inspection. A mutation that restores the text there
+  is not caught by any test, because the preview's builder is never reached in
+  the test fixture (the replay gate does not run under it). Covering it needs a
+  replay fixture that reaches `replayPreview`.
 
 ## Tombstones
 
@@ -241,13 +279,23 @@ These are real, and the design does not claim to close them.
   that a sealed fact exists and who owns it. The body is returned unfiltered on
   purpose: an editor that reads a note and writes it back would otherwise
   strip the ciphertext.
-- **Metadata is not sealed.** `ev=` (evidence text), `chk=`, task, category and
-  session stay in clear on a sealed bullet and are returned to every reader.
-  Do not put the secret in the evidence.
-- **A superseding write can inherit the seal after its text was processed.**
-  A plain write that supersedes a sealed fact becomes sealed, but its own text
-  has already been through extraction, so write the replacement with
-  `vis=sealed` yourself.
+- **Legacy bullets keep their metadata in clear.** A sealed bullet written
+  before the envelope has `ev=` and `chk=` in the note file, and the note file
+  is read raw. The index no longer holds them, and the owner's reveal still
+  returns them, but nothing rewrites the old bullets. Forgetting the fact, or
+  writing it again, removes them. Full-text search over the note body can still
+  match legacy evidence until then.
+- **Task, category and session are not sealed.** They stay in clear on a sealed
+  bullet and are returned to every reader. Do not put the secret in them.
+- **A correction does not carry a sealed fact's check forward.** The old check
+  is inside the old ciphertext, and the replacement inherits only what is in the
+  clear. Write the check again on the replacement if you want it kept.
+- **A sealed correction retires the old fact, but cannot forget it.** The
+  replacement is a new key. The old fact is superseded, and its key stays until
+  it is forgotten with a separate request.
+- **Plain text cannot correct a sealed fact.** That was the leak: the
+  superseding write's text went through extraction and the embedder before the
+  seal. The 409 is the answer, and the owner's sealed replacement is the way.
 - **Notes with hidden facts are not consolidated.** `consolidate` skips any
   memory note that holds a private, sensitive or sealed fact and lists it as
   held, because a model rewrite could drop the bullet without shredding its key
