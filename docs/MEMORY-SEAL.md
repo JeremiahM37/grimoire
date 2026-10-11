@@ -233,6 +233,27 @@ These are real, and the design does not claim to close them.
   (`visibility=''` in its query), and a plain retraction leaves the bullet in
   the note, so only `forget` shreds a key. Hand-deleting a bullet or a whole
   note also leaves the key in the key store; run `forget` to shred it.
+- **Raw note reads show the sealed bullet.** `GET /api/notes/...`, the MCP
+  `read_note` and `backlinks` tools, history versions and `shape=notes` return
+  a memory note's body as stored, so a reader of a shared memory note sees
+  another owner's `sealed=` ciphertext, `key=` id and `owner=`. Without the key
+  store, and with the owner bound there, that opens nothing, but it does name
+  that a sealed fact exists and who owns it. The body is returned unfiltered on
+  purpose: an editor that reads a note and writes it back would otherwise
+  strip the ciphertext.
+- **Metadata is not sealed.** `ev=` (evidence text), `chk=`, task, category and
+  session stay in clear on a sealed bullet and are returned to every reader.
+  Do not put the secret in the evidence.
+- **A superseding write can inherit the seal after its text was processed.**
+  A plain write that supersedes a sealed fact becomes sealed, but its own text
+  has already been through extraction, so write the replacement with
+  `vis=sealed` yourself.
+- **Notes with hidden facts are not consolidated.** `consolidate` skips any
+  memory note that holds a private, sensitive or sealed fact and lists it as
+  held, because a model rewrite could drop the bullet without shredding its key
+  and the prompt would carry the ciphertext. Cascade forget of a sealed fact
+  runs the plain forget (there is no text to match), and a write that goes
+  through the note API re-applies the tombstone log.
 - **Passphrase change.** Wrapped keys and tombstone signatures move to the new
   session key before the swap and are moved back if any later step fails.
 - **Recall expansion views.** `expand`, `hops`, `explain` and `shape=notes`

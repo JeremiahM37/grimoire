@@ -195,7 +195,10 @@ func (s *Server) forgetPost(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "not a memory note")
 		return
 	}
-	if in.Cascade {
+	// A sealed fact's text is a placeholder, so there is nothing for a cascade
+	// to match by content. It gets the plain forget, which always removes the
+	// bullet, destroys its key and writes the tombstone.
+	if in.Cascade && !s.entryIsSealed(note, id) {
 		s.cascadeForget(w, r, note, id, in)
 		return
 	}

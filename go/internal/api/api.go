@@ -867,6 +867,8 @@ func (s *Server) createNote(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, statusForVaultErr(err), err.Error())
 		return
 	}
+	// A fact that was forgotten must not return through a plain note write.
+	s.suppressTombstoned(rel)
 	note, err := s.Index.Upsert(rel)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
@@ -998,6 +1000,8 @@ func (s *Server) updateNote(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, statusForVaultErr(err), err.Error())
 		return
 	}
+	// A fact that was forgotten must not return through a plain note write.
+	s.suppressTombstoned(rel)
 	note, err := s.Index.Upsert(rel)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())

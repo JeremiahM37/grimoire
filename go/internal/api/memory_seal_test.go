@@ -249,3 +249,50 @@ func currentFrontmatter(t *testing.T, s *Server, rel string) *markdown.Frontmatt
 	}
 	return note.Frontmatter.Clone()
 }
+
+// A cascade forget of a sealed fact has no text to match, so it must fall back
+// to the plain forget and still destroy the key, not fail with a 400.
+func TestCascadeForgetOfASealedFactStillShredsTheKey(t *testing.T) {
+	t.Parallel()
+	s, h := testServer(t)
+	if err := s.Secrets.Initialize("correct horse battery"); err != nil {
+		t.Fatal(err)
+	}
+	rel, id := rememberSealed(t, h, "", sealCanary)
+	var keyID string
+	for _, e := range memory.Parse(noteBytes(t, s, rel)) {
+		if e.ID == id {
+			keyID = e.KeyID
+		}
+	}
+	w := do(t, h, "POST", "/api/memory/forget", map[string]any{"path": rel, "id": id, "cascade": true})
+	if w.Code != http.StatusOK {
+		t.Fatalf("cascade forget of a sealed fact = %d: %s", w.Code, w.Body)
+	}
+	ks := seal.NewKeystore(filepath.Join(s.Vault.Root, ".grimoire", "seal-keys.json"))
+	if keyID == "" || ks.Has(keyID) {
+		t.Fatalf("key %q survived a cascade forget", keyID)
+	}
+}
+
+// Consolidation rewrites a note through a model. A note holding a sealed fact
+// is neither sent nor rewritten, and the response says why.
+func TestConsolidateSkipsANoteWithASealedFact(t *testing.T) {
+	t.Parallel()
+	s, h := testServer(t)
+	if err := s.Secrets.Initialize("correct horse battery"); err != nil {
+		t.Fatal(err)
+	}
+	rel, _ := rememberSealed(t, h, "", sealCanary)
+	before := noteBytes(t, s, rel)
+	w := do(t, h, "POST", "/api/memory/consolidate", map[string]any{"path": rel})
+	if w.Code != http.StatusOK {
+		t.Fatalf("consolidate = %d: %s", w.Code, w.Body)
+	}
+	if !strings.Contains(w.Body.String(), "sealed") {
+		t.Errorf("response does not say the note was held back: %s", w.Body)
+	}
+	if noteBytes(t, s, rel) != before {
+		t.Error("consolidate rewrote a note that holds a sealed fact")
+	}
+}

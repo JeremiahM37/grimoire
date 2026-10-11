@@ -763,6 +763,21 @@ func SortByRecency(entries []Entry) {
 	})
 }
 
+// HasHidden reports whether a note body holds any hidden fact (private,
+// sensitive or sealed). A caller that must not show hidden facts to a model, or
+// rewrite a note it cannot fully read, checks this first.
+func HasHidden(body string) bool {
+	if !strings.Contains(body, "vis=") {
+		return false
+	}
+	for _, line := range strings.Split(body, "\n") {
+		if e, ok := ParseLine(line); ok && e.Hidden() {
+			return true
+		}
+	}
+	return false
+}
+
 // DropHidden removes the bullet lines of hidden facts from a note body. Every
 // other line, including a bullet with no trailer, is kept byte for byte, so a
 // body with no private facts comes back unchanged.

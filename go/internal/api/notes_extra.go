@@ -398,6 +398,7 @@ func (s *Server) restoreVersion(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, statusForVaultErr(err), err.Error())
 		return
 	}
+	s.suppressTombstoned(rel)
 	restored, err := s.Index.Upsert(rel)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
