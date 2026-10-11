@@ -189,8 +189,8 @@ func TestExtractPython(t *testing.T) {
 		t.Errorf("json as js: qual = %q", js.Qual)
 	}
 	findEdge(t, g, EdgeImport, "pathlib", "")
-	if g.Edges == nil || len(g.Edges) != 3 {
-		t.Errorf("python imports = %d, want 3", len(g.Edges))
+	if n := countKind(g, EdgeImport); n != 3 {
+		t.Errorf("python imports = %d, want 3", n)
 	}
 }
 
@@ -255,6 +255,16 @@ func TestExtractScriptJavaScript(t *testing.T) {
 	}
 	findEdge(t, g, EdgeImport, "path", "")
 	findEdge(t, g, EdgeImport, "./x.js", "")
+}
+
+func countKind(g FileGraph, kind string) int {
+	n := 0
+	for _, e := range g.Edges {
+		if e.Kind == kind {
+			n++
+		}
+	}
+	return n
 }
 
 func lineText(src string, n int) string {

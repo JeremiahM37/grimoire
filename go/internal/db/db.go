@@ -379,7 +379,8 @@ CREATE INDEX IF NOT EXISTS idx_code_symbols_name ON code_symbols(name);
 CREATE INDEX IF NOT EXISTS idx_code_symbols_file ON code_symbols(root, path);
 CREATE TABLE IF NOT EXISTS code_edges(
   root TEXT NOT NULL, path TEXT NOT NULL, line INTEGER NOT NULL, kind TEXT NOT NULL,
-  caller TEXT NOT NULL DEFAULT '', callee TEXT NOT NULL, qual TEXT NOT NULL DEFAULT ''
+  caller TEXT NOT NULL DEFAULT '', callee TEXT NOT NULL, qual TEXT NOT NULL DEFAULT '',
+  target TEXT NOT NULL DEFAULT '', confidence TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_code_edges_callee ON code_edges(callee);
 CREATE INDEX IF NOT EXISTS idx_code_edges_file ON code_edges(root, path);
@@ -512,10 +513,15 @@ const lateIndexes = `
 CREATE INDEX IF NOT EXISTS idx_notes_space ON notes(space);
 CREATE INDEX IF NOT EXISTS idx_vectors_space ON vectors(space);
 CREATE INDEX IF NOT EXISTS idx_notes_untrusted ON notes(untrusted);
+CREATE INDEX IF NOT EXISTS idx_code_edges_target ON code_edges(target);
 `
 
 // addedColumns are columns introduced after their table shipped.
 var addedColumns = []struct{ table, column, decl string }{
+	// Call edges gained a resolved target and a confidence. Older rows read as
+	// empty, which the code graph treats as stale and re-parses once.
+	{"code_edges", "target", "TEXT NOT NULL DEFAULT ''"},
+	{"code_edges", "confidence", "TEXT NOT NULL DEFAULT ''"},
 	{"notes", "space", "TEXT NOT NULL DEFAULT 'commons'"},
 	{"vectors", "space", "TEXT NOT NULL DEFAULT 'commons'"},
 	// A per-note reader list, for documents whose source knows who may read
