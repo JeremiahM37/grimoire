@@ -82,6 +82,13 @@ class Fact:
     note: str = ""
     seq: int = 0
     tags: dict = field(default_factory=dict)
+    # Set by the session alias scope (see assign_sessions): the trailer
+    # session, and what is needed to re-render the sentence with the full name.
+    session: str = ""
+    tmpl: str = ""
+    vals: dict = field(default_factory=dict)
+    display: str = ""
+    kind: str = ""
 
 
 def _id(seed: int, tag: str, i: int) -> str:
@@ -186,11 +193,58 @@ def _make_fact(rng: random.Random, seed: int, tag: str, i: int, n: int,
         question=qtmpl.format(a=ent.display), stamp=_stamp(seq, n), agent=agent,
         human=human, category=category, importance=importance,
         valid_from=valid_from, valid_to=valid_to, seq=seq,
+        tmpl=tmpl, vals=vals, display=ent.display, kind=ent.kind,
     )
 
 
-def build(seed: int, n: int) -> tuple[list[Fact], list[Entity]]:
-    """Return the n facts in generation order (stamps increase) and entities."""
+ALIAS_SCOPES = ("", "session")
+# Share of sessions whose first mention is the alias only, so nothing in the
+# session names the full entity. Such aliases stay ambiguous or unresolved on
+# purpose: the benchmark must not reward a linker for guessing them.
+ALIAS_ONLY_SESSION_SHARE = 0.2
+
+
+def assign_sessions(facts: list[Fact], seed: int, n: int) -> None:
+    """Alias scope "session": group each entity's facts into sessions of 2 to 4.
+
+    Real notes write about an entity inside one conversation, so the first
+    fact of a session names the entity in full and later facts in the same
+    session may use the alias. Facts are chunked per entity in generation
+    order; stamps therefore may be far apart within one session, and the
+    linker's session rule does not look at time. Project entities are left
+    alone (they are written without an alias).
+    """
+    rng = random.Random(f"{seed}:sessions:{n}")
+    by_entity: dict[str, list[Fact]] = {}
+    for f in facts:
+        if f.kind in ("person", "service"):
+            by_entity.setdefault(f.entity, []).append(f)
+    counter = 0
+    for eid in sorted(by_entity):
+        group = by_entity[eid]
+        k = 0
+        while k < len(group):
+            size = rng.randrange(2, 5)
+            chunk = group[k:k + size]
+            k += size
+            sid = _id(seed, "session", counter)
+            counter += 1
+            alias_only = rng.random() < ALIAS_ONLY_SESSION_SHARE
+            for j, f in enumerate(chunk):
+                f.session = sid
+                if j == 0 and not alias_only and f.tmpl:
+                    f.text = f.tmpl.format(e=f.display, **f.vals)
+
+
+def build(seed: int, n: int, alias_scope: str = "") -> tuple[list[Fact], list[Entity]]:
+    """Return the n facts in generation order (stamps increase) and entities.
+
+    alias_scope "" is the original corpus, unchanged. "session" adds session
+    trailers so an alias mention shares a session with a full-name mention of
+    the same entity (see assign_sessions).
+    """
+    if alias_scope not in ALIAS_SCOPES:
+        raise ValueError(f"alias_scope must be one of {ALIAS_SCOPES}")
     rng = random.Random(f"{seed}:corpus:{n}")
     entities = _entities(rng, max(60, n // 2))
     by_eid = {e.eid: e for e in entities}
@@ -220,6 +274,8 @@ def build(seed: int, n: int) -> tuple[list[Fact], list[Entity]]:
         used[key] = fact
         current.append(key)
         facts.append(fact)
+    if alias_scope == "session":
+        assign_sessions(facts, seed, n)
     return facts, entities
 
 
@@ -256,6 +312,8 @@ def bullet(f: Fact) -> str:
         fields.append(f"valid_from={f.valid_from}")
     if f.valid_to:
         fields.append(f"valid_to={f.valid_to}")
+    if f.session:
+        fields.append(f"session={f.session}")
     return f"- {body} <!--m {' '.join(fields)}-->"
 
 
