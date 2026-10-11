@@ -159,6 +159,25 @@ func (ix *Index) memoryEntriesCandidates(q MemoryQuery, where string, args []any
 		}
 	}
 
+	// link: rows linked to an entity the query names in full, newest first.
+	// The alias linker (memory_alias.go) is what puts a fact here when it says
+	// only "Priya", so this arm is how such a fact reaches the candidate set.
+	if canons := memory.QueryCanons(q.Query); len(canons) > 0 {
+		marks := make([]string, len(canons))
+		largs := make([]any, len(canons))
+		for i, c := range canons {
+			marks[i] = "?"
+			largs[i] = c
+		}
+		if err := take("SELECT rowid FROM memory_entries WHERE "+where+
+			" AND (note,id) IN (SELECT note,id FROM memory_links WHERE entity IN ("+
+			strings.Join(marks, ",")+"))"+
+			" ORDER BY stamp DESC, id DESC LIMIT ?",
+			with(append(largs, pool)...)...); err != nil {
+			return nil, err
+		}
+	}
+
 	// semantic: brute-force cosine, keeping the best pool. Only the embedding
 	// column is decoded here; full rows are fetched for the survivors below.
 	qVec := q.QueryVector

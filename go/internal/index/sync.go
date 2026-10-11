@@ -108,6 +108,13 @@ func (ix *Index) Sync() (SyncStats, error) {
 	defer ix.endBulk()
 	ix.beginBulk()
 
+	// An index built before alias links existed has no alias rows. They derive
+	// from memory rows already in the database, so they are filled in here
+	// rather than by a full rebuild, which would re-embed every note.
+	if err := ix.aliasBackfill(); err != nil {
+		return stats, err
+	}
+
 	changed := false
 	for _, rel := range rels {
 		prev, seen := known[rel]
@@ -150,6 +157,9 @@ func (ix *Index) Sync() (SyncStats, error) {
 		}
 		changed = true
 		stats.Removed++
+	}
+	if err := ix.flushAliasesUnlessBulk(); err != nil {
+		return stats, err
 	}
 
 	if changed {
