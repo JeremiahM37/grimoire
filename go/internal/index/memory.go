@@ -831,7 +831,8 @@ func (ix *Index) rankMemory(cands []memoryRow, q MemoryQuery) []MemoryHit {
 	qTokens := memory.Tokens(q.Query)
 	ents := ix.candidateEntities(cands, qEntities)
 	links := ix.candidateLinks(cands, memory.QueryCanons(q.Query))
-	actr := ix.actrTraces(cands) // nil unless the "actr" experiment is on
+	actr := ix.actrTraces(cands)  // nil unless the "actr" experiment is on
+	lw := ix.learnedRankWeights() // nil unless the ips experiment has stored weights
 
 	out := make([]MemoryHit, 0, len(cands))
 	for _, c := range cands {
@@ -860,6 +861,9 @@ func (ix *Index) rankMemory(cands []memoryRow, q MemoryQuery) []MemoryHit {
 		base := wSemantic*h.Semantic + wKeyword*h.Keyword +
 			wEntity*h.Entity + wRecency*h.Recency + wUseful*h.Useful +
 			wPhrase*phraseScore(qTokens, c.hit.Text)
+		if lw != nil {
+			base = learnedBase(lw, h, phraseScore(qTokens, c.hit.Text))
+		}
 		// An unrated agent fact has factor 1 and no reuse, so its score is the
 		// pre-importance score bit for bit (x*1 and x+0 are exact).
 		h.Score = base*h.ImportanceFactor + h.Reuse

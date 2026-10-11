@@ -122,6 +122,7 @@ func (s *Server) logWithheld(lg ctxLog, held []contextItem, tagOf map[string]str
 	for i, it := range held {
 		rows[i] = adherence.Withheld{Session: lg.session, Tag: tagOf[it.Key], Key: it.Key, Target: itemTarget(it),
 			Kind: it.Kind, Stage: lg.stage, Tool: tool, Relevance: it.score, PWithhold: rate}
+		rows[i].Pos, rows[i].Slate, rows[i].Explored, rows[i].Feats = ipsFields(lg, it)
 	}
 	if err := st.LogWithheld(rows, time.Now()); err != nil {
 		log.Printf("adherence: log withheld: %v", err)
