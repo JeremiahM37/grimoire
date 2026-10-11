@@ -42,6 +42,15 @@ type Item struct {
 	UpdateMode      string // "replace" (default) or "append"
 	// ScanSecrets redacts credentials from the content before it is stored.
 	ScanSecrets bool
+	// Origin says where the content came from: "web:host", "connector:...",
+	// "tool:...". Empty or a self origin is a direct statement and is trusted.
+	// Anything else is untrusted (see taint.go). The caller declares this; it
+	// is not checked.
+	Origin string
+	// Trust may only DOWNGRADE the item: "untrusted" marks it untrusted
+	// whatever its origin. "trusted" is accepted but changes nothing, because
+	// only a person may vouch for content (PromoteUnit).
+	Trust string
 }
 
 // RetainOptions apply to a whole retain call.
@@ -112,6 +121,9 @@ func (e *Engine) Retain(ctx context.Context, bankID string, items []Item, opts R
 	for i, it := range items {
 		if strings.TrimSpace(it.Content) == "" {
 			return nil, invalid("item %d has no content", i)
+		}
+		if !validTrust(it.Trust) {
+			return nil, invalid("item %d: trust must be trusted or untrusted", i)
 		}
 		switch it.UpdateMode {
 		case "", "replace":
@@ -326,6 +338,10 @@ func (e *Engine) retainDocument(ctx context.Context, prof *Profile, docID string
 	if appendMode && old != nil && old.Content != "" {
 		base := Item{Content: old.Content, Context: old.Context, Metadata: old.Metadata,
 			Tags: old.Tags, Unset: old.Unset}
+		if old.Untrusted {
+			// The stored text keeps its taint when new content is appended.
+			base.Trust, base.Origin = trustDeclaredUntrusted, old.Origin
+		}
 		if !old.Timestamp.IsZero() {
 			ts := old.Timestamp
 			base.Timestamp = &ts
@@ -352,6 +368,9 @@ func (e *Engine) retainDocument(ctx context.Context, prof *Profile, docID string
 		return now
 	}
 	tagsOf := func(it Item) []string { return unionTags(it.Tags, opts.DocumentTags) }
+	// Taint is a max over the group: if any item in it is untrusted, every
+	// fact drawn from the group is.
+	docUntrusted, docOrigin := anyUntrusted(items)
 
 	// Which chunks survive unchanged. A chunk is reused when the same index
 	// holds the same text; anything else is extracted again.
@@ -376,6 +395,9 @@ func (e *Engine) retainDocument(ctx context.Context, prof *Profile, docID string
 	// fact a person wrote or edited, whatever happened to its chunk.
 	var kept []Fact
 	for _, f := range oldFacts.Facts {
+		if docUntrusted {
+			f = taintFact(f, docOrigin)
+		}
 		if f.IsHuman() {
 			if f.Chunk >= 0 && !unchanged[f.Chunk] {
 				if h, ok := oldHashAt[f.Chunk]; !ok || !newHashes[h] {
@@ -488,6 +510,9 @@ func (e *Engine) retainDocument(ctx context.Context, prof *Profile, docID string
 			OccStart: p.ex.OccStart, OccEnd: p.ex.OccEnd, Mentioned: stamp(it),
 			Entities: ents, Tags: tagsOf(it),
 		}
+		if docUntrusted {
+			f = taintFact(f, docOrigin)
+		}
 		idsByChunk[p.chunk] = append(idsByChunk[p.chunk], f.ID)
 		added = append(added, f)
 	}
@@ -544,7 +569,8 @@ func (e *Engine) retainDocument(ctx context.Context, prof *Profile, docID string
 	// original's time and context.
 	first := items[0]
 	doc := &Document{ID: docID, Context: first.Context, Metadata: first.Metadata,
-		Tags: unionTags(allTags(items), opts.DocumentTags), ChunkSize: size, Content: body, Unset: first.Unset}
+		Tags: unionTags(allTags(items), opts.DocumentTags), ChunkSize: size, Content: body, Unset: first.Unset,
+		Origin: docOrigin, Untrusted: docUntrusted}
 	if !first.Unset {
 		doc.Timestamp = stamp(first)
 	}
@@ -554,7 +580,8 @@ func (e *Engine) retainDocument(ctx context.Context, prof *Profile, docID string
 	factsBody := FormatFacts(docID, FactsFile{Facts: all, Prose: oldFacts.Prose})
 
 	docSame := old != nil && old.Content == doc.Content && equalStrings(old.ChunkHashes, doc.ChunkHashes) &&
-		old.Context == doc.Context && equalStrings(old.Tags, doc.Tags)
+		old.Context == doc.Context && equalStrings(old.Tags, doc.Tags) &&
+		old.Untrusted == doc.Untrusted && old.Origin == doc.Origin
 	factsSame := strings.TrimSpace(oldFactsBody) == strings.TrimSpace(factsBody)
 	if docSame && factsSame {
 		dr.Unchanged = true
@@ -566,7 +593,7 @@ func (e *Engine) retainDocument(ctx context.Context, prof *Profile, docID string
 				e.History.Snapshot(docRel, n.Body)
 			}
 		}
-		if _, err := e.Vault.Write(docRel, doc.Content, e.keepFrontmatter(docRel, doc.Frontmatter())); err != nil {
+		if _, err := e.Vault.Write(docRel, doc.Content, e.docFrontmatter(docRel, doc)); err != nil {
 			return nil, spent, err
 		}
 		if _, err := e.Index.Upsert(docRel); err != nil {

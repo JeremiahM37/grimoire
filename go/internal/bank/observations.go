@@ -41,6 +41,12 @@ type Observation struct {
 	// the id of the human observation it would have changed.
 	Challenges string
 	Updated    time.Time
+	// Origin, Tainted and Promo carry taint as they do on a fact: an
+	// observation built from untrusted input is untrusted, and only a person
+	// clears it (see taint.go).
+	Origin  string
+	Tainted bool
+	Promo   string
 
 	// History bullets: Of is the observation this text was a version of, At
 	// when it was replaced, and Deleted marks a retirement rather than a
@@ -138,6 +144,17 @@ func (o Observation) Format() string {
 	if o.Challenges != "" {
 		b.WriteString(" chal=" + escapeField(o.Challenges))
 	}
+	if o.Tainted {
+		b.WriteString(" " + tntKey + "=" + tntUntrusted)
+		if o.Origin != "" {
+			b.WriteString(" " + originKV + "=" + escapeField(o.Origin))
+		}
+	} else if o.Promo != "" {
+		b.WriteString(" " + tntKey + "=" + tntPromoted + " " + promoReasonKV + "=" + escapeField(o.Promo))
+		if o.Origin != "" {
+			b.WriteString(" " + originKV + "=" + escapeField(o.Origin))
+		}
+	}
 	b.WriteString(" -->")
 	return b.String()
 }
@@ -219,6 +236,14 @@ func ParseObservationLine(line, bankID string) (Observation, bool) {
 			o.At = parseTime(v)
 		case "deleted":
 			o.Deleted = true
+		case tntKey:
+			if v == tntUntrusted {
+				o.Tainted = true
+			}
+		case promoReasonKV:
+			o.Promo = unescapeField(v)
+		case originKV:
+			o.Origin = unescapeField(v)
 		}
 	}
 	if o.Of != "" {
@@ -373,11 +398,14 @@ type ObservationOut struct {
 	SourceFactIDs []string   `json:"source_fact_ids"`
 	ProofCount    int        `json:"proof_count"`
 	Evidence      []Evidence `json:"evidence,omitempty"`
-	Tags          []string   `json:"tags"`
-	OccurredStart string     `json:"occurred_start,omitempty"`
-	OccurredEnd   string     `json:"occurred_end,omitempty"`
-	MentionedAt   string     `json:"mentioned_at,omitempty"`
-	UpdatedAt     string     `json:"updated_at,omitempty"`
+	// Trust and Origin label an observation derived from untrusted input.
+	Trust         string   `json:"trust,omitempty"`
+	Origin        string   `json:"origin,omitempty"`
+	Tags          []string `json:"tags"`
+	OccurredStart string   `json:"occurred_start,omitempty"`
+	OccurredEnd   string   `json:"occurred_end,omitempty"`
+	MentionedAt   string   `json:"mentioned_at,omitempty"`
+	UpdatedAt     string   `json:"updated_at,omitempty"`
 	// Challenges is set on a model observation that disputes a person's.
 	Challenges string `json:"challenges,omitempty"`
 	// History entries carry Of (the observation they were a version of),
@@ -394,6 +422,9 @@ func (o Observation) out() ObservationOut {
 	}
 	r := ObservationOut{ID: o.ID, Text: o.Text, Authority: a, SourceFactIDs: o.Sources, ProofCount: len(o.Sources),
 		Evidence: o.Evidence, Tags: o.Tags, Challenges: o.Challenges, Of: o.Of, Deleted: o.Deleted}
+	if o.Tainted {
+		r.Trust, r.Origin = trustLabel(true), o.Origin
+	}
 	if r.SourceFactIDs == nil {
 		r.SourceFactIDs = []string{}
 	}

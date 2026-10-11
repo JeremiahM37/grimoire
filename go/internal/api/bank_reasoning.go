@@ -39,6 +39,8 @@ func (s *Server) bankReasoningRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/banks/{bank}/mental-models/{id}/refresh", s.refreshModel)
 	mux.HandleFunc("POST /api/banks/{bank}/mental-models/{id}/proposal/accept", s.acceptProposal)
 	mux.HandleFunc("POST /api/banks/{bank}/mental-models/{id}/proposal/reject", s.rejectProposal)
+	mux.HandleFunc("POST /api/banks/{bank}/units/{id}/promote", s.adminOnly(s.promoteUnit))
+	mux.HandleFunc("POST /api/banks/{bank}/mental-models/{id}/promote", s.adminOnly(s.promoteModel))
 	mux.HandleFunc("GET /api/banks/{bank}/mental-models/{id}/history", s.modelHistory)
 	mux.HandleFunc("GET /api/banks/{bank}/mental-models/{id}/history/{version}", s.modelVersion)
 

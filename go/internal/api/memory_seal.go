@@ -51,7 +51,8 @@ func (s *Server) sealKeys() *seal.Keystore {
 	return seal.NewKeystore(filepath.Join(s.Vault.Root, ".grimoire", "seal-keys.json"))
 }
 
-// sealText encrypts a fact under a new data key. It needs the unlocked vault.
+// sealText encrypts a sealed payload (see seal.EncodeSealed) under a new data
+// key. It needs the unlocked vault.
 func (s *Server) sealText(owner, text string) (keyID, token string, err error) {
 	if s.Secrets == nil {
 		return "", "", secrets.ErrLocked
@@ -106,7 +107,15 @@ func (s *Server) revealSealed(r *http.Request, hits []index.MemoryHit) {
 				return oe
 			})
 			if err == nil {
-				h.Text = plain
+				p, enveloped := seal.DecodeSealed(plain)
+				h.Text = p.Text
+				if enveloped {
+					h.Evidence, h.Check = p.Evidence, p.Check
+				} else {
+					// Sealed before envelopes existed: the bullet kept its evidence
+					// and check in clear, and only the owner gets them from there.
+					h.Evidence, h.Check = e.Evidence, e.Check
+				}
 			}
 			break
 		}
@@ -225,4 +234,13 @@ func (s *Server) suppressAllTombstoned() {
 	for _, p := range paths {
 		s.suppressTombstoned(p)
 	}
+}
+
+// shownText is the text a write response may repeat. A sealed fact's text is
+// the placeholder in every response, as it is in every read.
+func shownText(m memoryIn, fact string) string {
+	if m.Visibility == memory.VisSealed {
+		return memory.SealedPlaceholder
+	}
+	return fact
 }

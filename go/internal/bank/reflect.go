@@ -11,6 +11,7 @@ import (
 
 	"github.com/JeremiahM37/grimoire/go/internal/ai"
 	"github.com/JeremiahM37/grimoire/go/internal/index"
+	"github.com/JeremiahM37/grimoire/go/internal/trust"
 )
 
 // Reflect answers a question by reasoning over a bank: a model drives a short
@@ -76,6 +77,26 @@ type ModelRef struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 	Text string `json:"text"`
+	// Untrusted is set when the model's answer was written from untrusted
+	// memory and no person has cleared it.
+	Untrusted bool `json:"untrusted,omitempty"`
+}
+
+// taint reports whether any memory, observation or model the answer rests on
+// is untrusted, and the origin of the first one. An answer built on such a
+// source is untrusted too: taint is a max over inputs.
+func (b BasedOn) taint() (bool, string) {
+	for _, f := range append(append([]RecallFact{}, b.Memories...), b.Observations...) {
+		if f.Trust == trust.NameUntrusted {
+			return true, f.Origin
+		}
+	}
+	for _, m := range b.MentalModels {
+		if m.Untrusted {
+			return true, ""
+		}
+	}
+	return false, ""
 }
 
 // BasedOn is the evidence behind an answer.
@@ -143,6 +164,10 @@ type ReflectResponse struct {
 	Iterations            int           `json:"iterations"`
 	DirectivesChecked     bool          `json:"directives_checked"`
 	Trace                 *ReflectTrace `json:"trace"`
+	// Untrusted is set when the answer rests on untrusted memory. The answer
+	// is then a summary of injected content and must be read as data.
+	Untrusted       bool   `json:"untrusted,omitempty"`
+	UntrustedOrigin string `json:"-"`
 }
 
 // reflectIterations maps a budget onto the loop's turn limit.
@@ -170,18 +195,21 @@ const (
 
 // reflectRun is the state of one reflect.
 type reflectRun struct {
-	e       *Engine
-	bankID  string
-	req     ReflectRequest
-	prof    *Profile
-	client  *ai.Client
-	cache   *bankCache
-	now     time.Time
-	maxTok  int
-	match   string
-	dirs    []Directive
-	levels  []string
-	enabled map[string]bool
+	e      *Engine
+	bankID string
+	// untrustedBank is set when the bank holds untrusted content, so the
+	// reader is given the rule that makes the fence mean something.
+	untrustedBank bool
+	req           ReflectRequest
+	prof          *Profile
+	client        *ai.Client
+	cache         *bankCache
+	now           time.Time
+	maxTok        int
+	match         string
+	dirs          []Directive
+	levels        []string
+	enabled       map[string]bool
 
 	history []step
 	usage   Usage
@@ -267,6 +295,7 @@ func (e *Engine) Reflect(ctx context.Context, bankID string, req ReflectRequest)
 		seenMem: map[string]bool{}, seenObs: map[string]bool{}, seenModels: map[string]ModelRef{},
 		enabled: map[string]bool{}}
 	r.dirs = selectDirectives(prof.Directives, req.Tags, match, req.ApplyAllDirectives)
+	r.untrustedBank = c.anyTainted() || e.anyUntrustedModel(bankID)
 
 	// Which levels exist for this question.
 	hasModels := false
@@ -396,10 +425,15 @@ var toolDocs = map[string]string{
 	toolDone:         `done {"answer": markdown, "memory_ids": [string], "observation_ids": [string], "model_ids": [string]} — finish with the answer and the ids it rests on`,
 }
 
+func (r *reflectRun) untrustedInBank() bool { return r.untrustedBank }
+
 func (r *reflectRun) systemPrompt() string {
 	var b strings.Builder
 	b.WriteString("You answer questions from what one memory bank holds, and from nothing else. You work by calling " +
 		"retrieval tools, one JSON reply at a time, and you finish by calling done.\n\n")
+	if r.untrustedInBank() {
+		b.WriteString(trust.Preamble + "\n")
+	}
 	b.WriteString(r.directivesBlock())
 	if len(r.dirs) > 0 {
 		b.WriteString("\n")
@@ -815,6 +849,7 @@ func (r *reflectRun) finish(ctx context.Context, iters int, answer string, cited
 	}
 	resp.Text = answer
 	resp.BasedOn = r.basedOn(cited, answer)
+	resp.Untrusted, resp.UntrustedOrigin = resp.BasedOn.taint()
 	if r.req.ResponseSchema != nil {
 		resp.StructuredOutput, resp.StructuredOutputError = r.structured(ctx, answer)
 	}
@@ -1084,11 +1119,11 @@ func (r *reflectRun) extractive(ctx context.Context) (*ReflectResponse, error) {
 	}
 	var b strings.Builder
 	b.WriteString("What the bank records about this:\n\n")
-	for _, f := range rec.Results {
+	for i, f := range rec.Results {
 		if f.DisputedBy != "" {
 			continue // a person's fact said otherwise; it is listed instead
 		}
-		b.WriteString("- " + f.Text)
+		b.WriteString("- " + fenceUnit(i+1, f.Trust == trust.NameUntrusted, f.Origin, f.Text))
 		if d := factDate(f); d != "" {
 			b.WriteString(" (" + d + ")")
 		}
@@ -1190,6 +1225,7 @@ func (r *reflectRun) query(args map[string]any) string {
 type memOut struct {
 	ID         string   `json:"id"`
 	Text       string   `json:"text"`
+	Trust      string   `json:"trust,omitempty"`
 	Type       string   `json:"type,omitempty"`
 	Authority  string   `json:"authority"`
 	DisputedBy string   `json:"disputed_by,omitempty"`
@@ -1211,10 +1247,17 @@ func compactTime(s string) string {
 	return s
 }
 
-func toMemOut(f RecallFact) memOut {
-	m := memOut{ID: f.ID, Text: f.Text, Authority: f.Authority, DisputedBy: f.DisputedBy,
+// toMemOut renders a recall result for the model. Untrusted text is fenced
+// with its origin so a reader cannot take it for the operator's words; n
+// numbers the fence within the reply.
+func toMemOut(f RecallFact, n int) memOut {
+	untrusted := f.Trust == trust.NameUntrusted
+	m := memOut{ID: f.ID, Text: fenceUnit(n, untrusted, f.Origin, f.Text), Authority: f.Authority, DisputedBy: f.DisputedBy,
 		Mentioned: compactTime(f.MentionedAt), Context: runeCut(f.Context, 120), Tags: f.Tags,
 		Proof: f.ProofCount, Sources: f.SourceFactIDs}
+	if untrusted {
+		m.Trust = trust.NameUntrusted
+	}
 	if f.Type != "observation" {
 		m.Type = f.Type
 	}
@@ -1248,8 +1291,8 @@ func (r *reflectRun) recall(ctx context.Context, args map[string]any) (any, erro
 		return nil, err
 	}
 	mems := []memOut{}
-	for _, f := range rec.Results {
-		mems = append(mems, toMemOut(f))
+	for i, f := range rec.Results {
+		mems = append(mems, toMemOut(f, i+1))
 		if !r.seenMem[f.ID] {
 			r.seenMem[f.ID] = true
 			r.memOrder = append(r.memOrder, f.ID)
@@ -1267,8 +1310,8 @@ func (r *reflectRun) searchObservations(ctx context.Context, args map[string]any
 		return nil, err
 	}
 	obs := []memOut{}
-	for _, f := range rec.Results {
-		obs = append(obs, toMemOut(f))
+	for i, f := range rec.Results {
+		obs = append(obs, toMemOut(f, i+1))
 		if !r.seenObs[f.ID] {
 			r.seenObs[f.ID] = true
 			r.obsOrder = append(r.obsOrder, f.ID)
@@ -1276,7 +1319,7 @@ func (r *reflectRun) searchObservations(ctx context.Context, args map[string]any
 	}
 	src := map[string]memOut{}
 	for id, f := range rec.SourceFacts {
-		src[id] = toMemOut(f)
+		src[id] = toMemOut(f, len(rec.Results)+len(src)+1)
 		if !r.seenMem[id] {
 			r.seenMem[id] = true
 			r.memOrder = append(r.memOrder, id)
@@ -1408,7 +1451,7 @@ func (r *reflectRun) searchModels(_ context.Context, args map[string]any) (any, 
 			fresh = false
 		}
 		if i == 0 && CountTokens(m.Body) <= 4000 {
-			item["content"] = m.Body
+			item["content"] = fenceUnit(i+1, m.Untrusted, m.Origin, m.Body)
 		} else {
 			item["snippet"] = runeCut(m.Body, 280)
 			item["content_chars"] = len([]rune(m.Body))
@@ -1417,7 +1460,7 @@ func (r *reflectRun) searchModels(_ context.Context, args map[string]any) (any, 
 		if _, ok := r.seenModels[h.ID]; !ok {
 			r.modelOrder = append(r.modelOrder, h.ID)
 		}
-		r.seenModels[h.ID] = ModelRef{ID: h.ID, Name: h.Name, Text: m.Body}
+		r.seenModels[h.ID] = ModelRef{ID: h.ID, Name: h.Name, Text: m.Body, Untrusted: m.Untrusted}
 	}
 	return map[string]any{"query": r.query(args), "mental_models": out}, fresh, nil
 }
@@ -1451,12 +1494,12 @@ func (r *reflectRun) readModels(args map[string]any) (any, error) {
 		}
 		used += t
 		r.e.markStale(r.cache, m)
-		out = append(out, map[string]any{"id": m.ID, "name": m.Name, "content": m.Body, "is_stale": m.IsStale,
-			"authority": m.Authority})
+		out = append(out, map[string]any{"id": m.ID, "name": m.Name, "content": fenceUnit(len(out)+1, m.Untrusted, m.Origin, m.Body),
+			"is_stale": m.IsStale, "authority": m.Authority})
 		if _, ok := r.seenModels[m.ID]; !ok {
 			r.modelOrder = append(r.modelOrder, m.ID)
 		}
-		r.seenModels[m.ID] = ModelRef{ID: m.ID, Name: m.Name, Text: m.Body}
+		r.seenModels[m.ID] = ModelRef{ID: m.ID, Name: m.Name, Text: m.Body, Untrusted: m.Untrusted}
 	}
 	res := map[string]any{"mental_models": out}
 	if len(missing) > 0 {
@@ -1494,14 +1537,16 @@ func (r *reflectRun) expand(args map[string]any) (any, error) {
 		}
 		if depth == "chunk" && u.Chunk >= 0 {
 			if ch, err := r.e.GetChunk(r.bankID, ChunkID(r.bankID, u.Doc, u.Chunk)); err == nil {
-				item["chunk"] = map[string]any{"text": renderForModel(ch.Text), "document_id": u.Doc}
+				item["chunk"] = map[string]any{"text": renderForModel(ch.Text), "document_id": u.Doc, "trust": ch.Trust}
 			}
 		} else if n, err := r.e.Vault.Read(DocumentPath(r.bankID, u.Doc)); err == nil {
 			d := ParseDocument(n.Frontmatter, n.Body, u.Doc)
 			if !tagsAllow(d.Tags, r.req.Tags, r.match) {
 				item["error"] = "the source document is outside the requested tags"
 			} else {
-				item["document"] = map[string]any{"id": d.ID, "text": truncateTokens(renderForModel(d.Content), 6000)}
+				origin, untrusted := r.e.docOrigin(r.bankID, u.Doc)
+				item["document"] = map[string]any{"id": d.ID, "trust": trustLabel(untrusted),
+					"text": fenceUnit(1, untrusted, origin, truncateTokens(renderForModel(d.Content), 6000))}
 			}
 		}
 		items = append(items, item)

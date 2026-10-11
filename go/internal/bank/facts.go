@@ -52,6 +52,13 @@ type Fact struct {
 	Challenges string
 	// Proof is how many facts support an observation; 0 for plain facts.
 	Proof int
+	// Origin is where the text came from, for untrusted content only (`org=`).
+	Origin string
+	// Tainted is set when the fact came from untrusted content and no person
+	// has cleared it (`tnt=untrusted`). See taint.go.
+	Tainted bool
+	// Promo is the reason a person cleared the taint (`tnt=promoted promo=`).
+	Promo string
 
 	sum  string
 	Line int // 0-based line in the file, for diagnostics
@@ -214,6 +221,17 @@ func (f Fact) Format() string {
 	if f.DocRemoved {
 		b.WriteString(" doc_removed")
 	}
+	if f.Tainted {
+		b.WriteString(" " + tntKey + "=" + tntUntrusted)
+		if f.Origin != "" {
+			b.WriteString(" " + originKV + "=" + escapeField(f.Origin))
+		}
+	} else if f.Promo != "" {
+		b.WriteString(" " + tntKey + "=" + tntPromoted + " " + promoReasonKV + "=" + escapeField(f.Promo))
+		if f.Origin != "" {
+			b.WriteString(" " + originKV + "=" + escapeField(f.Origin))
+		}
+	}
 	b.WriteString(" -->")
 	return b.String()
 }
@@ -279,6 +297,16 @@ func ParseFactLine(line, bankID, doc string) (Fact, bool) {
 			f.Challenges = unescapeField(v)
 		case "doc_removed":
 			f.DocRemoved = true
+		case tntKey:
+			// `promoted` needs no state of its own: the promo field carries
+			// the reason, and a unit with a reason and no taint is promoted.
+			if v == tntUntrusted {
+				f.Tainted = true
+			}
+		case promoReasonKV:
+			f.Promo = unescapeField(v)
+		case originKV:
+			f.Origin = unescapeField(v)
 		}
 	}
 	if f.ID == "" {

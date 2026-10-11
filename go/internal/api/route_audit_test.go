@@ -114,6 +114,8 @@ var routeAccess = map[string]access{
 	"DELETE /api/banks/{bank}/mental-models/{id}":                scoped,
 	"POST /api/banks/{bank}/mental-models/{id}/refresh":          scoped,
 	"POST /api/banks/{bank}/mental-models/{id}/proposal/accept":  scoped,
+	"POST /api/banks/{bank}/units/{id}/promote":                  admin, // a person clears untrusted content (bank_taint.go)
+	"POST /api/banks/{bank}/mental-models/{id}/promote":          admin, // likewise for a model
 	"POST /api/banks/{bank}/mental-models/{id}/proposal/reject":  scoped,
 	"GET /api/banks/{bank}/mental-models/{id}/history":           scoped,
 	"GET /api/banks/{bank}/mental-models/{id}/history/{version}": scoped,
