@@ -31,10 +31,12 @@ const macLabel = "grimoire/seal/tombstone-mac/v1"
 // everything a person has forgotten. The salt is per tombstone, so two logs
 // cannot be matched against each other by hash.
 //
-// MAC authenticates the line under the vault session key. A line without one
-// was written while the vault was locked, or before signing existed; it still
-// suppresses, but is reported as unsigned. A line whose MAC does not verify is
-// ignored: anyone who can write the file could otherwise suppress any fact.
+// MAC authenticates the line under the vault session key. Only a line whose
+// MAC verifies suppresses anything. A line with no MAC (written while the vault
+// was locked, or by anyone with write access to the file), a line checked while
+// the vault is locked, and a line whose MAC is wrong are all reported and
+// never honoured: otherwise anyone who can write the file could delete any
+// fact from any note by appending a hash of its id.
 type Tombstone struct {
 	Salt   string `json:"salt"`
 	Hash   string `json:"hash"`
@@ -48,12 +50,12 @@ type Status string
 
 const (
 	StatusVerified   Status = "verified"   // MAC checked under the session key
-	StatusUnsigned   Status = "unsigned"   // no MAC: written locked, or before signing
-	StatusUnverified Status = "unverified" // MAC present, but the vault is locked so it cannot be checked
+	StatusUnsigned   Status = "unsigned"   // no MAC: reported, never honoured
+	StatusUnverified Status = "unverified" // MAC present, but the vault is locked so it cannot be checked: not honoured
 	StatusRejected   Status = "rejected"   // MAC present and wrong: ignored
 )
 
-// Report counts what a load found. Rejected lines are never honoured.
+// Report counts what a load found. Only Verified lines are honoured.
 type Report struct {
 	Verified   int
 	Unsigned   int
@@ -98,11 +100,10 @@ func Hash(salt, id string) string {
 }
 
 // Load reads the tombstones that suppress, given the session key. key is nil
-// when the vault is locked. A locked load honours signed lines without
-// checking them and marks them unverified, so a locked server still does not
-// resurrect a forgotten fact, but the report says what was not checked. A
-// missing file is an empty log. Lines that are not tombstones are skipped, so
-// a person's own notes in the file survive.
+// when the vault is locked, and then nothing can be verified, so nothing is
+// returned and the report counts what was not checked. A missing file is an
+// empty log. Lines that are not tombstones are skipped, so a person's own
+// notes in the file survive.
 func (t *TombLog) Load(key []byte) ([]Tombstone, Report, error) {
 	var rep Report
 	f, err := os.Open(t.Path)
@@ -128,8 +129,10 @@ func (t *TombLog) Load(key []byte) ([]Tombstone, Report, error) {
 		switch {
 		case ts.MAC == "":
 			rep.Unsigned++
+			continue
 		case key == nil:
 			rep.Unverified++
+			continue
 		case hmac.Equal([]byte(ts.MAC), []byte(macOf(key, ts))):
 			rep.Verified++
 		default:
@@ -141,16 +144,20 @@ func (t *TombLog) Load(key []byte) ([]Tombstone, Report, error) {
 	if err := sc.Err(); err != nil {
 		return nil, rep, err
 	}
-	if rep.Rejected > 0 {
-		log.Printf("seal: %d tombstone line(s) in %s failed verification and were ignored", rep.Rejected, TombstoneFile)
+	if rep.Rejected > 0 || (key != nil && rep.Unsigned > 0) {
+		log.Printf("seal: %s has %d line(s) that failed verification and %d unsigned line(s); they are ignored", TombstoneFile, rep.Rejected, rep.Unsigned)
 	}
 	return out, rep, nil
 }
 
 // Add records that a fact id was forgotten. key is the session key, or nil
 // when locked, in which case the line is written unsigned and is reported as
-// such on every later load. Recording the same id twice is a no-op.
+// such on every later load. Recording the same id twice is a no-op. A line written with no key is
+// never honoured by a later load; it records the fact for a person to see.
 func (t *TombLog) Add(id, reason string, now time.Time, key []byte) error {
+	mu := lockFor(t.Path)
+	mu.Lock()
+	defer mu.Unlock()
 	ts, _, err := t.Load(key)
 	if err != nil {
 		return err
@@ -182,6 +189,9 @@ func (t *TombLog) Add(id, reason string, now time.Time, key []byte) error {
 // change. Lines that do not verify under oldKey are left as they are, and
 // unsigned lines stay unsigned. It returns how many lines it re-signed.
 func (t *TombLog) Resign(oldKey, newKey []byte) (int, error) {
+	mu := lockFor(t.Path)
+	mu.Lock()
+	defer mu.Unlock()
 	lines, err := t.lines()
 	if err != nil {
 		return 0, err
@@ -272,9 +282,5 @@ func (t *TombLog) write(lines []string) error {
 	if err := os.MkdirAll(filepath.Dir(t.Path), 0o755); err != nil {
 		return err
 	}
-	tmp := t.Path + ".tmp"
-	if err := os.WriteFile(tmp, []byte(strings.Join(lines, "\n")+"\n"), 0o600); err != nil {
-		return err
-	}
-	return os.Rename(tmp, t.Path)
+	return writeAtomic(t.Path, []byte(strings.Join(lines, "\n")+"\n"))
 }

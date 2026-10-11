@@ -52,13 +52,13 @@ func (s *Server) sealKeys() *seal.Keystore {
 }
 
 // sealText encrypts a fact under a new data key. It needs the unlocked vault.
-func (s *Server) sealText(text string) (keyID, token string, err error) {
+func (s *Server) sealText(owner, text string) (keyID, token string, err error) {
 	if s.Secrets == nil {
 		return "", "", secrets.ErrLocked
 	}
 	err = s.Secrets.WithSessionKey(func(key []byte) error {
 		var e error
-		keyID, token, e = s.sealKeys().Seal(key, text)
+		keyID, token, e = s.sealKeys().Seal(key, owner, text)
 		return e
 	})
 	return keyID, token, err
@@ -102,7 +102,7 @@ func (s *Server) revealSealed(r *http.Request, hits []index.MemoryHit) {
 			var plain string
 			err := s.Secrets.WithSessionKey(func(key []byte) error {
 				var oe error
-				plain, oe = s.sealKeys().Open(key, e.KeyID, e.Sealed)
+				plain, oe = s.sealKeys().Open(key, owner, e.KeyID, e.Sealed)
 				return oe
 			})
 			if err == nil {

@@ -13,6 +13,7 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/codegraph"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -503,10 +504,18 @@ func writeErr(w http.ResponseWriter, status int, detail string) {
 }
 
 // normPath applies the same normalization the Python side does: strip a leading
-// slash and ensure the .md suffix.
+// slash and ensure the .md suffix. It also cleans the path lexically, the way
+// the vault will when it opens the file, so an access check and the read it
+// guards always see the same name; a path that still climbs out of the vault
+// after cleaning is returned empty. Without the clean, "public/../private/x"
+// is checked against the wrong space and then read as "private/x".
 func normPath(p string) string {
 	p = strings.TrimPrefix(strings.TrimSpace(p), "/")
 	if p == "" {
+		return ""
+	}
+	p = path.Clean(p)
+	if p == "." || p == ".." || strings.HasPrefix(p, "../") {
 		return ""
 	}
 	if !strings.HasSuffix(p, ".md") {

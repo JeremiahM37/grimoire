@@ -26,8 +26,12 @@ import (
 // an unbounded vault on a write.
 const pulledURLScanLimit = 5000
 
-// attestChecker resolves evidence for this caller.
+// attestChecker resolves evidence for this caller. The pulled-note bodies a URL
+// check reads are loaded once per checker, however many URLs and facts one
+// request cites.
 func (s *Server) attestChecker(r *http.Request) attest.Checker {
+	var pulled []string
+	loaded := false
 	return attest.Checker{
 		Note: func(rel string) (string, bool) {
 			rel = normPath(rel)
@@ -40,9 +44,19 @@ func (s *Server) attestChecker(r *http.Request) attest.Checker {
 			}
 			return n.Body, true
 		},
-		Hash:    func(hex string) bool { return s.storedHashVisible(r, hex) },
-		Fetched: func(u string) bool { return s.pulledURLVisible(r, u) },
-		Entry:   func(id string) bool { return s.entryVisible(r, id) },
+		Hash: func(hex string) bool { return s.storedHashVisible(r, hex) },
+		Fetched: func(u string) bool {
+			if !loaded {
+				pulled, loaded = s.pulledBodies(r), true
+			}
+			for _, raw := range pulled {
+				if containsURL(raw, u) {
+					return true
+				}
+			}
+			return false
+		},
+		Entry: func(id string) bool { return s.entryVisible(r, id) },
 	}
 }
 
@@ -89,22 +103,59 @@ func (s *Server) queryStrings(query string, args ...any) []string {
 	return out
 }
 
-// pulledURLVisible reports whether a URL appears in the text of a note the
-// store pulled from elsewhere (a note with an origin). Trust is derived from the
-// origin, so a note with one is exactly the population that was fetched.
-func (s *Server) pulledURLVisible(r *http.Request, u string) bool {
+// pulledBodies returns the text of every note the caller may read that the
+// store pulled from elsewhere (a note with an origin), bounded by
+// pulledURLScanLimit. Trust is derived from the origin, so a note with one is
+// exactly the population that was fetched.
+func (s *Server) pulledBodies(r *http.Request) []string {
 	if s.Index == nil || s.Index.DB == nil || s.Vault == nil {
-		return false
+		return nil
 	}
 	paths := s.queryStrings(
 		"SELECT path FROM notes WHERE origin <> '' LIMIT ?", pulledURLScanLimit)
+	var out []string
 	for _, p := range paths {
 		if !s.canRead(r, p) {
 			continue
 		}
-		if n, err := s.Vault.Read(p); err == nil && strings.Contains(n.Raw, u) {
+		if n, err := s.Vault.Read(p); err == nil {
+			out = append(out, n.Raw)
+		}
+	}
+	return out
+}
+
+// containsURL reports whether raw contains u as a whole URL, not as the prefix
+// of a longer one: "https://x.com" is not evidence that "https://x.com/a/b"
+// was fetched, and the other way round is only true up to sentence punctuation.
+func containsURL(raw, u string) bool {
+	if u == "" {
+		return false
+	}
+	for from := 0; ; {
+		i := strings.Index(raw[from:], u)
+		if i < 0 {
+			return false
+		}
+		end := from + i + len(u)
+		if end >= len(raw) || !urlContinues(raw, end) {
 			return true
 		}
+		from += i + 1
+	}
+}
+
+// urlContinues reports whether the byte at raw[i] extends a URL that ended at
+// i. A trailing "." or "," only extends it when a URL character follows.
+func urlContinues(raw string, i int) bool {
+	c := raw[i]
+	switch {
+	case c >= 'a' && c <= 'z', c >= 'A' && c <= 'Z', c >= '0' && c <= '9':
+		return true
+	case strings.IndexByte("/_%~#?&=-+:@", c) >= 0:
+		return true
+	case c == '.' || c == ',':
+		return i+1 < len(raw) && urlContinues(raw, i+1) && raw[i+1] != '.' && raw[i+1] != ','
 	}
 	return false
 }

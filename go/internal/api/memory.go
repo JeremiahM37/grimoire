@@ -686,7 +686,7 @@ func (s *Server) appendEntryChallenging(w http.ResponseWriter, r *http.Request, 
 				writeErr(w, http.StatusUnauthorized, "sign in to write a sealed fact")
 				return "", errHandled
 			}
-			keyID, token, err := s.sealText(fact)
+			keyID, token, err := s.sealText(owner, fact)
 			if err != nil {
 				writeErr(w, sealErrStatus(err), "unlock the secret vault to write a sealed fact")
 				return "", err

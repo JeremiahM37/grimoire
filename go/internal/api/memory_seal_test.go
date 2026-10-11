@@ -196,7 +196,7 @@ func TestForgetShredsTheKeyAndNoSavedCopyOpens(t *testing.T) {
 	var plain string
 	err := s.Secrets.WithSessionKey(func(key []byte) error {
 		var e error
-		plain, e = ks.Open(key, keyID, token)
+		plain, e = ks.Open(key, "local", keyID, token)
 		return e
 	})
 	if !errors.Is(err, seal.ErrShredded) {
@@ -213,7 +213,7 @@ func TestForgetShredsTheKeyAndNoSavedCopyOpens(t *testing.T) {
 	if strings.Contains(noteBytes(t, s, rel), id) {
 		t.Error("a restored copy resurrected the forgotten bullet on reindex")
 	}
-	tomb, _, err := seal.NewTombLog(s.Vault.Root).Load(nil)
+	tomb, _, err := seal.NewTombLog(s.Vault.Root).Load(s.tombKey())
 	if err != nil || !seal.Suppressed(tomb, id) {
 		t.Fatalf("no tombstone for %s: %v", id, err)
 	}

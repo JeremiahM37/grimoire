@@ -123,15 +123,17 @@ the same fact succeeds with nothing to destroy.
 | status | when | effect |
 |---|---|---|
 | `verified` | `mac` checks under the session key | suppresses |
-| `unsigned` | no `mac`: written while locked, or before signing existed | suppresses; reported as unsigned |
-| `unverified` | `mac` present, vault locked, so it cannot be checked | suppresses; reported as unverified, and logged by count |
+| `unsigned` | no `mac`: written while locked, or appended by anyone with write access | ignored and reported; never suppresses |
+| `unverified` | `mac` present, vault locked, so it cannot be checked | ignored and reported; nothing is stripped while locked |
 | `rejected` | `mac` present and wrong | ignored and logged by count; the line stays in the file as evidence |
 
-  A locked server therefore still refuses to resurrect a forgotten fact, but
-  it cannot tell a forged signed-looking line from a real one until it is
-  unlocked. A forged line that is not signed is indistinguishable from an
-  unsigned one: anyone with write access to the vault file can add an unsigned
-  tombstone, and that is the open part of this design.
+  Only a verified line suppresses. A line anyone could append (a hash of a
+  visible fact id, with no MAC) therefore deletes nothing, and nothing is
+  stripped from any note while the vault is locked. The cost: a fact forgotten
+  while the vault was locked gets an unsigned line that is not honoured, so
+  that fact is not protected from a stale copy until it is forgotten again
+  while unlocked. The production vault unlocks itself at start, so this is
+  the rare case.
 
 - `hash` is `sha256(salt ‖ fact id)`. The fact id is not stored. The salt is
   per tombstone, so two tombstones for the same id cannot be matched.
@@ -212,12 +214,27 @@ These are real, and the design does not claim to close them.
   receives sealed bullets as ciphertext it cannot open. Sealed facts are
   readable on the device that holds the key store, and nowhere else.
 - **Soft forget of a sealed fact.** Not offered: forget removes it.
-- **Unsigned tombstones are not authenticated.** Anyone who can write the
-  vault file can add an unsigned tombstone and suppress a fact. Signed lines
-  resist this only while the vault is unlocked. Peers receive the log as a
-  note, and a peer's signed line verifies only if it was signed under the
-  same session key, which the two devices share only by sharing the
-  passphrase.
+- **Tombstones are only as good as the session key.** A peer's signed line
+  verifies only if it was signed under the same session key, which two devices
+  share only by sharing the passphrase, so a second device honours none of
+  another device's tombstones otherwise. Anyone who can write the log can
+  delete lines from it (undoing a forget) even though they can no longer forge
+  new ones.
+- **Owner is bound in the key store, not the note.** `owner=` on a bullet is a
+  label. The key store records which account sealed each key and refuses
+  anyone else, so a bullet copied into another account's note, or an edited
+  `owner=`, opens nothing. A deployment with no accounts has one owner,
+  `local`.
+- **Concurrency.** Every read-modify-write of the key store and the tombstone
+  log is serialised by a process-wide lock per file and written through a
+  unique temp file, so a forget cannot be undone by a concurrent write. Two
+  server processes sharing one key store are not covered.
+- **Retracted facts keep their key.** `memory prune` skips sealed facts
+  (`visibility=''` in its query), and a plain retraction leaves the bullet in
+  the note, so only `forget` shreds a key. Hand-deleting a bullet or a whole
+  note also leaves the key in the key store; run `forget` to shred it.
+- **Passphrase change.** Wrapped keys and tombstone signatures move to the new
+  session key before the swap and are moved back if any later step fails.
 - **Recall expansion views.** `expand`, `hops`, `explain` and `shape=notes`
   do not reveal the text to the owner. Owners get it from flat recall with
   `include_private=1`.

@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -258,18 +259,36 @@ func (s *Server) changePassphrase(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "invalid json")
 		return
 	}
+	// The sealed-fact keys and the signed tombstones are moved first, and moved
+	// back if anything after them fails, so a failed change never leaves them
+	// wrapped under a key that is thrown away (which would make every sealed
+	// fact unreadable and every signed tombstone look forged).
+	var moved bool
+	var movedOld, movedNew []byte
+	undo := func() {
+		if !moved {
+			return
+		}
+		if err := s.sealKeys().Rewrap(movedNew, movedOld); err != nil {
+			log.Printf("passphrase change: could not move sealed keys back: %v", err)
+		}
+		if _, err := s.tombLog().Resign(seal.MACKey(movedNew), seal.MACKey(movedOld)); err != nil {
+			log.Printf("passphrase change: could not re-sign tombstones: %v", err)
+		}
+		moved = false
+	}
 	reseal := func(oldKey, newKey []byte) error {
-		// Sealed-fact keys and signed tombstones are wrapped under the session
-		// key too. Moving them here, before the swap, keeps them valid through
-		// the same failure rule the notes follow.
 		if err := s.sealKeys().Rewrap(oldKey, newKey); err != nil {
 			return err
 		}
+		movedOld, movedNew, moved = append([]byte(nil), oldKey...), append([]byte(nil), newKey...), true
 		if _, err := s.tombLog().Resign(seal.MACKey(oldKey), seal.MACKey(newKey)); err != nil {
+			undo()
 			return err
 		}
 		rels, err := s.Vault.Walk()
 		if err != nil {
+			undo()
 			return err
 		}
 		for _, rel := range rels {
@@ -279,15 +298,18 @@ func (s *Server) changePassphrase(w http.ResponseWriter, r *http.Request) {
 			}
 			body, err := secrets.ResealWith(oldKey, newKey, note.Body)
 			if err != nil {
+				undo()
 				return err
 			}
 			if _, err := s.Vault.Write(rel, body, note.Frontmatter); err != nil {
+				undo()
 				return err
 			}
 		}
 		return nil
 	}
 	if err := s.Secrets.ChangePassphrase(in.Old, in.New, reseal); err != nil {
+		undo() // the swap itself can fail after reseal succeeded
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
