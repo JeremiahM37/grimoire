@@ -550,6 +550,11 @@ func lpProbes(w *lpWorld) []lpProbe {
 		// picture that exists but is hidden (see TestMemoryImageACL).
 		{route: "POST /api/memory/image", path: "/api/memory/image", body: map[string]any{"caption": "x", "data_base64": ""}, kind: lpWrite},
 		{route: "GET /api/memory/image/{sha}", path: "/api/memory/image/" + strings.Repeat("a", 64), kind: lpByID},
+		// Visual similarity: a probe for an absent hash answers 404 exactly as a
+		// hidden one does, and the upload probe stores nothing and compares only
+		// against pictures the caller may see (TestMemoryImageSimilarHidesPrivate).
+		{route: "GET /api/memory/image", path: "/api/memory/image?similar_to=" + strings.Repeat("a", 64), kind: lpByID},
+		{route: "POST /api/memory/image/similar", path: "/api/memory/image/similar", body: map[string]any{"data_base64": ""}, kind: lpList},
 
 		// --- banks: a bank the caller cannot read answers as absent ---
 		{route: "GET /api/banks", path: "/api/banks", kind: lpList},
