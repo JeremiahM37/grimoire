@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/JeremiahM37/grimoire/go/internal/index"
+	"github.com/JeremiahM37/grimoire/go/internal/justify"
 	"github.com/JeremiahM37/grimoire/go/internal/markdown"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
 )
@@ -120,6 +121,10 @@ type MentalModel struct {
 	// the source of that input. See taint.go.
 	Untrusted bool   `json:"untrusted,omitempty"`
 	Origin    string `json:"origin,omitempty"`
+	// JustifyStale and JustifyReason are set by the justify store (experiment
+	// "justify") when the units this answer was based on no longer support it.
+	JustifyStale  bool   `json:"justify_stale,omitempty"`
+	JustifyReason string `json:"justify_reason,omitempty"`
 
 	scopeSig string
 	bodySum  string
@@ -507,6 +512,12 @@ func (e *Engine) ListModels(bankID string, q ModelQuery) ([]MentalModel, error) 
 	if match == "" {
 		match = "any"
 	}
+	var jstale map[string]justify.StaleItem
+	if justifyOn() {
+		if jstale, err = e.justifyStale(bankID); err != nil {
+			return nil, err
+		}
+	}
 	out := []MentalModel{}
 	for _, p := range paths {
 		n, err := e.Vault.Read(p)
@@ -521,6 +532,9 @@ func (e *Engine) ListModels(bankID string, q ModelQuery) ([]MentalModel, error) 
 			continue
 		}
 		e.markStale(c, m)
+		if it, ok := jstale[m.ID]; ok {
+			m.JustifyStale, m.JustifyReason = true, justifyStaleReason(it)
+		}
 		m.Proposal = e.readProposal(bankID, m.ID)
 		if !q.Detail {
 			m.Body = ""
@@ -545,6 +559,15 @@ func (e *Engine) GetModel(bankID, id string) (*MentalModel, error) {
 	}
 	c, _ := e.cache(bankID)
 	e.markStale(c, m)
+	if justifyOn() {
+		jstale, err := e.justifyStale(bankID)
+		if err != nil {
+			return nil, err
+		}
+		if it, ok := jstale[m.ID]; ok {
+			m.JustifyStale, m.JustifyReason = true, justifyStaleReason(it)
+		}
+	}
 	m.Proposal = e.readProposal(bankID, id)
 	return m, nil
 }
@@ -901,6 +924,9 @@ func (e *Engine) RefreshModelWith(ctx context.Context, bankID, id string, opts R
 	}
 	// A proposal superseded by an answer that could be written is moot.
 	if err := e.dropProposal(bankID, id); err != nil {
+		return nil, err
+	}
+	if err := e.justifyModel(bankID, id, body, based, c); err != nil {
 		return nil, err
 	}
 	out.Version = m.Version
