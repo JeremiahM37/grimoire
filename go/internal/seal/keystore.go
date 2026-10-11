@@ -173,3 +173,32 @@ func (k *Keystore) save(kf keystoreFile) error {
 	}
 	return os.Rename(tmp, k.Path)
 }
+
+// Rewrap moves every wrapped data key from oldMaster to newMaster, for a
+// passphrase change. The data keys themselves do not change, so ciphertext
+// stays valid. It is all-or-nothing: the file is written only if every key
+// unwraps under oldMaster.
+func (k *Keystore) Rewrap(oldMaster, newMaster []byte) error {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	kf, err := k.load()
+	if err != nil {
+		return err
+	}
+	out := make(map[string]string, len(kf.Keys))
+	for id, wrapped := range kf.Keys {
+		dataKey, err := crypto.Unseal(oldMaster, []byte(wrapped))
+		if err != nil {
+			return fmt.Errorf("unwrapping sealed key %s: %w", id, err)
+		}
+		re, err := crypto.Seal(newMaster, dataKey)
+		if err != nil {
+			return err
+		}
+		out[id] = string(re)
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return k.save(keystoreFile{Keys: out})
+}

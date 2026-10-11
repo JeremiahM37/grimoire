@@ -143,7 +143,37 @@ func (s *Server) forgetSealed(e memory.Entry, reason string) error {
 			return err
 		}
 	}
-	return seal.NewTombLog(s.Vault.Root).Add(e.ID, reason, vault.Now())
+	return s.tombLog().Add(e.ID, reason, vault.Now(), s.tombKey())
+}
+
+// tombLog is the vault's tombstone log.
+func (s *Server) tombLog() *seal.TombLog { return seal.NewTombLog(s.Vault.Root) }
+
+// tombKey is the MAC key for tombstones, or nil while the vault is locked. A
+// nil key means tombstones are written unsigned and loaded as unverified.
+func (s *Server) tombKey() []byte {
+	if s.Secrets == nil {
+		return nil
+	}
+	var key []byte
+	if err := s.Secrets.WithSessionKey(func(k []byte) error {
+		key = seal.MACKey(k)
+		return nil
+	}); err != nil {
+		return nil
+	}
+	return key
+}
+
+// tombstoneFilter strips tombstoned bullets from note content on its way to
+// disk. The cloud-folder pull uses it, so a stale cloud copy cannot put a
+// forgotten fact back between two reindexes.
+func (s *Server) tombstoneFilter(rel string, content []byte) []byte {
+	out, _, err := s.tombLog().Strip(string(content), s.tombKey())
+	if err != nil {
+		return content
+	}
+	return []byte(out)
 }
 
 // tombstoneRemoved records a hard removal, so the id cannot come back from a
@@ -152,7 +182,7 @@ func (s *Server) tombstoneRemoved(e memory.Entry) error {
 	if e.Visibility == memory.VisSealed {
 		return s.forgetSealed(e, "forget")
 	}
-	return seal.NewTombLog(s.Vault.Root).Add(e.ID, "forget", vault.Now())
+	return s.tombLog().Add(e.ID, "forget", vault.Now(), s.tombKey())
 }
 
 // suppressTombstoned removes tombstoned bullets from one memory note that a
@@ -166,7 +196,7 @@ func (s *Server) suppressTombstoned(rel string) {
 	if err != nil {
 		return
 	}
-	body, n, err := seal.NewTombLog(s.Vault.Root).Strip(note.Body)
+	body, n, err := s.tombLog().Strip(note.Body, s.tombKey())
 	if err != nil || n == 0 {
 		return
 	}

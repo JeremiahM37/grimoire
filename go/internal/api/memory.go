@@ -680,7 +680,7 @@ func (s *Server) appendEntryChallenging(w http.ResponseWriter, r *http.Request, 
 		}
 	}
 	// A forgotten fact must not be written back under its old id.
-	if tomb, err := seal.NewTombLog(s.Vault.Root).Load(); err == nil && seal.Suppressed(tomb, e.ID) {
+	if tomb, _, err := s.tombLog().Load(s.tombKey()); err == nil && seal.Suppressed(tomb, e.ID) {
 		writeErr(w, http.StatusConflict, "this fact was forgotten and will not be written back")
 		return "", errHandled
 	}

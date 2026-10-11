@@ -103,13 +103,13 @@ func TestTombstoneHidesIDAndSuppresses(t *testing.T) {
 	dir := t.TempDir()
 	log := NewTombLog(dir)
 	now := time.Date(2026, 10, 10, 9, 0, 0, 0, time.UTC)
-	if err := log.Add("abc123def456", "forget", now); err != nil {
+	if err := log.Add("abc123def456", "forget", now, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := log.Add("abc123def456", "forget", now); err != nil {
+	if err := log.Add("abc123def456", "forget", now, nil); err != nil {
 		t.Fatal(err)
 	}
-	ts, err := log.Load()
+	ts, _, err := log.Load(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,10 +134,10 @@ func TestStripBulletsRemovesOnlyTombstonedBullets(t *testing.T) {
 	body := "# Memory\n\nnot a bullet, a person typed this\n" + gone.Format() + "\n" + kept.Format() + "\n"
 
 	log := NewTombLog(t.TempDir())
-	if err := log.Add(gone.ID, "forget", time.Now()); err != nil {
+	if err := log.Add(gone.ID, "forget", time.Now(), nil); err != nil {
 		t.Fatal(err)
 	}
-	out, n, err := log.Strip(body)
+	out, n, err := log.Strip(body, nil)
 	if err != nil || n != 1 {
 		t.Fatalf("Strip removed %d (%v), want 1", n, err)
 	}
@@ -152,8 +152,116 @@ func TestStripBulletsRemovesOnlyTombstonedBullets(t *testing.T) {
 
 func TestTombLogMissingFileIsEmpty(t *testing.T) {
 	t.Parallel()
-	ts, err := NewTombLog(t.TempDir()).Load()
+	ts, _, err := NewTombLog(t.TempDir()).Load(nil)
 	if err != nil || len(ts) != 0 {
 		t.Fatalf("Load on a missing log = %v, %v", ts, err)
+	}
+}
+
+// The tombstone MAC: a signed line verifies under the session key it was
+// written with, a forged or re-keyed line is ignored, an unsigned line still
+// suppresses but is reported, and a locked load cannot verify and says so.
+func TestTombstoneMACVerifiesRejectsAndReports(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	log := NewTombLog(dir)
+	key := MACKey(testMaster(t))
+	now := time.Now()
+	if err := log.Add("signed-id-0001", "forget", now, key); err != nil {
+		t.Fatal(err)
+	}
+	if err := log.Add("unsigned-id-02", "forget", now, nil); err != nil {
+		t.Fatal(err)
+	}
+	ts, rep, err := log.Load(key)
+	if err != nil || rep.Verified != 1 || rep.Unsigned != 1 || rep.Rejected != 0 || len(ts) != 2 {
+		t.Fatalf("unlocked load = %d honoured, %+v, %v", len(ts), rep, err)
+	}
+	ts, rep, _ = log.Load(nil)
+	if rep.Unverified != 1 || rep.Unsigned != 1 || len(ts) != 2 {
+		t.Fatalf("locked load must honour and flag, got %d honoured, %+v", len(ts), rep)
+	}
+
+	// A line edited to name another id, with its MAC left as it was, fails.
+	raw, _ := os.ReadFile(log.Path)
+	forged := strings.Replace(string(raw), Hash(findSalt(t, log, "signed-id-0001", key), "signed-id-0001"),
+		Hash(findSalt(t, log, "signed-id-0001", key), "victim-id-00003"), 1)
+	if forged == string(raw) {
+		t.Fatal("test did not forge anything")
+	}
+	os.WriteFile(log.Path, []byte(forged), 0o600)
+	ts, rep, _ = log.Load(key)
+	if rep.Rejected != 1 {
+		t.Fatalf("forged line not rejected: %+v", rep)
+	}
+	if Suppressed(ts, "victim-id-00003") {
+		t.Fatal("a forged tombstone suppressed a fact")
+	}
+	// A line signed under another session key is not honoured either.
+	other := MACKey([]byte("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ="))
+	if _, rep, _ := log.Load(other); rep.Rejected == 0 {
+		t.Fatal("a line signed under another key verified")
+	}
+}
+
+// findSalt returns the salt of the signed tombstone for id, so a test can
+// forge a line against the real hash.
+func findSalt(t *testing.T, log *TombLog, id string, key []byte) string {
+	t.Helper()
+	ts, _, err := log.Load(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, x := range ts {
+		if Hash(x.Salt, id) == x.Hash {
+			return x.Salt
+		}
+	}
+	t.Fatal("no tombstone for " + id)
+	return ""
+}
+
+// Resign moves signed lines to a new session key after a passphrase change,
+// leaves unsigned lines alone, and the moved lines verify under the new key.
+func TestResignFollowsThePassphrase(t *testing.T) {
+	t.Parallel()
+	log := NewTombLog(t.TempDir())
+	oldKey := MACKey(testMaster(t))
+	newKey := MACKey([]byte("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ="))
+	if err := log.Add("resign-id-00001", "forget", time.Now(), oldKey); err != nil {
+		t.Fatal(err)
+	}
+	if err := log.Add("resign-id-00002", "forget", time.Now(), nil); err != nil {
+		t.Fatal(err)
+	}
+	n, err := log.Resign(oldKey, newKey)
+	if err != nil || n != 1 {
+		t.Fatalf("Resign = %d, %v; want 1", n, err)
+	}
+	ts, rep, _ := log.Load(newKey)
+	if rep.Verified != 1 || rep.Unsigned != 1 || rep.Rejected != 0 || len(ts) != 2 {
+		t.Fatalf("after resign: %+v", rep)
+	}
+}
+
+// Keys wrapped under the old session key open under the new one after Rewrap,
+// and a key that does not unwrap under the old key blocks the whole rewrite.
+func TestKeystoreRewrapFollowsThePassphrase(t *testing.T) {
+	t.Parallel()
+	ks := NewKeystore(filepath.Join(t.TempDir(), "keys.json"))
+	oldM := testMaster(t)
+	newM := []byte("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ=")
+	id, tok, err := ks.Seal(oldM, "rewrapped")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ks.Rewrap(oldM, newM); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := ks.Open(newM, id, tok); err != nil || got != "rewrapped" {
+		t.Fatalf("after rewrap: %q, %v", got, err)
+	}
+	if _, err := ks.Open(oldM, id, tok); err == nil {
+		t.Fatal("the old session key still opens a rewrapped key")
 	}
 }

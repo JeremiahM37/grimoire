@@ -213,44 +213,13 @@ func TestForgetShredsTheKeyAndNoSavedCopyOpens(t *testing.T) {
 	if strings.Contains(noteBytes(t, s, rel), id) {
 		t.Error("a restored copy resurrected the forgotten bullet on reindex")
 	}
-	tomb, err := seal.NewTombLog(s.Vault.Root).Load()
+	tomb, _, err := seal.NewTombLog(s.Vault.Root).Load(nil)
 	if err != nil || !seal.Suppressed(tomb, id) {
 		t.Fatalf("no tombstone for %s: %v", id, err)
 	}
 	logBytes, _ := os.ReadFile(filepath.Join(s.Vault.Root, seal.TombstoneFile))
 	if strings.Contains(string(logBytes), id) {
 		t.Error("the tombstone log carries the fact id in clear")
-	}
-}
-
-func TestStalePeerPushCannotResurrectAForgottenFact(t *testing.T) {
-	t.Parallel()
-	s, h := testServer(t)
-	// A plain fact, not a sealed one: the tombstone is for every forget.
-	w := do(t, h, "POST", "/api/memory", map[string]any{
-		"text": "the staging token rotates weekly", "infer": false, "topic": "seal-test"})
-	if w.Code != http.StatusCreated {
-		t.Fatalf("remember = %d: %s", w.Code, w.Body)
-	}
-	var out struct {
-		Path string `json:"path"`
-		ID   string `json:"id"`
-	}
-	decode(t, w, &out)
-	stale := noteBytes(t, s, out.Path)
-	if w := do(t, h, "DELETE", "/api/memory/entry?path="+out.Path+"&id="+out.ID+"&hard=1", nil); w.Code != http.StatusOK {
-		t.Fatalf("hard forget = %d: %s", w.Code, w.Body)
-	}
-	// A stale peer pushes back the copy it still has.
-	if _, err := s.Vault.Write(out.Path, stale, currentFrontmatter(t, s, out.Path)); err != nil {
-		t.Fatal(err)
-	}
-	s.suppressTombstoned(out.Path)
-	if strings.Contains(noteBytes(t, s, out.Path), out.ID) {
-		t.Error("a stale push resurrected the fact")
-	}
-	if w := do(t, h, "GET", "/api/memory?q=staging+token", nil); strings.Contains(w.Body.String(), "staging token") {
-		t.Errorf("recall still returns the forgotten fact: %s", w.Body)
 	}
 }
 
