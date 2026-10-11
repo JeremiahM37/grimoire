@@ -2,6 +2,7 @@ package secscan
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -42,20 +43,24 @@ func TestInjectionCorpusMeasure(t *testing.T) {
 	}
 
 	type attackRes struct {
-		ID         string   `json:"id"`
-		Raw        bool     `json:"raw"`
-		Normalized bool     `json:"normalized"`
-		ExposedBy  []string `json:"exposed_by,omitempty"`
+		ID         string `json:"id"`
+		Raw        bool   `json:"raw"`
+		Normalized bool   `json:"normalized"`
+		// Legacy is the normalized reading judged by the original pattern
+		// list only, so the gain from the phrase families can be isolated.
+		Legacy    bool     `json:"legacy"`
+		ExposedBy []string `json:"exposed_by,omitempty"`
 	}
 	res := struct {
-		Attacks       []attackRes `json:"attacks"`
-		BenignDocs    int         `json:"benign_docs"`
-		BenignLines   int         `json:"benign_lines"`
-		DocsRaw       int         `json:"benign_docs_flagged_raw"`
-		DocsNorm      int         `json:"benign_docs_flagged_normalized"`
-		LinesRaw      int         `json:"benign_lines_flagged_raw"`
-		LinesNorm     int         `json:"benign_lines_flagged_normalized"`
-		BenignFlagged []string    `json:"benign_flagged_normalized,omitempty"`
+		Attacks            []attackRes `json:"attacks"`
+		BenignDocs         int         `json:"benign_docs"`
+		BenignLines        int         `json:"benign_lines"`
+		DocsRaw            int         `json:"benign_docs_flagged_raw"`
+		DocsNorm           int         `json:"benign_docs_flagged_normalized"`
+		LinesRaw           int         `json:"benign_lines_flagged_raw"`
+		LinesNorm          int         `json:"benign_lines_flagged_normalized"`
+		BenignFlagged      []string    `json:"benign_flagged_normalized,omitempty"`
+		BenignFlaggedLines []string    `json:"benign_flagged_lines,omitempty"`
 	}{}
 
 	rawReadings := func(line string) []normalize.Variant {
@@ -65,9 +70,10 @@ func TestInjectionCorpusMeasure(t *testing.T) {
 	for _, a := range req.Attacks {
 		doc := dream.Doc{Path: "attack/" + a.ID, Body: a.Text, Kind: dream.KindFileMemory}
 		ar := attackRes{ID: a.ID}
-		ar.Raw = hasInjection(scanWith([]dream.Doc{doc}, nil, rawReadings))
+		ar.Raw = legacyRawFlagged(a.Text)
 		norm := scanWith([]dream.Doc{doc}, nil, normalize.Expand)
 		ar.Normalized = hasInjection(norm)
+		ar.Legacy = legacyFlagged(a.Text)
 		ar.ExposedBy = exposure(a.Text)
 		res.Attacks = append(res.Attacks, ar)
 	}
@@ -83,14 +89,20 @@ func TestInjectionCorpusMeasure(t *testing.T) {
 		}
 		rawFs := scanWith([]dream.Doc{doc}, nil, rawReadings)
 		normFs := scanWith([]dream.Doc{doc}, nil, normalize.Expand)
-		if hasInjection(rawFs) {
+		if legacyRawFlagged(d.Body) {
 			res.DocsRaw++
+		}
+		for _, f := range normFs {
+			if f.Check == checkInjection {
+				res.BenignFlaggedLines = append(res.BenignFlaggedLines, fmt.Sprintf("%s:%d %s", d.Path, f.Line, f.Excerpt))
+			}
 		}
 		if hasInjection(normFs) {
 			res.DocsNorm++
 			res.BenignFlagged = append(res.BenignFlagged, d.Path)
 		}
-		res.LinesRaw += countInjection(rawFs)
+		res.LinesRaw += legacyRawLines(d.Body)
+		_ = rawFs
 		res.LinesNorm += countInjection(normFs)
 	}
 
@@ -113,6 +125,38 @@ func countInjection(fs []dream.Finding) int {
 		}
 	}
 	return n
+}
+
+// legacyFlagged reports whether any reading of the text matches the original
+// pattern list. It is the pre-family behaviour on normalized text.
+// legacyRawFlagged is the pre-change check: the original list on the text as
+// written, no normalization. It is the baseline the other numbers are against.
+func legacyRawFlagged(text string) bool { return legacyRawLines(text) > 0 }
+
+func legacyRawLines(text string) int {
+	n := 0
+	for _, line := range strings.Split(text, "\n") {
+		for _, re := range legacyInjectionPatterns {
+			if re.MatchString(line) {
+				n++
+				break
+			}
+		}
+	}
+	return n
+}
+
+func legacyFlagged(text string) bool {
+	for _, line := range strings.Split(text, "\n") {
+		for _, v := range normalize.Expand(line) {
+			for _, re := range legacyInjectionPatterns {
+				if re.MatchString(v.Text) {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 // exposure returns the transform chain of the first reading of the payload

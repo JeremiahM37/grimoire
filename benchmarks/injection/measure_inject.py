@@ -14,9 +14,19 @@ Two sets are measured:
   obfuscated  each payload re-encoded by one of the transforms below; this is
               the subset the normalizer is meant to help with
 
-The benign set is every markdown file under docs/ plus the repository's root
-markdown. Benign false positives are reported per line and per document. The
-benchmark's own attack payloads are not part of the benign set.
+Held-out split. The 50 unique payload bodies (40 corpus, 10 exfiltration
+templates; the three origins of an exfiltration template share one body) are
+sorted and split by position: even positions are the SEEN half, odd positions
+the HELD-OUT half. Splitting by body keeps duplicates from landing on both
+sides. Pattern families were written while looking at the seen half; the
+held-out half is reported separately and is the test of whether the families
+generalise. Caveat: the author had read the whole corpus file before writing
+the families, so the held-out half is a weaker test than a fresh corpus would be.
+
+The benign set is every markdown file under docs/ and the repository root, plus
+the comment lines of the non-test Go sources and writing/. Benign false
+positives are reported per line and per document. The benchmark's attack
+payloads (benchmarks/) and Go test fixtures (*_test.go) are not in it.
 
 Run from the repository root:
 
@@ -45,6 +55,7 @@ sys.path.insert(0, str(HERE))
 
 import corpus  # noqa: E402
 import exfil_corpus  # noqa: E402
+import fresh_set  # noqa: E402
 
 EXFIL_TARGET = "https://collect.example.com/upload"
 
@@ -127,29 +138,54 @@ TRANSFORMS = {
 
 
 def attack_set() -> list[dict]:
-    """Every payload as written, then each obfuscation of it. Ids are stable."""
-    base = []
+    """Every payload as written, then each obfuscation of it. Ids are stable.
+
+    Each entry carries `half`: "seen" or "held" (see the module docstring)."""
+    base = []  # (payload id, group, text)
     for a in corpus.ATTACKS:
-        base.append((f"corpus:{a.id}", a.payload.replace("{canary}", a.canary())))
+        base.append((f"corpus:{a.id}", f"corpus:{a.id}",
+                     a.payload.replace("{canary}", a.canary())))
     for a in exfil_corpus.ATTACKS:
-        base.append((f"exfil:{a.id}",
+        # ids are x{template:02d}{origin}; the template is the body's identity.
+        base.append((f"exfil:{a.id}", f"exfil:t{a.id[1:3]}",
                      a.payload.replace("{target}", EXFIL_TARGET)))
+    groups = sorted({g for _, g, _ in base})
+    half = {g: ("seen" if i % 2 == 0 else "held") for i, g in enumerate(groups)}
     out = []
-    for pid, text in base:
+    for pid, g, text in base:
+        h = half[g]
         out.append({"id": f"{pid}|plain", "text": text, "set": "plain",
-                    "transform": "plain", "payload": pid})
+                    "transform": "plain", "payload": pid, "half": h})
         for name, fn in TRANSFORMS.items():
             out.append({"id": f"{pid}|{name}", "text": fn(text), "set": "obfuscated",
-                        "transform": name, "payload": pid})
+                        "transform": name, "payload": pid, "half": h})
     return out
 
 
+def _go_comments(path: Path) -> str:
+    """The `//` comment lines of one Go file, without the markers."""
+    lines = []
+    for ln in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        t = ln.strip()
+        if t.startswith("//"):
+            lines.append(t[2:].strip())
+    return "\n".join(lines)
+
+
 def benign_set() -> list[dict]:
-    paths = sorted((REPO / "docs").glob("*.md")) + sorted(REPO.glob("*.md"))
     out = []
-    for p in paths:
+    for p in sorted((REPO / "docs").glob("*.md")) + sorted(REPO.glob("*.md")):
         out.append({"path": str(p.relative_to(REPO)),
                     "body": p.read_text(encoding="utf-8", errors="replace")})
+    for p in sorted((REPO / "writing").rglob("*.md")):
+        out.append({"path": str(p.relative_to(REPO)),
+                    "body": p.read_text(encoding="utf-8", errors="replace")})
+    for p in sorted((REPO / "go").rglob("*.go")):
+        if p.name.endswith("_test.go") or "testdata" in p.parts:
+            continue
+        body = _go_comments(p)
+        if body:
+            out.append({"path": str(p.relative_to(REPO)), "body": body})
     return out
 
 
@@ -183,29 +219,46 @@ def _rate(n: int, d: int) -> float:
 
 def summarise(attacks: list[dict], scored: dict) -> dict:
     by_id = {a["id"]: a for a in scored["attacks"]}
-    rows = {}
-    for a in attacks:
-        r = by_id[a["id"]]
-        key = a["transform"]
-        bucket = rows.setdefault(key, {"n": 0, "raw": 0, "normalized": 0, "exposed_by": {}})
-        bucket["n"] += 1
-        bucket["raw"] += int(r["raw"])
-        bucket["normalized"] += int(r["normalized"])
-        if r.get("exposed_by") and r["normalized"]:
-            k = " > ".join(r["exposed_by"])
-            bucket["exposed_by"][k] = bucket["exposed_by"].get(k, 0) + 1
 
-    def agg(pred):
-        n = raw = norm = 0
+    def agg(pred) -> dict:
+        n = raw = legacy = norm = 0
         for a in attacks:
             if not pred(a):
                 continue
             r = by_id[a["id"]]
             n += 1
             raw += int(r["raw"])
+            legacy += int(r["legacy"])
             norm += int(r["normalized"])
-        return {"n": n, "raw": raw, "normalized": norm,
-                "recall_raw": _rate(raw, n), "recall_normalized": _rate(norm, n)}
+        return {"n": n, "raw": raw, "legacy_normalized": legacy, "normalized": norm,
+                "recall_raw": _rate(raw, n),
+                "recall_legacy_normalized": _rate(legacy, n),
+                "recall_normalized": _rate(norm, n)}
+
+    halves = {"seen": "seen", "held": "held"}
+    res = {}
+    for set_name in ("plain", "obfuscated"):
+        res[set_name] = {"all": agg(lambda a, s=set_name: a["set"] == s)}
+        for h in halves:
+            res[set_name][h] = agg(lambda a, s=set_name, h=h: a["set"] == s and a["half"] == h)
+
+    per_transform = {}
+    for a in attacks:
+        if a["set"] != "obfuscated":
+            continue
+        r = by_id[a["id"]]
+        v = per_transform.setdefault(a["transform"], {"n": 0, "raw": 0, "normalized": 0,
+                                                      "held_normalized": 0, "held_n": 0,
+                                                      "exposed_by": {}})
+        v["n"] += 1
+        v["raw"] += int(r["raw"])
+        v["normalized"] += int(r["normalized"])
+        if a["half"] == "held":
+            v["held_n"] += 1
+            v["held_normalized"] += int(r["normalized"])
+        if r.get("exposed_by") and r["normalized"]:
+            k = " > ".join(r["exposed_by"])
+            v["exposed_by"][k] = v["exposed_by"].get(k, 0) + 1
 
     benign = {
         "docs": scored["benign_docs"],
@@ -214,49 +267,69 @@ def summarise(attacks: list[dict], scored: dict) -> dict:
         "docs_flagged_normalized": scored["benign_docs_flagged_normalized"],
         "lines_flagged_raw": scored["benign_lines_flagged_raw"],
         "lines_flagged_normalized": scored["benign_lines_flagged_normalized"],
-        "doc_fp_rate_raw": _rate(scored["benign_docs_flagged_raw"], scored["benign_docs"]),
         "doc_fp_rate_normalized": _rate(scored["benign_docs_flagged_normalized"], scored["benign_docs"]),
-        "line_fp_rate_raw": _rate(scored["benign_lines_flagged_raw"], scored["benign_lines"]),
         "line_fp_rate_normalized": _rate(scored["benign_lines_flagged_normalized"], scored["benign_lines"]),
         "flagged_docs_normalized": scored.get("benign_flagged_normalized", []),
+        "flagged_lines_normalized": scored.get("benign_flagged_lines", []),
     }
-    return {
-        "plain": agg(lambda a: a["set"] == "plain"),
-        "obfuscated": agg(lambda a: a["set"] == "obfuscated"),
-        "by_transform": {k: {"n": v["n"], "raw": v["raw"], "normalized": v["normalized"],
-                             "exposed_by": v["exposed_by"]}
-                         for k, v in rows.items()},
-        "benign": benign,
-    }
+    return {"recall": res, "by_transform": per_transform, "benign": benign}
+
+
+def _pct(x: float) -> str:
+    return f"{100 * x:5.1f}%"
 
 
 def print_table(s: dict) -> None:
-    def pct(x: float) -> str:
-        return f"{100 * x:5.1f}%"
-
-    p, o, b = s["plain"], s["obfuscated"], s["benign"]
-    print("Recall of the injection check (flagged / attacks)")
-    print(f"  plain as written   n={p['n']:<4} raw {p['raw']:>3} {pct(p['recall_raw'])}"
-          f"   normalized {p['normalized']:>3} {pct(p['recall_normalized'])}")
-    print(f"  obfuscated subset  n={o['n']:<4} raw {o['raw']:>3} {pct(o['recall_raw'])}"
-          f"   normalized {o['normalized']:>3} {pct(o['recall_normalized'])}")
+    r = s["recall"]
+    print("Recall of the injection check: raw | legacy patterns on normalized text | "
+          "current (legacy + families)")
+    for set_name in ("plain", "obfuscated"):
+        for h in ("seen", "held", "all"):
+            v = r[set_name][h]
+            print(f"  {set_name:<11}{h:<6} n={v['n']:<4}"
+                  f" raw {v['raw']:>4} {_pct(v['recall_raw'])}"
+                  f" | legacy {v['legacy_normalized']:>4} {_pct(v['recall_legacy_normalized'])}"
+                  f" | current {v['normalized']:>4} {_pct(v['recall_normalized'])}")
     print()
-    print(f"  {'transform':<14}{'n':>5}{'raw':>6}{'normalized':>12}   exposed by")
+    print(f"  {'transform':<14}{'n':>5}{'raw':>6}{'current':>9}{'held-out':>10}   exposed by")
     for name, v in s["by_transform"].items():
-        if name == "plain":
-            continue
         ex = ", ".join(f"{k} x{c}" for k, c in sorted(v["exposed_by"].items(),
                                                       key=lambda kv: -kv[1])[:2])
-        print(f"  {name:<14}{v['n']:>5}{v['raw']:>6}{v['normalized']:>12}   {ex}")
+        print(f"  {name:<14}{v['n']:>5}{v['raw']:>6}{v['normalized']:>9}"
+              f"{v['held_normalized']:>5}/{v['held_n']:<4}  {ex}")
+    b = s["benign"]
     print()
-    print("Benign false positives (docs/*.md and root *.md)")
-    print(f"  documents {b['docs']}, lines {b['lines']}")
-    print(f"  per document   raw {b['docs_flagged_raw']} ({pct(b['doc_fp_rate_raw'])})"
-          f"   normalized {b['docs_flagged_normalized']} ({pct(b['doc_fp_rate_normalized'])})")
-    print(f"  per line       raw {b['lines_flagged_raw']} ({pct(b['line_fp_rate_raw'])})"
-          f"   normalized {b['lines_flagged_normalized']} ({pct(b['line_fp_rate_normalized'])})")
-    for path in b["flagged_docs_normalized"]:
-        print(f"    flagged: {path}")
+    print(f"Benign false positives: {b['docs']} documents, {b['lines']} non-empty lines")
+    print(f"  per document  raw {b['docs_flagged_raw']}  current {b['docs_flagged_normalized']}"
+          f"  ({_pct(b['doc_fp_rate_normalized'])})")
+    print(f"  per line      raw {b['lines_flagged_raw']}  current {b['lines_flagged_normalized']}"
+          f"  ({_pct(b['line_fp_rate_normalized'])})")
+    for line in b["flagged_lines_normalized"]:
+        print(f"    flagged: {line[:150]}")
+
+
+def fresh_summary() -> dict:
+    """The independently written set (fresh_set.py), scored in its own run so
+    it cannot be confused with the corpus halves."""
+    attacks = [{"id": f"fresh-{i:02d}", "text": t} for i, t in enumerate(fresh_set.FRESH_ATTACKS)]
+    benign = [{"path": f"fresh/benign-{i:02d}", "body": t}
+              for i, t in enumerate(fresh_set.FRESH_BENIGN)]
+    a_scored = run_scorer(attacks, [])
+    b_scored = run_scorer([], benign)
+    n = len(attacks)
+    raw = sum(int(r["raw"]) for r in a_scored["attacks"])
+    legacy = sum(int(r["legacy"]) for r in a_scored["attacks"])
+    cur = sum(int(r["normalized"]) for r in a_scored["attacks"])
+    missed = [a["text"] for a, r in zip(attacks, a_scored["attacks"]) if not r["normalized"]]
+    fp_docs = b_scored["benign_docs_flagged_normalized"]  # a count
+    return {
+        "attacks": {"n": n, "raw": raw, "legacy_normalized": legacy, "normalized": cur,
+                    "recall_raw": _rate(raw, n), "recall_legacy_normalized": _rate(legacy, n),
+                    "recall_normalized": _rate(cur, n), "missed": missed},
+        "benign": {"sentences": len(benign), "flagged_normalized": fp_docs,
+                   "flagged": b_scored.get("benign_flagged_lines", []),
+                   "fp_rate_normalized": _rate(fp_docs, len(benign))},
+    }
 
 
 def main() -> None:
@@ -268,9 +341,23 @@ def main() -> None:
     benign = benign_set()
     scored = run_scorer(attacks, benign)
     summary = summarise(attacks, scored)
+    summary["fresh"] = fresh_summary()
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     Path(args.out).write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n")
     print_table(summary)
+    f = summary["fresh"]
+    print()
+    print("Fresh independent set (fresh_set.py, written before the final run)")
+    a, b = f["attacks"], f["benign"]
+    print(f"  attacks  n={a['n']}  raw {a['raw']} {_pct(a['recall_raw'])}"
+          f" | legacy {a['legacy_normalized']} {_pct(a['recall_legacy_normalized'])}"
+          f" | current {a['normalized']} {_pct(a['recall_normalized'])}")
+    for t in a["missed"]:
+        print(f"    missed: {t[:110]}")
+    print(f"  benign sentences n={b['sentences']}  flagged {b['flagged_normalized']}"
+          f" ({_pct(b['fp_rate_normalized'])})")
+    for line in b["flagged"]:
+        print(f"    flagged: {line[:150]}")
     print(f"\nwrote {args.out}")
 
 
