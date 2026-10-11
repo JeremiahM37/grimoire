@@ -154,6 +154,15 @@ func scanDoc(doc dream.Doc, known []string, readings lineReadings) []dream.Findi
 			untrusted[e.Line+1] = true
 		}
 	}
+	if doc.Kind == dream.KindBank {
+		// A bank fact or observation carries its own taint trailer
+		// (tnt=untrusted), set when it was derived from pulled content.
+		for i, line := range lines {
+			if bankLineTainted(line) {
+				untrusted[i+1] = true
+			}
+		}
+	}
 
 	for i, line := range lines {
 		n := i + 1
@@ -456,4 +465,16 @@ func rank(s dream.Severity) int {
 		return 1
 	}
 	return 0
+}
+
+// bankLineTainted reports whether one line of a bank file is a fact or an
+// observation that derives from untrusted input and no person has cleared.
+func bankLineTainted(line string) bool {
+	if f, ok := bank.ParseFactLine(line, "", ""); ok && f.Tainted {
+		return true
+	}
+	if o, ok := bank.ParseObservationLine(line, ""); ok && o.Tainted {
+		return true
+	}
+	return false
 }
