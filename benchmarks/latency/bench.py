@@ -91,7 +91,10 @@ def machine() -> dict:
 
 
 def server_env(vault: Path, port: int) -> dict:
-    env = {k: v for k, v in os.environ.items() if not k.startswith("GRIMOIRE_")}
+    # GRIMOIRE_EXP is passed through so an experiment flag can be measured
+    # (flag off vs on, same binary); every other GRIMOIRE_* is still stripped.
+    env = {k: v for k, v in os.environ.items()
+           if not k.startswith("GRIMOIRE_") or k == "GRIMOIRE_EXP"}
     env.update({
         "GRIMOIRE_VAULT": str(vault), "GRIMOIRE_PORT": str(port),
         "GRIMOIRE_HOST": "127.0.0.1", "GRIMOIRE_NO_WATCHER": "1",
