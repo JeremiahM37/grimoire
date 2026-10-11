@@ -600,7 +600,6 @@ var oracleKnownFindings = map[string]string{
 	"[supersession]":     "F4: a correction supersedes one contender and leaves another believed",
 	"[multi-contender]":  "F4: the store decides on the first contender it finds, not on every contender",
 	"[resolve-mismatch]": "F5: a dispute whose challenger is private cannot be settled",
-	"[retraction]":       "F6: accepting one challenger leaves the other challengers believed (DISPUTES.md says they are retracted)",
 }
 
 // signature names a divergence by its kind, with the numbers and quoted

@@ -63,13 +63,22 @@ with none, or the CLI, is the person. See `isAgentInitiated` in
 Every resolution clears the challenge on the entries it touches, so nothing is
 asked twice.
 
+`challenger` names the entry an `accept_challenger` makes the surviving fact. It
+does not narrow the settlement: `keep` and `accept_challenger` settle every
+challenger on the dispute, so none is left believed.
+
+The response lists `stands` (the id that now stands), `superseded` (the ids
+replaced or retracted), and `retracted` (the challenger ids that were retracted,
+with human attribution).
+
 Status codes: 400 for a bad resolution, missing or unusable text, an ambiguous
 accept, or a challenger that does not contest the entry; 403 for any agent
 caller; 404 for an id the caller cannot see or that is not believed; 409 for an
 ambiguous id or an entry that is not disputed.
 
 A refused request writes nothing. Each note touched is checked for write access
-before the first write. A resolution across several notes is not one atomic
+before the first write. Within one note a resolution is one write, so every entry it touches changes
+together. A resolution across several notes is not one atomic
 transaction; if a later write fails, the earlier ones stand and the response
 says so by status.
 

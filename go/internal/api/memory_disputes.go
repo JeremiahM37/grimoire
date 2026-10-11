@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"sort"
@@ -233,26 +234,28 @@ func (s *Server) resolveDispute(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusConflict, "that entry is not disputed")
 		return
 	}
+	// The named challenger is the one an accept makes the surviving fact. It
+	// is not a filter: a dispute is settled as a whole (DISPUTES.md), so every
+	// other challenger is settled too, and none is left believed.
+	var chosen *index.MemoryHit
 	if want := strings.TrimSpace(in.Challenger); want != "" {
-		picked := challengers[:0:0]
-		for _, c := range challengers {
-			if c.ID == want {
-				picked = append(picked, c)
+		for i := range challengers {
+			if challengers[i].ID == want {
+				chosen = &challengers[i]
+				break
 			}
 		}
-		if len(picked) == 0 {
+		if chosen == nil {
 			writeErr(w, http.StatusBadRequest, "that entry is not contesting this one")
 			return
 		}
-		challengers = picked
-	} else if res == disputeAccept && len(challengers) > 1 {
-		writeErr(w, http.StatusBadRequest, "more than one fact contests this entry; "+
-			"name the one to accept with challenger")
-		return
-	}
-	if res == disputeAccept && len(challengers) != 1 {
-		writeErr(w, http.StatusBadRequest, "accept_challenger needs exactly one challenger")
-		return
+	} else if res == disputeAccept {
+		if len(challengers) > 1 {
+			writeErr(w, http.StatusBadRequest, "more than one fact contests this entry; "+
+				"name the one to accept with challenger")
+			return
+		}
+		chosen = &challengers[0]
 	}
 
 	// Every note the resolution touches must be writable, checked before the
@@ -272,51 +275,48 @@ func (s *Server) resolveDispute(w http.ResponseWriter, r *http.Request) {
 	stamp := vault.Now().Format(memory.StampFormat)
 	var stands string
 	var superseded []string
+	retracted := []string{}
 	var entry *memory.Entry
+	var plan []settlement
+	retract := func(h index.MemoryHit) settlement {
+		return settlement{hit: h, mutate: func(e *memory.Entry) {
+			e.Challenges = ""
+			e.SupersededBy = "retracted:" + disputeResolver
+			e.SupersededAt = stamp
+		}}
+	}
 	switch res {
 	case disputeKeep:
+		// The original stands, and every challenger is retracted: the person
+		// has ruled on the dispute, not on one of its contenders.
 		stands = orig.ID
 		for _, c := range challengers {
-			if !s.settleOne(w, c, func(e *memory.Entry) {
-				e.Challenges = ""
-				e.SupersededBy = "retracted:" + disputeResolver
-				e.SupersededAt = stamp
-			}) {
-				return
-			}
+			plan = append(plan, retract(c))
+			retracted = append(retracted, c.ID)
 			superseded = append(superseded, c.ID)
 		}
-		if !s.settleOne(w, orig, func(e *memory.Entry) { e.Human = true }) {
-			return
-		}
+		plan = append(plan, settlement{hit: orig, mutate: func(e *memory.Entry) { e.Human = true }})
 
 	case disputeAccept:
-		chosen := challengers[0]
 		stands = chosen.ID
-		if !s.settleOne(w, orig, func(e *memory.Entry) {
+		plan = append(plan, settlement{hit: orig, mutate: func(e *memory.Entry) {
 			e.SupersededBy = chosen.ID
 			e.SupersededAt = stamp
-		}) {
-			return
-		}
+		}})
 		superseded = append(superseded, orig.ID)
-		if !s.settleOne(w, chosen, func(e *memory.Entry) {
+		plan = append(plan, settlement{hit: *chosen, mutate: func(e *memory.Entry) {
 			// The person chose this value, so the surviving fact is theirs.
 			e.Challenges = ""
 			e.Human = true
-		}) {
-			return
-		}
+		}})
 		// Other challengers were contesting the original, which is now
 		// replaced, and they are not the value that was accepted.
-		for _, c := range challengers[1:] {
-			if !s.settleOne(w, c, func(e *memory.Entry) {
-				e.Challenges = ""
-				e.SupersededBy = "retracted:" + disputeResolver
-				e.SupersededAt = stamp
-			}) {
-				return
+		for _, c := range challengers {
+			if c.ID == chosen.ID {
+				continue
 			}
+			plan = append(plan, retract(c))
+			retracted = append(retracted, c.ID)
 			superseded = append(superseded, c.ID)
 		}
 
@@ -332,20 +332,21 @@ func (s *Server) resolveDispute(w http.ResponseWriter, r *http.Request) {
 		entry = &fresh
 		stands = fresh.ID
 		for _, c := range append([]index.MemoryHit{orig}, challengers...) {
-			if !s.settleOne(w, c, func(e *memory.Entry) {
+			plan = append(plan, settlement{hit: c, mutate: func(e *memory.Entry) {
 				e.Challenges = ""
 				e.SupersededBy = fresh.ID
 				e.SupersededAt = stamp
-			}) {
-				return
-			}
+			}})
 			superseded = append(superseded, c.ID)
 		}
+	}
+	if !s.settleAll(w, plan) {
+		return
 	}
 
 	out := map[string]any{
 		"id": orig.ID, "path": orig.Note, "resolution": res,
-		"stands": stands, "superseded": superseded,
+		"stands": stands, "superseded": superseded, "retracted": retracted,
 	}
 	if entry != nil {
 		out["entry"] = entryOf(*entry, orig.Note)
@@ -353,14 +354,65 @@ func (s *Server) resolveDispute(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
-// settleOne edits one entry in the note it lives in. A failure is written as
-// the response and reported as false, so the caller can stop.
-func (s *Server) settleOne(w http.ResponseWriter, h index.MemoryHit, mutate func(*memory.Entry)) bool {
-	if err := s.mutateEntry(h.Note, h.ID, mutate); err != nil {
-		writeErr(w, statusForEntryErr(err), entryErrMsg(err))
-		return false
+// settlement is one entry's edit within a resolution.
+type settlement struct {
+	hit    index.MemoryHit
+	mutate func(*memory.Entry)
+}
+
+// settleAll applies a resolution's edits, reading and writing each note once,
+// so the entries a resolution touches in one note change in one write. A
+// failure is written as the response and reported as false, so the caller can
+// stop. Across notes it is not one transaction: an earlier note may already be
+// written when a later one fails (DISPUTES.md).
+func (s *Server) settleAll(w http.ResponseWriter, plan []settlement) bool {
+	var order []string
+	byNote := map[string][]settlement{}
+	for _, p := range plan {
+		if _, seen := byNote[p.hit.Note]; !seen {
+			order = append(order, p.hit.Note)
+		}
+		byNote[p.hit.Note] = append(byNote[p.hit.Note], p)
+	}
+	for _, note := range order {
+		if err := s.mutateEntries(note, byNote[note]); err != nil {
+			writeErr(w, statusForEntryErr(err), entryErrMsg(err))
+			return false
+		}
 	}
 	return true
+}
+
+// mutateEntries is mutateEntry for several entries in one note: one read, one
+// snapshot, one write. Every id in the plan must be present in the note.
+func (s *Server) mutateEntries(note string, plan []settlement) error {
+	existing, err := s.Vault.Read(note)
+	if err != nil {
+		return err
+	}
+	entries := memory.Parse(existing.Body)
+	var edited []memory.Entry
+	for _, p := range plan {
+		found := false
+		for _, e := range entries {
+			if e.ID != p.hit.ID {
+				continue
+			}
+			found = true
+			p.mutate(&e)
+			edited = append(edited, e)
+		}
+		if !found {
+			return sql.ErrNoRows
+		}
+	}
+	s.History.Snapshot(note, existing.Body)
+	body := memory.Rewrite(existing.Body, edited)
+	if _, err := s.Vault.Write(note, body, existing.Frontmatter.Clone()); err != nil {
+		return err
+	}
+	_, err = s.Index.Upsert(note)
+	return err
 }
 
 // appendDisputeEntry writes a new human-authored bullet at the end of a note,

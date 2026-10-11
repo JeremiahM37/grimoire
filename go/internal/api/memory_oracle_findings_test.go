@@ -48,7 +48,6 @@ func TestOracleF4CorrectionClearsEveryContender(t *testing.T) {
 }
 
 func TestOracleF6AcceptRetractsTheOtherChallengers(t *testing.T) {
-	t.Skip("open finding F6 (docs/lab/oracle.md): accepting one of two challengers leaves the other believed")
 	runOracle(t, []modelcheck.Op{
 		{Kind: modelcheck.KRemember, Slot: 1, Value: 0, Writer: 1},
 		{Kind: modelcheck.KRemember, Slot: 0, Value: 0, Writer: 1},
@@ -108,16 +107,6 @@ func TestOracleFindingsStillReproduce(t *testing.T) {
 			{Kind: modelcheck.KRemember, Slot: 0, Value: 0, Writer: 1},
 			{Kind: modelcheck.KRemember, Slot: 0, Value: 1, Writer: 2},
 			{Kind: modelcheck.KRemember, Slot: 0, Value: 2, Writer: 2},
-		}},
-		{"[retraction]", []modelcheck.Op{
-			{Kind: modelcheck.KRemember, Slot: 1, Value: 0, Writer: 1},
-			{Kind: modelcheck.KRemember, Slot: 0, Value: 0, Writer: 1},
-			{Kind: modelcheck.KRemember, Slot: 0, Value: 2, Writer: 0},
-			{Kind: modelcheck.KRemember, Slot: 1, Value: 1, Writer: 0},
-			{Kind: modelcheck.KRemember, Slot: 1, Value: 0, Writer: 2},
-			{Kind: modelcheck.KRemember, Slot: 0, Value: 0, Writer: 2},
-			{Kind: modelcheck.KRemember, Slot: 1, Value: 2, Writer: 1},
-			{Kind: modelcheck.KResolve, Writer: 0, Target: 553164, Challenger: 283387, Accept: true},
 		}},
 		{"[resolve-mismatch]", []modelcheck.Op{
 			{Kind: modelcheck.KRemember, Slot: 0, Value: 0, Writer: 0},
