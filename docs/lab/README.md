@@ -121,6 +121,15 @@ Nothing here is a benchmark score.
 | The staleness score misses real errors | A wrong version fact was scored 0.038 and marked "use". A wording rule (version number, "is deployed", worktree, temp path) flagged 42 of 346 facts and caught both facts that had really gone stale. Two cases is not a rate. | The wording rule and the anchor verdict apply at recall behind the `anchor` flag. |
 | Skills are prose | `skills mine` returned 20 candidates, all habits. Two better miners found at best 5 real procedures in 24 candidates from 801 sessions, each with steps missing. Asking the writer for the procedure with checks gave 12 from 6 sessions; 6 were stored as posted and passed their checks, 5 named another machine the old way and 1 tripped the secret check on a placeholder (both since fixed). | `remember_procedure` and `skills write`: see [MEMORY-PROCEDURES.md](../MEMORY-PROCEDURES.md). |
 
+A follow-up pass the same day asked agents, read-only, to find the specific
+object behind each of the 149 claims that still had no check: 50 were grounded
+(all 69 proposed checks passed when the server ran them), 23 were history, 15
+were about another machine, 7 looked false and 54 could not be placed. The
+claims that looked false were listed for the owner, not retracted. After it, 62
+of 149 live claims carried a passing check. The first deploy after that showed
+the loop working: the new version fact replaced the old one because the old
+one's check had started to fail.
+
 What is still open: the recall-side parts are off until the holdout ends, so
 none of this has been shown to change what an agent does. Existing facts that
 never named their object stay uncheckable. The numbers come from one vault.
