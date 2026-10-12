@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 )
 
@@ -23,17 +24,29 @@ func memoryAnchorsCmd(e *env, args []string) int {
 		return 0
 	}
 	var out struct {
-		Facts          int `json:"facts"`
-		Events         int `json:"events"`
-		Preferences    int `json:"preferences"`
-		Claims         int `json:"claims"`
-		AnchoredClaims int `json:"anchored_claims"`
-		Anchors        int `json:"anchors"`
-		Pass           int `json:"pass"`
-		Fail           int `json:"fail"`
-		Error          int `json:"error"`
-		Skipped        int `json:"skipped"`
-		Failing        []struct {
+		Facts              int            `json:"facts"`
+		Events             int            `json:"events"`
+		Preferences        int            `json:"preferences"`
+		Claims             int            `json:"claims"`
+		AnchoredClaims     int            `json:"anchored_claims"`
+		AutoAnchoredClaims int            `json:"auto_anchored_claims"`
+		Anchors            int            `json:"anchors"`
+		Pass               int            `json:"pass"`
+		Fail               int            `json:"fail"`
+		Error              int            `json:"error"`
+		Skipped            int            `json:"skipped"`
+		SkippedReasons     map[string]int `json:"skipped_reasons"`
+		ByHost             map[string]struct {
+			Claims         int `json:"claims"`
+			AnchoredClaims int `json:"anchored_claims"`
+		} `json:"by_host"`
+		Procedures struct {
+			Total    int `json:"total"`
+			WithSpec int `json:"with_spec"`
+			PrePass  int `json:"pre_pass"`
+			PreFail  int `json:"pre_fail"`
+		} `json:"procedures"`
+		Failing []struct {
 			ID      string `json:"id"`
 			Path    string `json:"path"`
 			Anchor  string `json:"anchor"`
@@ -46,8 +59,22 @@ func memoryAnchorsCmd(e *env, args []string) int {
 	}
 	fmt.Printf("facts %d  events %d  preferences %d  claims %d  anchored claims %d\n",
 		out.Facts, out.Events, out.Preferences, out.Claims, out.AnchoredClaims)
+	fmt.Printf("auto-anchored claims %d\n", out.AutoAnchoredClaims)
 	fmt.Printf("anchors %d  pass %d  fail %d  error %d  skipped %d\n",
 		out.Anchors, out.Pass, out.Fail, out.Error, out.Skipped)
+	if out.Skipped > 0 {
+		fmt.Printf("skipped: %s\n", strings.Join(skipReasonLines(out.SkippedReasons), "  "))
+	}
+	fmt.Printf("procedures %d  with spec %d  pre pass %d  pre fail %d\n",
+		out.Procedures.Total, out.Procedures.WithSpec, out.Procedures.PrePass, out.Procedures.PreFail)
+	hosts := make([]string, 0, len(out.ByHost))
+	for h := range out.ByHost {
+		hosts = append(hosts, h)
+	}
+	sort.Strings(hosts)
+	for _, h := range hosts {
+		fmt.Printf("host %s: claims %d  anchored %d\n", h, out.ByHost[h].Claims, out.ByHost[h].AnchoredClaims)
+	}
 	if len(out.Failing) == 0 {
 		return 0
 	}

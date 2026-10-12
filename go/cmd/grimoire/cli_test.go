@@ -21,6 +21,11 @@ func vaultDir(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
 	t.Setenv("GRIMOIRE_VAULT", dir)
+	// Commands that write through the running server (annotate, skills write)
+	// would otherwise reach the live service on 9111. Nothing listens on port 1,
+	// so they take the in-process path against the temp vault. A test that needs
+	// a server points GRIMOIRE_URL at its own listener.
+	t.Setenv("GRIMOIRE_URL", "http://127.0.0.1:1")
 	return dir
 }
 

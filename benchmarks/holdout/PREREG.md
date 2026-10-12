@@ -131,3 +131,8 @@ Whether the decision table is published is the owner's decision after the run.
   `--counts-only` output computed the expected withheld share from decisions
   with an outcome only, so it read 0 when every decision so far lacked one. It
   now averages over all decisions. The test and the outcome are unchanged.
+* 2026-10-11, added after the start and before any outcome was read:
+  [`per_memory.py`](per_memory.py) estimates effects per memory (target
+  identity), with empirical-Bayes shrinkage and a heterogeneity permutation
+  test. It is exploratory. It is run only after the end, and nothing it shows
+  is a finding of the pre-registered analysis. `analyze.py` is unchanged.

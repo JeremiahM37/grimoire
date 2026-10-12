@@ -639,6 +639,9 @@ var addedColumns = []struct{ table, column, decl string }{
 	// unanchored and not an event, which is what it was.
 	{"memory_entries", "anchors", "TEXT NOT NULL DEFAULT ''"},
 	{"memory_entries", "event", "INTEGER NOT NULL DEFAULT 0"},
+	// The machine a claim is about (memory.Entry.Host, host=). Older rows read
+	// as no host, which is what they were; a reindex restores the rest.
+	{"memory_entries", "host", "TEXT NOT NULL DEFAULT ''"},
 	// Which agent read, as distinct from which account. On a single-user
 	// deployment there is no account, so without this the trail can say a
 	// restricted note was read and not by what — which is most of the question.

@@ -46,6 +46,7 @@ const memoryUsage = `usage:
   grimoire memory profile [--subject user|agent] [--agent NAME] [--budget TOKENS] [--synthesize] [--json]
   grimoire memory anchors [--json]         run every stored anchor; list the claims whose probe no longer holds (admin)
   grimoire memory refs [--json]            list notes that name a path or unit that no longer exists (admin)
+  grimoire memory annotate --file FILE.json [--apply] [--json]   add host, event and anchors to stored facts without changing their text (dry run unless --apply; admin)
 
 A directory memory (Claude Code's memory/) becomes a symlink to the store; a
 single file (AGENTS.md, GEMINI.md) gets a managed block holding the core.
@@ -63,12 +64,17 @@ func cmdMemory(args []string) int {
 		fmt.Println(memoryUsage)
 		return 0
 	}
+	rest := args[1:]
+	// annotate opens the vault only when no server answers, so it is dispatched
+	// before the env is built.
+	if args[0] == "annotate" {
+		return memoryAnnotateCmd(rest)
+	}
 	e, err := openEnv()
 	if err != nil {
 		return fail("%v", err)
 	}
 	defer e.close()
-	rest := args[1:]
 	switch args[0] {
 	case "link":
 		return memoryLinkCmd(e, rest)

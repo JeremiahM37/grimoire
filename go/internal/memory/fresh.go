@@ -138,6 +138,20 @@ func ShapeOf(text string) int {
 	return ShapePlain
 }
 
+// floorShapeRE is the wording the staleness floor adds to ShapeOf's volatile
+// shapes: a version number with three parts (with or without a "v"), a state
+// word after "is" or "are" ("is deployed", "are running", "is now live"), the
+// word "worktree", and a path under /tmp. Each names something that is true of
+// the machine right now and is usually wrong a week later.
+var floorShapeRE = regexp.MustCompile(`(?i)\bv?\d+\.\d+\.\d+\b|\b(?:is|are)\s+(?:now\s+|currently\s+)?(?:deployed|running|live|installed|active|enabled|listening|pinned)\b|\bworktrees?\b|(?:^|[\s"'(=])/tmp/`)
+
+// FloorShape reports whether a claim's text has a volatile shape for the
+// staleness floor (memory_anchors.go): ShapeOf's volatile shapes, or the
+// wording in floorShapeRE. It is a reason to ask for a check, not a verdict.
+func FloorShape(text string) bool {
+	return ShapeOf(text) == ShapeVolatil || floorShapeRE.MatchString(text)
+}
+
 // Default prior rates, in changes per day. A volatile-shaped value is assumed
 // to change about every two months, anything else about every two years, until
 // the store has seen enough of its own facts change to say otherwise.
@@ -183,6 +197,9 @@ type Assessment struct {
 	AgeDays    float64 `json:"age_days"`              // days since VerifiedAt
 	Changes    int     `json:"changes,omitempty"`     // times this fact has been found changed
 	Verifies   int     `json:"verifies,omitempty"`    // times it has been confirmed
+	// Where is the machine a claim is about, when it is not this one. Set only
+	// under the anchor flag (see api applyStaleness).
+	Where string `json:"where,omitempty"`
 }
 
 // MinChangeGap is how long a version must have stood for its replacement to

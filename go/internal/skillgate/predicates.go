@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/JeremiahM37/grimoire/go/internal/anchor"
 	"github.com/JeremiahM37/grimoire/go/internal/skillmine"
 	"github.com/JeremiahM37/grimoire/go/internal/transcript"
 )
@@ -15,10 +16,11 @@ import (
 // are fields so a test can answer them without touching the machine.
 type Context struct {
 	Cwd     string
-	Exists  func(path string) bool // an absolute path
-	Command func(name string) bool // a program on PATH
-	Env     func(name string) bool // an environment variable that is set and non-empty
-	Facts   []string               // recorded facts; `fact:` matches one by substring, case-insensitively
+	Exists  func(path string) bool            // an absolute path
+	Command func(name string) bool            // a program on PATH
+	Env     func(name string) bool            // an environment variable that is set and non-empty
+	Facts   []string                          // recorded facts; `fact:` matches one by substring, case-insensitively
+	Run     func(anchor.Anchor) anchor.Result // runs an `anchor:` predicate; nil makes every anchor unmet
 }
 
 // NewContext is the real context: the filesystem, PATH and the environment.
@@ -37,6 +39,7 @@ func NewContext(cwd string, facts []string) Context {
 			return os.Getenv(n) != ""
 		},
 		Facts: facts,
+		Run:   anchorRunner,
 	}
 }
 
@@ -76,6 +79,8 @@ func holds(p string, ctx Context) bool {
 				return true
 			}
 		}
+	case "anchor":
+		return runAnchorPredicate(arg, ctx)
 	}
 	return false
 }

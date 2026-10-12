@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/JeremiahM37/grimoire/go/internal/ai"
+	"github.com/JeremiahM37/grimoire/go/internal/anchor"
 	"github.com/JeremiahM37/grimoire/go/internal/api"
 	"github.com/JeremiahM37/grimoire/go/internal/auth"
 	"github.com/JeremiahM37/grimoire/go/internal/cloudsync"
@@ -122,6 +123,15 @@ func newEnv(fetchModel bool) (*env, error) {
 	ix := index.New(database, v, emb)
 	crdt := crdtstore.New(grimoireDir)
 	syncer := gsync.New(ix, v, crdt)
+
+	// Other machines a claim may name are reachable only through this allowlist
+	// (docs/MEMORY-ANCHORS.md). A bad entry stops the start rather than leaving
+	// a probe that silently checks the wrong machine.
+	anchorHosts, err := anchor.ParseHosts(os.Getenv("GRIMOIRE_ANCHOR_HOSTS"))
+	if err != nil {
+		return nil, err
+	}
+	anchor.SetHosts(anchorHosts)
 
 	srv := &api.Server{
 		Estimator: estimate.NewCausal(),

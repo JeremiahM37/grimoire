@@ -65,3 +65,18 @@ facts can end up in one of two shapes:
 Until this is fixed, a fact that looks settled can have a live contender beside
 it. Check `GET /api/memory?q=...` for every live value in a slot, not only the
 first answer, before relying on a single value.
+
+## Say what kind of fact it is
+
+A fact is one of three things, and the store treats them differently
+([MEMORY-ANCHORS.md](MEMORY-ANCHORS.md)):
+
+- **Event**: something that happened. Pass `event: true`. It is kept as history.
+- **Preference or rule**: what a person wants. No checks.
+- **Claim**: how something is now. Name the exact file, service, port or commit
+  in the text, pass `anchors` for it, and pass `host` when it is about another
+  machine. A claim that names nothing checkable cannot be told from a stale one
+  later.
+
+A multi-step task that worked and will be repeated is a procedure, not a fact:
+use `remember_procedure` ([MEMORY-PROCEDURES.md](MEMORY-PROCEDURES.md)).

@@ -54,6 +54,29 @@ type Client struct {
 	// written on a shared client.
 	surface string
 	agent   string
+	// ctx, when set by WithContext, bounds every model call a copy makes. A
+	// nil ctx means the call is not bounded here, as it always was.
+	ctx context.Context
+}
+
+// WithContext returns a copy whose model calls stop when ctx is done. The write
+// path uses it so that one memory write shares one deadline across its model
+// calls. It is a copy, like WithSurface, so no other caller is affected.
+func (c *Client) WithContext(ctx context.Context) *Client {
+	if c == nil {
+		return nil
+	}
+	cp := *c
+	cp.ctx = ctx
+	return &cp
+}
+
+// reqCtx is the context a model request is sent with.
+func (c *Client) reqCtx() context.Context {
+	if c == nil || c.ctx == nil {
+		return context.Background()
+	}
+	return c.ctx
 }
 
 func New(st Settings, secret SecretGetter) *Client {
@@ -153,7 +176,7 @@ func (c *Client) post(url string, headers map[string]string, body any) ([]byte, 
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequest("POST", url, bytes.NewReader(raw))
+	req, err := http.NewRequestWithContext(c.reqCtx(), "POST", url, bytes.NewReader(raw))
 	if err != nil {
 		return nil, err
 	}
@@ -304,7 +327,7 @@ func (c *Client) Complete(prompt, backend string) (string, error) {
 		}
 		return strings.TrimSpace(b.String()), nil
 	case BackendClaudeCLI:
-		comp, _, err := c.completeClaudeCLI(context.Background(), prompt, CompleteOpts{})
+		comp, _, err := c.completeClaudeCLI(c.reqCtx(), prompt, CompleteOpts{})
 		return comp.Text, err
 	}
 	return "", fmt.Errorf("no llm backend configured")

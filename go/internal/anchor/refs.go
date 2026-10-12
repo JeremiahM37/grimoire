@@ -10,7 +10,7 @@ import (
 // The dead-reference scan: concrete references in prose that may point at
 // something that no longer exists. Deterministic, with no model involved.
 var (
-	refPathRE = regexp.MustCompile(`(?:~|/home/[\w.\-]+|/mnt/[\w.\-]+)/[\w./@+\-]*[\w/]`)
+	refPathRE = regexp.MustCompile(`(?:~|/home/[\w.\-]+|/mnt/[\w.\-]+|/etc|/opt|/usr/local|/var/lib|/var/log|/srv)/[\w./@+\-]*[\w/]`)
 	refUnitRE = regexp.MustCompile(`\b([\w@\-]+\.(?:service|timer))\b`)
 )
 
@@ -22,7 +22,8 @@ const globChars = "*?[]{}<>$"
 var bareRoots = map[string]bool{"~": true, "/opt": true, "/etc": true, "/mnt": true, "/home": true}
 
 // ExtractRefs returns the reference-only anchors in a note's text: absolute
-// local paths under ~, /home/<user> and /mnt/<volume> (RefPath), and systemd unit
+// local paths under ~, /home/<user>, /mnt/<volume>, /etc, /opt, /usr/local,
+// /var/lib, /var/log and /srv (RefPath), and systemd unit
 // names ending .service or .timer (RefUnit). Paths with glob or template
 // characters are skipped, and each reference appears once.
 func ExtractRefs(text string) []Anchor {
@@ -70,6 +71,15 @@ func ExtractRefs(text string) []Anchor {
 		}
 		// "-flag.service" and "x.grimoire.service" are tokens, not unit names.
 		if loc[2] > 0 && strings.IndexByte("@.-", text[loc[2]-1]) >= 0 {
+			continue
+		}
+		// A unit named inside a path is part of the path, not a unit:
+		// "/etc/systemd/system/grimoire.service" and
+		// "grimoire.service.d/release.conf" both name files, not units.
+		if loc[2] > 0 && text[loc[2]-1] == '/' {
+			continue
+		}
+		if rest := text[loc[1]:]; strings.HasPrefix(rest, "/") || strings.HasPrefix(rest, ".d/") {
 			continue
 		}
 		add(Anchor{Type: RefUnit, Args: map[string]string{"unit": u}})

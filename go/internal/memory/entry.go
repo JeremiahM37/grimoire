@@ -96,6 +96,10 @@ type Entry struct {
 	// field, so every bullet written before them formats byte-identically.
 	Anchors string
 	Event   bool
+	// Host is the machine a claim is about, declared as host=. Empty means no
+	// machine was recorded. It is written after evt=, so bullets without it
+	// are unchanged.
+	Host string
 
 	// Challenges is the ID of an entry this fact contradicts but was not
 	// allowed to supersede, because that entry outranks this one's writer. It
@@ -475,6 +479,8 @@ func parseTrailer(s string) Entry {
 			e.Anchors = v
 		case "evt":
 			e.Event = v == "1" || v == "true"
+		case "host":
+			e.Host = v
 		}
 	}
 	return e
@@ -628,6 +634,9 @@ func (e Entry) trailer() string {
 	}
 	if e.Event {
 		fields = append(fields, "evt=1")
+	}
+	if e.Host != "" {
+		fields = append(fields, "host="+escapeField(e.Host))
 	}
 	return " <!--m " + strings.Join(fields, " ") + "-->"
 }

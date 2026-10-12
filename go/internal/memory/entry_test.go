@@ -320,6 +320,10 @@ func TestAnchorsAndEventRoundTrip(t *testing.T) {
 			Event: true},
 		{ID: "abc143", Stamp: "2026-10-11 09:00", Agent: "agent", Category: "rule", Text: "anchored rule",
 			Anchors: "remote;what=https%3A%2F%2Fexample.com", Visibility: VisPrivate, SupersededBy: "abc144"},
+		{ID: "abc145", Stamp: "2026-10-11 09:00", Agent: "agent", Text: "the proxy runs on mediaserver",
+			Anchors: "unit_active;unit=caddy.service", Host: "mediaserver"},
+		{ID: "abc146", Stamp: "2026-10-11 09:00", Agent: "agent", Text: "a host and an event",
+			Event: true, Host: "docker-server"},
 	}
 	for _, want := range cases {
 		line := want.Format()
@@ -358,5 +362,21 @@ func TestAHandWrittenEventTrailerIsRead(t *testing.T) {
 	e, ok = ParseLine("- **2026-10-11 09:00 · agent** — x <!--m id=abc161 evt=0 anc=-->")
 	if !ok || e.Event || e.Anchors != "" {
 		t.Fatalf("evt=0 or an empty anc= was read as set: %+v", e)
+	}
+}
+
+func TestHostIsWrittenLastAndOnlyWhenSet(t *testing.T) {
+	e := Entry{ID: "abc170", Stamp: "2026-10-11 09:00", Agent: "agent", Text: "x",
+		Event: true, Host: "aiserver"}
+	if line := e.Format(); !strings.HasSuffix(line, " evt=1 host=aiserver-->") {
+		t.Fatalf("host is not the last trailer field:\n%s", line)
+	}
+	plain := Entry{ID: "abc171", Stamp: "2026-10-11 09:00", Agent: "agent", Text: "x"}
+	if strings.Contains(plain.Format(), "host=") {
+		t.Fatalf("an entry without a host wrote host=:\n%s", plain.Format())
+	}
+	got, ok := ParseLine("- **2026-10-11 09:00 · agent** — x <!--m id=abc172 host=mediaserver-->")
+	if !ok || got.Host != "mediaserver" {
+		t.Fatalf("host= not read: %+v", got)
 	}
 }

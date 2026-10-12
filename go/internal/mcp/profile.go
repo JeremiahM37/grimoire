@@ -9,8 +9,9 @@ import (
 // EnvTools selects which tools the mount advertises.
 const EnvTools = "GRIMOIRE_MCP_TOOLS"
 
-// CoreTools is the lean profile: the six tools an agent reaches for in
-// ordinary work — orient, find, read, remember, recall, and spend a credential.
+// CoreTools is the lean profile: the tools an agent reaches for in ordinary
+// work — orient, find, read, remember, recall, save a procedure, and spend a
+// credential. A procedure is memory, so it sits in the core set too.
 //
 // The full list costs an agent roughly 6k tokens of schema on every request,
 // before it reads a single message, and every server a person mounts adds its
@@ -24,6 +25,7 @@ var CoreTools = []string{
 	"remember",
 	"recall",
 	"use_credential",
+	"remember_procedure",
 }
 
 // ParseToolProfile reads GRIMOIRE_MCP_TOOLS.

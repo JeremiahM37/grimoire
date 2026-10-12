@@ -548,6 +548,11 @@ func lpProbes(w *lpWorld) []lpProbe {
 		{route: "POST /api/memory/check/accept", path: "/api/memory/check/accept", body: map[string]any{}, kind: lpWrite},
 		{route: "POST /api/memory", path: "/api/memory", body: map[string]any{"text": "x", "target_path": "users/alice/memory.md"}, kind: lpWrite},
 		{route: "POST /api/memory/import", path: "/api/memory/import", body: map[string]any{"facts": []any{}}, kind: lpWrite},
+		// A procedure is a skill note in the shared memory store, not an owned
+		// note, so a member's write may succeed by design (as remember does). The
+		// probe asserts only that it leaks no owner's canary and changes none of
+		// alice's data; the access class is tested in memory_procedure_test.go.
+		{route: "POST /api/memory/procedure", path: "/api/memory/procedure", body: map[string]any{"name": "Probe procedure", "when": "probing", "steps": []string{"step one", "step two"}}, kind: lpWrite},
 		// Image memory. Pictures are written to commons memory notes, so a
 		// member may read a picture alice stored and no probe can treat that as
 		// a leak. The probe uses a well-formed hash that nothing references:

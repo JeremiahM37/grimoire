@@ -66,6 +66,14 @@ type spec struct {
 	required []string
 }
 
+// Every probe may also carry host, the machine it runs on (see hosts.go). The
+// reference-only types may carry auto, which marks an anchor the store derived
+// from a claim's text rather than one the writer named.
+const (
+	argHost = "host"
+	argAuto = "auto"
+)
+
 var specs = map[string]spec{
 	FileExists:    {[]string{"path"}},
 	DirExists:     {[]string{"path"}},
@@ -88,10 +96,27 @@ var specs = map[string]spec{
 }
 
 // Storable reports whether a type may be stored on a fact: every probe type,
-// and not the reference-only ones.
+// and not the reference-only ones. The store's own auto anchors are the one
+// exception, and they are built by AutoAnchor, never from a writer's request.
 func Storable(typ string) bool {
-	return typ != RefPath && typ != RefUnit && specs[typ].required != nil
+	return !isRef(typ) && specs[typ].required != nil
 }
+
+// isRef reports whether a type is one of the reference-only types.
+func isRef(typ string) bool { return typ == RefPath || typ == RefUnit }
+
+// AutoAnchor marks a reference-only anchor as one the store derived from a
+// claim's text. The mark makes it weaker in the report and in recall's reasons.
+func AutoAnchor(a Anchor) Anchor {
+	out := Anchor{Type: a.Type, Args: map[string]string{argAuto: "1"}}
+	for k, v := range a.Args {
+		out.Args[k] = v
+	}
+	return out
+}
+
+// IsAuto reports whether an anchor was derived by the store (auto=1).
+func IsAuto(a Anchor) bool { return a.Args[argAuto] == "1" }
 
 // Validate reports whether an anchor is well formed. It checks the type, the
 // exact argument set, that paths are absolute, and that each value is in the
@@ -102,9 +127,15 @@ func Validate(a Anchor) error {
 		return fmt.Errorf("unknown anchor type %q", a.Type)
 	}
 	for k := range a.Args {
-		if !contains(sp.required, k) {
+		if !contains(sp.required, k) && k != argHost && !(k == argAuto && isRef(a.Type)) {
 			return fmt.Errorf("%s does not take argument %q", a.Type, k)
 		}
+	}
+	if h, ok := a.Args[argHost]; ok && !validHost(h) {
+		return fmt.Errorf("invalid host name %q", h)
+	}
+	if v, ok := a.Args[argAuto]; ok && v != "1" {
+		return fmt.Errorf("auto must be 1, not %q", v)
 	}
 	for _, k := range sp.required {
 		v, ok := a.Args[k]

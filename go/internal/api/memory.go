@@ -195,6 +195,13 @@ type memoryIn struct {
 	// the probes have run, so every fact the write creates carries the same set.
 	anchorsEnc string
 
+	// Host is the machine this claim is about, when it is not the one the
+	// write came from. Empty leaves it unrecorded. A local claim with no host
+	// is stamped with this server's name (see writeHost).
+	Host string `json:"host"`
+	// storeHost is what this write stores in host=. rememberOne sets it.
+	storeHost string
+
 	// inherit is the fact this write replaces, whose history it carries.
 	inherit *memory.Entry
 
@@ -203,6 +210,31 @@ type memoryIn struct {
 	// and challenge so that re-importing an export reproduces the same entries.
 	// Nothing outside that path can set it, because the field is unexported.
 	restore *restoredFact
+
+	// eventSent is true when the caller sent an event field at all, true or
+	// false. Automatic event marking (eventAutoOn) only applies when it did not.
+	eventSent bool
+	// budget is the deadline this write's model calls share (memory_budget.go).
+	budget *writeBudget
+}
+
+// UnmarshalJSON records whether the caller sent event, which a plain bool
+// cannot tell apart from event:false.
+func (m *memoryIn) UnmarshalJSON(b []byte) error {
+	type plain memoryIn
+	var p plain
+	if err := json.Unmarshal(b, &p); err != nil {
+		return err
+	}
+	var probe struct {
+		Event *bool `json:"event"`
+	}
+	if err := json.Unmarshal(b, &probe); err != nil {
+		return err
+	}
+	*m = memoryIn(p)
+	m.eventSent = probe.Event != nil
+	return nil
 }
 
 // Reconciliation scopes.
@@ -247,6 +279,14 @@ type memoryResult struct {
 	// Replay is set when this write stopped a memory that had been useful from
 	// firing in past situations (docs/MEMORY_REPLAY.md). The write happened.
 	Replay *replayWarning `json:"replay,omitempty"`
+
+	// Contested is the ID of a fact this one sits beside, unmarked, because it
+	// was not allowed to replace it (see keepAlongside). It is not persisted,
+	// the same as the contested pairs the rules already decide.
+	Contested string `json:"contested,omitempty"`
+	// keptByAnchors is set when Contested names a fact whose anchors still hold,
+	// which is why the update did not happen. rememberOne lists those as kept.
+	keptByAnchors bool
 }
 
 // remember records what an agent learned, reconciling each fact against what
@@ -261,6 +301,8 @@ func (s *Server) remember(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) rememberOne(w http.ResponseWriter, r *http.Request, m memoryIn) {
+	m.budget = newWriteBudget(r.Context())
+	defer m.budget.close()
 	text := strings.TrimSpace(m.Text)
 	if text == "" || len(text) > 20000 {
 		writeErr(w, http.StatusBadRequest, "text must be 1..20000 characters")
@@ -356,10 +398,22 @@ func (s *Server) rememberOne(w http.ResponseWriter, r *http.Request, m memoryIn)
 		return
 	}
 
+	host, herr := writeHost(r, m)
+	if herr != nil {
+		writeErr(w, http.StatusBadRequest, herr.Error())
+		return
+	}
+	m.storeHost = host
 	anchorsEnc, anchorReports, anchorsIgnored, aerr := checkWriteAnchors(r, m)
 	if aerr != nil {
 		writeErr(w, http.StatusBadRequest, aerr.Error())
 		return
+	}
+	// A writer that names no anchors may still have its claim's paths and units
+	// checked (autoAnchors). Only what passes is kept, marked auto=1.
+	var autoReports []anchorReport
+	if len(m.Anchors) == 0 && autoEligible(r, m) {
+		anchorsEnc, autoReports = autoAnchors(r.Context(), text, m.storeHost)
 	}
 	m.anchorsEnc = anchorsEnc
 
@@ -373,21 +427,31 @@ func (s *Server) rememberOne(w http.ResponseWriter, r *http.Request, m memoryIn)
 	} else if (m.Infer == nil || *m.Infer) && m.Visibility != memory.VisSealed && m.Cue == "" {
 		// A sealed fact is never sent to an extraction model: its text is the
 		// one thing it must not leave the device as.
-		facts = s.AI.WithSurface("extract", agentFor(r)).ExtractFacts(text)
+		facts = s.AI.WithSurface("extract", agentFor(r)).WithContext(m.budget.context()).ExtractFacts(text)
+		m.budget.note("extract")
 	}
 
 	_, readErr := s.Vault.Read(rel)
 	created := readErr != nil
 
 	results := make([]memoryResult, 0, len(facts))
+	var eventsAuto []string
 	for _, fact := range facts {
 		fact = strings.TrimSpace(fact)
 		if fact == "" {
 			continue
 		}
-		res, err := s.reconcileFact(w, r, rel, fact, agent, task, m, expires)
+		fm := m
+		marked := autoEvent(m, len(facts), fact)
+		if marked {
+			fm.Event = true
+		}
+		res, err := s.reconcileFact(w, r, rel, fact, agent, task, fm, expires)
 		if err != nil {
 			return // reconcileFact already answered
+		}
+		if marked && (res.Op == string(memory.OpAdd) || res.Op == string(memory.OpUpdate)) && res.ID != "" {
+			eventsAuto = append(eventsAuto, res.ID)
 		}
 		results = append(results, res)
 	}
@@ -414,6 +478,32 @@ func (s *Server) rememberOne(w http.ResponseWriter, r *http.Request, m memoryIn)
 		if anchorsIgnored != "" {
 			resp["anchors_ignored"] = anchorsIgnored
 		}
+	}
+	if len(autoReports) > 0 {
+		resp["anchors_auto"] = autoReports
+	}
+	if kept := keptOut(results); len(kept) > 0 {
+		resp["kept"] = kept
+	}
+	advice := writeAdvice(m, text, anchorsEnc)
+	if len(eventsAuto) > 0 {
+		// The facts that read as history were just marked as history, so the
+		// writer need not be told to mark them.
+		advice = dropString(advice, adviceEvent)
+	}
+	// A kept fact is a contradiction the writer should look at: the old claim
+	// still passes its check, so neither side has been shown to be wrong.
+	for _, k := range keptOut(results) {
+		advice = append(advice, keptAdvice(k["id"]))
+	}
+	if len(advice) > 0 {
+		resp["advice"] = advice
+	}
+	if len(eventsAuto) > 0 {
+		resp["events_auto"] = eventsAuto
+	}
+	if m.budget.wasSkipped() {
+		resp["model_skipped"] = "budget"
 	}
 	// Gentle, non-blocking: the write already happened.
 	if ws := memstore.Lint(strings.TrimSpace(m.Category), text); len(ws) > 0 && m.Visibility != memory.VisSealed {
@@ -574,7 +664,8 @@ func (s *Server) reconcileFact(w http.ResponseWriter, r *http.Request, rel, fact
 			candidates = append(candidates, h.Entry)
 			byID[h.ID] = h
 		}
-		decision = s.AI.WithSurface("reconcile", agentFor(r)).DecideMemoryAs(fact, strings.TrimSpace(m.Origin), m.Human, candidates)
+		decision = s.AI.WithSurface("reconcile", agentFor(r)).WithContext(m.budget.context()).DecideMemoryAs(fact, strings.TrimSpace(m.Origin), m.Human, candidates)
+		m.budget.note("reconcile")
 		decision = s.cascadeReconcile(fact, decision, byID)
 		if decision.Target != "" {
 			target, ok := byID[decision.Target]
@@ -631,6 +722,11 @@ func (s *Server) applySupersession(w http.ResponseWriter, r *http.Request,
 		}
 		return memoryResult{Op: string(memory.OpAdd), ID: id, Text: shownText(m, fact),
 			Path: rel, Why: "target is immutable; kept both"}, nil
+	}
+	if d.Op == memory.OpUpdate && arbitrateOn() && !isHumanCorrection(m) && s.anchorsStillHold(target.Entry) {
+		// The old fact still checks out against the world it describes, so the
+		// new write is kept beside it rather than replacing it.
+		return s.keepAlongside(w, r, rel, fact, agent, task, m, expires, target)
 	}
 	// Superseding is a write to the note the OLD fact lives in, which is not
 	// necessarily the note being written to.
@@ -689,6 +785,39 @@ func (s *Server) applySupersession(w http.ResponseWriter, r *http.Request,
 		Path: rel, Why: d.Why, Replay: warn}, nil
 }
 
+// keepAlongside stores a write that would have replaced target, leaving target
+// live. It is an addition whose result names the fact it sits beside.
+func (s *Server) keepAlongside(w http.ResponseWriter, r *http.Request, rel, fact,
+	agent, task string, m memoryIn, expires string, target index.MemoryHit) (memoryResult, error) {
+	id, err := s.appendEntry(w, r, rel, fact, agent, task, m, expires, "")
+	if err != nil {
+		return memoryResult{}, err
+	}
+	return memoryResult{Op: string(memory.OpAdd), ID: id, Text: shownText(m, fact),
+		Path: rel, Target: target.ID, Contested: target.ID, keptByAnchors: true,
+		Why: "kept alongside: its anchors still pass: " + target.Text}, nil
+}
+
+// keptOut lists the facts a write kept beside an anchored fact.
+func keptOut(results []memoryResult) []map[string]string {
+	var out []map[string]string
+	for _, res := range results {
+		if res.keptByAnchors {
+			out = append(out, map[string]string{"id": res.Contested, "reason": keptReason})
+		}
+	}
+	return out
+}
+
+// keptReason is what the response says about a fact kept by its anchors.
+const keptReason = "its anchors still pass"
+
+// keptAdvice is the writer's advice for a kept contradiction: which stored fact
+// still holds, and what to do about it.
+func keptAdvice(id string) string {
+	return "contradicts a stored fact whose check still passes (" + id + "): check which is right, and anchor this claim if it is"
+}
+
 // opVerified is the result of a write that re-checked a fact and found it
 // unchanged.
 const opVerified = "VERIFIED"
@@ -736,11 +865,11 @@ func (s *Server) appendEntryChallenging(w http.ResponseWriter, r *http.Request, 
 		Importance: m.Importance,
 		Visibility: m.Visibility,
 		Cue:        m.Cue, Life: m.Life,
-		Anchors: m.anchorsEnc, Event: m.Event,
+		Anchors: m.anchorsEnc, Event: m.Event, Host: m.storeHost,
 	}
 	if restored != nil {
-		// A restored fact keeps the anchors and kind it was exported with.
-		e.Anchors, e.Event = restored.Entry.Anchors, restored.Entry.Event
+		// A restored fact keeps the anchors, kind and host it was exported with.
+		e.Anchors, e.Event, e.Host = restored.Entry.Anchors, restored.Entry.Event, restored.Entry.Host
 	}
 	if restored != nil && restored.Entry.ID != "" {
 		e.ID = restored.Entry.ID
@@ -849,6 +978,7 @@ func (s *Server) appendEntryChallenging(w http.ResponseWriter, r *http.Request, 
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return "", err
 	}
+	s.addAnchorCues(e.ID, e.Anchors, m)
 	return e.ID, nil
 }
 
@@ -972,6 +1102,11 @@ type entryOut struct {
 	Immutable    bool   `json:"immutable,omitempty"`
 	SupersededBy string `json:"superseded_by,omitempty"`
 	Challenges   string `json:"challenges,omitempty"`
+	// Host is the machine the claim is about, when one was recorded.
+	Host string `json:"host,omitempty"`
+	// Event is set on a fact that is history rather than a current state
+	// (memory_history.go). Absent on every other fact.
+	Event bool `json:"event,omitempty"`
 	// Visibility is private or sensitive; absent means normal. It only appears
 	// on a response that asked for hidden facts.
 	Visibility string `json:"visibility,omitempty"`
@@ -1071,8 +1206,8 @@ func entriesOut(hits []index.MemoryHit, explain bool) []entryOut {
 			Session:    h.Session, Category: h.Category, Stamp: h.Stamp,
 			Expires: h.Expires, Immutable: h.Immutable,
 			SupersededBy: h.SupersededBy, Helpful: h.Helpful,
-			Challenges: h.Challenges,
-			ValidFrom:  h.ValidFrom, ValidTo: h.ValidTo,
+			Challenges: h.Challenges, Host: h.Host, Event: h.Event,
+			ValidFrom: h.ValidFrom, ValidTo: h.ValidTo,
 			Unhelpful: h.Unhelpful, Score: h.Score,
 			Origin: h.Origin, Trust: trust.FromOrigin(h.Origin).String(),
 			Authority: h.Authority().String(),

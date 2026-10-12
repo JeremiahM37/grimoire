@@ -115,3 +115,35 @@ func TestRememberAnchorsDescriptionIsShort(t *testing.T) {
 		t.Fatalf("anchor description is %d words, must be under 120", n)
 	}
 }
+
+// A host given to remember reaches the API unchanged, and an unset one is not
+// sent at all, so the server's own default still applies.
+func TestRememberForwardsHost(t *testing.T) {
+	var body map[string]any
+	s := stubAPI(t, func(w http.ResponseWriter, r *http.Request) {
+		body = nil
+		json.NewDecoder(r.Body).Decode(&body)
+		w.Write([]byte(`{"ok":true}`))
+	})
+	call(t, s, rememberCall(map[string]any{"text": "x", "host": "mediaserver"}))
+	if body["host"] != "mediaserver" {
+		t.Fatalf("host = %v, want mediaserver", body["host"])
+	}
+	call(t, s, rememberCall(map[string]any{"text": "x"}))
+	if _, present := body["host"]; present {
+		t.Fatalf("an unset host was sent: %v", body["host"])
+	}
+}
+
+// The write's advice and auto anchors come back in the tool's result text, so
+// a writer sees them without another call.
+func TestRememberResultTextCarriesAdvice(t *testing.T) {
+	s := stubAPI(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"op":"ADD","advice":["names nothing checkable"]}`))
+	})
+	resps := call(t, s, rememberCall(map[string]any{"text": "the gateway is on the lan"}))
+	raw, _ := json.Marshal(resps[0]["result"])
+	if !strings.Contains(string(raw), "names nothing checkable") {
+		t.Fatalf("advice missing from the result: %s", raw)
+	}
+}

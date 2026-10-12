@@ -81,6 +81,7 @@ func (s *Server) assessHits(hits []index.MemoryHit, out []entryOut) []entryOut {
 		a := hits[i].Assess(now, p, theta)
 		if anchorsOn() {
 			s.applyAnchors(&a, hits[i].Entry)
+			applyStaleness(&a, hits[i].Entry)
 		}
 		out[i].Freshness = &a
 	}

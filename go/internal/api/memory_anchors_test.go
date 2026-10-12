@@ -7,10 +7,12 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/JeremiahM37/grimoire/go/internal/anchor"
 	"github.com/JeremiahM37/grimoire/go/internal/exp"
 	"github.com/JeremiahM37/grimoire/go/internal/memory"
 )
@@ -341,5 +343,465 @@ func TestRefScanReportsDeadReferencesByNoteAndTotals(t *testing.T) {
 	}
 	if len(out.Dead) != 1 || out.Dead[0].Path != "ops/runbook.md" || out.Dead[0].Ref != filepath.Join(home, "gone-zzz.md") {
 		t.Fatalf("dead = %+v", out.Dead)
+	}
+}
+
+// fakeHost stands in for this machine's name for the length of one test.
+func fakeHost(t *testing.T, name string) {
+	t.Helper()
+	old := hostname
+	hostname = func() string { return name }
+	t.Cleanup(func() { hostname = old })
+}
+
+func TestLocalClaimIsStampedWithThisMachine(t *testing.T) {
+	fakeHost(t, "aiserver")
+	_, h := testServer(t)
+	rememberFrom(t, h, anchorLoopback, map[string]any{"topic": "net", "infer": false,
+		"text": "the gateway is up"})
+	if body := noteBody(t, h, "memory/net.md"); !strings.Contains(body, "host=aiserver") {
+		t.Fatalf("local claim not stamped with this machine:\n%s", body)
+	}
+}
+
+func TestHostIsNotStampedOnEventsPreferencesOrRemoteWrites(t *testing.T) {
+	fakeHost(t, "aiserver")
+	_, h := testServer(t)
+	rememberFrom(t, h, anchorLoopback, map[string]any{"topic": "ops", "infer": false,
+		"text": "the cutover happened", "event": true})
+	rememberFrom(t, h, anchorLoopback, map[string]any{"topic": "prefs", "infer": false,
+		"text": "the user prefers tabs", "kind": "preference"})
+	rememberFrom(t, h, anchorRemote, map[string]any{"topic": "remote", "infer": false,
+		"text": "from a remote peer"})
+	for _, note := range []string{"memory/ops.md", "memory/prefs.md", "memory/remote.md"} {
+		if body := noteBody(t, h, note); strings.Contains(body, "host=") {
+			t.Fatalf("%s was stamped with a host:\n%s", note, body)
+		}
+	}
+}
+
+func TestExplicitHostIsValidatedAndStoredLowercased(t *testing.T) {
+	fakeHost(t, "aiserver")
+	_, h := testServer(t)
+	rememberFrom(t, h, anchorRemote, map[string]any{"topic": "net", "infer": false,
+		"text": "the proxy runs on the other box", "host": "MediaServer"})
+	if body := noteBody(t, h, "memory/net.md"); !strings.Contains(body, "host=mediaserver") {
+		t.Fatalf("explicit host not stored lowercased:\n%s", body)
+	}
+	for _, bad := range []string{"bad host;rm", "-leading", "a.b/c", strings.Repeat("x", 64), "$(id)"} {
+		w := postFrom(t, h, anchorLoopback, "POST", "/api/memory",
+			map[string]any{"topic": "net", "infer": false, "text": "x", "host": bad})
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("host %q: status = %d, want 400", bad, w.Code)
+		}
+	}
+}
+
+func TestRecallCarriesHostOnlyWhenOneWasRecorded(t *testing.T) {
+	_, h := testServer(t)
+	rememberFrom(t, h, anchorRemote, map[string]any{"topic": "net", "infer": false,
+		"text": "kestrel gateway has no machine", "fresh": "stable"})
+	rememberFrom(t, h, anchorRemote, map[string]any{"topic": "net", "infer": false,
+		"text": "kestrel gateway sits on mediaserver", "fresh": "stable", "host": "mediaserver"})
+	var facts []map[string]any
+	if err := json.Unmarshal([]byte(recallJSON(t, h, "kestrel")), &facts); err != nil || len(facts) != 2 {
+		t.Fatalf("recall: %v in %d facts", err, len(facts))
+	}
+	for _, f := range facts {
+		_, has := f["host"]
+		text := f["text"].(string)
+		switch {
+		case strings.Contains(text, "no machine") && has:
+			t.Fatalf("a fact with no host carries a host key: %v", f)
+		case strings.Contains(text, "mediaserver") && (!has || f["host"] != "mediaserver"):
+			t.Fatalf("host not recalled: %v", f)
+		}
+	}
+}
+
+// fakeSSHOnPath puts an ssh that exits with code on PATH for one test. The
+// anchor package runs "ssh" by name, so this is the only ssh it can reach, and
+// it never dials anything. It also points the host allowlist at a host that
+// is never dialled.
+func fakeSSHOnPath(t *testing.T, code int, out string) {
+	t.Helper()
+	dir := t.TempDir()
+	script := "#!/bin/sh\nprintf '%s' '" + out + "'\nexit " + strconv.Itoa(code) + "\n"
+	if err := os.WriteFile(filepath.Join(dir, "ssh"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	anchor.SetHosts(map[string]string{"mediaserver": "root@example.invalid"})
+	t.Cleanup(func() { anchor.SetHosts(nil) })
+}
+
+func TestAClaimAboutAnotherHostIsProbedThere(t *testing.T) {
+	fakeSSHOnPath(t, 0, "active\n")
+	_, h := testServer(t)
+	out := rememberFrom(t, h, anchorLoopback, map[string]any{"topic": "net", "infer": false,
+		"text": "the proxy is up", "host": "mediaserver",
+		"anchors": []map[string]any{{"type": "unit_active", "unit": "caddy.service"}}})
+	rep := out["anchors"].([]any)[0].(map[string]any)
+	if rep["result"] != "pass" || out["anchors_stored"] != float64(1) {
+		t.Fatalf("remote anchor not run on its host: %v", out)
+	}
+	body := noteBody(t, h, "memory/net.md")
+	if !strings.Contains(body, "host=mediaserver") || !strings.Contains(body, "anc=unit_active;host=mediaserver;unit=caddy.service") {
+		t.Fatalf("anchor did not inherit the fact's host:\n%s", body)
+	}
+}
+
+func TestAnAnchorForAHostOutsideTheAllowlistIsSkippedAndSaysSo(t *testing.T) {
+	fakeSSHOnPath(t, 0, "active\n")
+	_, h := testServer(t)
+	out := rememberFrom(t, h, anchorLoopback, map[string]any{"topic": "net", "infer": false,
+		"text": "the box runs nginx", "host": "elsewhere",
+		"anchors": []map[string]any{{"type": "unit_active", "unit": "nginx.service"}}})
+	rep := out["anchors"].([]any)[0].(map[string]any)
+	if rep["result"] != "skipped" || rep["message"] != anchor.SkipHostNotAllowed {
+		t.Fatalf("anchor for an unlisted host: %v", rep)
+	}
+}
+
+func TestRetrofitFactsInheritTheirHostInTheReport(t *testing.T) {
+	fakeSSHOnPath(t, 1, "")
+	s, h := testServer(t)
+	rememberFrom(t, h, anchorLoopback, map[string]any{"topic": "net", "infer": false,
+		"text": "the gateway config lives on the proxy host", "host": "mediaserver"})
+	storeAnchor(t, s, "memory/net.md", "the gateway config lives on the proxy host",
+		"file_exists;path=/srv/gateway.conf")
+	w := do(t, h, "GET", "/api/memory/anchors", nil)
+	var out struct {
+		Fail    int                       `json:"fail"`
+		ByHost  map[string]map[string]int `json:"by_host"`
+		Failing []map[string]any          `json:"failing"`
+	}
+	decode(t, w, &out)
+	if out.Fail != 1 || len(out.Failing) != 1 || out.ByHost["mediaserver"]["claims"] != 1 {
+		t.Fatalf("report did not run the inherited anchor on mediaserver: %s", w.Body)
+	}
+}
+
+// autoHome makes a file under a temporary HOME so a path in a claim's text is
+// a reference the store can check. It returns the home directory.
+func autoHome(t *testing.T) string {
+	t.Helper()
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	if err := os.MkdirAll(filepath.Join(home, "notes"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, "notes", "cfg.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return home
+}
+
+func TestAClaimWithNoAnchorsGetsWeakAnchorsForThePathsItNames(t *testing.T) {
+	autoHome(t)
+	_, h := testServer(t)
+	out := rememberFrom(t, h, anchorLoopback, map[string]any{"topic": "net", "infer": false,
+		"text": "the gateway config is at ~/notes/cfg.txt"})
+	auto, _ := out["anchors_auto"].([]any)
+	if len(auto) != 1 || auto[0].(map[string]any)["type"] != "ref_path" {
+		t.Fatalf("anchors_auto = %v in %v", auto, out)
+	}
+	body := noteBody(t, h, "memory/net.md")
+	if !strings.Contains(body, "anc=ref_path;auto=1;path=") {
+		t.Fatalf("auto anchor not stored:\n%s", body)
+	}
+}
+
+func TestAutoAnchorsCanBeSwitchedOffAndStoreNothingWhenNoneHold(t *testing.T) {
+	autoHome(t)
+	_, h := testServer(t)
+	t.Setenv("GRIMOIRE_ANCHOR_AUTO", "0")
+	out := rememberFrom(t, h, anchorLoopback, map[string]any{"topic": "net", "infer": false,
+		"text": "the gateway config is at ~/notes/cfg.txt"})
+	if _, present := out["anchors_auto"]; present {
+		t.Fatalf("auto anchors ran with the switch off: %v", out)
+	}
+	if body := noteBody(t, h, "memory/net.md"); strings.Contains(body, "anc=") {
+		t.Fatalf("auto anchor stored with the switch off:\n%s", body)
+	}
+
+	t.Setenv("GRIMOIRE_ANCHOR_AUTO", "")
+	out = rememberFrom(t, h, anchorLoopback, map[string]any{"topic": "net", "infer": false,
+		"text": "the gateway config is at ~/notes/missing.txt"})
+	if _, present := out["anchors_auto"]; present {
+		t.Fatalf("a path that does not exist was kept: %v", out)
+	}
+	if body := noteBody(t, h, "memory/net.md"); strings.Contains(body, "missing.txt") && strings.Contains(body, "anc=") {
+		t.Fatalf("a failing auto anchor was stored:\n%s", body)
+	}
+}
+
+func TestAutoAnchorsDoNotApplyToRemoteEventsOrPreferences(t *testing.T) {
+	autoHome(t)
+	_, h := testServer(t)
+	rememberFrom(t, h, anchorRemote, map[string]any{"topic": "net", "infer": false,
+		"text": "remote note about ~/notes/cfg.txt"})
+	rememberFrom(t, h, anchorLoopback, map[string]any{"topic": "ops", "infer": false, "event": true,
+		"text": "cutover of ~/notes/cfg.txt"})
+	rememberFrom(t, h, anchorLoopback, map[string]any{"topic": "prefs", "infer": false, "kind": "preference",
+		"text": "the user keeps ~/notes/cfg.txt"})
+	for _, note := range []string{"memory/net.md", "memory/ops.md", "memory/prefs.md"} {
+		if body := noteBody(t, h, note); strings.Contains(body, "anc=") {
+			t.Fatalf("%s carries anchors it should not:\n%s", note, body)
+		}
+	}
+}
+
+func TestWriteAdviceNamesWhatIsUncheckableOrPastTense(t *testing.T) {
+	_, h := testServer(t)
+	plain := rememberFrom(t, h, anchorLoopback, map[string]any{"topic": "net", "infer": false,
+		"text": "the gateway is on the lan"})
+	if adv, _ := plain["advice"].([]any); len(adv) != 1 || adv[0] != adviceNoAnchors {
+		t.Fatalf("no anchor advice: %v", plain["advice"])
+	}
+	past := rememberFrom(t, h, anchorLoopback, map[string]any{"topic": "ops", "infer": false,
+		"text": "Fixed the proxy on 2026-10-11", "event": false})
+	if adv, _ := past["advice"].([]any); len(adv) < 1 || !containsAdvice(adv, adviceEvent) {
+		t.Fatalf("no past-tense advice: %v", past["advice"])
+	}
+	event := rememberFrom(t, h, anchorLoopback, map[string]any{"topic": "ops", "infer": false,
+		"text": "Fixed the proxy on 2026-10-11", "event": true})
+	if _, present := event["advice"]; present {
+		t.Fatalf("an event got advice: %v", event["advice"])
+	}
+	checked := litFile(t, "192.168.0.1")
+	ok := rememberFrom(t, h, anchorLoopback, map[string]any{"topic": "net", "infer": false,
+		"text": "the router address is recorded", "anchors": []map[string]any{
+			{"type": "file_contains", "path": checked, "text": "192.168.0.1"}}})
+	if _, present := ok["advice"]; present {
+		t.Fatalf("an anchored claim got advice: %v", ok["advice"])
+	}
+}
+
+func containsAdvice(list []any, want string) bool {
+	for _, a := range list {
+		if a == want {
+			return true
+		}
+	}
+	return false
+}
+
+func TestReportSeparatesAutoAnchoredClaimsAndCountsSkipReasons(t *testing.T) {
+	autoHome(t)
+	fakeHost(t, "aiserver")
+	fakeSSHOnPath(t, 0, "active\n")
+	_, h := testServer(t)
+	rememberFrom(t, h, anchorLoopback, map[string]any{"topic": "net", "infer": false,
+		"text": "the gateway config is at ~/notes/cfg.txt"})
+	rememberFrom(t, h, anchorLoopback, map[string]any{"topic": "net", "infer": false,
+		"text": "the box runs nginx", "host": "elsewhere",
+		"anchors": []map[string]any{{"type": "unit_active", "unit": "nginx.service"}}})
+	w := do(t, h, "GET", "/api/memory/anchors", nil)
+	var out struct {
+		Claims             int                       `json:"claims"`
+		AnchoredClaims     int                       `json:"anchored_claims"`
+		AutoAnchoredClaims int                       `json:"auto_anchored_claims"`
+		Skipped            int                       `json:"skipped"`
+		SkippedReasons     map[string]int            `json:"skipped_reasons"`
+		ByHost             map[string]map[string]int `json:"by_host"`
+	}
+	decode(t, w, &out)
+	if out.Claims != 2 || out.AutoAnchoredClaims != 1 || out.AnchoredClaims != 1 {
+		t.Fatalf("counts = %+v in %s", out, w.Body)
+	}
+	if out.Skipped != 1 || out.SkippedReasons["host_not_allowlisted"] != 1 || out.SkippedReasons["remote"] != 0 {
+		t.Fatalf("skip reasons = %+v", out.SkippedReasons)
+	}
+	if out.ByHost["aiserver"]["claims"] != 1 || out.ByHost["elsewhere"]["anchored_claims"] != 1 {
+		t.Fatalf("by_host = %v", out.ByHost)
+	}
+}
+
+// annotateBody posts an annotate request and returns the response.
+func annotateFrom(t *testing.T, h http.Handler, peer string, body any) *httptest.ResponseRecorder {
+	t.Helper()
+	return postFrom(t, h, peer, "POST", "/api/memory/annotate", body)
+}
+
+// bulletLine returns the stored line for the fact with this id.
+func bulletLine(t *testing.T, h http.Handler, note, id string) string {
+	t.Helper()
+	for _, line := range strings.Split(noteBody(t, h, note), "\n") {
+		if strings.Contains(line, "id="+id+" ") || strings.Contains(line, "id="+id+"-->") {
+			return line
+		}
+	}
+	t.Fatalf("no line for %s in %s", id, note)
+	return ""
+}
+
+func TestAnnotateChangesOnlyTheTrailerOfTheFactsLine(t *testing.T) {
+	fakeHost(t, "aiserver")
+	fakeSSHOnPath(t, 0, "")
+	_, h := testServer(t)
+	out := rememberFrom(t, h, anchorLoopback, map[string]any{"topic": "net", "infer": false,
+		"text": "the gateway is on the lan", "fresh": "stable"})
+	id := out["id"].(string)
+	before := bulletLine(t, h, "memory/net.md", id)
+	lan := litFile(t, "192.168.0.1")
+
+	w := annotateFrom(t, h, anchorLoopback, map[string]any{"items": []map[string]any{{
+		"id": id, "path": "memory/net.md", "host": "mediaserver",
+		"anchors": []map[string]any{{"type": "file_contains", "path": lan, "text": "192.168.0.1"}}}}})
+	if w.Code != http.StatusOK {
+		t.Fatalf("annotate = %d: %s", w.Code, w.Body)
+	}
+	after := bulletLine(t, h, "memory/net.md", id)
+	beforeText := before[:strings.Index(before, " <!--m ")]
+	afterText := after[:strings.Index(after, " <!--m ")]
+	if beforeText != afterText {
+		t.Fatalf("the fact's text or stamp changed:\n%s\n%s", before, after)
+	}
+	if !strings.Contains(after, "id="+id) || !strings.Contains(after, "host=mediaserver") ||
+		!strings.Contains(after, "anc=file_contains;host=mediaserver;path=") {
+		t.Fatalf("trailer not annotated:\n%s", after)
+	}
+	if strings.Count(after, "id=") != 1 || strings.Count(after, "<!--m") != 1 {
+		t.Fatalf("trailer duplicated:\n%s", after)
+	}
+}
+
+func TestAnnotateDryRunReportsWithoutWriting(t *testing.T) {
+	fakeHost(t, "aiserver")
+	_, h := testServer(t)
+	id := rememberFrom(t, h, anchorLoopback, map[string]any{"topic": "net", "infer": false,
+		"text": "the gateway is on the lan"})["id"].(string)
+	before := noteBody(t, h, "memory/net.md")
+	w := annotateFrom(t, h, anchorLoopback, map[string]any{"dry_run": true, "items": []map[string]any{{
+		"id": id, "path": "memory/net.md", "event": true}}})
+	var out struct {
+		Items []struct {
+			Changed bool `json:"changed"`
+		} `json:"items"`
+	}
+	decode(t, w, &out)
+	if len(out.Items) != 1 || !out.Items[0].Changed {
+		t.Fatalf("dry run: %s", w.Body)
+	}
+	if noteBody(t, h, "memory/net.md") != before {
+		t.Fatal("a dry run wrote the note")
+	}
+}
+
+func TestAnnotateIsRefusedForRemoteCallers(t *testing.T) {
+	_, h := testServer(t)
+	item := []map[string]any{{"id": "x", "path": "memory/net.md", "event": true}}
+	if w := annotateFrom(t, h, anchorRemote, map[string]any{"items": item}); w.Code != http.StatusForbidden {
+		t.Errorf("remote peer: %d", w.Code)
+	}
+	if w := annotateFrom(t, h, anchorLoopback, map[string]any{"items": item, "caller_remote": true}); w.Code != http.StatusForbidden {
+		t.Errorf("caller_remote on loopback: %d", w.Code)
+	}
+}
+
+func TestAnnotateKeepsExistingAnchorsWhenNoNewOneHolds(t *testing.T) {
+	s, h := testServer(t)
+	id := rememberFrom(t, h, anchorLoopback, map[string]any{"topic": "net", "infer": false,
+		"text": "the gateway is on the lan"})["id"].(string)
+	storeAnchor(t, s, "memory/net.md", "the gateway is on the lan",
+		"file_exists;path="+litFile(t, "x"))
+	before := bulletLine(t, h, "memory/net.md", id)
+	w := annotateFrom(t, h, anchorLoopback, map[string]any{"items": []map[string]any{{
+		"id": id, "path": "memory/net.md",
+		"anchors": []map[string]any{{"type": "file_contains", "path": litFile(t, "nope"), "text": "absent-literal"}}}}})
+	var out struct {
+		Items []struct {
+			Changed bool             `json:"changed"`
+			Anchors []map[string]any `json:"anchors"`
+		} `json:"items"`
+	}
+	decode(t, w, &out)
+	if out.Items[0].Changed || out.Items[0].Anchors[0]["result"] != "fail" {
+		t.Fatalf("failing anchor changed the fact: %s", w.Body)
+	}
+	if bulletLine(t, h, "memory/net.md", id) != before {
+		t.Fatal("existing anchors were replaced by ones that do not hold")
+	}
+}
+
+func TestAnnotateEventDropsAnchorsAndUnknownFactsAreReported(t *testing.T) {
+	s, h := testServer(t)
+	id := rememberFrom(t, h, anchorLoopback, map[string]any{"topic": "ops", "infer": false,
+		"text": "the cutover is planned"})["id"].(string)
+	storeAnchor(t, s, "memory/ops.md", "the cutover is planned", "port_closed;port=65000")
+	w := annotateFrom(t, h, anchorLoopback, map[string]any{"items": []map[string]any{
+		{"id": id, "path": "memory/ops.md", "event": true},
+		{"id": "nosuchid", "path": "memory/ops.md", "event": true},
+	}})
+	if w.Code != http.StatusOK {
+		t.Fatalf("annotate = %d: %s", w.Code, w.Body)
+	}
+	line := bulletLine(t, h, "memory/ops.md", id)
+	if !strings.Contains(line, "evt=1") || strings.Contains(line, "anc=") {
+		t.Fatalf("event kept its anchors:\n%s", line)
+	}
+	if !strings.Contains(w.Body.String(), "fact not found") {
+		t.Fatalf("unknown fact not reported: %s", w.Body)
+	}
+}
+
+// Items on one note are applied in memory and the note is written once: 3 facts
+// on one note and 2 on another are 2 note writes, not 5. Two items on the same
+// fact see each other, so both trailer changes land.
+func TestAnnotateWritesEachNoteOnceAndSequencesItemsOnOneFact(t *testing.T) {
+	fakeHost(t, "aiserver")
+	_, h := testServer(t)
+	var ops, net []string
+	for _, text := range []string{"the cutover is planned", "the backup runs nightly", "the mail relay is down"} {
+		ops = append(ops, rememberFrom(t, h, anchorLoopback, map[string]any{"topic": "ops", "infer": false,
+			"text": text})["id"].(string))
+	}
+	for _, text := range []string{"the gateway is on the lan", "the switch is managed"} {
+		net = append(net, rememberFrom(t, h, anchorLoopback, map[string]any{"topic": "net", "infer": false,
+			"text": text})["id"].(string))
+	}
+	var items []map[string]any
+	for _, id := range ops {
+		items = append(items, map[string]any{"id": id, "path": "memory/ops.md", "event": true})
+	}
+	for _, id := range net {
+		items = append(items, map[string]any{"id": id, "path": "memory/net.md", "event": true})
+	}
+	// A second change to the first ops fact, after its event change.
+	items = append(items, map[string]any{"id": ops[0], "path": "memory/ops.md", "host": "mediaserver"})
+
+	w := annotateFrom(t, h, anchorLoopback, map[string]any{"items": items})
+	if w.Code != http.StatusOK {
+		t.Fatalf("annotate = %d: %s", w.Code, w.Body)
+	}
+	var out struct {
+		NotesWritten int `json:"notes_written"`
+		Items        []struct {
+			Changed bool   `json:"changed"`
+			Error   string `json:"error"`
+		} `json:"items"`
+	}
+	decode(t, w, &out)
+	if out.NotesWritten != 2 {
+		t.Fatalf("notes_written = %d, want 2 (one write per note): %s", out.NotesWritten, w.Body)
+	}
+	for i, it := range out.Items {
+		if !it.Changed || it.Error != "" {
+			t.Fatalf("item %d: changed=%v error=%q", i, it.Changed, it.Error)
+		}
+	}
+	first := bulletLine(t, h, "memory/ops.md", ops[0])
+	if !strings.Contains(first, "evt=1") || !strings.Contains(first, "host=mediaserver") {
+		t.Fatalf("two items on one fact did not both land:\n%s", first)
+	}
+	for _, id := range append(append([]string{}, ops[1:]...), net...) {
+		path := "memory/ops.md"
+		if strings.Contains(noteBody(t, h, "memory/net.md"), id) {
+			path = "memory/net.md"
+		}
+		if !strings.Contains(bulletLine(t, h, path, id), "evt=1") {
+			t.Fatalf("fact %s not marked event", id)
+		}
 	}
 }

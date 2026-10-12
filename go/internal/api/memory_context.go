@@ -186,7 +186,7 @@ func (s *Server) memoryContext(w http.ResponseWriter, r *http.Request) {
 		}
 		priors, theta, now := s.freshPriors(), s.verifyThreshold(), vault.Now()
 		for _, hit := range hits {
-			if hit.Untrusted() {
+			if hit.Untrusted() || !injectable(hit) {
 				continue
 			}
 			item := contextItem{Path: hit.Note, ID: hit.ID, Text: hit.Text,
@@ -501,7 +501,7 @@ func (s *Server) hybridContext(r *http.Request, query string, terms, paths []str
 	}
 	priors, theta, now := s.freshPriors(), s.verifyThreshold(), vault.Now()
 	for _, hit := range facts {
-		if hit.Untrusted() {
+		if hit.Untrusted() || !injectable(hit) {
 			continue
 		}
 		item := contextItem{Path: hit.Note, ID: hit.ID, Text: hit.Text,
@@ -623,7 +623,7 @@ func (s *Server) cueTargetItem(r *http.Request, target string, paths []string) (
 		hits, err := s.Index.MemoryEntries(index.MemoryQuery{Filter: filterFor(r, false), ID: id,
 			AcceptedOnly: true, Paths: paths, Limit: 1, Now: vault.Now(), Mode: recallModeOf(r),
 			IncludePrivate: boolParam(r, "include_private")})
-		if err != nil || len(hits) == 0 || hits[0].Untrusted() {
+		if err != nil || len(hits) == 0 || hits[0].Untrusted() || !injectable(hits[0]) {
 			return contextItem{}, false
 		}
 		h := hits[0]

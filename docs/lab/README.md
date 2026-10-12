@@ -88,9 +88,39 @@ pre-registered holdout on live agent work, with no flags on:
 [`benchmarks/holdout/PREREG.md`](../../benchmarks/holdout/PREREG.md). Its
 analysis script is fixed at the same commit.
 
+`benchmarks/holdout/per_memory.py` is an **exploratory** companion to that run.
+It asks which individual memories seem to help or hurt, not whether injection
+helps on average. Each memory is identified by its `target` (`fact:ID` or
+`note:PATH`), the only identity column shared by the two arms. Its effects are
+shrunk toward the overall effect (empirical Bayes), and a permutation test
+asks whether memories differ at all. It reads outcomes with `analyze.py`'s own
+loader and refuses to run before 2026-11-08. Nothing it prints is a
+pre-registered finding. Its selftest is `per_memory.py --selftest`, which uses
+synthetic data only.
+
 ## Anchors (2026-10-11)
 
 A new idea tried after the sixteen above: a claim carries typed read-only probes
 for the thing it is about, checked at write and, behind the `anchor` flag, at
 recall. Write side is on for local callers; the recall side is behind the flag.
 Measurements and limits: [`MEMORY-ANCHORS.md`](../MEMORY-ANCHORS.md).
+
+## Seven gaps, measured and worked on (2026-10-11)
+
+Each line is a gap found on one owner's live vault, the quick test that was run
+on real data, and what the build now does. Counts only; the data is private.
+Nothing here is a benchmark score.
+
+| Gap | What was measured | What changed |
+|---|---|---|
+| No proof that injected memory helps | The holdout above is running. Its one analysis gives an average effect, not which memories help. | [`per_memory.py`](../../benchmarks/holdout/per_memory.py): per-memory effects with shrinkage and a heterogeneity test. Exploratory, and it refuses to read outcomes before the pre-registered end. |
+| Facts cannot be checked | 0 of 329 live claims carried an anchor, because the writers send none. Marking and anchoring existing facts from an offline labelling pass: 165 marked as history, 12 claims given a passing anchor, text and ids unchanged. | Automatic weak anchors for writes that send none, `memory annotate` to retrofit, checks on other machines. See [MEMORY-ANCHORS.md](../MEMORY-ANCHORS.md). |
+| Facts do not say which machine they are about | 66 of 108 dead path references in prose memory were paths on another machine. Guessing the machine from nearby text found 26 to 30 of the 66 and mislabelled 5 to 7 of the other 42. | `host` is recorded on write, and a check can run on an allowlisted machine over ssh. Guessing from text was not built. |
+| What gets written is poorly chosen | 138 of 3,578 traced injections were stored facts, and 2 of those were linked to a following action, against about a third for memory files and notes. 19 of the 39 distinct facts injected were history. | Handoff facts that read as history are marked as events; the writer is told when a claim names nothing checkable. Leaving events out of injection is behind the `events` flag. |
+| Updates replace true facts | 3 of 14 real supersessions struck a fact that was still true. | An update cannot replace a fact whose own anchors still pass; both are kept and the writer is told. |
+| The staleness score misses real errors | A wrong version fact was scored 0.038 and marked "use". A wording rule (version number, "is deployed", worktree, temp path) flagged 42 of 346 facts and caught both facts that had really gone stale. Two cases is not a rate. | The wording rule and the anchor verdict apply at recall behind the `anchor` flag. |
+| Skills are prose | `skills mine` returned 20 candidates, all habits. Two better miners found at best 5 real procedures in 24 candidates from 801 sessions, each with steps missing. Asking the writer for the procedure with checks gave 12 from 6 sessions; 6 were stored as posted and passed their checks, 5 named another machine the old way and 1 tripped the secret check on a placeholder (both since fixed). | `remember_procedure` and `skills write`: see [MEMORY-PROCEDURES.md](../MEMORY-PROCEDURES.md). |
+
+What is still open: the recall-side parts are off until the holdout ends, so
+none of this has been shown to change what an agent does. Existing facts that
+never named their object stay uncheckable. The numbers come from one vault.

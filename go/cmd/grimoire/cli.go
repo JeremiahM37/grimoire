@@ -384,6 +384,13 @@ func (e *env) call(method, path string) (int, string) {
 
 // callBody is call with a JSON request body, for the write surfaces.
 func (e *env) callBody(method, path string, body any) (int, string) {
+	return e.callFrom("", method, path, body)
+}
+
+// callFrom is callBody with the peer address the request claims. The CLI runs
+// in this process, so a request it makes for the local operator may name a
+// loopback peer; annotate uses that to pass the server's local-only gate.
+func (e *env) callFrom(peer, method, path string, body any) (int, string) {
 	var reader io.Reader
 	if body != nil {
 		raw, err := json.Marshal(body)
@@ -399,6 +406,7 @@ func (e *env) callBody(method, path string, body any) (int, string) {
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
+	req.RemoteAddr = peer
 	rec := &recorder{status: 200}
 	e.handler.ServeHTTP(rec, req)
 	return rec.status, rec.body.String()

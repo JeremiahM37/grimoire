@@ -46,16 +46,51 @@ const (
 // a fake binary; production never changes it.
 var binaryDir = "/usr/local/bin"
 
+// Skip messages. Reports count skipped anchors by these, so they are constants
+// and not typed inline.
+const (
+	SkipRemote         = "remote: not checked from this host"
+	SkipHostNotAllowed = "host not in GRIMOIRE_ANCHOR_HOSTS"
+	SkipUnsafeArg      = "argument not safe for a remote probe"
+	SkipBinaryRemote   = "binary_version only checks this host"
+)
+
+// SkipReason names why a Skipped result was skipped, for the admin report.
+// Anything else is "other".
+func SkipReason(res Result) string {
+	switch res.Message {
+	case SkipRemote:
+		return "remote"
+	case SkipHostNotAllowed:
+		return "host_not_allowlisted"
+	case SkipUnsafeArg:
+		return "unsafe_argument"
+	}
+	return "other"
+}
+
 // Run validates an anchor and checks it once. It never runs a shell: every
 // command is an argument vector. A remote anchor is not checked from here and
-// reports Skipped.
+// reports Skipped. An anchor naming another host runs over ssh if that host is
+// in the allowlist (see hosts.go and remote.go).
 func Run(ctx context.Context, a Anchor) Result {
 	if err := Validate(a); err != nil {
 		return Result{Status: Error, Message: err.Error()}
 	}
 	if a.Type == Remote {
-		return Result{Status: Skipped, Message: "remote: not checked from this host"}
+		return Result{Status: Skipped, Message: SkipRemote}
 	}
+	host := strings.ToLower(a.Args[argHost])
+	if host == "" || host == LocalHost() || isHTTP(a.Type) {
+		// http probes always run from here: the address they name is the one
+		// this machine must reach, whichever host the fact was about.
+		return runLocal(ctx, a)
+	}
+	return runRemote(ctx, a, host)
+}
+
+// runLocal checks a validated anchor on this machine.
+func runLocal(ctx context.Context, a Anchor) Result {
 	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
 	defer cancel()
 	ok, why, err := check(ctx, a)
@@ -68,6 +103,8 @@ func Run(ctx context.Context, a Anchor) Result {
 		return Result{Status: Fail, Message: why}
 	}
 }
+
+func isHTTP(typ string) bool { return typ == HTTPStatus || typ == HTTPContains }
 
 // check runs one validated, non-remote probe. ok is the verdict, why says what
 // was missing when it is false, and err means the probe could not answer.
@@ -315,6 +352,12 @@ func listening(ctx context.Context, port string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	return listeningIn(out, port), nil
+}
+
+// listeningIn reads `ss -ltnH` output and says whether a socket is bound to the
+// port. It is shared by the local and the remote probe.
+func listeningIn(out, port string) bool {
 	for _, line := range strings.Split(out, "\n") {
 		f := strings.Fields(line)
 		if len(f) < 4 {
@@ -322,10 +365,10 @@ func listening(ctx context.Context, port string) (bool, error) {
 		}
 		local := f[3]
 		if i := strings.LastIndex(local, ":"); i >= 0 && local[i+1:] == port {
-			return true, nil
+			return true
 		}
 	}
-	return false, nil
+	return false
 }
 
 // binaryVersion runs the grimoire or lectern binary's version command. The

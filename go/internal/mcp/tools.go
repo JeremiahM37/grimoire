@@ -85,6 +85,7 @@ var behaviour = map[string]annotations{
 	"set_fact":               {Title: "Set an exact value", DestructiveHint: true, IdempotentHint: true},
 	"remember":               {Title: "Record a fact", DestructiveHint: true},
 	"remember_image":         {Title: "Record an image", DestructiveHint: true},
+	"remember_procedure":     {Title: "Record a procedure", DestructiveHint: true},
 	"consolidate_memory":     {Title: "Consolidate memory", DestructiveHint: true},
 	"dream":                  {Title: "Dream over memory"},
 	"memory_feedback":        {Title: "Rate a recalled fact", IdempotentHint: true},
@@ -464,6 +465,7 @@ func Tools() []tool {
 					"description": "pin this fact: reconciliation may never supersede or retract it"},
 				"event": map[string]any{"type": "boolean",
 					"description": "true for something that happened and stays true as history; events carry no anchors"},
+				"host": strProp("optional: the machine this claim is about, if not the one you are on (e.g. 'mediaserver')"),
 				"anchors": map[string]any{"type": "array", "maxItems": 16, "items": map[string]any{"type": "object"},
 					"description": "for a claim: probes that check it still holds, e.g. " +
 						"{\"type\":\"file_contains\",\"path\":\"/abs/file\",\"text\":\"literal\"}. " +
@@ -486,6 +488,27 @@ func Tools() []tool {
 					"description": "up to 8 situations in which this should come to mind: a request, " +
 						"a command, or a file path (e.g. 'deploy grimoire', '/etc/lectern.env')"},
 			}), "text"),
+		},
+		{
+			Name: "remember_procedure",
+			Description: "Save a multi-step task that just worked and that someone will need to repeat " +
+				"(a deploy, release, install, migration, recovery). Not for edit/test loops or one-off " +
+				"investigation. Fields: `when` (the situation it applies in), `steps` (the commands as run, " +
+				"2 to 20, with changing parts replaced by `<slots>`), `pre` (checks true before starting) " +
+				"and `post` (checks true only if it worked). Each check is an anchor object as in " +
+				"`remember`. A failing `pre` stores nothing and is reported back. Never include secrets.",
+			InputSchema: obj(map[string]any{
+				"name":  strProp("short name for the procedure, 3 to 80 characters"),
+				"when":  strProp("the situation it applies in, one sentence"),
+				"steps": arrProp("the steps, one command or action per entry, as run"),
+				"pre": map[string]any{"type": "array", "items": map[string]any{"type": "object"},
+					"description": "checks that must hold before starting, e.g. {\"type\":\"file_exists\",\"path\":\"/abs/file\"}"},
+				"post": map[string]any{"type": "array", "items": map[string]any{"type": "object"},
+					"description": "checks that hold once it has worked, e.g. {\"type\":\"unit_active\",\"unit\":\"x.service\"}; a <slot> in an argument is filled in when used"},
+				"host":    strProp("optional: the machine the procedure is about, if not this one"),
+				"topic":   strProp("optional grouping"),
+				"session": strProp("optional run id this was learned in"),
+			}, "name", "when", "steps", "pre", "post"),
 		},
 		{
 			Name: "remember_image",

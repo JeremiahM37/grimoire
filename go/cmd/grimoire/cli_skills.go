@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -24,7 +25,8 @@ const skillsUsage = `usage:
   grimoire skills mine [--agent NAME]... [--since 30d] [--min-sessions 3] [--limit 20] [--max-files 2000] [--title] [--dry-run]
   grimoire skills gate ID
   grimoire skills accept ID [--override "REASON"] [--dir STORE]
-  grimoire skills check [--cwd DIR] [--dir STORE]
+  grimoire skills check [--cwd DIR] [--dir STORE] [--json]
+  grimoire skills write --file FILE.json [--json]
 
 export writes each procedure memory in the store as a skill folder (SKILL.md with a
 name and a description built from the memory's cues, plus scripts/ when it holds shell
@@ -41,7 +43,15 @@ false fires, failed outcomes). accept refuses a failed gate unless you give
 --override with the reason, which is recorded in the skill's frontmatter.
 
 gate prints a candidate's verdict and the numbers behind it. check lists the stored
-skills whose preconditions hold in the working directory, and which do not, and why.`
+skills whose preconditions hold in the working directory, and which do not, and why.
+A precondition written as an anchor (anchor:...) holds when its check passes here.
+--json prints the same report as JSON.
+
+write saves a procedure the agent just worked out: FILE.json holds {name, when, steps,
+pre, post, host?, topic?, agent?, session?}, where pre and post are anchor objects.
+The store runs every pre check once and refuses to save when one does not hold (exit 1,
+nothing written). The procedure is saved into the server's memory store
+(memory_canonical_dir) and can be re-checked with check and published with export.`
 
 func cmdSkills(args []string) int {
 	if len(args) == 0 || args[0] == "help" {
@@ -63,6 +73,8 @@ func cmdSkills(args []string) int {
 		return skillsGate(f)
 	case "check":
 		return skillsCheck(f)
+	case "write":
+		return skillsWrite(f)
 	}
 	return fail("unknown skills command %q\n\n%s", args[0], skillsUsage)
 }
@@ -316,14 +328,9 @@ func skillsAccept(f *bankFlags) int {
 		if err := os.MkdirAll(store, 0o755); err != nil {
 			return fail("%v", err)
 		}
-		path := filepath.Join(store, skillmine.DraftFile(c))
-		fh, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+		path, err := skillgate.SaveNote(store, skillmine.DraftFile(c), stamped, false)
 		if err != nil {
-			return fail("%s already exists; nothing written", path)
-		}
-		_, werr := fh.WriteString(stamped)
-		if cerr := fh.Close(); werr != nil || cerr != nil {
-			return fail("could not write %s", path)
+			return fail("%v", err)
 		}
 		fmt.Printf("saved %s\nreview it, then: grimoire memory index --write   (and grimoire skills export --agent NAME to publish it as a skill)\n", path)
 		return 0
@@ -435,18 +442,118 @@ func skillsCheck(f *bankFlags) int {
 	}
 	ctx := skillgate.NewContext(cwd, nil)
 	plain := 0
+	type row struct {
+		Title       string   `json:"title"`
+		File        string   `json:"file"`
+		Applies     bool     `json:"applies"`
+		Unmet       []string `json:"unmet"`
+		NeedsValues []string `json:"needs_values"`
+	}
+	rows := []row{}
 	for _, n := range notes {
 		s, ok := skillgate.SpecOf(n)
 		if !ok {
 			plain++
 			continue
 		}
-		if applies, unmet := skillgate.Applicable(s, ctx); applies {
-			fmt.Printf("applicable  %s\n", n.Title)
+		applies, unmet := skillgate.Applicable(s, ctx)
+		rows = append(rows, row{Title: n.Title, File: n.File, Applies: applies,
+			Unmet: nonNil(unmet), NeedsValues: nonNil(skillgate.NeedsValues(s))})
+	}
+	if f.on["--json"] {
+		raw, _ := json.MarshalIndent(map[string]any{"cwd": cwd, "skills": rows, "without_spec": plain}, "", "  ")
+		fmt.Println(string(raw))
+		return 0
+	}
+	for _, r := range rows {
+		if r.Applies {
+			fmt.Printf("applicable  %s\n", r.Title)
 		} else {
-			fmt.Printf("unmet       %s  (%s)\n", n.Title, strings.Join(unmet, ", "))
+			fmt.Printf("unmet       %s  (%s)\n", r.Title, strings.Join(r.Unmet, ", "))
+		}
+		for _, nv := range r.NeedsValues {
+			fmt.Printf("            needs values: %s\n", nv)
 		}
 	}
 	fmt.Printf("%d procedure(s) with no spec, not checked; cwd %s\n", plain, cwd)
+	return 0
+}
+
+func nonNil(v []string) []string {
+	if v == nil {
+		return []string{}
+	}
+	return v
+}
+
+// skillsWrite posts a procedure to the server, as the local agent. The server
+// does the checking and the saving, so the answer is the server's.
+func skillsWrite(f *bankFlags) int {
+	file := f.str("--file", "")
+	if file == "" {
+		return fail("usage: grimoire skills write --file FILE.json [--json]")
+	}
+	raw, err := os.ReadFile(file)
+	if err != nil {
+		return fail("skills write: %v", err)
+	}
+	var body map[string]any
+	if err := json.Unmarshal(raw, &body); err != nil || body == nil {
+		return fail("skills write: %s must be a JSON object (see grimoire skills help)", file)
+	}
+	// The running server writes the procedure when one answers, so the vault is
+	// opened here only when none does (see postLive).
+	status, resp, err := postLive("/api/memory/procedure", body)
+	live := err == nil
+	if errors.Is(err, errNoServer) {
+		e, oerr := openEnv()
+		if oerr != nil {
+			return fail("%v", oerr)
+		}
+		defer e.close()
+		status, resp = e.callFrom("127.0.0.1:0", "POST", "/api/memory/procedure", body)
+	} else if err != nil {
+		return fail("skills write: %v", err)
+	}
+	if f.on["--json"] {
+		reportPath(true, live)
+		fmt.Println(resp)
+		if status >= 300 {
+			return 1
+		}
+		return 0
+	}
+	reportPath(false, live)
+	var out struct {
+		Stored   bool   `json:"stored"`
+		Replaced bool   `json:"replaced"`
+		File     string `json:"file"`
+		Detail   string `json:"detail"`
+		Checks   []struct {
+			Phase   string `json:"phase"`
+			Type    string `json:"type"`
+			Result  string `json:"result"`
+			Message string `json:"message"`
+		} `json:"checks"`
+	}
+	if err := json.Unmarshal([]byte(resp), &out); err != nil {
+		return fail("skills write: unreadable response (status %d)", status)
+	}
+	for _, c := range out.Checks {
+		line := fmt.Sprintf("  %-4s %-16s %s", c.Phase, c.Type, c.Result)
+		if c.Message != "" {
+			line += "  " + c.Message
+		}
+		fmt.Println(line)
+	}
+	if status >= 300 {
+		fmt.Fprintf(os.Stderr, "not stored: %s\n", out.Detail)
+		return 1
+	}
+	verb := "saved"
+	if out.Replaced {
+		verb = "replaced"
+	}
+	fmt.Printf("%s %s\n", verb, out.File)
 	return 0
 }

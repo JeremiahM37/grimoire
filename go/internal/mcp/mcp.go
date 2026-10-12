@@ -587,6 +587,24 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 			q.Set("note", n)
 		}
 		return s.api("GET", "/api/facts?"+q.Encode(), nil)
+	case "remember_procedure":
+		// The API refuses a remote caller; the flag is set on HTTP calls and is
+		// never a grant. Attribution is the server's, as for remember.
+		body := map[string]any{"agent": s.Agent, "session": s.Session}
+		for _, k := range []string{"name", "when", "host", "topic"} {
+			if v := str(args, k); v != "" {
+				body[k] = v
+			}
+		}
+		for _, k := range []string{"steps", "pre", "post"} {
+			if raw, ok := args[k]; ok {
+				body[k] = raw
+			}
+		}
+		if boolean(args, remoteCallerArg) {
+			body["caller_remote"] = true
+		}
+		return s.api("POST", "/api/memory/procedure", body)
 	case "remember":
 		// attribution comes from the server's configured identity, not from the
 		// caller — an agent must not be able to write memories as someone else
@@ -644,6 +662,11 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 		}
 		if boolean(args, remoteCallerArg) {
 			body["caller_remote"] = true
+		}
+		// host names the machine a claim is about when it is not this one; the
+		// API validates the name, so it is passed through as given.
+		if h := str(args, "host"); h != "" {
+			body["host"] = h
 		}
 		if n := num(args, "importance", 0); n > 0 {
 			body["importance"] = n

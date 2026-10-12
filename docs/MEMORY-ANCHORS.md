@@ -37,6 +37,79 @@ loopback or `100.64.0.0/10` address and never follow redirects. `file_contains`
 refuses secret and key paths, `.env` files, and the vault's index directory, and
 reads at most 5 MB.
 
+## Host
+
+A claim can be about a machine other than the one the store runs on. Facts
+record that as `host` (the `host=` trailer; a machine name of letters, digits,
+dots and dashes). A claim written locally, with no `host`, is stamped with this
+server's short name. Events, preferences, rules and writes from a remote caller
+are stored with no host unless the writer gives one.
+
+Every probe may carry a `host` argument. An anchor with no host runs here. An
+anchor that names this machine runs here. Anything else runs over ssh, but only
+if the host is in `GRIMOIRE_ANCHOR_HOSTS`, a comma-separated list of
+`name=sshtarget`, for example `mediaserver=root@100.64.0.10`. The list is
+empty by default, and nothing else is ever contacted. A bad entry stops the
+server from starting.
+
+An anchor that names no host takes its fact's host when the fact is about
+another machine, so a claim about mediaserver is checked on mediaserver.
+
+What runs remotely: the file, directory, symlink and literal probes, the unit
+probes (system manager only), port probes, git commit and branch, and the
+reference types. `binary_version` is skipped for another host. The `http_*`
+probes always run from here, whatever host is named. `remote` is still never
+checked.
+
+Remote probes are fixed command lines run over `ssh` with `BatchMode`, a 5 s
+connect timeout and a 15 s limit. Every value used on the other machine must
+match `^[A-Za-z0-9_./@+:=,\-]+$` (no spaces, quotes, `$`, backticks, `;`, `~`
+or globs). A value that does not match is skipped, never quoted and sent. A
+`file_contains` path on the secret denylist is refused. An ssh failure to
+connect is an error, not a verdict on the claim.
+
+## Kept contradictions
+
+When an update's old fact still passes its anchors, arbitration keeps it beside
+the new one, and the response lists it under `kept`. The response's `advice` then
+says which stored fact still holds (by id) and asks the writer to check which is
+right, and to anchor the new claim if it is. The write is not blocked.
+
+## Automatic anchors
+
+A claim that arrives with no anchors gets one for each path or unit its text
+names, if that thing exists now. At most four are kept, each marked `auto=1`.
+Nothing is stored when none exist. These are weaker than writer anchors: they
+say a named file or unit is there, not what the claim says about it. The report
+counts claims whose anchors are all automatic apart from the others. Turn this
+off with `GRIMOIRE_ANCHOR_AUTO=0`.
+
+## Writer advice
+
+A write's response may carry `advice`, a list of short strings. It never blocks
+or changes the write. It says when a claim names nothing checkable, and when a
+claim reads like something that happened (a sentence that opens with a past-tense
+report, or contains a date), so the writer can set `event`.
+
+## Annotating stored facts
+
+`POST /api/memory/annotate` (admin, local callers only) changes the trailer of
+stored facts: `event`, `host`, and `anchors`. It never changes the text, the id
+or the stamp; only the line's trailer changes. Existing anchors are replaced only
+when at least one new one passes. Hand-written facts, whose id no longer matches
+their text, are refused. `grimoire memory annotate --file FILE.json` is a dry run
+unless `--apply` is given.
+
+Items are applied in order, and each note the request touches is written and
+indexed once, so 177 items over 10 notes make 10 note writes. The answer's
+`notes_written` counts them. `grimoire memory annotate` sends the request to the
+running server when one answers (`GRIMOIRE_URL`, else loopback on
+`GRIMOIRE_PORT`); it opens the vault itself only when nothing answers, and it
+prints which path it took. Keep the live server the only writer while it runs.
+A second process writing the same note can still hit `UNIQUE constraint failed:
+notes.path` in the watcher's upsert, because the index's note rewrite is not one
+transaction across processes (see the report for the cause).
+
 ## Security rule
 
 Anchors are accepted only from a loopback peer that is not a remote or OAuth
@@ -45,19 +118,36 @@ caller's anchors are ignored and the response says `"anchors_ignored":"remote ca
 The MCP HTTP transport always counts as remote; only the local stdio agent can
 attach anchors.
 
+## Written procedures
+
+A multi-step task that worked can be saved with its checks: `pre` anchors that
+must hold before the steps, `post` anchors for after. See
+`docs/MEMORY-PROCEDURES.md`. A procedure's anchors are checked when it is
+written, and again whenever `grimoire skills check` asks whether it applies.
+
 ## Writing
 
-`remember` takes `anchors` (a list of probe objects) and `event` (a boolean).
-Each anchor is validated and run once. Only anchors that pass, or that are
-`remote`, are stored. The response lists every anchor with its result, so a
-writer can fix one that failed. A failing anchor does not fail the write.
+`remember` takes `anchors` (a list of probe objects), `event` (a boolean) and
+`host` (the machine the claim is about, when it is not this one). Each anchor is
+validated and run once. Only anchors that pass, or that were skipped (not checked
+from here), are stored. The response lists every anchor with its result, so a
+writer can fix one that failed. A failing anchor does not fail the write. The
+response may also carry `anchors_auto` and `advice` (see above).
 
 ## Commands
 
 - `grimoire memory anchors [--json]` runs every stored anchor and lists the
-  claims whose probe no longer holds. Admin only (`GET /api/memory/anchors`).
+  claims whose probe no longer holds. It counts claims with a writer's anchor
+  and claims with only automatic ones, groups claims by host, and counts skipped
+  anchors by reason (`remote`, `host_not_allowlisted`, `unsafe_argument`,
+  `other`). Admin only (`GET /api/memory/anchors`).
+- `grimoire memory annotate --file FILE.json [--apply] [--json]` changes the
+  trailers of stored facts (see *Annotating stored facts*). Admin only.
 - `grimoire memory refs [--json]` scans every note for absolute paths under `~`,
-  `/home/admin` and `/mnt/bulk`, and for `*.service` and `*.timer` names, and
+  `/home/admin`, `/mnt/bulk`, `/etc`, `/opt`, `/usr/local`, `/var/lib`, `/var/log`
+  and `/srv` (a unit named inside a path, such as `grimoire.service` in
+  `/etc/systemd/system/grimoire.service.d/release.conf`, is part of the path and
+  is not reported as a unit), and for `*.service` and `*.timer` names, and
   lists the references that no longer exist. Admin only (`GET /api/memory/refs`).
 
 Neither command prints fact text.
@@ -94,11 +184,106 @@ read them as direction, not rates.
   is a list of pointers to look at, not a list of errors: the reference alone
   does not say which host it is on or whether the text means now.
 
+## Updates and anchors
+
+An update is a new write that would replace an older fact. Before that happens,
+the store runs the older fact's stored anchors (the same cached probes recall
+uses, on the fact's own host). **On by default** (`GRIMOIRE_ANCHOR_ARBITRATE=0`
+turns it off).
+
+- If at least one writer-supplied anchor ran and none failed, the older fact is
+  **kept**. The new fact is stored beside it as an addition, unmarked, and the
+  response gains `kept: [{id, reason: "its anchors still pass"}]`.
+- If any anchor fails, the update goes ahead as it always has.
+- If every anchor was skipped or could not be checked, the update goes ahead as
+  it always has: no information is not evidence.
+- An anchor that the store derived itself (`auto=1`) does not protect a fact.
+  Those say a file exists, not that the claim is right.
+- A correction from a person is never blocked by this, whether it names its
+  target or is inferred. A write whose origin is untrusted cannot claim to be a
+  person here either. Corrections from agents are arbitrated like any other.
+- Only replacements are arbitrated. A write that retracts a fact (a negation)
+  is not.
+
+## History
+
+A fact that describes something that happened, rather than a current state, is
+marked as an event. **Marking is on by default** (`GRIMOIRE_EVENT_AUTO=0` turns
+it off). It applies on the write side only.
+
+- When a write is split into several facts, or its `category` is `handoff` or
+  `checkpoint`, each resulting fact that reads as history is marked. "Reads as
+  history" is the same narrow past-tense test the writer advice uses: a sentence
+  that opens with a reported action (Fixed, Deployed, Verified, ...) or that names
+  a date.
+- The caller's own `event` is always respected. Sending `event:false` stops the
+  store from marking anything.
+- A fact that has an anchor, from the writer or derived by the store, is never
+  marked. It is a claim with a check.
+- The response lists the marked facts as `events_auto: [ids]`. When the store
+  marked at least one fact, the advice to set `event` is dropped from that
+  response.
+
+**The `events` flag (default off)** decides what happens to marked facts at
+injection. With `GRIMOIRE_EXP=events`, facts with `event=true` are left out of
+automatic injection (the hook and context path). They stay in explicit recall,
+search, lists and briefings. With the flag off, marking a fact changes nothing
+about what is injected.
+
+Explicit recall shows `"event": true` on an event whatever the flag says. Facts
+that are not events carry no `event` key, so their output is unchanged.
+
+## Staleness floor, where, and action cues
+
+These sit behind the **`anchor` flag (default off)**. With the flag off, recall
+output is unchanged.
+
+- **Staleness floor.** A claim (not an event, and not a preference or rule) that
+  has no writer-supplied anchor, and whose wording goes stale, is asked to be
+  checked: `freshness.action = "verify"` with the reason `volatile wording and no
+  anchor`. "Wording that goes stale" is the store's volatile shape (addresses,
+  ports, "currently", "as of", and so on) plus a three-part version number, a state
+  word after "is" or "are" (deployed, running, live, installed, active, enabled,
+  listening, pinned), the word worktree, or a path under `/tmp/`. A fact that
+  already gets `verify` keeps its own reason. A floor is a prompt to check, not a
+  verdict. The regex is `memory.FloorShape` in `go/internal/memory/fresh.go`.
+- **Automatic anchors.** A passing automatic anchor no longer forces `use`. The
+  model's verdict stands, so a fact with only automatic anchors can still be
+  checked by the floor. A failing one still sends the fact to `verify`, and the
+  reason names what is missing (the path or unit). Probe literals are never named.
+- **Where.** A fact about another machine gets `freshness.where = "<host>"`, so
+  the agent knows the claim is not about the box it runs on. Local claims get no
+  `where`.
+- **Action cues.** A fact's anchored files and units are also stored as action
+  cues for that fact (at most six). When an agent's action names one of those
+  paths or units, the fact is offered to injection even if its text never spells
+  the path. This uses the same match, and the same specificity limit, as cues
+  the writer supplies: a path that many facts name fires for none of them.
+  Anchors that name another machine give no cue. Fingerprints
+  (`go/internal/fingerprint`) are not used for this: they are an offline measure
+  of whether a memory was used (`cmd/fpdump`), and the server's action stage
+  matches cues.
+
+The context path (the hook's injection) does not apply the floor or `where`. It
+keeps its own verdict, as it did before this flag.
+
+
+## Write budget
+
+Fact extraction and the reconcile decision are the two model calls a write makes.
+They share one deadline, `GRIMOIRE_WRITE_MODEL_BUDGET` (default `20s`; `0` means no
+limit, as it was before). The default is on. When the deadline passes during a
+call, that call falls back to the rules it always had, the fact is stored, and the
+response says `model_skipped: "budget"`. A value that does not parse gets the
+default, so a typo cannot remove the bound. The count of cut-short calls is the
+Prometheus counter `grimoire_memory_write_model_budget_total`, labelled by stage.
+
 ## Limits
 
 * A probe checks one concrete part of a claim. It holding does not prove the
   whole sentence.
-* Anything on another machine is stored as `remote` and never checked.
+* A claim about another machine is checked there only when that machine is in
+`GRIMOIRE_ANCHOR_HOSTS`. Anything else is skipped and reported as such.
 * An `anc=` trailer typed into a memory note by hand is probed like any other
   when the `anchor` flag is on. Anyone who can edit notes can therefore learn
   whether a path exists or a file contains a string on the server. Keep the
