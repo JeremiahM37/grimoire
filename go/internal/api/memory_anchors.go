@@ -598,18 +598,10 @@ func localCaller(r *http.Request, m memoryIn) bool {
 // name, so it can be shown and used as a map key but never becomes a command.
 var hostRE = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9.\-]{0,62}$`)
 
-// hostname is this server's short, lowercased machine name. A variable so tests
-// can stand in for a machine.
-var hostname = func() string {
-	h, err := os.Hostname()
-	if err != nil {
-		return ""
-	}
-	if i := strings.IndexByte(h, '.'); i >= 0 {
-		h = h[:i]
-	}
-	return strings.ToLower(h)
-}
+// hostname is this server's short, lowercased machine name. It is the same
+// name the check runner compares a host label with, so a fact stamped here is
+// always checked here.
+func hostname() string { return anchor.LocalHost() }
 
 // writeHost decides the host= a write stores. An explicit host must match
 // hostRE. Without one, a local claim (not an event, not a preference or rule)

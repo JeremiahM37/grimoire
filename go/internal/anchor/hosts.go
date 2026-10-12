@@ -32,6 +32,14 @@ var localHostFn = shortHostname
 // LocalHost is this machine's short, lowercased name.
 func LocalHost() string { return strings.ToLower(localHostFn()) }
 
+// SetLocalHost stands in for this machine's name and returns a function that
+// puts the real one back. It exists for tests in other packages.
+func SetLocalHost(name string) (restore func()) {
+	old := localHostFn
+	localHostFn = func() string { return name }
+	return func() { localHostFn = old }
+}
+
 func shortHostname() string {
 	h, err := os.Hostname()
 	if err != nil {

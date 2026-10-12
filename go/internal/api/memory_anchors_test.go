@@ -349,9 +349,7 @@ func TestRefScanReportsDeadReferencesByNoteAndTotals(t *testing.T) {
 // fakeHost stands in for this machine's name for the length of one test.
 func fakeHost(t *testing.T, name string) {
 	t.Helper()
-	old := hostname
-	hostname = func() string { return name }
-	t.Cleanup(func() { hostname = old })
+	t.Cleanup(anchor.SetLocalHost(name))
 }
 
 func TestLocalClaimIsStampedWithThisMachine(t *testing.T) {
