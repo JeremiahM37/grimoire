@@ -136,3 +136,8 @@ Whether the decision table is published is the owner's decision after the run.
   identity), with empirical-Bayes shrinkage and a heterogeneity permutation
   test. It is exploratory. It is run only after the end, and nothing it shows
   is a finding of the pre-registered analysis. `analyze.py` is unchanged.
+* 2026-10-11, during the run: from v1.16.2 an explicit `recall` runs the local
+  checks a fact carries and reports `verify` when one fails. This changes what
+  an agent sees when it asks, in both arms alike. It does not change which
+  items are injected, the withholding, or the logged probabilities. 14 live
+  claims carried checks on that day. No experiment flag was set.

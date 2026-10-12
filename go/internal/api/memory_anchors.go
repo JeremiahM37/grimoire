@@ -45,6 +45,31 @@ const (
 
 func anchorsOn() bool { return exp.On(anchorFlag) }
 
+// anchorRecallOn reports whether a recall runs the checks a fact carries when
+// the experiment flag is off. On unless GRIMOIRE_ANCHOR_RECALL=0.
+func anchorRecallOn() bool { return os.Getenv("GRIMOIRE_ANCHOR_RECALL") != "0" }
+
+// checkedHere reports whether every check a fact carries runs on this machine.
+func checkedHere(e memory.Entry) bool {
+	if e.Anchors == "" {
+		return false
+	}
+	local := strings.ToLower(hostname())
+	if e.Host != "" && e.Host != local {
+		return false
+	}
+	list, err := anchor.Decode(e.Anchors)
+	if err != nil {
+		return true
+	}
+	for _, a := range list {
+		if h := strings.ToLower(a.Args["host"]); h != "" && h != local {
+			return false
+		}
+	}
+	return true
+}
+
 // anchorReport is one anchor's outcome in a write's response.
 type anchorReport struct {
 	Type    string            `json:"type"`

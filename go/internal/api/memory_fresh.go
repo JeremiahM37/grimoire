@@ -79,9 +79,15 @@ func (s *Server) assessHits(hits []index.MemoryHit, out []entryOut) []entryOut {
 			continue
 		}
 		a := hits[i].Assess(now, p, theta)
-		if anchorsOn() {
+		switch {
+		case anchorsOn():
 			s.applyAnchors(&a, hits[i].Entry)
 			applyStaleness(&a, hits[i].Entry)
+		case anchorRecallOn() && checkedHere(hits[i].Entry):
+			// A check the fact carries is run without the flag: a failed check
+			// is a fact about the system, not a guess. Only checks that run on
+			// this machine, so a recall never waits on another host.
+			s.applyAnchors(&a, hits[i].Entry)
 		}
 		out[i].Freshness = &a
 	}

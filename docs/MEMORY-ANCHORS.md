@@ -152,13 +152,20 @@ response may also carry `anchors_auto` and `advice` (see above).
 
 Neither command prints fact text.
 
-## The flag
+## What recall does with a fact's checks
 
-Recall gates on anchors only behind the experiment flag `anchor`
-(`GRIMOIRE_EXP=anchor`). A fact with a failing anchor gets
-`freshness.action = "verify"`, with a reason naming the anchor type. A fact whose
-anchors all hold gets `action = "use"`. Each fact's probe verdict is cached for
-10 minutes. With the flag off, recall output does not change.
+By default, an explicit recall runs the checks a fact carries when they all run
+on this machine. A fact with a failing check gets `freshness.action = "verify"`,
+with a reason naming the check. A fact whose own checks all hold gets
+`action = "use"`. Each verdict is cached for 10 minutes. `GRIMOIRE_ANCHOR_RECALL=0`
+turns this off, and recall output is then the same as for a fact with no checks.
+
+A failed check is a fact about the system, not a guess, which is why it does
+not sit behind a flag. Three things still do, behind the experiment flag
+`anchor` (`GRIMOIRE_EXP=anchor`): running checks on another machine during a
+recall, the staleness floor for unanchored wording, and action cues from anchor
+targets. Automatic injection through the agent hook does not use check
+verdicts in either mode.
 
 Code: `go/internal/anchor` (probes, encoding, reference scan), `go/internal/api/memory_anchors.go`.
 

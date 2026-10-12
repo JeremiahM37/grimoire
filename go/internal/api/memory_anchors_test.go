@@ -175,17 +175,22 @@ func freshnessAction(t *testing.T, h http.Handler, q string) (action, reason str
 	return f["action"].(string), f["reason"].(string)
 }
 
-func TestRecallGatesOnAnchorsOnlyBehindTheFlag(t *testing.T) {
+func TestRecallRunsAFactsLocalChecksUnlessSwitchedOff(t *testing.T) {
+	t.Setenv("GRIMOIRE_ANCHOR_RECALL", "0")
 	s, h := testServer(t)
 	rememberFrom(t, h, anchorLoopback, map[string]any{"topic": "net", "infer": false,
 		"text": "kestrel gateway is on the lan", "fresh": "stable"})
 	// A stored anchor whose literal is no longer in the file: the claim has
-	// drifted, and only the flag makes recall say so.
+	// drifted. With the switch off recall does not look.
 	storeAnchor(t, s, "memory/net.md", "kestrel gateway is on the lan",
 		"file_contains;path="+litFile(t, "nothing here")+";text=missing-literal")
 
 	if action, _ := freshnessAction(t, h, "kestrel+gateway+lan"); action != "use" {
-		t.Fatalf("flag off: action = %q, want use", action)
+		t.Fatalf("switched off: action = %q, want use", action)
+	}
+	t.Setenv("GRIMOIRE_ANCHOR_RECALL", "")
+	if action, reason := freshnessAction(t, h, "kestrel+gateway+lan"); action != "verify" || !strings.Contains(reason, "file_contains") {
+		t.Fatalf("default: action = %q reason = %q, want verify naming file_contains", action, reason)
 	}
 	restore := exp.Set(anchorFlag)
 	defer restore()
@@ -231,7 +236,8 @@ func storeAnchor(t *testing.T, s *Server, note, text, enc string) {
 // Recall output must not depend on anchors when the flag is off. The same fact
 // written with and without anchors, at the same instant, must recall to the
 // same bytes.
-func TestRecallIsByteIdenticalWithTheFlagOffWhetherOrNotAnchored(t *testing.T) {
+func TestRecallIsByteIdenticalWhenSwitchedOffWhetherOrNotAnchored(t *testing.T) {
+	t.Setenv("GRIMOIRE_ANCHOR_RECALL", "0")
 	when := time.Date(2026, 10, 11, 9, 0, 0, 0, time.UTC)
 	const text = "kestrel gateway is on the lan"
 	recallFor := func(anchored bool) string {
@@ -249,7 +255,7 @@ func TestRecallIsByteIdenticalWithTheFlagOffWhetherOrNotAnchored(t *testing.T) {
 	plain := recallFor(false)
 	anchored := recallFor(true)
 	if plain != anchored {
-		t.Fatalf("flag off: recall changed with anchors present\nplain:    %s\nanchored: %s", plain, anchored)
+		t.Fatalf("switched off: recall changed with anchors present\nplain:    %s\nanchored: %s", plain, anchored)
 	}
 	if !strings.Contains(plain, `"action":"use"`) {
 		t.Fatalf("expected a plain use verdict, got %s", plain)
@@ -801,5 +807,23 @@ func TestAnnotateWritesEachNoteOnceAndSequencesItemsOnOneFact(t *testing.T) {
 		if !strings.Contains(bulletLine(t, h, path, id), "evt=1") {
 			t.Fatalf("fact %s not marked event", id)
 		}
+	}
+}
+
+func TestRecallDoesNotRunChecksOnAnotherMachineByDefault(t *testing.T) {
+	fakeHost(t, "aiserver")
+	for _, e := range []memory.Entry{
+		{Anchors: "file_exists;path=/x", Host: "elsewhere"},
+		{Anchors: "file_exists;host=elsewhere;path=/x"},
+	} {
+		if checkedHere(e) {
+			t.Fatalf("%+v would be checked on another machine during a recall", e)
+		}
+	}
+	if !checkedHere(memory.Entry{Anchors: "file_exists;path=/x", Host: "aiserver"}) || !checkedHere(memory.Entry{Anchors: "file_exists;path=/x"}) {
+		t.Fatal("a local fact's checks should run")
+	}
+	if checkedHere(memory.Entry{}) {
+		t.Fatal("a fact with no checks has nothing to run")
 	}
 }
