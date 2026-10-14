@@ -197,6 +197,46 @@ every tool call:
 
 `GRIMOIRE_CONTEXT_ACTIONS=0` turns it off.
 
+## Skipping always-loaded content (experimental)
+
+Some injected memory repeats what the agent already has. Measured on the
+items injected into agent sessions before this change:
+
+- **64%** were agent memory files. Each one's one-line summary is already loaded
+  every session through `MEMORY.md`, so the injected copy repeats it.
+- **8%** were project notes. Lectern already puts those in every session brief.
+- **4%** were stored facts, the only kind the block was meant to carry.
+
+Re-injecting what is always loaded spends tokens and teaches the agent to skip
+the block, which is the cost this experiment targets. The figures come from the
+injection trace, and the counting script is not committed to this repository.
+
+Behind the `loaded` flag (`GRIMOIRE_EXP=loaded`):
+
+- The server drops **note** items (not stored facts) whose path is under a loaded
+  path. A loaded path is the `context_loaded_paths` setting
+  (`GRIMOIRE_CONTEXT_LOADED_PATHS`) plus any `loaded=<path>` parameters a client
+  sends. A path matches a note when it is the note or a directory above it, and a
+  glob matches the same way (`Projects/*` covers every project folder).
+- The exception is the action stage: a note that a cue named outright, on the
+  exact path the action touches, is still injected. That is the situation the cue
+  was written for.
+- The response reports `loaded_skipped`, the number of items dropped. It is
+  absent when the flag is off, and the flag-off response is byte-identical to
+  before. `loaded=` parameters are ignored with the flag off, so they are neither
+  validated nor applied.
+
+`grimoire memory loaded-audit` judges which linked memory files add anything
+beyond their summary. It runs offline on a memory directory (`--memory-dir`,
+default the canonical store). With a decision server (`--decision-url`, or the
+`decision_url` setting) it asks one question per file, *Does the file body add
+anything an agent needs beyond its one-line summary?*, with the options
+`restates`, `refines`, `contradicts` and `independent`. It prints the count for
+each option and the paths. Without a decision server it falls back to a
+deterministic measure: the share of body words the summary lacks, banded below
+0.20 (restates), below 0.50 (refines) and above (independent). That fallback
+cannot measure `contradicts`, and the output says so.
+
 ## Settings
 
 | Variable (hook) | Default | Meaning |

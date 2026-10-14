@@ -198,6 +198,11 @@ var Fields = map[string]Field{
 	// is shuffled, so position bias can be estimated. Only read under the ips
 	// experiment flag; 0 (the default) never shuffles.
 	"memory_position_explore": {"GRIMOIRE_MEMORY_POSITION_EXPLORE", "0"},
+	// Experiment loaded (docs/MEMORY_USE.md): vault paths the agent already has
+	// in its context, comma separated. Each entry is a directory prefix or a
+	// path.Match glob, matched against note paths. Only read under the loaded
+	// experiment flag.
+	"context_loaded_paths": {"GRIMOIRE_CONTEXT_LOADED_PATHS", ""},
 	// Memory replay (docs/MEMORY_REPLAY.md): context requests are kept as
 	// situations, and automated memory edits are replayed against them first.
 	// replay_log=0 stops recording; replay_gate=0 stops holding changes (the

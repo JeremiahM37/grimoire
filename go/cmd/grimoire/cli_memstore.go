@@ -46,6 +46,7 @@ const memoryUsage = `usage:
   grimoire memory profile [--subject user|agent] [--agent NAME] [--budget TOKENS] [--synthesize] [--json]
   grimoire memory anchors [--json]         run every stored anchor; list the claims whose probe no longer holds (admin)
   grimoire memory refs [--json]            list notes that name a path or unit that no longer exists (admin)
+  grimoire memory loaded-audit [--memory-dir DIR] [--decision-url URL] [--limit N] [--json]   does each linked memory file add anything beyond its summary? (offline; docs/MEMORY_USE.md)
   grimoire memory annotate --file FILE.json [--apply] [--json]   add host, event and anchors to stored facts without changing their text (dry run unless --apply; admin)
 
 A directory memory (Claude Code's memory/) becomes a symlink to the store; a
@@ -69,6 +70,11 @@ func cmdMemory(args []string) int {
 	// before the env is built.
 	if args[0] == "annotate" {
 		return memoryAnnotateCmd(rest)
+	}
+	// loaded-audit is offline as well: it reads a memory directory and asks the
+	// decision server, and never opens the vault index.
+	if args[0] == "loaded-audit" {
+		return memoryLoadedAuditCmd(rest)
 	}
 	e, err := openEnv()
 	if err != nil {
