@@ -129,7 +129,7 @@ per session (256 sessions, 400 calls each) and is not persisted.
 ## CLI and API
 
 ```
-grimoire rules compile|backtest|list|enable|disable|label
+grimoire rules compile|backtest|list|enable|disable|label|receipts
 ```
 
 | Endpoint | |
@@ -145,6 +145,41 @@ asked. Settings are in [CONFIG.md](CONFIG.md) (`GRIMOIRE_RULES_*`).
 State lives in `.grimoire/rules.db` beside the adherence log (derived data,
 not part of the notes). Hand-written checks and `check/propose` are unchanged
 and take precedence in the sense that they are separate: a rule can have both.
+
+## Receipts
+
+`grimoire rules receipts [--status S] [--since 90d] [--agent NAME] [--before YYYY-MM-DD] [--json]`
+
+Receipts answer a different question from precision. Precision asks whether a
+check's flags were real violations. Receipts ask how often the agent's tool
+calls broke each rule across the history, whether or not the check fired.
+
+For each stored check, receipts walk the same interactive corpus as backtest, once,
+in session order. They count:
+
+- **sessions**: sessions with at least one call in the check's tools and scope;
+- **actions**: calls that were the rule's subject;
+- **violations** and **compliant** actions: actions that broke the rule, and
+  actions that kept it, using the same `Violates` logic as the live check;
+- **violation rate** = violations / actions, with a Wilson 95% interval.
+
+It also prints labelled precision when the check has labels, and per-day totals
+(sessions, tool calls, violations summed over checks). It reads the local store
+and transcripts and calls no model.
+
+**Why citation is not adherence.** Earlier we asked whether the agent cited the
+memory it was given. It cited about 0.2% of the time, which says little about
+whether it followed the rule. A rule can be followed without being mentioned,
+and a mention can come with a violation. Receipts measure the calls themselves.
+
+**The holdout guard.** A randomised memory holdout runs from 2026-10-11 to
+2026-11-08 (`benchmarks/holdout/PREREG.md`). Its outcomes must not be read by arm
+before it ends. `--split-injected` (outcomes split by whether the rule was
+injected earlier in the session) is therefore refused while the holdout runs,
+with a non-zero exit. The one exception is `--before 2026-10-11`, which restricts
+the history to sessions that started before the holdout. The split itself is not
+built yet and stops with "not implemented: join to the injection trace" after the
+guard passes.
 
 ## A first run (2026-10-09, copy of the live store, 90 days of history)
 

@@ -5,9 +5,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
+	"text/tabwriter"
+	"time"
 
+	"github.com/JeremiahM37/grimoire/go/internal/api"
 	"github.com/JeremiahM37/grimoire/go/internal/rulecheck"
 )
 
@@ -19,15 +23,20 @@ const rulesUsage = `usage:
   grimoire rules enable ID [--enforce]
   grimoire rules disable ID
   grimoire rules label FIRING_ID violation|false-alarm
+  grimoire rules receipts [--status S] [--since 90d] [--agent NAME] [--before YYYY-MM-DD] [--json]
 
 Rules (memories of kind rule) are compiled into checks over tool calls, each check
 is measured against your transcript history, and only precise ones act.
+receipts reports how often each check's calls broke its rule (see docs/MEMORY_RULES.md).
 See docs/MEMORY_RULES.md.`
 
 func cmdRules(args []string) int {
 	if len(args) == 0 || args[0] == "help" {
 		fmt.Println(rulesUsage)
 		return 0
+	}
+	if args[0] == "receipts" {
+		return rulesReceipts(args[1:], time.Now())
 	}
 	e, err := openEnv()
 	if err != nil {
@@ -177,4 +186,126 @@ func rulesShow(e *env, id string) int {
 		return 0
 	}
 	return fail("no check %q", id)
+}
+
+// receiptsOpts is what `grimoire rules receipts` was asked for.
+type receiptsOpts struct {
+	status, agent string
+	since         time.Duration
+	before        time.Time
+	split, asJSON bool
+}
+
+// parseReceiptsArgs reads the flags. A split by injection arm is refused by the
+// holdout guard at now, before any store or transcript is opened.
+func parseReceiptsArgs(args []string, now time.Time) (receiptsOpts, error) {
+	var o receiptsOpts
+	o.status = flagOr(args, "--status", "")
+	switch o.status {
+	case "", rulecheck.StatusEnforce, rulecheck.StatusActive, rulecheck.StatusSuggestion, rulecheck.StatusDisabled:
+	default:
+		return o, fmt.Errorf("--status %q: want enforce, active, suggestion or disabled", o.status)
+	}
+	d, err := api.ParseSince(flagOr(args, "--since", ""))
+	if err != nil {
+		return o, err
+	}
+	o.since = d
+	o.agent = flagOr(args, "--agent", "")
+	if v := flagOr(args, "--before", ""); v != "" {
+		t, err := time.ParseInLocation("2006-01-02", v, time.UTC)
+		if err != nil {
+			return o, fmt.Errorf("--before %q: want YYYY-MM-DD", v)
+		}
+		o.before = t
+	}
+	o.split = hasFlag(args, "--split-injected")
+	o.asJSON = hasFlag(args, "--json")
+	if o.split {
+		if err := rulecheck.SplitGuard(now, o.before); err != nil {
+			return o, err
+		}
+	}
+	return o, nil
+}
+
+// rulesReceipts: an adherence report from saved transcripts. For each stored
+// check it counts how often the calls it covers broke the rule.
+func rulesReceipts(args []string, now time.Time) int {
+	o, err := parseReceiptsArgs(args, now)
+	if err != nil {
+		return fail("%v", err)
+	}
+	if o.split {
+		return fail("not implemented: join to the injection trace (the holdout guard passed, the split itself is not built yet)")
+	}
+	e, err := openEnv()
+	if err != nil {
+		return fail("%v", err)
+	}
+	defer e.close()
+	st, err := rulecheck.Open(filepath.Join(e.vault.Root, ".grimoire"))
+	if err != nil {
+		return fail("rules store: %v", err)
+	}
+	defer st.Close()
+	rows, err := st.All()
+	if err != nil {
+		return fail("%v", err)
+	}
+	corpus, _, errs := rulecheck.LoadCorpus(rulecheck.HomeDir(), o.since, o.agent)
+	for i, e := range errs {
+		if i == 5 {
+			break
+		}
+		fmt.Fprintln(os.Stderr, e)
+	}
+	if !o.before.IsZero() {
+		corpus = rulecheck.BeforeCorpus(corpus, o.before)
+	}
+	rep := rulecheck.Receipts(rows, o.status, corpus)
+	if o.asJSON {
+		b, _ := json.MarshalIndent(rep, "", "  ")
+		fmt.Println(string(b))
+		return 0
+	}
+	fmt.Print(ReceiptsText(rep))
+	return 0
+}
+
+// ReceiptsText renders a receipts report for a terminal, worst first.
+func ReceiptsText(rep rulecheck.Report) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "%d sessions, %d tool calls, %d checks in scope\n", rep.Sessions, rep.Calls, len(rep.Checks))
+	if len(rep.Checks) > 0 {
+		tw := tabwriter.NewWriter(&b, 0, 0, 2, ' ', 0)
+		fmt.Fprintln(tw, "ID\tSTATUS\tSHAPE\tPRECISION\tSESSIONS\tACTIONS\tVIOLATIONS\tCOMPLIANT\tVIOLATION RATE\tRULE")
+		for _, c := range rep.Checks {
+			prec := "n/a"
+			if c.Precision != nil {
+				prec = fmt.Sprintf("%.2f n=%d", *c.Precision, c.Labelled)
+			}
+			rate := "n/a"
+			if c.Rate != nil {
+				rate = fmt.Sprintf("%.1f%% [%.1f-%.1f]", 100**c.Rate, 100**c.CILow, 100**c.CIHigh)
+			}
+			target := strings.TrimSuffix(filepath.Base(strings.TrimPrefix(c.Target, "note:")), ".md")
+			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%d\t%d\t%d\t%d\t%s\t%s (%s)\n", c.ID, c.Status, c.Shape, prec,
+				c.Sessions, c.Actions, c.Violations, c.Compliant, rate, c.Describe, target)
+		}
+		tw.Flush()
+	}
+	if len(rep.Days) > 0 {
+		b.WriteString("\nper day (UTC)\n")
+		tw := tabwriter.NewWriter(&b, 0, 0, 2, ' ', 0)
+		fmt.Fprintln(tw, "DAY\tSESSIONS\tTOOL CALLS\tVIOLATIONS")
+		for _, d := range rep.Days {
+			fmt.Fprintf(tw, "%s\t%d\t%d\t%d\n", d.Day, d.Sessions, d.Calls, d.Violations)
+		}
+		tw.Flush()
+	}
+	for _, s := range rep.Skipped {
+		fmt.Fprintf(&b, "skipped %s\n", s)
+	}
+	return b.String()
 }
