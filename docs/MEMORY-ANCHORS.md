@@ -240,6 +240,87 @@ about what is injected.
 Explicit recall shows `"event": true` on an event whatever the flag says. Facts
 that are not events carry no `event` key, so their output is unchanged.
 
+## Result history
+
+Every probe the store runs is also kept, in `.grimoire/anchors.db` beside the
+rules and adherence databases. The verdict is what the store already acted on.
+The history adds two things it could not see before.
+
+**What is stored: a hash of what the probe saw, never the content.** Each row
+holds the fact id, a stable key for the probe (a hash of its type and arguments),
+the verdict (`ok`), a short reason, a timestamp, the caller (`origin`), and the
+`observed` value: the first 16 bytes of sha256, in hex.
+
+* `file_exists` and `file_contains` hash the file's bytes, reading at most 1 MiB.
+* `unit_active`, `unit_inactive` and `unit_enabled` hash the state string
+  systemd printed.
+* `port_listening` and `port_closed` carry membership only: whether something is
+  bound to the port, not which process.
+* `http_status` and `http_contains` hash the response body (at most 200 KiB,
+  the body the probe already reads).
+* `binary_version` hashes the version output. `git_commit` and `git_branch` hash
+  the object the ref resolves to.
+* `dir_exists`, `path_absent`, `symlink_to` and remote probes have no observed
+  value, so they can flip but never drift.
+
+A denied path (secrets, keys, the sealing store, the vault index) is never hashed,
+even for `file_exists`: a digest of a low-entropy secret can be checked against
+guesses. Probes that error or are skipped are not recorded at all, because
+neither is a claim about the world.
+
+**Why.** Two questions the verdict alone cannot answer:
+
+* *How long does a claim of this kind survive?* A pass that later becomes a fail
+  is a survival label. Over many facts these give real staleness lifetimes to set
+  the floor against, in place of a guessed number.
+* *Is the check still passing, but about something that changed?* A literal can
+  survive a rewrite of the file around it. The verdict stays `pass`; the observed
+  value does not. That is drift.
+
+**The three states**, from `anchorlog.State(prev, cur)` and
+`LatestState(fact, anchor)`:
+
+| state | meaning |
+|---|---|
+| `live` | the probe passes and nothing about what it saw has changed |
+| `dead` | the probe fails now, whatever it said before |
+| `drifted` | the probe passes, but the observed value differs from the one before (both passing, both observed) |
+| `new` | the first recorded observation, and it passes |
+
+A dead anchor is dead even when it was never seen to pass. A pass with no observed
+value on either side never drifts. A pass that follows a fail is `live`, not
+drifted: the revival is a transition, reported as one (see below).
+
+**Bounds.** At most 200 rows are kept per (fact, anchor). The oldest are pruned on
+every write. Rows are append-only (pruning is the only delete), and nothing is read back
+into a verdict: the history is written after the probe answers, and a write
+error is logged and otherwise ignored, so an agent never sees a difference.
+
+**Who writes a row** (the `origin`):
+
+| origin | caller |
+|---|---|
+| `write` | `remember` (every fact a write stored, with the probes it ran), and `POST /api/memory/procedure` pre and post checks |
+| `recall` | a fresh probe of a stored fact during recall (cached probes are not re-recorded) |
+| `annotate` | `grimoire memory annotate` |
+| `cli` | the admin report behind `grimoire memory anchors`, and the procedure tally it includes |
+| `dream` | reserved. No dream code runs anchors today |
+
+Not recorded: the dead-reference scan (`grimoire memory refs`), which tests
+whether a note's reference exists and is not a claim about a fact; and skill
+gating predicates, which have no fact id to key on.
+
+**Reading it.** `grimoire memory anchors history` lists the changes, pass to fail,
+fail to pass and drifted, oldest last, then the most recent results.
+`--fact ID` limits it to one fact; `--json` prints the server's report. The same
+data is at `GET /api/memory/anchors/history?fact=ID&limit=N` (admin only), which
+returns the rows and the transitions computed from them.
+
+**Limits.** A body that carries a timestamp or a token drifts on every probe, so
+`http_contains` and `http_status` drift is only meaningful for pages that are
+otherwise static. The history starts when this code runs; a survival label needs
+weeks of observations before it says anything.
+
 ## Staleness floor, where, and action cues
 
 These sit behind the **`anchor` flag (default off)**. With the flag off, recall

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/JeremiahM37/grimoire/go/internal/anchor"
+	"github.com/JeremiahM37/grimoire/go/internal/anchor/anchorlog"
 	"github.com/JeremiahM37/grimoire/go/internal/cues"
 	"github.com/JeremiahM37/grimoire/go/internal/exp"
 	"github.com/JeremiahM37/grimoire/go/internal/identity"
@@ -76,6 +77,9 @@ type anchorReport struct {
 	Args    map[string]string `json:"args,omitempty"`
 	Result  string            `json:"result"`
 	Message string            `json:"message,omitempty"`
+	// probe is the run behind this report, kept for the result history. It is
+	// unexported, so it never reaches a response.
+	probe *anchorObs
 }
 
 // errTooManyAnchors refuses a write that asks for more probes than allowed.
@@ -146,6 +150,7 @@ func runAnchorSet(ctx context.Context, raws []map[string]any, factHost string) (
 		} else {
 			res := anchor.Run(ctx, a)
 			rep.Result, rep.Message = string(res.Status), res.Message
+			rep.probe = &anchorObs{a: a, res: res}
 			if res.Status == anchor.Pass || res.Status == anchor.Skipped {
 				kept = append(kept, a)
 			}
@@ -178,7 +183,7 @@ func autoEligible(r *http.Request, m memoryIn) bool {
 // autoAnchors probes the paths and units a claim names and keeps the ones that
 // pass, marked auto=1. Nothing is stored when none pass. The list is returned
 // for the response as well as the encoded set.
-func autoAnchors(ctx context.Context, text, factHost string) (string, []anchorReport) {
+func autoAnchors(ctx context.Context, text, factHost string) (string, []anchorReport, []anchorObs) {
 	cands := anchor.ExtractRefs(text)
 	if len(cands) > maxAutoCandidates {
 		cands = cands[:maxAutoCandidates]
@@ -186,17 +191,20 @@ func autoAnchors(ctx context.Context, text, factHost string) (string, []anchorRe
 	cands = anchor.Inherit(cands, factHost)
 	var kept []anchor.Anchor
 	reports := []anchorReport{}
+	var obs []anchorObs
 	for _, c := range cands {
 		if len(kept) >= maxAutoStored {
 			break
 		}
 		a := anchor.AutoAnchor(c)
-		if res := anchor.Run(ctx, a); res.Status == anchor.Pass {
+		res := anchor.Run(ctx, a)
+		obs = append(obs, anchorObs{a: a, res: res})
+		if res.Status == anchor.Pass {
 			kept = append(kept, a)
 			reports = append(reports, anchorReport{Type: a.Type, Args: a.Args, Result: string(res.Status)})
 		}
 	}
-	return anchor.Encode(kept), reports
+	return anchor.Encode(kept), reports, obs
 }
 
 // Advice is what a writer is told about a claim it just stored. It never blocks
@@ -276,6 +284,7 @@ type anchorVerdict struct {
 	kind    string // type of the first anchor that failed or could not answer
 	what    string // what the first failing anchor was about (see subject)
 	passed  int    // anchors that held
+	obs     []anchorObs
 }
 
 // anchorCache holds verdicts for anchorCacheTTL, keyed by fact and its anchors.
@@ -285,7 +294,7 @@ type anchorCache struct {
 }
 
 // verdictFor is the cached probe verdict for a fact's stored anchors.
-func (s *Server) verdictFor(e memory.Entry) anchorVerdict {
+func (s *Server) verdictFor(e memory.Entry, origin string) anchorVerdict {
 	key := e.ID + "\x00" + e.Host + "\x00" + e.Anchors
 	now := time.Now()
 	s.anchors.mu.Lock()
@@ -297,6 +306,8 @@ func (s *Server) verdictFor(e memory.Entry) anchorVerdict {
 
 	v := probeStored(context.Background(), e.Anchors, e.Host)
 	v.at = now
+	recordObs(s.anchorLog(), e.ID, origin, v.obs)
+	v.obs = nil
 
 	s.anchors.mu.Lock()
 	if s.anchors.m == nil {
@@ -328,6 +339,7 @@ func probeStored(ctx context.Context, enc, factHost string) anchorVerdict {
 	var v anchorVerdict
 	for _, a := range anchor.Inherit(list, factHost) {
 		res := anchor.Run(ctx, a)
+		v.obs = append(v.obs, anchorObs{a: a, res: res})
 		switch res.Status {
 		case anchor.Pass:
 			v.passed++
@@ -351,7 +363,7 @@ func (s *Server) applyAnchors(a *memory.Assessment, e memory.Entry) {
 	if e.Anchors == "" {
 		return
 	}
-	v := s.verdictFor(e)
+	v := s.verdictFor(e, anchorlog.OriginRecall)
 	switch {
 	case v.failed && v.kind == "":
 		a.Action, a.Reason = memory.ActionVerify, "stored anchors are unreadable"
@@ -519,8 +531,10 @@ func (s *Server) memoryAnchors(w http.ResponseWriter, r *http.Request) {
 			if claim && hasWriterAnchor(list) {
 				t.AnchoredClaims++
 			}
+			var obs []anchorObs
 			for _, a := range anchor.Inherit(list, e.Host) {
 				res := anchor.Run(r.Context(), a)
+				obs = append(obs, anchorObs{a: a, res: res})
 				t.Anchors++
 				switch res.Status {
 				case anchor.Pass:
@@ -538,6 +552,7 @@ func (s *Server) memoryAnchors(w http.ResponseWriter, r *http.Request) {
 						Anchor: a.Type, Result: string(res.Status), Message: res.Message})
 				}
 			}
+			recordObs(s.anchorLog(), e.ID, anchorlog.OriginCLI, obs)
 		}
 	}
 	t.Procedures = s.procedureTallyOf(r.Context())
@@ -861,6 +876,7 @@ func (s *Server) annotateOne(r *http.Request, item annotateItem, b *annotateBatc
 			return fail("sealed fact: its text and anchors are not readable here")
 		}
 		enc, reports := runAnchorSet(r.Context(), item.Anchors, next.Host)
+		recordObs(s.anchorLog(), item.ID, anchorlog.OriginAnnotate, reportObs(reports))
 		for _, rep := range reports {
 			res.Anchors = append(res.Anchors, annotateAnchor{Anchor: rep.Type, Result: rep.Result, Message: rep.Message})
 		}
@@ -924,7 +940,7 @@ func (s *Server) anchorsStillHold(old memory.Entry) bool {
 	if !writerAnchored {
 		return false
 	}
-	v := s.verdictFor(old)
+	v := s.verdictFor(old, anchorlog.OriginWrite)
 	return v.passed > 0 && !v.failed
 }
 

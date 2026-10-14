@@ -45,6 +45,7 @@ const memoryUsage = `usage:
   grimoire memory watch [--agent NAME] [--session ID]   (live: learned, superseded, forgotten, challenged, disputed)
   grimoire memory profile [--subject user|agent] [--agent NAME] [--budget TOKENS] [--synthesize] [--json]
   grimoire memory anchors [--json]         run every stored anchor; list the claims whose probe no longer holds (admin)
+  grimoire memory anchors history [--fact ID] [--json]   recorded probe results and pass/fail/drift changes (admin)
   grimoire memory refs [--json]            list notes that name a path or unit that no longer exists (admin)
   grimoire memory loaded-audit [--memory-dir DIR] [--decision-url URL] [--limit N] [--json]   does each linked memory file add anything beyond its summary? (offline; docs/MEMORY_USE.md)
   grimoire memory annotate --file FILE.json [--apply] [--json]   add host, event and anchors to stored facts without changing their text (dry run unless --apply; admin)

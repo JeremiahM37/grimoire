@@ -409,11 +409,14 @@ func (s *Server) rememberOne(w http.ResponseWriter, r *http.Request, m memoryIn)
 		writeErr(w, http.StatusBadRequest, aerr.Error())
 		return
 	}
+	probes := reportObs(anchorReports)
 	// A writer that names no anchors may still have its claim's paths and units
 	// checked (autoAnchors). Only what passes is kept, marked auto=1.
 	var autoReports []anchorReport
 	if len(m.Anchors) == 0 && autoEligible(r, m) {
-		anchorsEnc, autoReports = autoAnchors(r.Context(), text, m.storeHost)
+		var autoObs []anchorObs
+		anchorsEnc, autoReports, autoObs = autoAnchors(r.Context(), text, m.storeHost)
+		probes = append(probes, autoObs...)
 	}
 	m.anchorsEnc = anchorsEnc
 
@@ -459,6 +462,10 @@ func (s *Server) rememberOne(w http.ResponseWriter, r *http.Request, m memoryIn)
 		writeErr(w, http.StatusBadRequest, "text must be 1..20000 characters")
 		return
 	}
+
+	// The probes ran before the facts existed; now that they are stored, their
+	// results go to the history under each fact they were written with.
+	recordWriteObs(s.anchorLog(), results, probes)
 
 	// The first result is the headline for callers that want one line back.
 	head := results[0]

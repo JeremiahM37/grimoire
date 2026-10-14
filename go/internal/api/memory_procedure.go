@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/JeremiahM37/grimoire/go/internal/anchor"
+	"github.com/JeremiahM37/grimoire/go/internal/anchor/anchorlog"
 	"github.com/JeremiahM37/grimoire/go/internal/dream"
 	"github.com/JeremiahM37/grimoire/go/internal/dream/secscan"
 	"github.com/JeremiahM37/grimoire/go/internal/memstore"
@@ -101,8 +102,10 @@ func (s *Server) writeProcedure(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	results := []procResult{}
 	preOK := true
+	procID := "procedure:" + skillexport.Slug(p.Name)
 	for _, a := range pre {
 		res := anchor.Run(ctx, a)
+		recordObs(s.anchorLog(), procID, anchorlog.OriginWrite, []anchorObs{{a: a, res: res}})
 		results = append(results, procResult{Phase: "pre", Type: a.Type, Args: a.Args,
 			Result: string(res.Status), Message: res.Message})
 		if res.Status != anchor.Pass && res.Status != anchor.Skipped {
@@ -124,6 +127,7 @@ func (s *Server) writeProcedure(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		res := anchor.Run(ctx, a)
+		recordObs(s.anchorLog(), procID, anchorlog.OriginWrite, []anchorObs{{a: a, res: res}})
 		results = append(results, procResult{Phase: "post", Type: a.Type, Args: a.Args,
 			Result: string(res.Status), Message: res.Message})
 	}
@@ -339,7 +343,9 @@ func (s *Server) procedureTallyOf(ctx context.Context) procedureTally {
 				anyFail = true
 				continue
 			}
-			switch res := anchor.Run(ctx, a); res.Status {
+			res := anchor.Run(ctx, a)
+			recordObs(s.anchorLog(), "procedure:"+skillexport.Slug(n.Title), anchorlog.OriginCLI, []anchorObs{{a: a, res: res}})
+			switch res.Status {
 			case anchor.Pass:
 				ran = true
 			case anchor.Skipped:
