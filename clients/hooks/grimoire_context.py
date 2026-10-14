@@ -207,23 +207,33 @@ def edit_content_hash(tool, tool_input, delegation=()):
     return hashlib.sha256(b"edit\0" + raw).hexdigest()[:16]
 
 
-def ask_reason(result):
-    """The reason of a server `permission` of decision "ask", else None.
-    Grimoire may only ask; allow and deny are never honoured."""
+def permission_reason(result, allow_deny=False):
+    """(decision, reason) for a server `permission`, else None.
+
+    Grimoire may ask. A "deny" (deny-once, docs/MEMORY_RULES.md) is honoured
+    only when the user's hook opted in with GRIMOIRE_HOOK_ALLOW_DENY=1
+    (`allow_deny`). Otherwise it is downgraded to an "ask" with the same reason,
+    so the person is still prompted. "allow" is never honoured."""
     permission = result.get("permission") if isinstance(result, dict) else None
-    if not isinstance(permission, dict) or permission.get("decision") != "ask":
+    if not isinstance(permission, dict):
+        return None
+    decision = permission.get("decision")
+    if decision == "deny":
+        decision = "deny" if allow_deny else "ask"
+    elif decision != "ask":
         return None
     reason = permission.get("reason")
     if not isinstance(reason, str) or not reason.strip():
         return None
-    return reason.strip()[:1000]
+    return decision, reason.strip()[:1000]
 
 
-def render(profile, norm, context, ask=None):
+def render(profile, norm, context, ask=None, decision="ask"):
     """The hook's output for context: a JSON object or plain text, per profile.
-    `ask` is a permission reason for an `enforce: ask` rule: structured agents
-    get permissionDecision "ask" (Claude Code and Codex field names); plain
-    agents get the reason printed ahead of the context."""
+    `ask` is a permission reason for an `enforce: ask` rule (or an opted-in
+    deny-once, `decision` "deny"): structured agents get permissionDecision and
+    permissionDecisionReason (Claude Code and Codex field names); plain agents
+    get the reason printed ahead of the context."""
     if profile.get("output") == "plain-stdout":
         return "\n".join(part for part in (ask, context) if part)
     name = {"prompt": "UserPromptSubmit", "pre_action": "PreToolUse"}[norm["kind"]]
@@ -232,7 +242,7 @@ def render(profile, norm, context, ask=None):
     if context:
         out["additionalContext"] = context
     if ask:
-        out["permissionDecision"] = "ask"
+        out["permissionDecision"] = decision
         out["permissionDecisionReason"] = ask
     return {"hookSpecificOutput": out}
 
@@ -471,10 +481,11 @@ def action_context(norm, environment, fetch, now, state, state_path, base, token
     write_state(state_path, state)
     if extra.get("session") and environment.get("GRIMOIRE_FINGERPRINTS", "1") != "0":
         store_fingerprints(state_path.parent, extra["session"], result)
-    ask = ask_reason(result)
+    found = permission_reason(result, allow_deny=environment.get("GRIMOIRE_HOOK_ALLOW_DENY") == "1")
+    decision, ask = found if found else ("ask", None)
     if not context and not ask:
         return None
-    return render(profile, norm, context, ask)
+    return render(profile, norm, context, ask, decision)
 
 
 def main(argv=None, environment=None):

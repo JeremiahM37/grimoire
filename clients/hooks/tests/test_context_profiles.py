@@ -171,8 +171,8 @@ def test_enforce_ask_is_emitted_even_with_no_context(environment):
 
 
 @pytest.mark.parametrize("permission", [
-    {"decision": "allow", "reason": "x"}, {"decision": "deny", "reason": "x"},
-    {"decision": "ask"}, {"decision": "ask", "reason": "  "}, "ask", None])
+    {"decision": "allow", "reason": "x"}, {"decision": "ask"},
+    {"decision": "ask", "reason": "  "}, "ask", None])
 def test_only_a_well_formed_ask_is_honoured(environment, permission):
     out = hook.run(push_event(), environment, asking(permission=permission), now=1)
     assert "permissionDecision" not in out["hookSpecificOutput"]
