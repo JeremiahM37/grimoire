@@ -58,7 +58,8 @@ func denyOnceOn(a actionContext) bool {
 }
 
 // denyOnceDecision returns a deny permission if any enforced check that fires
-// on this action is a person's rule and has not yet denied in this session.
+// on this action is a person's rule, or was set to enforce by a person, and has
+// not yet denied in this session.
 // Each such check is recorded as having denied, so the next firing asks. It
 // returns nil when no check qualifies, and the caller keeps the ask.
 func (s *Server) denyOnceDecision(session string, hits []rulecheck.Hit, human map[string]bool, minPrecision float64) map[string]any {
@@ -74,7 +75,12 @@ func (s *Server) denyOnceDecision(session string, hits []rulecheck.Hit, human ma
 			reasons = append(reasons, "Grimoire rule: "+clipText(oneLine(h.Row.RuleText), 240)+
 				" (why: "+clipText(oneLine(h.Row.Reason), 160)+")")
 		}
-		if human[h.Row.Target] && s.denyOnce.claim(session, h.Row.ID) {
+		// A person's authority over this check: either the rule's memory is
+		// theirs, or they set this exact check to enforce themselves
+		// (`grimoire rules enable --enforce`). A check that reached enforce on
+		// measured precision alone, from a rule an agent wrote, only asks.
+		byPerson := human[h.Row.Target] || h.Row.User == rulecheck.UserEnforce
+		if byPerson && s.denyOnce.claim(session, h.Row.ID) {
 			claimed = true
 		}
 	}

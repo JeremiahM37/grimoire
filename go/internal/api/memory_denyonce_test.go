@@ -139,3 +139,25 @@ func TestDenyLedgerIsBoundedAndForgetsTheOldest(t *testing.T) {
 		t.Fatal("a recent pair must still be remembered")
 	}
 }
+
+func TestDenyOnceDeniesAnAgentRuleAPersonSetToEnforce(t *testing.T) {
+	restore := exp.Set(denyOnceFlag)
+	defer restore()
+	srv, h := testServer(t)
+	seedPushRule(t, h, srv, denyRuleText, false)
+	st, live := srv.rules()
+	rows, err := st.All()
+	if err != nil || len(rows) != 1 {
+		t.Fatalf("want one check, got %d (%v)", len(rows), err)
+	}
+	if _, err := st.SetUser(rows[0].ID, rulecheck.UserEnforce, rulecheck.DefaultPolicy()); err != nil {
+		t.Fatal(err)
+	}
+	live.Invalidate()
+	if perm := pushPermission(t, h, "denyonce-person-0001"); perm == nil || perm["decision"] != "deny" {
+		t.Fatalf("a check a person set to enforce should deny once: %v", perm)
+	}
+	if perm := pushPermission(t, h, "denyonce-person-0001"); perm == nil || perm["decision"] != "ask" {
+		t.Fatalf("second firing should ask: %v", perm)
+	}
+}

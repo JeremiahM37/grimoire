@@ -153,9 +153,12 @@ forgotten first. A server restart forgets it.
 - A deny needs both opt-ins. With the server flag and no hook opt-in, the hook
   shows the same reason as an `ask`, so a person is still prompted. A deny is
   never honoured by accident, and `allow` is never honoured at all.
-- Only a rule with **human authority** can deny: a memory a person wrote or
-  hand-edited. An agent-written or pulled memory asks, as it always has. A
-  note target has no authority of its own, so it never denies.
+- Only a person's decision can deny: either the rule is a memory a person
+  wrote or hand-edited, or a person set this exact check to enforce
+  (`grimoire rules enable <id> --enforce`). A check that reached `enforce` on
+  measured precision alone, from a rule an agent wrote, still only asks. Most
+  rules live in memory-file notes, which carry no authority of their own, so
+  in practice a person turns deny on check by check.
 - Only `enforce` status can deny. Active reminders and suggestions never do.
 - Once per session. A rule that is wrong costs one blocked action, not a
   session that cannot proceed; the agent is told which rule applies.
