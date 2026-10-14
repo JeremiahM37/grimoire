@@ -336,3 +336,30 @@ for "does this apply": its probabilities for relevant and irrelevant pairs
 were low and close together (0.24 vs 0.04 on a right and a wrong memory), so
 the threshold needs calibrating before the gate does anything useful. Do not
 turn it on until the retrieval benchmark shows it wins.
+
+## Rule cap and precision (experimental)
+
+Behind the `rulecap` experiment flag (`GRIMOIRE_EXP=rulecap`). **Off by
+default**; with the flag off, responses are unchanged.
+
+With the flag on, a response injects at most `context_max_rules` rule items
+(default 3, `GRIMOIRE_CONTEXT_MAX_RULES`). Extra rule candidates are skipped
+without using up the response's item limit, and the response reports
+`rules_capped`, the number of rule candidates skipped. Each rule whose
+compiled check has at least 5 labelled firings also carries its measured
+precision on its directive line: `; applied in X of Y checked firings`, using
+the check with the most labelled firings. No model is called on this path.
+
+Why:
+
+- **Instruction adherence falls as the number of simultaneous instructions
+  rises** (ManyIFEval, arXiv 2509.21051). A cap keeps each response to a few
+  rules the agent can actually follow.
+- **Alarms are answered in proportion to their reliability, and people stop
+  responding to unreliable ones** ("cry wolf"). Showing a rule's measured
+  precision was found to reduce that effect, so the rule states how often it
+  has held up.
+
+The precision is the same labelled evidence `rules` already uses to decide
+whether a check acts; nothing new is measured here. Measure the flag against
+the holdout and adherence logs before considering it for default.

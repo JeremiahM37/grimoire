@@ -13,10 +13,12 @@ import (
 
 	"github.com/JeremiahM37/grimoire/go/internal/adherence"
 	"github.com/JeremiahM37/grimoire/go/internal/cues"
+	"github.com/JeremiahM37/grimoire/go/internal/exp"
 	fpr "github.com/JeremiahM37/grimoire/go/internal/fingerprint"
 	"github.com/JeremiahM37/grimoire/go/internal/fts"
 	"github.com/JeremiahM37/grimoire/go/internal/index"
 	"github.com/JeremiahM37/grimoire/go/internal/memory"
+	"github.com/JeremiahM37/grimoire/go/internal/rulecheck"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
 )
 
@@ -34,6 +36,9 @@ type contextItem struct {
 	Kind   string `json:"kind,omitempty"`
 	score  float64
 	pinned bool // a person pinned it (immutable): never withheld by the holdout
+	// applied is the precision suffix a rule carries under the rulecap
+	// experiment: "; applied in X of Y checked firings" (empty otherwise).
+	applied string
 	// Exposure for the ranking learner (memory_ips.go): the 1-based slate
 	// position, whether the slate was shuffled, and the ranking features.
 	pos      int
@@ -299,6 +304,16 @@ func (s *Server) writeContext(w http.ResponseWriter, items []contextItem, exclud
 	used := 0
 	var picked []contextItem
 	seen := make(map[string]bool)
+	// rulecap (docs/MEMORY_ADHERENCE.md#rule-cap-and-precision-experimental):
+	// at most context_max_rules rule items per response, each rule tagged with
+	// the precision its compiled check has earned. Off, none of this runs.
+	rulesOn := exp.On("rulecap")
+	rulesCap, rulesPicked, rulesCapped := 0, 0, 0
+	var checks []rulecheck.Row
+	checksLoaded := false
+	if rulesOn {
+		rulesCap = s.settingInt("context_max_rules", 3, 0, 50)
+	}
 	for _, item := range items {
 		if item.score < minScore || seen[memory.Normalize(item.Text)] {
 			continue
@@ -307,6 +322,16 @@ func (s *Server) writeContext(w http.ResponseWriter, items []contextItem, exclud
 		s.annotateItem(&item)
 		if excluded[item.Key] {
 			continue
+		}
+		if rulesOn && item.Kind == "rule" {
+			if rulesPicked >= rulesCap {
+				rulesCapped++
+				continue
+			}
+			if !checksLoaded {
+				checks, checksLoaded = s.ruleChecks(), true
+			}
+			item.applied = ruleApplied(checks, item.Path)
 		}
 		size := len(item.rawLine(directive)) + 1
 		if directive {
@@ -321,6 +346,9 @@ func (s *Server) writeContext(w http.ResponseWriter, items []contextItem, exclud
 		}
 		used += prefix + size
 		picked = append(picked, item)
+		if rulesOn && item.Kind == "rule" {
+			rulesPicked++
+		}
 		seen[memory.Normalize(item.Text)] = true
 		if len(picked) == limit {
 			break
@@ -367,6 +395,9 @@ func (s *Server) writeContext(w http.ResponseWriter, items []contextItem, exclud
 	// instead of being re-drawn on the next prompt.
 	out := map[string]any{"context": context, "keys": keys,
 		"bytes": len(context), "max_bytes": budget, "mode": mode, "model_calls": 0}
+	if rulesOn {
+		out["rules_capped"] = rulesCapped
+	}
 	var fps [][]fpr.Fingerprint
 	if directive && lg.log {
 		out["tags"] = tags
@@ -669,5 +700,5 @@ func directiveLine(it contextItem) string {
 	if it.Verify != "" {
 		line += "; verify: " + it.Verify
 	}
-	return line + "]"
+	return line + it.applied + "]"
 }
