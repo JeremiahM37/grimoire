@@ -2,6 +2,8 @@ package anchor
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"io"
 	"io/fs"
@@ -29,6 +31,12 @@ const (
 type Result struct {
 	Status  Status
 	Message string
+	// Observed is a short sha256 hex (16 bytes) of what the probe saw, where
+	// the probe has one: the bytes of a file, a unit's state, a body, a version
+	// string, a git revision. It is never the content itself. Empty when the
+	// probe has nothing to observe, or when observing it is refused (a denied
+	// path is never hashed: a digest of a secret is a guessing oracle).
+	Observed string
 }
 
 const (
@@ -40,6 +48,8 @@ const (
 	maxHTTPBody = 200 << 10
 	// maxFileRead is how much of a file file_contains reads.
 	maxFileRead = 5 << 20
+	// maxObserveRead is how much of a file is hashed for Observed.
+	maxObserveRead = 1 << 20
 )
 
 // binaryDir is where binary_version looks. A variable so tests can point it at
@@ -93,79 +103,152 @@ func Run(ctx context.Context, a Anchor) Result {
 func runLocal(ctx context.Context, a Anchor) Result {
 	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
 	defer cancel()
-	ok, why, err := check(ctx, a)
+	ok, why, obs, err := check(ctx, a)
 	switch {
 	case err != nil:
 		return Result{Status: Error, Message: err.Error()}
 	case ok:
-		return Result{Status: Pass}
+		return Result{Status: Pass, Observed: obs}
 	default:
-		return Result{Status: Fail, Message: why}
+		return Result{Status: Fail, Message: why, Observed: obs}
 	}
 }
 
 func isHTTP(typ string) bool { return typ == HTTPStatus || typ == HTTPContains }
 
 // check runs one validated, non-remote probe. ok is the verdict, why says what
-// was missing when it is false, and err means the probe could not answer.
-func check(ctx context.Context, a Anchor) (ok bool, why string, err error) {
+// was missing when it is false, obs is the observed value (see Result.Observed),
+// and err means the probe could not answer.
+func check(ctx context.Context, a Anchor) (ok bool, why, obs string, err error) {
 	arg := func(k string) string { return a.Args[k] }
 	switch a.Type {
 	case FileExists:
-		return statKind(arg("path"), false)
+		ok, why, err = statKind(arg("path"), false)
+		if ok {
+			obs = observeFile(arg("path"))
+		}
+		return ok, why, obs, err
 	case DirExists:
-		return statKind(arg("path"), true)
+		ok, why, err = statKind(arg("path"), true)
+		return ok, why, "", err
 	case RefPath:
-		return lexists(arg("path"))
+		ok, why, err = lexists(arg("path"))
+		return ok, why, "", err
 	case PathAbsent:
 		exists, _, err := lexists(arg("path"))
 		if err != nil {
-			return false, "", err
+			return false, "", "", err
 		}
-		return !exists, "path exists", nil
+		return !exists, "path exists", "", nil
 	case SymlinkTo:
-		return symlinkTo(arg("path"), arg("target"))
+		ok, why, err = symlinkTo(arg("path"), arg("target"))
+		return ok, why, "", err
 	case FileContains:
 		return fileContains(arg("path"), arg("text"))
 	case UnitActive:
 		state, err := unitState(ctx, arg("unit"))
-		return state == "active", "not active", err
+		return state == "active", "not active", digestIf(err, state), err
 	case UnitInactive:
 		state, err := unitState(ctx, arg("unit"))
-		return state != "active", "active", err
+		return state != "active", "active", digestIf(err, state), err
 	case UnitEnabled:
-		state, err := unitEnabled(ctx, arg("unit"))
-		return state, "not enabled", err
+		enabled, state, err := unitEnabled(ctx, arg("unit"))
+		return enabled, "not enabled", digestIf(err, state), err
 	case RefUnit:
 		exists, err := unitExists(ctx, arg("unit"))
-		return exists, "unit not found", err
+		return exists, "unit not found", "", err
 	case PortListening:
 		open, err := listening(ctx, arg("port"))
-		return open, "not listening", err
+		return open, "not listening", digestIf(err, portState(arg("port"), open)), err
 	case PortClosed:
 		open, err := listening(ctx, arg("port"))
-		return !open, "listening", err
+		return !open, "listening", digestIf(err, portState(arg("port"), open)), err
 	case HTTPStatus:
 		want, _ := strconv.Atoi(arg("status"))
-		status, _, err := httpGet(ctx, arg("url"))
-		return status == want, "status " + strconv.Itoa(status), err
+		status, body, err := httpGet(ctx, arg("url"))
+		return status == want, "status " + strconv.Itoa(status), digestIf(err, string(body)), err
 	case HTTPContains:
 		status, body, err := httpGet(ctx, arg("url"))
 		if err != nil {
-			return false, "", err
+			return false, "", "", err
 		}
 		if status < 200 || status > 299 {
-			return false, "status " + strconv.Itoa(status), nil
+			return false, "status " + strconv.Itoa(status), "", nil
 		}
-		return strings.Contains(string(body), arg("text")), "text not present", nil
+		return strings.Contains(string(body), arg("text")), "text not present", digest(body), nil
 	case BinaryVersion:
 		return binaryVersion(ctx, arg("bin"), arg("text"))
 	case GitCommit:
-		return gitTest(ctx, arg("repo"), "cat-file", "-e", arg("ref")+"^{commit}")
+		ok, why, err := gitTest(ctx, arg("repo"), "cat-file", "-e", arg("ref")+"^{commit}")
+		if !ok || err != nil {
+			return ok, why, "", err
+		}
+		return ok, why, gitRev(ctx, arg("repo"), arg("ref")+"^{commit}"), nil
 	case GitBranch:
-		return gitTest(ctx, arg("repo"), "show-ref", "--verify", "--quiet", "refs/heads/"+arg("branch"))
+		ok, why, err := gitTest(ctx, arg("repo"), "show-ref", "--verify", "--quiet", "refs/heads/"+arg("branch"))
+		if !ok || err != nil {
+			return ok, why, "", err
+		}
+		return ok, why, gitRev(ctx, arg("repo"), "refs/heads/"+arg("branch")), nil
 	}
-	return false, "", errors.New("unknown anchor type " + a.Type)
+	return false, "", "", errors.New("unknown anchor type " + a.Type)
+}
+
+// digest is the observed-value hash: the first 16 bytes of sha256, in hex.
+func digest(b []byte) string {
+	h := sha256.Sum256(b)
+	return hex.EncodeToString(h[:16])
+}
+
+// digestIf hashes an observed string, or returns "" when the probe failed and
+// so observed nothing.
+func digestIf(err error, s string) string {
+	if err != nil {
+		return ""
+	}
+	return digest([]byte(s))
+}
+
+// portState is the observed value of a port probe. A port carries membership
+// only: whether something is bound to it, not which process.
+func portState(port string, open bool) string {
+	if open {
+		return "listening:" + port
+	}
+	return "closed:" + port
+}
+
+// observeFile hashes the first maxObserveRead bytes of a regular file for
+// file_exists. Denied paths (and links into them) are never read for this.
+func observeFile(path string) string {
+	clean := filepath.Clean(path)
+	if deniedPath(clean) {
+		return ""
+	}
+	resolved, err := filepath.EvalSymlinks(clean)
+	if err != nil || deniedPath(resolved) {
+		return ""
+	}
+	f, err := os.Open(resolved)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	data, err := io.ReadAll(io.LimitReader(f, maxObserveRead))
+	if err != nil {
+		return ""
+	}
+	return digest(data)
+}
+
+// gitRev reads the object a revision names, for the observed value of a git
+// probe. An unreadable revision observes nothing.
+func gitRev(ctx context.Context, repo, rev string) string {
+	out, err := command(ctx, "git", "-C", repo, "rev-parse", "--verify", "--quiet", rev)
+	if err != nil || out == "" {
+		return ""
+	}
+	return digest([]byte(out))
 }
 
 // statKind answers file_exists (wantDir false) and dir_exists (true). Missing
@@ -247,38 +330,42 @@ func deniedPath(p string) bool {
 // fileContains reads at most maxFileRead bytes of a regular file and looks for
 // a literal. The denylist is applied to the path as written and again after
 // symlinks are resolved, so a link into a secret directory is refused too.
-func fileContains(path, text string) (bool, string, error) {
+func fileContains(path, text string) (bool, string, string, error) {
 	clean := filepath.Clean(path)
 	if deniedPath(clean) {
-		return false, "", errors.New("denied path")
+		return false, "", "", errors.New("denied path")
 	}
 	resolved, err := filepath.EvalSymlinks(clean)
 	if errors.Is(err, fs.ErrNotExist) {
-		return false, "missing", nil
+		return false, "missing", "", nil
 	}
 	if err != nil {
-		return false, "", err
+		return false, "", "", err
 	}
 	if deniedPath(resolved) {
-		return false, "", errors.New("denied path")
+		return false, "", "", errors.New("denied path")
 	}
 	f, err := os.Open(resolved)
 	if err != nil {
-		return false, "", err
+		return false, "", "", err
 	}
 	defer f.Close()
 	fi, err := f.Stat()
 	if err != nil {
-		return false, "", err
+		return false, "", "", err
 	}
 	if !fi.Mode().IsRegular() {
-		return false, "", errors.New("not a regular file")
+		return false, "", "", errors.New("not a regular file")
 	}
 	data, err := io.ReadAll(io.LimitReader(f, maxFileRead))
 	if err != nil {
-		return false, "", err
+		return false, "", "", err
 	}
-	return strings.Contains(string(data), text), "text not present", nil
+	hashed := data
+	if len(hashed) > maxObserveRead {
+		hashed = hashed[:maxObserveRead]
+	}
+	return strings.Contains(string(data), text), "text not present", digest(hashed), nil
 }
 
 // unitState asks the system manager, then the user manager, for the unit's
@@ -296,18 +383,22 @@ func unitState(ctx context.Context, unit string) (string, error) {
 	return "inactive", nil
 }
 
-func unitEnabled(ctx context.Context, unit string) (bool, error) {
+// unitEnabled reports whether the unit is enabled in either manager. The state
+// string is what each manager printed, for the observed value.
+func unitEnabled(ctx context.Context, unit string) (bool, string, error) {
+	var seen []string
 	for _, scope := range [][]string{{}, {"--user"}} {
 		out, err := systemctl(ctx, append(scope, "is-enabled", unit)...)
 		if err != nil {
-			return false, err
+			return false, "", err
 		}
+		seen = append(seen, out)
 		switch out {
 		case "enabled", "static", "enabled-runtime":
-			return true, nil
+			return true, strings.Join(seen, "|"), nil
 		}
 	}
-	return false, nil
+	return false, strings.Join(seen, "|"), nil
 }
 
 // unitExists is true when either manager has a unit file for the name. systemd
@@ -373,12 +464,12 @@ func listeningIn(out, port string) bool {
 
 // binaryVersion runs the grimoire or lectern binary's version command. The
 // path is fixed by name, so the argument can never choose a program.
-func binaryVersion(ctx context.Context, bin, text string) (bool, string, error) {
+func binaryVersion(ctx context.Context, bin, text string) (bool, string, string, error) {
 	out, err := command(ctx, filepath.Join(binaryDir, bin), "version")
 	if err != nil {
-		return false, "", err
+		return false, "", "", err
 	}
-	return strings.Contains(out, text), "version text not present", nil
+	return strings.Contains(out, text), "version text not present", digest([]byte(out)), nil
 }
 
 // gitTest runs git against a repository and reads the exit status: zero is a

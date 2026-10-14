@@ -75,3 +75,32 @@ func TestMemoryAnchorsAndRefsAreInTheHelp(t *testing.T) {
 		}
 	}
 }
+
+// `memory anchors history` lists the recorded results and the changes between
+// them. An empty history is a valid answer, not an error, and --json passes the
+// server's report through unchanged.
+func TestMemoryAnchorsHistoryListsResultsAndChanges(t *testing.T) {
+	dir := vaultDir(t)
+	if err := os.MkdirAll(filepath.Join(dir, "memory"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	out, code := runCmd(t, "memory", "anchors", "history")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, out)
+	}
+	if !strings.Contains(out, "results 0") || !strings.Contains(out, "changes 0") {
+		t.Fatalf("empty history output:\n%s", out)
+	}
+
+	raw, code := runCmd(t, "memory", "anchors", "history", "--fact", "aaa111bbb222", "--json")
+	if code != 0 {
+		t.Fatalf("json exit %d: %s", code, raw)
+	}
+	var got struct {
+		Rows        []json.RawMessage `json:"rows"`
+		Transitions []json.RawMessage `json:"transitions"`
+	}
+	if err := json.Unmarshal([]byte(raw), &got); err != nil {
+		t.Fatalf("json is not the server report: %v\n%s", err, raw)
+	}
+}
