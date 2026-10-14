@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"math"
 	"net/http"
-	"path"
 	"sort"
 	"strconv"
 	"strings"
@@ -39,6 +38,9 @@ type contextItem struct {
 	// applied is the precision suffix a rule carries under the rulecap
 	// experiment: "; applied in X of Y checked firings" (empty otherwise).
 	applied string
+	// cueFired marks an item a cue named outright at the action stage
+	// (cueCandidates). The loaded experiment never drops such an item.
+	cueFired bool
 	// Exposure for the ranking learner (memory_ips.go): the 1-based slate
 	// position, whether the slate was shuffled, and the ranking features.
 	pos      int
@@ -116,10 +118,7 @@ func (s *Server) memoryContext(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, prefix := range paths {
-		cleaned := path.Clean(strings.TrimSuffix(prefix, "/"))
-		if len(prefix) > 512 || cleaned == "." || cleaned == ".." ||
-			strings.HasPrefix(cleaned, "../") || strings.HasPrefix(cleaned, "/") ||
-			strings.Contains(prefix, "\\") || strings.ContainsRune(prefix, 0) || cleaned != strings.TrimSuffix(prefix, "/") {
+		if !validContextPath(prefix) {
 			writeErr(w, http.StatusBadRequest, "invalid context path")
 			return
 		}
@@ -128,6 +127,12 @@ func (s *Server) memoryContext(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "paths require scoped mode")
 		return
 	}
+	loaded, loadedOn, err := s.loadedScope(r)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	action := r.URL.Query().Get("stage") == "action"
 	excluded := make(map[string]bool)
 	for _, key := range strings.Split(r.URL.Query().Get("exclude"), ",") {
 		excluded[key] = true
@@ -169,6 +174,7 @@ func (s *Server) memoryContext(w http.ResponseWriter, r *http.Request) {
 			writeErr(w, http.StatusInternalServerError, err.Error())
 			return
 		}
+		items, skipped := dropLoaded(items, loaded, action)
 		items, perm, ask := s.adherenceFilter(r, query, items, minRel)
 		if r.URL.Query().Get("rerank") == "1" {
 			items = s.rerankContext(r, query, items, minRel)
@@ -176,6 +182,7 @@ func (s *Server) memoryContext(w http.ResponseWriter, r *http.Request) {
 		}
 		lg := s.traceLog(r, query, perm, ask)
 		lg.minRel, lg.limit, lg.budget = replayMinRel, limit, budget
+		lg.loadedOn, lg.loadedSkipped = loadedOn, skipped
 		s.writeContext(w, items, excluded, budget, limit, minRel, "hybrid", r.URL.Query().Get("format") != "json",
 			lg)
 		return
@@ -251,12 +258,14 @@ func (s *Server) memoryContext(w http.ResponseWriter, r *http.Request) {
 				Authority: "unknown", Trust: "trusted", score: contextOverlap(terms, note.excerpt)})
 		}
 	}
-	items, err := s.prospectItems(r, items)
+	items, err = s.prospectItems(r, items)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	s.writeContext(w, items, excluded, budget, limit, 0.3, "lexical", r.URL.Query().Get("format") == "directive", ctxLog{})
+	items, skipped := dropLoaded(items, loaded, action)
+	s.writeContext(w, items, excluded, budget, limit, 0.3, "lexical", r.URL.Query().Get("format") == "directive",
+		ctxLog{loadedOn: loadedOn, loadedSkipped: skipped})
 }
 
 // ctxLog says what to record about a response. Only hybrid injection that has
@@ -278,6 +287,10 @@ type ctxLog struct {
 	minRel float64
 	limit  int
 	budget int
+	// Experiment loaded: whether the flag is on for this request, and how many
+	// note items it dropped because the agent already has them.
+	loadedOn      bool
+	loadedSkipped int
 }
 
 // markerRoom is the most a "m:<tag> " marker adds to a line.
@@ -408,6 +421,9 @@ func (s *Server) writeContext(w http.ResponseWriter, items []contextItem, exclud
 	}
 	if lg.permission != nil {
 		out["permission"] = lg.permission
+	}
+	if lg.loadedOn {
+		out["loaded_skipped"] = lg.loadedSkipped
 	}
 	if lg.log && lg.session != "" && len(shown) > 0 {
 		s.logInjections(lg, shown, tags, fps)
@@ -620,6 +636,7 @@ func (s *Server) cueCandidates(r *http.Request, query string, terms, paths []str
 		for _, target := range st.Triggered(query) {
 			if i, ok := at[target]; ok {
 				items[i].score = 1
+				items[i].cueFired = true
 				continue
 			}
 			item, ok := s.cueTargetItem(r, target, paths)
@@ -627,6 +644,7 @@ func (s *Server) cueCandidates(r *http.Request, query string, terms, paths []str
 				continue
 			}
 			item.score = 1
+			item.cueFired = true
 			at[target] = len(items)
 			items = append(items, item)
 		}
