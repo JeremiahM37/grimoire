@@ -44,6 +44,9 @@ def read_state(path, limit=32000):
 # Window mode keeps one shared store of up to WINDOW_CAP keys for both stages.
 WINDOW_CAP = 2048
 WINDOW_STATE_BYTES = 200000
+# The server takes at most 20000 bytes of excluded keys (33 bytes each with
+# the comma), so window mode sends the newest WINDOW_EXCLUDE of them.
+WINDOW_EXCLUDE = 512
 
 
 def window_mode(environment):
@@ -367,7 +370,7 @@ def run(event, environment=None, fetch=fetch_context, now=None, profile=None, ki
         if window:
             seen = {key: stamp for key, stamp in seen.items()
                     if isinstance(key, str) and isinstance(stamp, (float, int))}
-            excluded = list(reversed(seen))[:256]
+            excluded = list(reversed(seen))[:WINDOW_EXCLUDE]
         else:
             seen = {key: stamp for key, stamp in seen.items()
                     if isinstance(key, str) and isinstance(stamp, (float, int))
@@ -468,7 +471,7 @@ def action_context(norm, environment, fetch, now, state, state_path, base, token
     if window:
         recent = {key: stamp for key, stamp in recent.items()
                   if isinstance(key, str) and isinstance(stamp, (float, int))}
-        excluded = list(reversed(recent))[:128]
+        excluded = list(reversed(recent))[:WINDOW_EXCLUDE]
     else:
         ttl = 600
         recent = {key: stamp for key, stamp in recent.items()

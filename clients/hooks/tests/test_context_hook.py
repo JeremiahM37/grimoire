@@ -338,7 +338,7 @@ def test_window_mode_caps_the_store_at_2048(environment):
 
     for call in range(250):
         hook.run(event(f"kestrel question {call}"), environment, fetch, now=100 + call)
-    assert len(sent[-1]) == 256
+    assert len(sent[-1]) == hook.WINDOW_EXCLUDE
     state = json.loads(next(Path(environment["GRIMOIRE_CONTEXT_STATE_DIR"]).glob("*.json")).read_text())
     assert len(state["shown"]) == 2048
     assert format(0, "032x") not in state["shown"]
