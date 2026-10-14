@@ -277,6 +277,7 @@ Settings added by the agent-memory work, plus the hook-side variables read by th
 | `GRIMOIRE_RULES_MIN_LABELLED` | `5` | Labelled matches required before a check can act |
 | `GRIMOIRE_RULES_MAX_MATCH_RATE` | `0.2` | A check flagging more than this share of the calls it covers is a topic detector and stays a suggestion |
 | `GRIMOIRE_RULES_FAITHFUL_THRESHOLD` | `0.5` | P(yes) the labelling model must give to "does this check say what the rule says" before the check's matches are labelled; below it the check stays a suggestion |
+| `GRIMOIRE_CONTEXT_MAX_RULES` | `3` | Experiment `rulecap` only (`GRIMOIRE_EXP=rulecap`, off by default): most rule items one response injects; the response reports `rules_capped`. See [MEMORY_ADHERENCE.md](MEMORY_ADHERENCE.md#rule-cap-and-precision-experimental) |
 | `GRIMOIRE_RULES_LLM_URL` | *(empty = deterministic only)* | Ollama that writes candidate checks (local; no hosted model) |
 | `GRIMOIRE_RULES_LLM_MODEL` | `qwen3.6:35b-a3b` | Model asked for candidates (`num_ctx` 16384) |
 | `GRIMOIRE_RULES_LABEL_URL` | *(falls back to the decision model)* | Decision server that labels sampled backtest matches |

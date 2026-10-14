@@ -54,6 +54,55 @@ func (s *Server) ruleFloat(key string, def float64) float64 {
 	return def
 }
 
+// settingInt reads an integer setting, falling back to def outside [lo, hi].
+func (s *Server) settingInt(key string, def, lo, hi int) int {
+	if v, err := strconv.Atoi(strings.TrimSpace(s.setting(key))); err == nil && v >= lo && v <= hi {
+		return v
+	}
+	return def
+}
+
+// ruleLabelMin is the labelled firings a check needs before its precision is
+// shown on a rule (docs/MEMORY_ADHERENCE.md#rule-cap-and-precision-experimental).
+const ruleLabelMin = 5
+
+// ruleChecks returns every stored check, or nil when the store is unavailable.
+// It reads the store only; no model is called.
+func (s *Server) ruleChecks() []rulecheck.Row {
+	st, _ := s.rules()
+	if st == nil {
+		return nil
+	}
+	rows, err := st.All()
+	if err != nil {
+		return nil
+	}
+	return rows
+}
+
+// ruleApplied is the precision suffix for a rule note at notePath: the labelled
+// true/total of the check with the most labelled firings, once it has at least
+// ruleLabelMin. Empty when no check qualifies. Checks target "note:<path>".
+func ruleApplied(rows []rulecheck.Row, notePath string) string {
+	target := "note:" + notePath
+	best, bestN := rulecheck.Evidence{}, -1
+	for _, r := range rows {
+		// A check a person turned off, or one that does not say what the
+		// rule says, measures something else: its precision is not the rule's.
+		if r.Target != target || r.Status == rulecheck.StatusDisabled || r.Unfaithful {
+			continue
+		}
+		e := r.Evidence(r.Status)
+		if e.Labelled >= ruleLabelMin && e.Labelled > bestN {
+			best, bestN = e, e.Labelled
+		}
+	}
+	if bestN < 0 {
+		return ""
+	}
+	return fmt.Sprintf("; applied in %d of %d checked firings", best.True, best.Labelled)
+}
+
 func (s *Server) rulesPolicy() rulecheck.Policy {
 	p := rulecheck.DefaultPolicy()
 	p.MinPrecision = s.ruleFloat("rules_min_precision", p.MinPrecision)
