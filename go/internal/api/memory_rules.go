@@ -87,7 +87,9 @@ func ruleApplied(rows []rulecheck.Row, notePath string) string {
 	target := "note:" + notePath
 	best, bestN := rulecheck.Evidence{}, -1
 	for _, r := range rows {
-		if r.Target != target {
+		// A check a person turned off, or one that does not say what the
+		// rule says, measures something else: its precision is not the rule's.
+		if r.Target != target || r.Status == rulecheck.StatusDisabled || r.Unfaithful {
 			continue
 		}
 		e := r.Evidence(r.Status)

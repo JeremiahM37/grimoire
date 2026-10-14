@@ -125,3 +125,15 @@ func TestRuleAppliedPicksMostLabelledCheck(t *testing.T) {
 		t.Fatalf("no check should render nothing, got %q", got)
 	}
 }
+
+func TestRuleAppliedSkipsDisabledAndUnfaithfulChecks(t *testing.T) {
+	mk := func(status string, unfaithful bool) rulecheck.Row {
+		return rulecheck.Row{Target: "note:Agent Memory/y.md", Status: status, Unfaithful: unfaithful,
+			Labelled: 8, True: 4}
+	}
+	for _, r := range []rulecheck.Row{mk(rulecheck.StatusDisabled, false), mk(rulecheck.StatusSuggestion, true)} {
+		if got := ruleApplied([]rulecheck.Row{r}, "Agent Memory/y.md"); got != "" {
+			t.Fatalf("status %s unfaithful %v: got %q, want no suffix", r.Status, r.Unfaithful, got)
+		}
+	}
+}
