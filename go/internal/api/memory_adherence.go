@@ -91,7 +91,7 @@ func (s *Server) adherenceFilter(r *http.Request, query string, items []contextI
 		for _, f := range forced {
 			ask[itemTarget(f)] = true
 		}
-		ri, rp, enforced := s.ruleHits(r, actionFromQuery(r, tool, target))
+		ri, rp, enforced := s.ruleHits(r, actionFromQuery(r, tool, target), true)
 		forced = append(forced, ri...)
 		for t := range enforced {
 			ask[t] = true
@@ -235,7 +235,7 @@ func (s *Server) memoryOutcome(w http.ResponseWriter, r *http.Request) {
 	}
 	if in.Pre {
 		_, perm := s.enforceFor(r, in.Tool, in.Target)
-		_, rp, _ := s.ruleHits(r, actionContext{in.Session, in.Tool, in.Target, in.Cwd, in.Agent})
+		_, rp, _ := s.ruleHits(r, actionContext{in.Session, in.Tool, in.Target, in.Cwd, in.Agent}, false)
 		perm = mergePermission(perm, rp)
 		writeJSON(w, http.StatusOK, map[string]any{"permission": perm})
 		return
@@ -629,7 +629,8 @@ func (s *Server) proposeChecks(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"proposed": proposed, "model_calls": asked})
 }
 
-// mergePermission joins two ask decisions into one.
+// mergePermission joins two decisions into one. A deny (deny-once) outranks an
+// ask; two asks stay an ask.
 func mergePermission(a, b map[string]any) map[string]any {
 	switch {
 	case a == nil:
@@ -637,5 +638,9 @@ func mergePermission(a, b map[string]any) map[string]any {
 	case b == nil:
 		return a
 	}
-	return map[string]any{"decision": "ask", "reason": fmt.Sprint(a["reason"]) + " | " + fmt.Sprint(b["reason"])}
+	reason := fmt.Sprint(a["reason"]) + " | " + fmt.Sprint(b["reason"])
+	if a["decision"] == "deny" || b["decision"] == "deny" {
+		return map[string]any{"decision": "deny", "once": true, "reason": reason}
+	}
+	return map[string]any{"decision": "ask", "reason": reason}
 }

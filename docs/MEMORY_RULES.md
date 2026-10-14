@@ -126,6 +126,57 @@ reads). `cwd` and `agent` are optional in the outcome body; a check with a scope
 does not fire when the caller did not say where it is. History is held in memory
 per session (256 sessions, 400 calls each) and is not persisted.
 
+### Deny once (experimental)
+
+**Why.** A `PreToolUse` reminder (`additionalContext`) lasts one turn and is
+often ignored. A deny with a reason stays in the context the agent reads, and
+changes what it does. Grimoire's default is to ask only: a poisoned memory must
+not be able to block tools. So deny exists only behind two opt-ins, and both
+are off by default.
+
+**The two opt-ins.**
+
+- Server: `GRIMOIRE_EXP=denyonce` (experiment flag, see [CONFIG.md](CONFIG.md)).
+- Hook: `GRIMOIRE_HOOK_ALLOW_DENY=1` in the environment of the context hook.
+
+**What happens when both are on.** A compiled check at status `enforce` (its
+precision met the enforce threshold and its rule says never or always) that
+fires on a pending action returns a permission `deny` with `once: true` and a
+one-line reason: the rule text and why it is enforced. It does this for the
+**first** firing of that check in that session. Later firings in the same
+session ask, exactly as before. The "already denied" record is kept per
+(session hash, check id) in memory, bounded at 10,000 pairs with the oldest
+forgotten first. A server restart forgets it.
+
+**Safety.**
+
+- A deny needs both opt-ins. With the server flag and no hook opt-in, the hook
+  shows the same reason as an `ask`, so a person is still prompted. A deny is
+  never honoured by accident, and `allow` is never honoured at all.
+- Only a person's decision can deny: either the rule is a memory a person
+  wrote or hand-edited, or a person set this exact check to enforce
+  (`grimoire rules enable <id> --enforce`). A check that reached `enforce` on
+  measured precision alone, from a rule an agent wrote, still only asks. Most
+  rules live in memory-file notes, which carry no authority of their own, so
+  in practice a person turns deny on check by check.
+- Only `enforce` status can deny. Active reminders and suggestions never do.
+- Once per session. A rule that is wrong costs one blocked action, not a
+  session that cannot proceed; the agent is told which rule applies.
+- The outcome hook's own `PreToolUse` path (`GRIMOIRE_OUTCOME_ENFORCE=1`)
+  never receives a deny. It asks with `pre:true`, and that call does not spend
+  the once-only deny.
+- A session that is not identified cannot deny, because there is nothing to
+  scope the once to.
+- The server cannot see whether the hook applied the deny. The deny is recorded
+  when it is answered. If the hook did not opt in, the person saw an ask and
+  the next firing asks too, which is the behaviour without the flag.
+
+**Tests.** `go/internal/api/memory_denyonce_test.go` covers flag off, the first
+deny then ask, agent and non-enforce rules, the pre-decision not spending the
+deny, and the bound. `clients/hooks/tests/test_context_hook.py` covers a deny
+ignored without the env (shown as ask), honoured with it, and that only the
+exact value `1` opts in.
+
 ## CLI and API
 
 ```

@@ -411,8 +411,10 @@ func actionFromQuery(r *http.Request, tool, target string) actionContext {
 }
 
 // ruleHits finds the active compiled checks a live call trips, as injected
-// items plus a permission decision when any of them enforces.
-func (s *Server) ruleHits(r *http.Request, a actionContext) ([]contextItem, map[string]any, map[string]bool) {
+// items plus a permission decision when any of them enforces. With once set
+// (the action stage only) and the denyonce experiment on, the first firing of
+// a person's enforced rule in a session is a deny instead of an ask.
+func (s *Server) ruleHits(r *http.Request, a actionContext, once bool) ([]contextItem, map[string]any, map[string]bool) {
 	_, live := s.rules()
 	if live == nil || a.tool == "" || a.target == "" {
 		return nil, nil, nil
@@ -441,6 +443,12 @@ func (s *Server) ruleHits(r *http.Request, a actionContext) ([]contextItem, map[
 	}
 	if len(reasons) == 0 {
 		return items, nil, nil
+	}
+	if once && denyOnceOn(a) {
+		human := humanRuleTargets(items)
+		if d := s.denyOnceDecision(a.session, hits, human, s.rulesPolicy().MinPrecision); d != nil {
+			return items, d, enforced
+		}
 	}
 	return items, map[string]any{"decision": "ask", "reason": strings.Join(reasons, " | ") +
 		fmt.Sprintf(" (a compiled check measured at precision >= %.2f flags this action; allow only if the user wants it)", s.rulesPolicy().MinPrecision)}, enforced

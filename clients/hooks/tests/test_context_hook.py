@@ -343,3 +343,47 @@ def test_window_mode_caps_the_store_at_2048(environment):
     assert len(state["shown"]) == 2048
     assert format(0, "032x") not in state["shown"]
     assert format(2499, "032x") in state["shown"]
+
+
+DENY_TEXT = "Never run git push on the kestrel repository without being asked"
+DENY = {"decision": "deny", "once": True, "reason": "Grimoire rule: " + DENY_TEXT}
+
+
+def deny_fetch(permission):
+    def fetch(base, token, query, excluded, budget, mode, paths, extra=None):
+        return {"context": "", "keys": [], "permission": permission}
+    return fetch
+
+
+def test_deny_is_shown_as_an_ask_without_the_opt_in(environment):
+    out = hook.run(tool_event(tool="Bash", tool_input={"command": "git push"}), environment,
+                   deny_fetch(DENY), now=100)["hookSpecificOutput"]
+    assert out["permissionDecision"] == "ask"
+    assert out["permissionDecisionReason"] == DENY["reason"]
+
+
+def test_deny_is_honoured_with_the_opt_in(environment):
+    environment["GRIMOIRE_HOOK_ALLOW_DENY"] = "1"
+    out = hook.run(tool_event(tool="Bash", tool_input={"command": "git push"}), environment,
+                   deny_fetch(DENY), now=100)["hookSpecificOutput"]
+    assert out["permissionDecision"] == "deny"
+    assert out["permissionDecisionReason"] == DENY["reason"]
+    assert out["hookEventName"] == "PreToolUse"
+
+
+@pytest.mark.parametrize("value", ["0", "true", "yes", ""])
+def test_only_the_exact_opt_in_value_honours_deny(environment, value):
+    environment["GRIMOIRE_HOOK_ALLOW_DENY"] = value
+    out = hook.run(tool_event(tool="Bash", tool_input={"command": "git push"}), environment,
+                   deny_fetch(DENY), now=100)["hookSpecificOutput"]
+    assert out["permissionDecision"] == "ask"
+
+
+def test_ask_output_is_unchanged_with_the_opt_in(environment):
+    environment["GRIMOIRE_HOOK_ALLOW_DENY"] = "1"
+    ask = {"decision": "ask", "reason": "Grimoire rule: never push"}
+    out = hook.run(tool_event(tool="Bash", tool_input={"command": "git push"}), environment,
+                   deny_fetch(ask), now=100)
+    assert out == {"hookSpecificOutput": {"hookEventName": "PreToolUse",
+                                          "permissionDecision": "ask",
+                                          "permissionDecisionReason": "Grimoire rule: never push"}}

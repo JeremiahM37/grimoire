@@ -120,7 +120,10 @@ type Server struct {
 	holdProt  map[string]bool
 	holdAt    time.Time
 	adhStore  *adherence.Store
-	fpDF      fpCache
+	// denyOnce remembers which compiled checks already denied, per session
+	// (memory_denyonce.go). Its zero value is ready to use.
+	denyOnce denyLedger
+	fpDF     fpCache
 
 	replay replayState
 

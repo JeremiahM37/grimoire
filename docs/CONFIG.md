@@ -285,6 +285,7 @@ Settings added by the agent-memory work, plus the hook-side variables read by th
 | `GRIMOIRE_RULES_LABEL_API_KEY` | *(falls back to the decision key)* | Key for the labelling server; keep it in the environment |
 | `GRIMOIRE_RULES_LABEL_BUDGET` | `1500` | Most new labelling calls per backtest run (answers are cached on disk) |
 | `GRIMOIRE_RULES_LABEL_THRESHOLD` | `0.5` | P(yes) at or above which a labelled match counts as a true violation |
+| `GRIMOIRE_EXP` | *(empty)* | Server side: comma list of experiment names that are on. `denyonce` lets a person-written, enforced compiled rule deny an action once per session, and only when the hook also sets `GRIMOIRE_HOOK_ALLOW_DENY=1` ([MEMORY_RULES.md](MEMORY_RULES.md#deny-once-experimental)) |
 | `GRIMOIRE_MEMORY_AUTHORITY` | *(on)* | `off` puts human and agent writes on one rung (recency-only supersession), as a benchmark control arm. Untrusted-source protection is not affected |
 | `GRIMOIRE_MEMORY_CANONICAL_DIR` | *(empty)* | The shared agent-memory directory every agent's memory location links to; falls back to `GRIMOIRE_DREAM_CANONICAL_MEMORY`. See [MEMORY_STORE.md](MEMORY_STORE.md) |
 | `GRIMOIRE_MEMORY_EXTRACT_PROMPT` | *(empty)* | Prefix added to the memory-extraction prompt (biases what is recorded); the output contract is appended and cannot be overridden |
@@ -333,6 +334,7 @@ Settings added by the agent-memory work, plus the hook-side variables read by th
 | `GRIMOIRE_OUTCOME` | `1` | Hook side: `0` turns off adherence reporting (`grimoire_outcome.py`) |
 | `GRIMOIRE_TRACE` | `1` | Hook side: `0` stops the outcome hook sending the utilization trace's outcome codes and prompt-correction bit, and the context hook sending the tool_use id ([MEMORY_TRACE.md](MEMORY_TRACE.md)) |
 | `GRIMOIRE_OUTCOME_ENFORCE` | `0` | Hook side: `1` makes the outcome hook ask the server on `PreToolUse` and emit a permission `ask` for `enforce: ask` rules. The context hook already does this; prefer it ([MEMORY_ADHERENCE.md](MEMORY_ADHERENCE.md)) |
+| `GRIMOIRE_HOOK_ALLOW_DENY` | `0` | Hook side: `1` honours a server `deny` (the once-per-session deny-once decision, [MEMORY_RULES.md](MEMORY_RULES.md#deny-once-experimental)). Any other value shows a deny as an `ask` with the same reason, so the person is still prompted |
 | `GRIMOIRE_BANK_SESSIONS` | *(off)* | Hook side: `1` retains session transcripts into the bank (set by `agent install`) |
 | `GRIMOIRE_BANK_CONTEXT` | *(off)* | Hook side: `1` adds the bank's context at session start |
 | `GRIMOIRE_BANK_RECALL` | *(off)* | Hook side: `1` recalls from the bank on each prompt |
