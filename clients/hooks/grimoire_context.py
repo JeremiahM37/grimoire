@@ -28,15 +28,34 @@ def fingerprint(value):
     return hashlib.sha256(value.encode()).hexdigest()
 
 
-def read_state(path):
+def read_state(path, limit=32000):
     try:
         raw = path.read_bytes()
-        if len(raw) > 32000:
+        if len(raw) > limit:
             return {}
         value = json.loads(raw)
         return value if isinstance(value, dict) else {}
     except (OSError, ValueError):
         return {}
+
+
+# GRIMOIRE_CONTEXT_DEDUP: "ttl" (default) forgets a memory after its TTL;
+# "window" keeps it until the context window resets (compact, clear, resume).
+# Window mode keeps one shared store of up to WINDOW_CAP keys for both stages.
+WINDOW_CAP = 2048
+WINDOW_STATE_BYTES = 200000
+
+
+def window_mode(environment):
+    return environment.get("GRIMOIRE_CONTEXT_DEDUP", "ttl") == "window"
+
+
+def remember_shown(shown, keys, now):
+    """Window mode: each key moves to the newest end, then the store is capped."""
+    for key in keys:
+        shown.pop(key, None)
+        shown[key] = now
+    return dict(list(shown.items())[-WINDOW_CAP:])
 
 
 FP_SPEC = 1
@@ -313,7 +332,8 @@ def run(event, environment=None, fetch=fetch_context, now=None, profile=None, ki
                 pass
         return None
     try:
-        state = read_state(state_path)
+        window = window_mode(environment)
+        state = read_state(state_path, WINDOW_STATE_BYTES if window else 32000)
         if kind == "session_start":
             if norm["source"] in {"compact", "clear", "resume"}:
                 write_state(state_path, {})
@@ -340,13 +360,19 @@ def run(event, environment=None, fetch=fetch_context, now=None, profile=None, ki
         if state.get("query") == query_hash and now - state.get("checked", 0) < 30:
             return None
         budget = max(128, min(8000, int(environment.get("GRIMOIRE_CONTEXT_MAX_BYTES", "2400"))))
-        seen = state.get("seen", {})
+        slot = "shown" if window else "seen"
+        seen = state.get(slot, {})
         if not isinstance(seen, dict):
             seen = {}
-        seen = {key: stamp for key, stamp in seen.items()
-                if isinstance(key, str) and isinstance(stamp, (float, int))
-                and now - stamp < 1800}
-        excluded = list(seen)[-256:]
+        if window:
+            seen = {key: stamp for key, stamp in seen.items()
+                    if isinstance(key, str) and isinstance(stamp, (float, int))}
+            excluded = list(reversed(seen))[:256]
+        else:
+            seen = {key: stamp for key, stamp in seen.items()
+                    if isinstance(key, str) and isinstance(stamp, (float, int))
+                    and now - stamp < 1800}
+            excluded = list(seen)[-256:]
         # The session travels as a hash: the server pairs consecutive prompts
         # to learn from re-tells, and never needs to know which session it is.
         extra = rank_params(environment)
@@ -359,12 +385,16 @@ def run(event, environment=None, fetch=fetch_context, now=None, profile=None, ki
                 or any(not isinstance(key, str) or not re.fullmatch(r"[a-f0-9]{32}", key)
                        for key in keys)):
             return None
-        for key in keys:
-            seen[key] = now
+        if window:
+            seen = remember_shown(seen, keys, now)
+        else:
+            for key in keys:
+                seen[key] = now
         if environment.get("GRIMOIRE_FINGERPRINTS", "1") != "0":
             store_fingerprints(directory, extra["session"], result)
-        seen = dict(list(seen.items())[-256:])
-        state.update({"query": query_hash, "checked": now, "seen": seen})
+        if not window:
+            seen = dict(list(seen.items())[-256:])
+        state.update({"query": query_hash, "checked": now, slot: seen})
         write_state(state_path, state)
         if not context:
             return None
@@ -430,12 +460,20 @@ def action_context(norm, environment, fetch, now, state, state_path, base, token
     if not target.strip() or len(target.encode()) > 4000:
         return None
     query = (tool + " " + target.strip())[:2000]
-    recent = state.get("actions", {})
+    window = window_mode(environment)
+    slot = "shown" if window else "actions"
+    recent = state.get(slot, {})
     if not isinstance(recent, dict):
         recent = {}
-    ttl = 600
-    recent = {key: stamp for key, stamp in recent.items()
-              if isinstance(key, str) and isinstance(stamp, (float, int)) and now - stamp < ttl}
+    if window:
+        recent = {key: stamp for key, stamp in recent.items()
+                  if isinstance(key, str) and isinstance(stamp, (float, int))}
+        excluded = list(reversed(recent))[:128]
+    else:
+        ttl = 600
+        recent = {key: stamp for key, stamp in recent.items()
+                  if isinstance(key, str) and isinstance(stamp, (float, int)) and now - stamp < ttl}
+        excluded = list(recent)[-128:]
     budget = max(128, min(4000, int(environment.get("GRIMOIRE_ACTION_MAX_BYTES", "1200"))))
     extra = rank_params(environment)
     if extra["rank"] == "hybrid":
@@ -458,20 +496,25 @@ def action_context(norm, environment, fetch, now, state, state_path, base, token
             ec = edit_content_hash(tool, tool_input, profile.get("delegation_tools") or [])
             if ec:
                 extra["ec"] = ec
-    result = fetch(base, token, query, list(recent)[-128:], budget, mode, paths, extra)
+    result = fetch(base, token, query, excluded, budget, mode, paths, extra)
     context = result.get("context", "")
     keys = result.get("keys", [])
     if (not isinstance(context, str) or len(context.encode()) > budget
             or not isinstance(keys, list) or len(keys) > 2
             or any(not isinstance(key, str) or not re.fullmatch(r"[a-f0-9]{32}", key) for key in keys)):
         return None
-    for key in keys:
-        recent[key] = now
-    state["actions"] = dict(list(recent.items())[-128:])
+    ask = ask_reason(result)
+    if window:
+        # An ask must come back on every call, so its keys are not kept as shown.
+        if not ask:
+            state[slot] = remember_shown(recent, keys, now)
+    else:
+        for key in keys:
+            recent[key] = now
+        state["actions"] = dict(list(recent.items())[-128:])
     write_state(state_path, state)
     if extra.get("session") and environment.get("GRIMOIRE_FINGERPRINTS", "1") != "0":
         store_fingerprints(state_path.parent, extra["session"], result)
-    ask = ask_reason(result)
     if not context and not ask:
         return None
     return render(profile, norm, context, ask)

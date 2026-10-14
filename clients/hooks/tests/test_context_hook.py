@@ -251,3 +251,95 @@ def test_default_request_carries_no_recall_mode(environment):
     assert hook.run(event(), environment, fetch, now=100)
     assert "recall_mode" not in seen[0]
     assert seen[0]["rank"] == "hybrid"
+
+
+@pytest.mark.parametrize("dedup", [None, "ttl"])
+def test_default_dedup_still_forgets_after_each_ttl(environment, dedup):
+    if dedup:
+        environment["GRIMOIRE_CONTEXT_DEDUP"] = dedup
+    def fetch(base, token, query, excluded, budget, mode, paths, extra=None):
+        return {"context": "" if KEY in excluded else "reference", "keys": [KEY]}
+    assert hook.run(event(), environment, fetch, now=100)
+    assert hook.run(tool_event(), environment, fetch, now=100)
+    assert hook.run(event(), environment, fetch, now=1901)
+    assert hook.run(tool_event(), environment, fetch, now=701)
+
+
+def test_window_mode_keeps_keys_past_the_ttls(environment):
+    environment["GRIMOIRE_CONTEXT_DEDUP"] = "window"
+    excluded_seen = []
+
+    def fetch(base, token, query, excluded, budget, mode, paths, extra=None):
+        excluded_seen.append(list(excluded))
+        return {"context": "" if KEY in excluded else "reference", "keys": [KEY]}
+
+    assert hook.run(event(), environment, fetch, now=100)
+    assert hook.run(event(), environment, fetch, now=5000) is None
+    assert hook.run(tool_event(session="two"), environment, fetch, now=100)
+    assert hook.run(tool_event(session="two"), environment, fetch, now=5000) is None
+    assert excluded_seen[1] == [KEY] and excluded_seen[3] == [KEY]
+
+
+def test_window_mode_shares_keys_across_stages(environment):
+    environment["GRIMOIRE_CONTEXT_DEDUP"] = "window"
+    other = "b" * 32
+    excluded_seen = []
+
+    def fetch(base, token, query, excluded, budget, mode, paths, extra=None):
+        excluded_seen.append(list(excluded))
+        if extra and extra.get("stage") == "action":
+            return {"context": "reference", "keys": [other]}
+        return {"context": "reference", "keys": [KEY]}
+
+    hook.run(tool_event(), environment, fetch, now=100)
+    hook.run(event(), environment, fetch, now=200)
+    assert excluded_seen[1] == [other]
+    hook.run(tool_event(), environment, fetch, now=300)
+    assert excluded_seen[2] == [KEY, other]
+
+
+def test_window_mode_compaction_resets_both_stages(environment):
+    environment["GRIMOIRE_CONTEXT_DEDUP"] = "window"
+    excluded_seen = []
+
+    def fetch(base, token, query, excluded, budget, mode, paths, extra=None):
+        excluded_seen.append(list(excluded))
+        return {"context": "reference", "keys": [KEY]}
+
+    hook.run(tool_event(), environment, fetch, now=100)
+    reset = {**event(), "hook_event_name": "SessionStart", "source": "compact"}
+    assert hook.run(reset, environment, fetch, now=101) is None
+    assert hook.run(tool_event(), environment, fetch, now=102)
+    assert excluded_seen[-1] == []
+
+
+def test_window_mode_ask_is_rendered_and_not_kept_as_shown(environment):
+    environment["GRIMOIRE_CONTEXT_DEDUP"] = "window"
+    excluded_seen = []
+
+    def fetch(base, token, query, excluded, budget, mode, paths, extra=None):
+        excluded_seen.append(list(excluded))
+        return {"context": "", "keys": [KEY], "permission": {"decision": "ask", "reason": "confirm first"}}
+
+    for now in (100, 200):
+        out = hook.run(tool_event(), environment, fetch, now=now)
+        assert out["hookSpecificOutput"]["permissionDecision"] == "ask"
+    assert excluded_seen == [[], []]
+
+
+def test_window_mode_caps_the_store_at_2048(environment):
+    environment["GRIMOIRE_CONTEXT_DEDUP"] = "window"
+    sent = []
+
+    def fetch(base, token, query, excluded, budget, mode, paths, extra=None):
+        sent.append(list(excluded))
+        return {"context": "reference", "keys": [format(index, "032x") for index in range(
+            len(sent) * 10 - 10, len(sent) * 10)]}
+
+    for call in range(250):
+        hook.run(event(f"kestrel question {call}"), environment, fetch, now=100 + call)
+    assert len(sent[-1]) == 256
+    state = json.loads(next(Path(environment["GRIMOIRE_CONTEXT_STATE_DIR"]).glob("*.json")).read_text())
+    assert len(state["shown"]) == 2048
+    assert format(0, "032x") not in state["shown"]
+    assert format(2499, "032x") in state["shown"]

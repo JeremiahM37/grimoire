@@ -197,6 +197,27 @@ every tool call:
 
 `GRIMOIRE_CONTEXT_ACTIONS=0` turns it off.
 
+### Window dedup (opt-in)
+
+By default the hook forgets an item after its TTL: 30 minutes for prompt
+context, 10 minutes for tool calls. `GRIMOIRE_CONTEXT_DEDUP=window` keeps an
+item until the context window resets (compact, clear or resume). The prompt
+and tool-call stages then share one list, so an item shown at either stage is
+not sent again at the other.
+
+The case for it, measured on real transcripts: 41% of action-stage injections
+repeated an item still in the same context window. Only 4% came after a
+compaction. Hook delivery was 99.7%. A TTL mostly re-sends text the model can
+still see.
+
+Window mode never suppresses an ask. A `permission` with decision `ask` is
+always rendered, and its item is not kept as shown, so it comes back every
+time. The server still decides which items match; the hook only changes the
+excluded list.
+
+It is off by default. `GRIMOIRE_CONTEXT_DEDUP=ttl` (or unset) keeps the TTL
+behaviour.
+
 ## Settings
 
 | Variable (hook) | Default | Meaning |
