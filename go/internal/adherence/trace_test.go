@@ -370,3 +370,50 @@ func TestCardListsRecentLinkedActionsAsCodesOnly(t *testing.T) {
 		t.Fatal("recent_actions must be [] not null")
 	}
 }
+
+// Writes are linked to the session hash and pruned on the same 30-day clock as
+// the rest of the trace.
+func TestWritesLinkASessionToItsFactsAndPrune(t *testing.T) {
+	st, err := Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	now := time.Now()
+	old := now.Add(-31 * 24 * time.Hour)
+	if err := st.RecordWrites("hash-a", "toolu_1", []string{"aaaaaaaaaaaa", "bbbbbbbbbbbb-2"}, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.RecordWrites("hash-b", "", []string{"aaaaaaaaaaaa"}, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.RecordWrites("hash-old", "", []string{"cccccccccccc"}, old); err != nil {
+		t.Fatal(err)
+	}
+	got, err := st.Writes("hash-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].FactID != "aaaaaaaaaaaa" || got[0].TU != "toolu_1" || got[1].FactID != "bbbbbbbbbbbb-2" {
+		t.Fatalf("Writes(hash-a) = %+v", got)
+	}
+	byFact, _ := st.WritesFor("aaaaaaaaaaaa")
+	if len(byFact) != 2 || byFact[1].Session != "hash-b" {
+		t.Fatalf("WritesFor = %+v", byFact)
+	}
+	// The next write that prunes drops the 31-day-old row and keeps the rest.
+	st.mu.Lock()
+	st.lastPrune = time.Time{}
+	st.mu.Unlock()
+	if err := st.RecordWrites("hash-c", "", []string{"dddddddddddd"}, now); err != nil {
+		t.Fatal(err)
+	}
+	var n int
+	st.db.QueryRow(`SELECT COUNT(*) FROM trace_writes`).Scan(&n)
+	if n != 4 {
+		t.Fatalf("trace_writes has %d rows after prune, want 4", n)
+	}
+	if gone, _ := st.WritesFor("cccccccccccc"); len(gone) != 0 {
+		t.Fatalf("31-day-old write survived prune: %+v", gone)
+	}
+}

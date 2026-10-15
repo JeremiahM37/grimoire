@@ -147,6 +147,21 @@ def load(db, include_all):
     return rows
 
 
+def writes_stats(db, include_all):
+    """Counts of the write links (trace_writes: session hash -> fact id), or None
+    when the database predates the table. Counts only: no ids, no text."""
+    connection = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    try:
+        if not connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='trace_writes'").fetchone():
+            return None
+        where = "" if include_all else f"WHERE ts < {HOLDOUT_START}"
+        writes, sessions = connection.execute(
+            f"SELECT COUNT(*), COUNT(DISTINCT session) FROM trace_writes {where}").fetchone()
+    finally:
+        connection.close()
+    return {"linked_writes": writes, "writing_sessions": sessions}
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--db", help="a copy of adherence.db or a daily snapshot")
@@ -160,6 +175,9 @@ def main(argv=None):
         parser.error("--db is required")
     rows = load(args.db, args.all)
     report = stream_stats([(s, t, stage) for s, t, stage, _ in rows])
+    links = writes_stats(args.db, args.all)
+    if links is not None:
+        report["trace_writes"] = links
     if args.transcripts:
         tool_targets = collections.defaultdict(list)
         for _, target, stage, tu in rows:
@@ -205,6 +223,16 @@ def selftest():
         connection.commit()
         connection.close()
         assert len(load(db, False)) == 1 and len(load(db, True)) == 2; checks += 1
+        assert writes_stats(db, True) is None; checks += 1
+        connection = sqlite3.connect(db)
+        connection.execute("CREATE TABLE trace_writes (id INTEGER PRIMARY KEY, session TEXT, fact_id TEXT, tu TEXT, ts INTEGER)")
+        connection.executemany("INSERT INTO trace_writes (session, fact_id, tu, ts) VALUES (?,?,?,?)",
+                               [("s", "0123456789ab", "", HOLDOUT_START - 5), ("s", "0123456789ac", "", HOLDOUT_START - 4),
+                                ("t", "0123456789ab", "", HOLDOUT_START + 5)])
+        connection.commit()
+        connection.close()
+        assert writes_stats(db, False) == {"linked_writes": 2, "writing_sessions": 1}, writes_stats(db, False); checks += 1
+        assert writes_stats(db, True) == {"linked_writes": 3, "writing_sessions": 2}; checks += 1
     print(f"selftest ok ({checks} checks)")
     return 0
 

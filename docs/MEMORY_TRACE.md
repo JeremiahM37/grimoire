@@ -25,6 +25,16 @@ All of it lives in the adherence database (`.grimoire/adherence.db`), bounded to
 | influence | `trace_links` | `injection -> action` with the evidence: `fp`, `tag`, `check`, `changed` |
 | reminders | `injections.pend`, `rem` | the action-stage natural experiment (below) |
 | holdout | `trace_withheld` | items withheld and the probability, so a would-have-injected row exists for them |
+| writes | `trace_writes` | one row per fact id a session wrote with `remember`, `remember_procedure` or `set_fact`: session hash, fact id, the tool_use id, time |
+
+**Writes.** The outcome hook reads the fact id(s) a Grimoire memory write returned
+and sends only those ids, keyed by the same session hash the injections use, so a
+write can be joined to the injections of its own session. The question this answers:
+did the writing session already see the older fact before it wrote the new one (an
+informed update), or did it write without having seen it (a concurrent write)? No
+fact text is sent or stored, and a write records nothing else (no score, no
+outcome). Rows follow the same 30-day retention as the rest of the trace. Counts are
+reported by `benchmarks/injection_stream/stream.py` under `trace_writes`.
 
 An action's stage is its position in the session: `early` (calls 1-10), `mid`
 (11-40), `late`.

@@ -118,3 +118,61 @@ def test_event_flag_names_the_event_for_agents_with_other_event_names():
     sent.clear()
     hook.run({"session_id": "s1"}, {}, lambda b, t, body: sent.append(body) or {}, kind="stop")
     assert sent and sent[0]["stop"] is True
+
+
+FACT_A = "0123456789ab"
+FACT_B = "fedcba987654-2"
+
+
+def memory_write(response, tool="mcp__claude_ai_Grimoire__remember", tu="toolu_01ABCdef"):
+    return {"hook_event_name": "PostToolUse", "session_id": "abc", "tool_name": tool,
+            "tool_use_id": tu, "tool_input": {"text": "SECRET FACT TEXT about /srv/x.yaml"},
+            "tool_response": response}
+
+
+def test_memory_write_with_dict_response_sends_only_the_fact_ids():
+    calls, send = recorder()
+    response = {"path": "x.md", "id": FACT_A, "results": [{"op": "add", "id": FACT_A, "text": "SECRET FACT"}]}
+    assert hook.run(memory_write(response), {}, send) is None
+    assert calls == [("http://127.0.0.1:9111", "", {"session": sid("abc"), "wrote": [FACT_A], "tu": "toolu_01ABCdef"})]
+    assert "SECRET" not in json.dumps(calls)
+
+
+def test_memory_write_with_text_parts_and_json_string_responses():
+    parts = [{"type": "text", "text": json.dumps({"id": FACT_A, "results": [{"id": FACT_B}]})}]
+    for response in (parts, json.dumps({"results": [{"id": FACT_A}, {"id": FACT_B}]}),
+                     json.dumps({"ids": [FACT_B, "not-an-id"]})):
+        calls, send = recorder()
+        hook.run(memory_write(response, tool="mcp__grimoire__remember_procedure"), {}, send)
+        assert len(calls) == 1, response
+        ids = calls[0][2]["wrote"]
+        assert ids and all(hook.FACT_ID_RE.fullmatch(i) for i in ids), response
+        assert "SECRET" not in json.dumps(calls)
+
+
+def test_memory_write_caps_ids_and_dedupes():
+    many = {"results": [{"id": "%012x" % i} for i in range(20)] + [{"id": "%012x" % 0}]}
+    calls, send = recorder()
+    hook.run(memory_write(many), {}, send)
+    assert len(calls[0][2]["wrote"]) == hook.WRITE_MAX
+    assert len(set(calls[0][2]["wrote"])) == hook.WRITE_MAX
+
+
+def test_non_grimoire_and_non_write_tools_send_nothing_new():
+    response = {"id": FACT_A}
+    for tool in ("mcp__claude_ai_Grimoire__search_notes", "mcp__other__remember", "Bash",
+                 "mcp__grimoire__remember_image_thing"):
+        calls, send = recorder()
+        hook.run(memory_write(response, tool=tool), {}, send)
+        assert all("wrote" not in c[2] for c in calls), tool
+
+
+def test_failed_memory_write_and_trace_off_send_no_write_link():
+    calls, send = recorder()
+    failure = {"hook_event_name": "PostToolUseFailure", "session_id": "abc",
+               "tool_name": "mcp__grimoire__remember", "tool_response": {"id": FACT_A}}
+    hook.run(failure, {}, send)
+    assert all("wrote" not in c[2] for c in calls)
+    calls, send = recorder()
+    hook.run(memory_write({"id": FACT_A}), {"GRIMOIRE_TRACE": "0"}, send)
+    assert calls == []

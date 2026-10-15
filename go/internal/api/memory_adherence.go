@@ -187,6 +187,9 @@ type outcomeIn struct {
 	FP   map[string]int `json:"fp"`
 	Stop bool           `json:"stop"`
 	Pre  bool           `json:"pre"` // only compute the permission decision; record nothing
+	// Wrote lists the fact ids a Grimoire memory write returned (ids only; the
+	// hook never sends text). Recorded against the session, nothing else.
+	Wrote []string `json:"wrote"`
 	// Cwd and Agent scope compiled rule checks (docs/MEMORY_RULES.md); optional.
 	Cwd   string `json:"cwd"`
 	Agent string `json:"agent"`
@@ -197,6 +200,10 @@ type outcomeIn struct {
 var tagRE = regexp.MustCompile(`^[0-9a-f]{4,8}$`)
 
 var sessionRE = regexp.MustCompile(`^[A-Za-z0-9_\-]{8,128}$`)
+
+// factIDRE is the id memory.DeriveID mints (12 hex), with the "-N" suffix the
+// server adds when an id collides.
+var factIDRE = regexp.MustCompile(`^[0-9a-f]{12}(-[0-9]+)?$`)
 
 // memoryOutcome takes what an agent did after being shown memories and
 // classifies each injected item: cited, followed (its check passed),
@@ -227,6 +234,16 @@ func (s *Server) memoryOutcome(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "fp has at most 16 tags")
 		return
 	}
+	if len(in.Wrote) > 8 {
+		writeErr(w, http.StatusBadRequest, "wrote has at most 8 fact ids")
+		return
+	}
+	for _, id := range in.Wrote {
+		if !factIDRE.MatchString(id) {
+			writeErr(w, http.StatusBadRequest, "wrote holds fact ids (12 hex characters)")
+			return
+		}
+	}
 	for t, n := range in.FP {
 		if !tagRE.MatchString(t) || n < 1 || n > fpr.MaxPerMemory {
 			writeErr(w, http.StatusBadRequest, "fp is {tag: 1..6}")
@@ -243,6 +260,16 @@ func (s *Server) memoryOutcome(w http.ResponseWriter, r *http.Request) {
 	st := s.adh()
 	if st == nil {
 		writeErr(w, http.StatusServiceUnavailable, "adherence store unavailable")
+		return
+	}
+	if len(in.Wrote) > 0 {
+		// A write is recorded as the session's link to the fact; it does not
+		// score anything, so the outcome processing below is skipped.
+		if err := st.RecordWrites(in.Session, in.TU, in.Wrote, time.Now()); err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 		return
 	}
 	since := time.Now().Add(-outcomeWindow)
