@@ -88,3 +88,27 @@ point this at a hosted Claude loop.
   the arms may behave differently on natural phrasing.
 - The fake-model selftest checks only the plumbing and the scoring. It says
   nothing about any real model.
+
+## Result (2026-10-14, gemma4:e4b, 30 items per arm, temperature 0)
+
+Run under the shared GPU research lease against a local 4B model.
+
+| Arm | Correct (new value) | Gave the old value | Neither |
+|---|---|---|---|
+| `Y` | 29/30 (83-99%) | 0/30 | 1/30 |
+| `now Y (changed DATE)` | 27/30 (74-97%) | 0/30 | 3/30 |
+| `was X, now Y` | 24/30 (63-90%) | 0/30 | 6/30 |
+| `X no longer true; Y` | 18/30 (42-75%) | 0/30 | 12/30 |
+
+No arm made the model give the old value, so the intrusion the interference
+papers predict did not appear here. But every word added about the change
+cost correct answers: the misses were vague or hedged replies, not the old
+value. The negated form is clearly worse than the plain new value (the
+intervals do not overlap). `was X, now Y` is probably worse, and the
+intervals overlap.
+
+For Grimoire: inject the current value, with at most a date. Do not restate
+the old value. This replaces the "inject the change" idea in the research
+report, which this test does not support.
+
+One small model and 30 items per arm. A larger model may behave differently.

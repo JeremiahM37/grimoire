@@ -1,0 +1,997 @@
+{
+ "seed": 20261014,
+ "n": 30,
+ "model": "gemma4:e4b",
+ "arms": {
+  "Y": {
+   "n": 30,
+   "has_y": 29,
+   "has_x": 0,
+   "strict": 29,
+   "neither": 1
+  },
+  "now Y (changed DATE)": {
+   "n": 30,
+   "has_y": 27,
+   "has_x": 0,
+   "strict": 27,
+   "neither": 3
+  },
+  "was X, now Y": {
+   "n": 30,
+   "has_y": 24,
+   "has_x": 0,
+   "strict": 24,
+   "neither": 6
+  },
+  "X no longer true; Y": {
+   "n": 30,
+   "has_y": 18,
+   "has_x": 0,
+   "strict": 18,
+   "neither": 12
+  }
+ },
+ "rows": [
+  {
+   "arm": "Y",
+   "item": 0,
+   "reply": "Wenribzor-91",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "Y",
+   "item": 1,
+   "reply": "Tovpixbra-40",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "Y",
+   "item": 2,
+   "reply": "Umezorbra-64",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "Y",
+   "item": 3,
+   "reply": "Tarhalbra-60",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "Y",
+   "item": 4,
+   "reply": "Tarhalsen-17",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "Y",
+   "item": 5,
+   "reply": "Korhalsol-72",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "Y",
+   "item": 6,
+   "reply": "Ganvelqua-11",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "Y",
+   "item": 7,
+   "reply": "Quasenmip-84",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "Y",
+   "item": 8,
+   "reply": "Ribsenyar-37",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "Y",
+   "item": 9,
+   "reply": "Yartovvel-70",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "Y",
+   "item": 10,
+   "reply": "Ganhalhal-85",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "Y",
+   "item": 11,
+   "reply": "Yarlixume-65",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "Y",
+   "item": 12,
+   "reply": "Droquaume-16",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "Y",
+   "item": 13,
+   "reply": "Umekorzor-80",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "Y",
+   "item": 14,
+   "reply": "Fenlixzor-67",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "Y",
+   "item": 15,
+   "reply": "Wensolqua-57",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "Y",
+   "item": 16,
+   "reply": "Miphalrib-82",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "Y",
+   "item": 17,
+   "reply": "Miptardro-65",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "Y",
+   "item": 18,
+   "reply": "Drosolume-15",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "Y",
+   "item": 19,
+   "reply": "Umemipyar-42",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "Y",
+   "item": 20,
+   "reply": "Tarribwen-23",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "Y",
+   "item": 21,
+   "reply": "Zorgantar-96",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "Y",
+   "item": 22,
+   "reply": "Zorpixpix-77",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "Y",
+   "item": 23,
+   "reply": "Fensenlix-76",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "Y",
+   "item": 24,
+   "reply": "Dromipsol-40",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "Y",
+   "item": 25,
+   "reply": "Droumedro-84",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "Y",
+   "item": 26,
+   "reply": "Zordrowen-72",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "Y",
+   "item": 27,
+   "reply": "Yartarzor-44",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "Y",
+   "item": 28,
+   "reply": "",
+   "has_y": false,
+   "has_x": false,
+   "strict": false
+  },
+  {
+   "arm": "Y",
+   "item": 29,
+   "reply": "Wenvelzor-65",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "now Y (changed DATE)",
+   "item": 0,
+   "reply": "Wenribzor-91",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "now Y (changed DATE)",
+   "item": 1,
+   "reply": "Tovpixbra-40",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "now Y (changed DATE)",
+   "item": 2,
+   "reply": "Umezorbra-64",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "now Y (changed DATE)",
+   "item": 3,
+   "reply": "",
+   "has_y": false,
+   "has_x": false,
+   "strict": false
+  },
+  {
+   "arm": "now Y (changed DATE)",
+   "item": 4,
+   "reply": "Tarhalsen-17",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "now Y (changed DATE)",
+   "item": 5,
+   "reply": "Korhalsol-72",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "now Y (changed DATE)",
+   "item": 6,
+   "reply": "Ganvelqua-11",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "now Y (changed DATE)",
+   "item": 7,
+   "reply": "Quasenmip-84",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "now Y (changed DATE)",
+   "item": 8,
+   "reply": "Ribsenyar-37",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "now Y (changed DATE)",
+   "item": 9,
+   "reply": "Yartovvel-70",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "now Y (changed DATE)",
+   "item": 10,
+   "reply": "",
+   "has_y": false,
+   "has_x": false,
+   "strict": false
+  },
+  {
+   "arm": "now Y (changed DATE)",
+   "item": 11,
+   "reply": "Yarlixume-65",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "now Y (changed DATE)",
+   "item": 12,
+   "reply": "Droquaume-16",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "now Y (changed DATE)",
+   "item": 13,
+   "reply": "Umekorzor-80",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "now Y (changed DATE)",
+   "item": 14,
+   "reply": "Fenlixzor-67",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "now Y (changed DATE)",
+   "item": 15,
+   "reply": "Wensolqua-57",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "now Y (changed DATE)",
+   "item": 16,
+   "reply": "Miphalrib-82",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "now Y (changed DATE)",
+   "item": 17,
+   "reply": "Miptardro-65",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "now Y (changed DATE)",
+   "item": 18,
+   "reply": "Drosolume-15",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "now Y (changed DATE)",
+   "item": 19,
+   "reply": "Umemipyar-42",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "now Y (changed DATE)",
+   "item": 20,
+   "reply": "Tarribwen-23",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "now Y (changed DATE)",
+   "item": 21,
+   "reply": "Zorgantar-96",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "now Y (changed DATE)",
+   "item": 22,
+   "reply": "Zorpixpix-77",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "now Y (changed DATE)",
+   "item": 23,
+   "reply": "Fensenlix-76",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "now Y (changed DATE)",
+   "item": 24,
+   "reply": "Dromipsol-40",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "now Y (changed DATE)",
+   "item": 25,
+   "reply": "Droumedro-84",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "now Y (changed DATE)",
+   "item": 26,
+   "reply": "Zordrowen-72",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "now Y (changed DATE)",
+   "item": 27,
+   "reply": "Yartarzor-44",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "now Y (changed DATE)",
+   "item": 28,
+   "reply": "",
+   "has_y": false,
+   "has_x": false,
+   "strict": false
+  },
+  {
+   "arm": "now Y (changed DATE)",
+   "item": 29,
+   "reply": "Wenvelzor-65",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "was X, now Y",
+   "item": 0,
+   "reply": "Wenribzor-91",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "was X, now Y",
+   "item": 1,
+   "reply": "",
+   "has_y": false,
+   "has_x": false,
+   "strict": false
+  },
+  {
+   "arm": "was X, now Y",
+   "item": 2,
+   "reply": "Umezorbra-64",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "was X, now Y",
+   "item": 3,
+   "reply": "",
+   "has_y": false,
+   "has_x": false,
+   "strict": false
+  },
+  {
+   "arm": "was X, now Y",
+   "item": 4,
+   "reply": "",
+   "has_y": false,
+   "has_x": false,
+   "strict": false
+  },
+  {
+   "arm": "was X, now Y",
+   "item": 5,
+   "reply": "Korhalsol-72",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "was X, now Y",
+   "item": 6,
+   "reply": "Ganvelqua-11",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "was X, now Y",
+   "item": 7,
+   "reply": "",
+   "has_y": false,
+   "has_x": false,
+   "strict": false
+  },
+  {
+   "arm": "was X, now Y",
+   "item": 8,
+   "reply": "Ribsenyar-37",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "was X, now Y",
+   "item": 9,
+   "reply": "Yartovvel-70",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "was X, now Y",
+   "item": 10,
+   "reply": "Ganhalhal-85",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "was X, now Y",
+   "item": 11,
+   "reply": "Yarlixume-65",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "was X, now Y",
+   "item": 12,
+   "reply": "Droquaume-16",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "was X, now Y",
+   "item": 13,
+   "reply": "Umekorzor-80",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "was X, now Y",
+   "item": 14,
+   "reply": "Fenlixzor-67",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "was X, now Y",
+   "item": 15,
+   "reply": "Wensolqua-57",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "was X, now Y",
+   "item": 16,
+   "reply": "Miphalrib-82",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "was X, now Y",
+   "item": 17,
+   "reply": "",
+   "has_y": false,
+   "has_x": false,
+   "strict": false
+  },
+  {
+   "arm": "was X, now Y",
+   "item": 18,
+   "reply": "Drosolume-15",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "was X, now Y",
+   "item": 19,
+   "reply": "Umemipyar-42",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "was X, now Y",
+   "item": 20,
+   "reply": "Tarribwen-23",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "was X, now Y",
+   "item": 21,
+   "reply": "Zorgantar-96",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "was X, now Y",
+   "item": 22,
+   "reply": "Zorpixpix-77",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "was X, now Y",
+   "item": 23,
+   "reply": "Fensenlix-76",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "was X, now Y",
+   "item": 24,
+   "reply": "Dromipsol-40",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "was X, now Y",
+   "item": 25,
+   "reply": "Droumedro-84",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "was X, now Y",
+   "item": 26,
+   "reply": "Zordrowen-72",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "was X, now Y",
+   "item": 27,
+   "reply": "Yartarzor-44",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "was X, now Y",
+   "item": 28,
+   "reply": "",
+   "has_y": false,
+   "has_x": false,
+   "strict": false
+  },
+  {
+   "arm": "was X, now Y",
+   "item": 29,
+   "reply": "Wenvelzor-65",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "X no longer true; Y",
+   "item": 0,
+   "reply": "Wenribzor-91",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "X no longer true; Y",
+   "item": 1,
+   "reply": "",
+   "has_y": false,
+   "has_x": false,
+   "strict": false
+  },
+  {
+   "arm": "X no longer true; Y",
+   "item": 2,
+   "reply": "Umezorbra-64",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "X no longer true; Y",
+   "item": 3,
+   "reply": "",
+   "has_y": false,
+   "has_x": false,
+   "strict": false
+  },
+  {
+   "arm": "X no longer true; Y",
+   "item": 4,
+   "reply": "",
+   "has_y": false,
+   "has_x": false,
+   "strict": false
+  },
+  {
+   "arm": "X no longer true; Y",
+   "item": 5,
+   "reply": "Korhalsol-72",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "X no longer true; Y",
+   "item": 6,
+   "reply": "Ganvelqua-11",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "X no longer true; Y",
+   "item": 7,
+   "reply": "",
+   "has_y": false,
+   "has_x": false,
+   "strict": false
+  },
+  {
+   "arm": "X no longer true; Y",
+   "item": 8,
+   "reply": "Ribsenyar-37",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "X no longer true; Y",
+   "item": 9,
+   "reply": "Yartovvel-70",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "X no longer true; Y",
+   "item": 10,
+   "reply": "",
+   "has_y": false,
+   "has_x": false,
+   "strict": false
+  },
+  {
+   "arm": "X no longer true; Y",
+   "item": 11,
+   "reply": "Yarlixume-65",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "X no longer true; Y",
+   "item": 12,
+   "reply": "Droquaume-16",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "X no longer true; Y",
+   "item": 13,
+   "reply": "Umekorzor-80",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "X no longer true; Y",
+   "item": 14,
+   "reply": "Fenlixzor-67",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "X no longer true; Y",
+   "item": 15,
+   "reply": "Wensolqua-57",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "X no longer true; Y",
+   "item": 16,
+   "reply": "Miphalrib-82",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "X no longer true; Y",
+   "item": 17,
+   "reply": "Miptardro-65",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "X no longer true; Y",
+   "item": 18,
+   "reply": "Drosolume-15",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "X no longer true; Y",
+   "item": 19,
+   "reply": "Umemipyar-42",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "X no longer true; Y",
+   "item": 20,
+   "reply": "",
+   "has_y": false,
+   "has_x": false,
+   "strict": false
+  },
+  {
+   "arm": "X no longer true; Y",
+   "item": 21,
+   "reply": "",
+   "has_y": false,
+   "has_x": false,
+   "strict": false
+  },
+  {
+   "arm": "X no longer true; Y",
+   "item": 22,
+   "reply": "",
+   "has_y": false,
+   "has_x": false,
+   "strict": false
+  },
+  {
+   "arm": "X no longer true; Y",
+   "item": 23,
+   "reply": "Fensenlix-76",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "X no longer true; Y",
+   "item": 24,
+   "reply": "Dromipsol-40",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "X no longer true; Y",
+   "item": 25,
+   "reply": "",
+   "has_y": false,
+   "has_x": false,
+   "strict": false
+  },
+  {
+   "arm": "X no longer true; Y",
+   "item": 26,
+   "reply": "",
+   "has_y": false,
+   "has_x": false,
+   "strict": false
+  },
+  {
+   "arm": "X no longer true; Y",
+   "item": 27,
+   "reply": "Yartarzor-44",
+   "has_y": true,
+   "has_x": false,
+   "strict": true
+  },
+  {
+   "arm": "X no longer true; Y",
+   "item": 28,
+   "reply": "",
+   "has_y": false,
+   "has_x": false,
+   "strict": false
+  },
+  {
+   "arm": "X no longer true; Y",
+   "item": 29,
+   "reply": "",
+   "has_y": false,
+   "has_x": false,
+   "strict": false
+  }
+ ]
+}

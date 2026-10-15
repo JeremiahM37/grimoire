@@ -95,3 +95,28 @@ injected and the per-rule pass map.
   different curve.
 - The selftest fake models check plumbing and scoring only. They say nothing
   about any real model.
+
+## Result (2026-10-14, gemma4:e4b, 20 trials per N, temperature 0)
+
+Run under the shared GPU research lease against a local 4B model.
+
+| Rules shown | Per-rule adherence (95% CI) | Every rule held |
+|---|---|---|
+| 1 | 65.0% (43-82%) | 13/20 |
+| 2 | 77.5% (62-88%) | 13/20 |
+| 4 | 61.3% (50-71%) | 1/20 |
+| 8 | 64.4% (57-71%) | 1/20 |
+| 16 | 61.3% (56-66%) | 0/20 |
+
+Adherence to each rule did not fall as rules were added. It stayed around
+60-78% from 1 to 16, so this model shows no capacity knee; the reported
+"knee at N=1" only means it was below 90% even with one rule. What collapses
+is the chance that every rule holds: from 13 of 20 trials at one or two
+rules, to 1 of 20 at four, to none at sixteen.
+
+For Grimoire, `rulecap` (at most 3 rules per injection) is justified by the
+second column, not the first. Each extra rule is another independent chance
+of a violation, and capping does not make any one rule more likely to be
+followed. A 4B model is far weaker than Claude or Codex, so the absolute
+rates do not transfer. Re-run with a stronger local model before using the
+numbers.

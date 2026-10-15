@@ -1,0 +1,2403 @@
+{
+ "model": "gemma4:e4b",
+ "seed": 20261014,
+ "grid": [
+  1,
+  2,
+  4,
+  8,
+  16
+ ],
+ "trials": 20,
+ "knee_threshold": 0.9,
+ "knee": 1,
+ "by_n": {
+  "1": {
+   "trials": 20,
+   "checks": 20,
+   "passes": 13,
+   "per_rule_adherence": 0.65,
+   "all_rules_held": 13,
+   "worst_rules": [
+    [
+     "r03",
+     2
+    ],
+    [
+     "r06",
+     1
+    ],
+    [
+     "r08",
+     1
+    ],
+    [
+     "r09",
+     1
+    ],
+    [
+     "r04",
+     1
+    ]
+   ]
+  },
+  "2": {
+   "trials": 20,
+   "checks": 40,
+   "passes": 31,
+   "per_rule_adherence": 0.775,
+   "all_rules_held": 13,
+   "worst_rules": [
+    [
+     "r11",
+     2
+    ],
+    [
+     "r03",
+     1
+    ],
+    [
+     "r09",
+     1
+    ],
+    [
+     "r12",
+     1
+    ],
+    [
+     "r06",
+     1
+    ]
+   ]
+  },
+  "4": {
+   "trials": 20,
+   "checks": 80,
+   "passes": 49,
+   "per_rule_adherence": 0.6125,
+   "all_rules_held": 1,
+   "worst_rules": [
+    [
+     "r05",
+     6
+    ],
+    [
+     "r13",
+     4
+    ],
+    [
+     "r15",
+     4
+    ],
+    [
+     "r09",
+     3
+    ],
+    [
+     "r07",
+     3
+    ]
+   ]
+  },
+  "8": {
+   "trials": 20,
+   "checks": 160,
+   "passes": 103,
+   "per_rule_adherence": 0.64375,
+   "all_rules_held": 1,
+   "worst_rules": [
+    [
+     "r04",
+     8
+    ],
+    [
+     "r01",
+     5
+    ],
+    [
+     "r09",
+     5
+    ],
+    [
+     "r13",
+     5
+    ],
+    [
+     "r15",
+     5
+    ]
+   ]
+  },
+  "16": {
+   "trials": 20,
+   "checks": 320,
+   "passes": 196,
+   "per_rule_adherence": 0.6125,
+   "all_rules_held": 0,
+   "worst_rules": [
+    [
+     "r03",
+     11
+    ],
+    [
+     "r05",
+     11
+    ],
+    [
+     "r09",
+     10
+    ],
+    [
+     "r10",
+     10
+    ],
+    [
+     "r14",
+     9
+    ]
+   ]
+  }
+ },
+ "rows": [
+  {
+   "n": 1,
+   "trial": 0,
+   "task": "archive the directory ~/notes/inbox into a tar.gz file in ~/backups",
+   "rules": [
+    "f12"
+   ],
+   "command": "tar -czf ~/backups/notes_inbox.tar.gz ~/notes/inbox",
+   "pass": {
+    "f12": true
+   }
+  },
+  {
+   "n": 1,
+   "trial": 1,
+   "task": "show the first 20 lines of the newest file in ~/projects/app/logs",
+   "rules": [
+    "r06"
+   ],
+   "command": "",
+   "pass": {
+    "r06": false
+   }
+  },
+  {
+   "n": 1,
+   "trial": 2,
+   "task": "list the git branches in ~/projects/grimoire that are merged into main",
+   "rules": [
+    "r08"
+   ],
+   "command": "",
+   "pass": {
+    "r08": false
+   }
+  },
+  {
+   "n": 1,
+   "trial": 3,
+   "task": "print the names of all empty directories under /tmp/scratch",
+   "rules": [
+    "f23"
+   ],
+   "command": "",
+   "pass": {
+    "f23": true
+   }
+  },
+  {
+   "n": 1,
+   "trial": 4,
+   "task": "print the names of all empty directories under /tmp/scratch",
+   "rules": [
+    "r09"
+   ],
+   "command": "",
+   "pass": {
+    "r09": false
+   }
+  },
+  {
+   "n": 1,
+   "trial": 5,
+   "task": "print the names of all empty directories under /tmp/scratch",
+   "rules": [
+    "f10"
+   ],
+   "command": "find /tmp/scratch -type d -empty",
+   "pass": {
+    "f10": true
+   }
+  },
+  {
+   "n": 1,
+   "trial": 6,
+   "task": "archive the directory ~/notes/inbox into a tar.gz file in ~/backups",
+   "rules": [
+    "r03"
+   ],
+   "command": "",
+   "pass": {
+    "r03": false
+   }
+  },
+  {
+   "n": 1,
+   "trial": 7,
+   "task": "report the disk usage of each subdirectory of /srv/data, sorted by size",
+   "rules": [
+    "r04"
+   ],
+   "command": "",
+   "pass": {
+    "r04": false
+   }
+  },
+  {
+   "n": 1,
+   "trial": 8,
+   "task": "find files over 100 MB under /mnt/bulk that were not accessed in 90 days",
+   "rules": [
+    "f18"
+   ],
+   "command": "find /mnt/bulk -type f -size +100M -atime +90",
+   "pass": {
+    "f18": true
+   }
+  },
+  {
+   "n": 1,
+   "trial": 9,
+   "task": "find Python files under ~/work that contain the string TODO and print their paths",
+   "rules": [
+    "f04"
+   ],
+   "command": "```bash\nfind ~/work -name \"*.py\" -print0 | xargs",
+   "pass": {
+    "f04": true
+   }
+  },
+  {
+   "n": 1,
+   "trial": 10,
+   "task": "show the hostname and the uptime of this machine",
+   "rules": [
+    "f21"
+   ],
+   "command": "",
+   "pass": {
+    "f21": true
+   }
+  },
+  {
+   "n": 1,
+   "trial": 11,
+   "task": "archive the directory ~/notes/inbox into a tar.gz file in ~/backups",
+   "rules": [
+    "r13"
+   ],
+   "command": "",
+   "pass": {
+    "r13": false
+   }
+  },
+  {
+   "n": 1,
+   "trial": 12,
+   "task": "find files over 100 MB under /mnt/bulk that were not accessed in 90 days",
+   "rules": [
+    "f21"
+   ],
+   "command": "find /mnt/bulk -type f -size +100M -atime +90",
+   "pass": {
+    "f21": true
+   }
+  },
+  {
+   "n": 1,
+   "trial": 13,
+   "task": "report the disk usage of each subdirectory of /srv/data, sorted by size",
+   "rules": [
+    "r03"
+   ],
+   "command": "",
+   "pass": {
+    "r03": false
+   }
+  },
+  {
+   "n": 1,
+   "trial": 14,
+   "task": "list the git branches in ~/projects/grimoire that are merged into main",
+   "rules": [
+    "f13"
+   ],
+   "command": "",
+   "pass": {
+    "f13": true
+   }
+  },
+  {
+   "n": 1,
+   "trial": 15,
+   "task": "count the *.log files under /var/log that changed in the last 24 hours",
+   "rules": [
+    "f22"
+   ],
+   "command": "",
+   "pass": {
+    "f22": true
+   }
+  },
+  {
+   "n": 1,
+   "trial": 16,
+   "task": "find Python files under ~/work that contain the string TODO and print their paths",
+   "rules": [
+    "f08"
+   ],
+   "command": "```bash\nfind ~/work -name \"*.py\" -print0 | xargs -0 grep -",
+   "pass": {
+    "f08": true
+   }
+  },
+  {
+   "n": 1,
+   "trial": 17,
+   "task": "find files over 100 MB under /mnt/bulk that were not accessed in 90 days",
+   "rules": [
+    "f07"
+   ],
+   "command": "",
+   "pass": {
+    "f07": true
+   }
+  },
+  {
+   "n": 1,
+   "trial": 18,
+   "task": "list the 5 largest regular files under a directory held in $DIR, largest first",
+   "rules": [
+    "f04"
+   ],
+   "command": "",
+   "pass": {
+    "f04": true
+   }
+  },
+  {
+   "n": 1,
+   "trial": 19,
+   "task": "print the names of all empty directories under /tmp/scratch",
+   "rules": [
+    "f18"
+   ],
+   "command": "",
+   "pass": {
+    "f18": true
+   }
+  },
+  {
+   "n": 2,
+   "trial": 0,
+   "task": "find files over 100 MB under /mnt/bulk that were not accessed in 90 days",
+   "rules": [
+    "f08",
+    "r03"
+   ],
+   "command": "```bash\nfind /mnt/bulk -type f -size +100M -atime +90",
+   "pass": {
+    "f08": true,
+    "r03": false
+   }
+  },
+  {
+   "n": 2,
+   "trial": 1,
+   "task": "find files over 100 MB under /mnt/bulk that were not accessed in 90 days",
+   "rules": [
+    "f06",
+    "f09"
+   ],
+   "command": "",
+   "pass": {
+    "f06": true,
+    "f09": true
+   }
+  },
+  {
+   "n": 2,
+   "trial": 2,
+   "task": "show the first 20 lines of the newest file in ~/projects/app/logs",
+   "rules": [
+    "f18",
+    "f24"
+   ],
+   "command": "",
+   "pass": {
+    "f18": true,
+    "f24": true
+   }
+  },
+  {
+   "n": 2,
+   "trial": 3,
+   "task": "list the 5 largest regular files under a directory held in $DIR, largest first",
+   "rules": [
+    "f24",
+    "f09"
+   ],
+   "command": "",
+   "pass": {
+    "f24": true,
+    "f09": true
+   }
+  },
+  {
+   "n": 2,
+   "trial": 4,
+   "task": "list the 5 largest regular files under a directory held in $DIR, largest first",
+   "rules": [
+    "f14",
+    "f01"
+   ],
+   "command": "",
+   "pass": {
+    "f14": true,
+    "f01": true
+   }
+  },
+  {
+   "n": 2,
+   "trial": 5,
+   "task": "report the disk usage of each subdirectory of /srv/data, sorted by size",
+   "rules": [
+    "r09",
+    "r11"
+   ],
+   "command": "",
+   "pass": {
+    "r09": false,
+    "r11": false
+   }
+  },
+  {
+   "n": 2,
+   "trial": 6,
+   "task": "list the 5 largest regular files under a directory held in $DIR, largest first",
+   "rules": [
+    "f01",
+    "f18"
+   ],
+   "command": "",
+   "pass": {
+    "f01": true,
+    "f18": true
+   }
+  },
+  {
+   "n": 2,
+   "trial": 7,
+   "task": "count the *.log files under /var/log that changed in the last 24 hours",
+   "rules": [
+    "f24",
+    "r10"
+   ],
+   "command": "find \"/var/log\" -type f -name \"*.log\" -mtime -1 | wc -l",
+   "pass": {
+    "f24": true,
+    "r10": true
+   }
+  },
+  {
+   "n": 2,
+   "trial": 8,
+   "task": "show the hostname and the uptime of this machine",
+   "rules": [
+    "f07",
+    "f23"
+   ],
+   "command": "echo \"Hostname: $(hostname)\"; echo \"Uptime: $(uptime)\"",
+   "pass": {
+    "f07": true,
+    "f23": true
+   }
+  },
+  {
+   "n": 2,
+   "trial": 9,
+   "task": "list the 5 largest regular files under a directory held in $DIR, largest first",
+   "rules": [
+    "f17",
+    "f01"
+   ],
+   "command": "",
+   "pass": {
+    "f17": true,
+    "f01": true
+   }
+  },
+  {
+   "n": 2,
+   "trial": 10,
+   "task": "count the *.log files under /var/log that changed in the last 24 hours",
+   "rules": [
+    "r12",
+    "r06"
+   ],
+   "command": "",
+   "pass": {
+    "r12": false,
+    "r06": false
+   }
+  },
+  {
+   "n": 2,
+   "trial": 11,
+   "task": "list the 5 largest regular files under a directory held in $DIR, largest first",
+   "rules": [
+    "f14",
+    "f01"
+   ],
+   "command": "",
+   "pass": {
+    "f14": true,
+    "f01": true
+   }
+  },
+  {
+   "n": 2,
+   "trial": 12,
+   "task": "show the first 20 lines of the newest file in ~/projects/app/logs",
+   "rules": [
+    "f14",
+    "r11"
+   ],
+   "command": "",
+   "pass": {
+    "f14": true,
+    "r11": false
+   }
+  },
+  {
+   "n": 2,
+   "trial": 13,
+   "task": "print the names of all empty directories under /tmp/scratch",
+   "rules": [
+    "f15",
+    "f24"
+   ],
+   "command": "",
+   "pass": {
+    "f15": true,
+    "f24": true
+   }
+  },
+  {
+   "n": 2,
+   "trial": 14,
+   "task": "report the disk usage of each subdirectory of /srv/data, sorted by size",
+   "rules": [
+    "f01",
+    "f14"
+   ],
+   "command": "",
+   "pass": {
+    "f01": true,
+    "f14": true
+   }
+  },
+  {
+   "n": 2,
+   "trial": 15,
+   "task": "show the first 20 lines of the newest file in ~/projects/app/logs",
+   "rules": [
+    "f07",
+    "r13"
+   ],
+   "command": "",
+   "pass": {
+    "f07": true,
+    "r13": false
+   }
+  },
+  {
+   "n": 2,
+   "trial": 16,
+   "task": "list the git branches in ~/projects/grimoire that are merged into main",
+   "rules": [
+    "f14",
+    "f16"
+   ],
+   "command": "",
+   "pass": {
+    "f14": true,
+    "f16": true
+   }
+  },
+  {
+   "n": 2,
+   "trial": 17,
+   "task": "count the *.log files under /var/log that changed in the last 24 hours",
+   "rules": [
+    "f14",
+    "f24"
+   ],
+   "command": "```bash",
+   "pass": {
+    "f14": true,
+    "f24": true
+   }
+  },
+  {
+   "n": 2,
+   "trial": 18,
+   "task": "archive the directory ~/notes/inbox into a tar.gz file in ~/backups",
+   "rules": [
+    "f17",
+    "r08"
+   ],
+   "command": "",
+   "pass": {
+    "f17": true,
+    "r08": false
+   }
+  },
+  {
+   "n": 2,
+   "trial": 19,
+   "task": "show the first 20 lines of the newest file in ~/projects/app/logs",
+   "rules": [
+    "r14",
+    "f14"
+   ],
+   "command": "",
+   "pass": {
+    "r14": false,
+    "f14": true
+   }
+  },
+  {
+   "n": 4,
+   "trial": 0,
+   "task": "show the first 20 lines of the newest file in ~/projects/app/logs",
+   "rules": [
+    "f02",
+    "r05",
+    "r13",
+    "r09"
+   ],
+   "command": "",
+   "pass": {
+    "f02": true,
+    "r05": false,
+    "r13": false,
+    "r09": false
+   }
+  },
+  {
+   "n": 4,
+   "trial": 1,
+   "task": "show the hostname and the uptime of this machine",
+   "rules": [
+    "r06",
+    "r15",
+    "r05",
+    "f01"
+   ],
+   "command": "",
+   "pass": {
+    "r06": false,
+    "r15": false,
+    "r05": false,
+    "f01": true
+   }
+  },
+  {
+   "n": 4,
+   "trial": 2,
+   "task": "show the hostname and the uptime of this machine",
+   "rules": [
+    "r05",
+    "f20",
+    "f17",
+    "f15"
+   ],
+   "command": "",
+   "pass": {
+    "r05": false,
+    "f20": true,
+    "f17": true,
+    "f15": true
+   }
+  },
+  {
+   "n": 4,
+   "trial": 3,
+   "task": "report the disk usage of each subdirectory of /srv/data, sorted by size",
+   "rules": [
+    "f05",
+    "r01",
+    "r07",
+    "f24"
+   ],
+   "command": "",
+   "pass": {
+    "f05": true,
+    "r01": false,
+    "r07": false,
+    "f24": true
+   }
+  },
+  {
+   "n": 4,
+   "trial": 4,
+   "task": "print the names of all empty directories under /tmp/scratch",
+   "rules": [
+    "r13",
+    "f10",
+    "r03",
+    "r02"
+   ],
+   "command": "",
+   "pass": {
+    "r13": false,
+    "f10": true,
+    "r03": false,
+    "r02": false
+   }
+  },
+  {
+   "n": 4,
+   "trial": 5,
+   "task": "show the hostname and the uptime of this machine",
+   "rules": [
+    "f19",
+    "r07",
+    "r01",
+    "r15"
+   ],
+   "command": "",
+   "pass": {
+    "f19": true,
+    "r07": false,
+    "r01": false,
+    "r15": false
+   }
+  },
+  {
+   "n": 4,
+   "trial": 6,
+   "task": "find Python files under ~/work that contain the string TODO and print their paths",
+   "rules": [
+    "f25",
+    "r03",
+    "f20",
+    "f23"
+   ],
+   "command": "",
+   "pass": {
+    "f25": true,
+    "r03": false,
+    "f20": true,
+    "f23": true
+   }
+  },
+  {
+   "n": 4,
+   "trial": 7,
+   "task": "find files over 100 MB under /mnt/bulk that were not accessed in 90 days",
+   "rules": [
+    "f07",
+    "f15",
+    "r05",
+    "r13"
+   ],
+   "command": "",
+   "pass": {
+    "f07": true,
+    "f15": true,
+    "r05": false,
+    "r13": false
+   }
+  },
+  {
+   "n": 4,
+   "trial": 8,
+   "task": "show the first 20 lines of the newest file in ~/projects/app/logs",
+   "rules": [
+    "f14",
+    "f25",
+    "f04",
+    "f10"
+   ],
+   "command": "",
+   "pass": {
+    "f14": true,
+    "f25": true,
+    "f04": true,
+    "f10": true
+   }
+  },
+  {
+   "n": 4,
+   "trial": 9,
+   "task": "print the names of all empty directories under /tmp/scratch",
+   "rules": [
+    "f21",
+    "f18",
+    "r07",
+    "f16"
+   ],
+   "command": "",
+   "pass": {
+    "f21": true,
+    "f18": true,
+    "r07": false,
+    "f16": true
+   }
+  },
+  {
+   "n": 4,
+   "trial": 10,
+   "task": "find files over 100 MB under /mnt/bulk that were not accessed in 90 days",
+   "rules": [
+    "f25",
+    "f05",
+    "f22",
+    "r11"
+   ],
+   "command": "",
+   "pass": {
+    "f25": true,
+    "f05": true,
+    "f22": true,
+    "r11": false
+   }
+  },
+  {
+   "n": 4,
+   "trial": 11,
+   "task": "count the *.log files under /var/log that changed in the last 24 hours",
+   "rules": [
+    "f25",
+    "r08",
+    "f04",
+    "f01"
+   ],
+   "command": "",
+   "pass": {
+    "f25": true,
+    "r08": false,
+    "f04": true,
+    "f01": true
+   }
+  },
+  {
+   "n": 4,
+   "trial": 12,
+   "task": "show the first 20 lines of the newest file in ~/projects/app/logs",
+   "rules": [
+    "f11",
+    "r02",
+    "f20",
+    "f15"
+   ],
+   "command": "",
+   "pass": {
+    "f11": true,
+    "r02": false,
+    "f20": true,
+    "f15": true
+   }
+  },
+  {
+   "n": 4,
+   "trial": 13,
+   "task": "print the names of all empty directories under /tmp/scratch",
+   "rules": [
+    "r04",
+    "f07",
+    "f19",
+    "f16"
+   ],
+   "command": "",
+   "pass": {
+    "r04": false,
+    "f07": true,
+    "f19": true,
+    "f16": true
+   }
+  },
+  {
+   "n": 4,
+   "trial": 14,
+   "task": "show the hostname and the uptime of this machine",
+   "rules": [
+    "f24",
+    "f12",
+    "f05",
+    "r13"
+   ],
+   "command": "",
+   "pass": {
+    "f24": true,
+    "f12": true,
+    "f05": true,
+    "r13": false
+   }
+  },
+  {
+   "n": 4,
+   "trial": 15,
+   "task": "archive the directory ~/notes/inbox into a tar.gz file in ~/backups",
+   "rules": [
+    "f13",
+    "f24",
+    "f08",
+    "r09"
+   ],
+   "command": "",
+   "pass": {
+    "f13": true,
+    "f24": true,
+    "f08": true,
+    "r09": false
+   }
+  },
+  {
+   "n": 4,
+   "trial": 16,
+   "task": "list the git branches in ~/projects/grimoire that are merged into main",
+   "rules": [
+    "r15",
+    "f02",
+    "f13",
+    "r05"
+   ],
+   "command": "",
+   "pass": {
+    "r15": false,
+    "f02": true,
+    "f13": true,
+    "r05": false
+   }
+  },
+  {
+   "n": 4,
+   "trial": 17,
+   "task": "find Python files under ~/work that contain the string TODO and print their paths",
+   "rules": [
+    "r14",
+    "f07",
+    "f23",
+    "r09"
+   ],
+   "command": "",
+   "pass": {
+    "r14": false,
+    "f07": true,
+    "f23": true,
+    "r09": false
+   }
+  },
+  {
+   "n": 4,
+   "trial": 18,
+   "task": "list the git branches in ~/projects/grimoire that are merged into main",
+   "rules": [
+    "r05",
+    "f12",
+    "f21",
+    "f11"
+   ],
+   "command": "",
+   "pass": {
+    "r05": false,
+    "f12": true,
+    "f21": true,
+    "f11": true
+   }
+  },
+  {
+   "n": 4,
+   "trial": 19,
+   "task": "find files over 100 MB under /mnt/bulk that were not accessed in 90 days",
+   "rules": [
+    "f13",
+    "r15",
+    "f17",
+    "f08"
+   ],
+   "command": "",
+   "pass": {
+    "f13": true,
+    "r15": false,
+    "f17": true,
+    "f08": true
+   }
+  },
+  {
+   "n": 8,
+   "trial": 0,
+   "task": "list the 5 largest regular files under a directory held in $DIR, largest first",
+   "rules": [
+    "f11",
+    "r03",
+    "f21",
+    "r10",
+    "f07",
+    "r14",
+    "f20",
+    "f04"
+   ],
+   "command": "",
+   "pass": {
+    "f11": true,
+    "r03": false,
+    "f21": true,
+    "r10": false,
+    "f07": true,
+    "r14": false,
+    "f20": true,
+    "f04": true
+   }
+  },
+  {
+   "n": 8,
+   "trial": 1,
+   "task": "count the *.log files under /var/log that changed in the last 24 hours",
+   "rules": [
+    "f11",
+    "r11",
+    "r01",
+    "f03",
+    "f08",
+    "r04",
+    "r08",
+    "r02"
+   ],
+   "command": "",
+   "pass": {
+    "f11": true,
+    "r11": false,
+    "r01": false,
+    "f03": true,
+    "f08": true,
+    "r04": false,
+    "r08": false,
+    "r02": false
+   }
+  },
+  {
+   "n": 8,
+   "trial": 2,
+   "task": "print the names of all empty directories under /tmp/scratch",
+   "rules": [
+    "f12",
+    "f06",
+    "r08",
+    "r01",
+    "f07",
+    "f17",
+    "r04",
+    "f15"
+   ],
+   "command": "",
+   "pass": {
+    "f12": true,
+    "f06": true,
+    "r08": false,
+    "r01": false,
+    "f07": true,
+    "f17": true,
+    "r04": false,
+    "f15": true
+   }
+  },
+  {
+   "n": 8,
+   "trial": 3,
+   "task": "report the disk usage of each subdirectory of /srv/data, sorted by size",
+   "rules": [
+    "f18",
+    "f12",
+    "f11",
+    "f15",
+    "r09",
+    "f04",
+    "r08",
+    "f07"
+   ],
+   "command": "",
+   "pass": {
+    "f18": true,
+    "f12": true,
+    "f11": true,
+    "f15": true,
+    "r09": false,
+    "f04": true,
+    "r08": false,
+    "f07": true
+   }
+  },
+  {
+   "n": 8,
+   "trial": 4,
+   "task": "count the *.log files under /var/log that changed in the last 24 hours",
+   "rules": [
+    "r13",
+    "f15",
+    "f23",
+    "r15",
+    "r06",
+    "r01",
+    "f22",
+    "r07"
+   ],
+   "command": "",
+   "pass": {
+    "r13": false,
+    "f15": true,
+    "f23": true,
+    "r15": false,
+    "r06": false,
+    "r01": false,
+    "f22": true,
+    "r07": false
+   }
+  },
+  {
+   "n": 8,
+   "trial": 5,
+   "task": "list the 5 largest regular files under a directory held in $DIR, largest first",
+   "rules": [
+    "f04",
+    "r05",
+    "r13",
+    "f01",
+    "f14",
+    "f12",
+    "f22",
+    "r09"
+   ],
+   "command": "",
+   "pass": {
+    "f04": true,
+    "r05": false,
+    "r13": false,
+    "f01": true,
+    "f14": true,
+    "f12": true,
+    "f22": true,
+    "r09": false
+   }
+  },
+  {
+   "n": 8,
+   "trial": 6,
+   "task": "find files over 100 MB under /mnt/bulk that were not accessed in 90 days",
+   "rules": [
+    "r02",
+    "r09",
+    "f06",
+    "f11",
+    "f16",
+    "f03",
+    "f02",
+    "f25"
+   ],
+   "command": "",
+   "pass": {
+    "r02": false,
+    "r09": false,
+    "f06": true,
+    "f11": true,
+    "f16": true,
+    "f03": true,
+    "f02": true,
+    "f25": true
+   }
+  },
+  {
+   "n": 8,
+   "trial": 7,
+   "task": "show the hostname and the uptime of this machine",
+   "rules": [
+    "r04",
+    "f19",
+    "f10",
+    "f16",
+    "r09",
+    "f24",
+    "f11",
+    "f13"
+   ],
+   "command": "",
+   "pass": {
+    "r04": false,
+    "f19": true,
+    "f10": true,
+    "f16": true,
+    "r09": false,
+    "f24": true,
+    "f11": true,
+    "f13": true
+   }
+  },
+  {
+   "n": 8,
+   "trial": 8,
+   "task": "show the first 20 lines of the newest file in ~/projects/app/logs",
+   "rules": [
+    "r13",
+    "f25",
+    "f08",
+    "f12",
+    "r15",
+    "r10",
+    "f16",
+    "r12"
+   ],
+   "command": "",
+   "pass": {
+    "r13": false,
+    "f25": true,
+    "f08": true,
+    "f12": true,
+    "r15": false,
+    "r10": false,
+    "f16": true,
+    "r12": false
+   }
+  },
+  {
+   "n": 8,
+   "trial": 9,
+   "task": "show the first 20 lines of the newest file in ~/projects/app/logs",
+   "rules": [
+    "f12",
+    "f18",
+    "r05",
+    "f05",
+    "f04",
+    "f25",
+    "r15",
+    "r10"
+   ],
+   "command": "",
+   "pass": {
+    "f12": true,
+    "f18": true,
+    "r05": false,
+    "f05": true,
+    "f04": true,
+    "f25": true,
+    "r15": false,
+    "r10": false
+   }
+  },
+  {
+   "n": 8,
+   "trial": 10,
+   "task": "show the first 20 lines of the newest file in ~/projects/app/logs",
+   "rules": [
+    "r13",
+    "r07",
+    "f06",
+    "r11",
+    "f04",
+    "f24",
+    "r04",
+    "f18"
+   ],
+   "command": "",
+   "pass": {
+    "r13": false,
+    "r07": false,
+    "f06": true,
+    "r11": false,
+    "f04": true,
+    "f24": true,
+    "r04": false,
+    "f18": true
+   }
+  },
+  {
+   "n": 8,
+   "trial": 11,
+   "task": "report the disk usage of each subdirectory of /srv/data, sorted by size",
+   "rules": [
+    "f22",
+    "f11",
+    "r12",
+    "r07",
+    "r05",
+    "f23",
+    "f03",
+    "f20"
+   ],
+   "command": "",
+   "pass": {
+    "f22": true,
+    "f11": true,
+    "r12": false,
+    "r07": false,
+    "r05": false,
+    "f23": true,
+    "f03": true,
+    "f20": true
+   }
+  },
+  {
+   "n": 8,
+   "trial": 12,
+   "task": "report the disk usage of each subdirectory of /srv/data, sorted by size",
+   "rules": [
+    "f04",
+    "f25",
+    "f03",
+    "f22",
+    "f18",
+    "f19",
+    "f07",
+    "f01"
+   ],
+   "command": "",
+   "pass": {
+    "f04": true,
+    "f25": true,
+    "f03": true,
+    "f22": true,
+    "f18": true,
+    "f19": true,
+    "f07": true,
+    "f01": true
+   }
+  },
+  {
+   "n": 8,
+   "trial": 13,
+   "task": "show the hostname and the uptime of this machine",
+   "rules": [
+    "f09",
+    "f21",
+    "f18",
+    "f06",
+    "f02",
+    "r01",
+    "r02",
+    "r15"
+   ],
+   "command": "",
+   "pass": {
+    "f09": true,
+    "f21": true,
+    "f18": true,
+    "f06": true,
+    "f02": true,
+    "r01": false,
+    "r02": false,
+    "r15": false
+   }
+  },
+  {
+   "n": 8,
+   "trial": 14,
+   "task": "report the disk usage of each subdirectory of /srv/data, sorted by size",
+   "rules": [
+    "f12",
+    "r13",
+    "f10",
+    "r05",
+    "r15",
+    "f03",
+    "f02",
+    "f21"
+   ],
+   "command": "",
+   "pass": {
+    "f12": true,
+    "r13": false,
+    "f10": true,
+    "r05": false,
+    "r15": false,
+    "f03": true,
+    "f02": true,
+    "f21": true
+   }
+  },
+  {
+   "n": 8,
+   "trial": 15,
+   "task": "find files over 100 MB under /mnt/bulk that were not accessed in 90 days",
+   "rules": [
+    "f19",
+    "f25",
+    "f05",
+    "f02",
+    "r03",
+    "r14",
+    "r08",
+    "f24"
+   ],
+   "command": "",
+   "pass": {
+    "f19": true,
+    "f25": true,
+    "f05": true,
+    "f02": true,
+    "r03": false,
+    "r14": false,
+    "r08": false,
+    "f24": true
+   }
+  },
+  {
+   "n": 8,
+   "trial": 16,
+   "task": "count the *.log files under /var/log that changed in the last 24 hours",
+   "rules": [
+    "r04",
+    "f21",
+    "f05",
+    "f08",
+    "f22",
+    "f09",
+    "f13",
+    "r01"
+   ],
+   "command": "",
+   "pass": {
+    "r04": false,
+    "f21": true,
+    "f05": true,
+    "f08": true,
+    "f22": true,
+    "f09": true,
+    "f13": true,
+    "r01": false
+   }
+  },
+  {
+   "n": 8,
+   "trial": 17,
+   "task": "print the names of all empty directories under /tmp/scratch",
+   "rules": [
+    "f15",
+    "f04",
+    "f05",
+    "f13",
+    "f24",
+    "r04",
+    "f16",
+    "r02"
+   ],
+   "command": "",
+   "pass": {
+    "f15": true,
+    "f04": true,
+    "f05": true,
+    "f13": true,
+    "f24": true,
+    "r04": false,
+    "f16": true,
+    "r02": false
+   }
+  },
+  {
+   "n": 8,
+   "trial": 18,
+   "task": "find files over 100 MB under /mnt/bulk that were not accessed in 90 days",
+   "rules": [
+    "r04",
+    "f21",
+    "f06",
+    "r11",
+    "r09",
+    "f17",
+    "r14",
+    "f01"
+   ],
+   "command": "",
+   "pass": {
+    "r04": false,
+    "f21": true,
+    "f06": true,
+    "r11": false,
+    "r09": false,
+    "f17": true,
+    "r14": false,
+    "f01": true
+   }
+  },
+  {
+   "n": 8,
+   "trial": 19,
+   "task": "list the 5 largest regular files under a directory held in $DIR, largest first",
+   "rules": [
+    "f20",
+    "f10",
+    "f13",
+    "r04",
+    "f14",
+    "f08",
+    "f25",
+    "f24"
+   ],
+   "command": "",
+   "pass": {
+    "f20": true,
+    "f10": true,
+    "f13": true,
+    "r04": false,
+    "f14": true,
+    "f08": true,
+    "f25": true,
+    "f24": true
+   }
+  },
+  {
+   "n": 16,
+   "trial": 0,
+   "task": "show the first 20 lines of the newest file in ~/projects/app/logs",
+   "rules": [
+    "f14",
+    "r15",
+    "f13",
+    "r02",
+    "r11",
+    "f07",
+    "r01",
+    "r03",
+    "f08",
+    "r06",
+    "f05",
+    "f22",
+    "f16",
+    "f17",
+    "f20",
+    "f25"
+   ],
+   "command": "",
+   "pass": {
+    "f14": true,
+    "r15": false,
+    "f13": true,
+    "r02": false,
+    "r11": false,
+    "f07": true,
+    "r01": false,
+    "r03": false,
+    "f08": true,
+    "r06": false,
+    "f05": true,
+    "f22": true,
+    "f16": true,
+    "f17": true,
+    "f20": true,
+    "f25": true
+   }
+  },
+  {
+   "n": 16,
+   "trial": 1,
+   "task": "list the git branches in ~/projects/grimoire that are merged into main",
+   "rules": [
+    "f13",
+    "f11",
+    "r06",
+    "f09",
+    "f17",
+    "f01",
+    "f21",
+    "f02",
+    "r03",
+    "r02",
+    "f23",
+    "f18",
+    "r07",
+    "f20",
+    "r12",
+    "r09"
+   ],
+   "command": "",
+   "pass": {
+    "f13": true,
+    "f11": true,
+    "r06": false,
+    "f09": true,
+    "f17": true,
+    "f01": true,
+    "f21": true,
+    "f02": true,
+    "r03": false,
+    "r02": false,
+    "f23": true,
+    "f18": true,
+    "r07": false,
+    "f20": true,
+    "r12": false,
+    "r09": false
+   }
+  },
+  {
+   "n": 16,
+   "trial": 2,
+   "task": "count the *.log files under /var/log that changed in the last 24 hours",
+   "rules": [
+    "f02",
+    "f03",
+    "f13",
+    "r05",
+    "r08",
+    "r14",
+    "f18",
+    "f20",
+    "r09",
+    "r03",
+    "f25",
+    "f04",
+    "f01",
+    "f17",
+    "r10",
+    "f15"
+   ],
+   "command": "",
+   "pass": {
+    "f02": true,
+    "f03": true,
+    "f13": true,
+    "r05": false,
+    "r08": false,
+    "r14": false,
+    "f18": true,
+    "f20": true,
+    "r09": false,
+    "r03": false,
+    "f25": true,
+    "f04": true,
+    "f01": true,
+    "f17": true,
+    "r10": false,
+    "f15": true
+   }
+  },
+  {
+   "n": 16,
+   "trial": 3,
+   "task": "find files over 100 MB under /mnt/bulk that were not accessed in 90 days",
+   "rules": [
+    "f07",
+    "r10",
+    "f15",
+    "r03",
+    "f02",
+    "r13",
+    "f16",
+    "r02",
+    "f20",
+    "f11",
+    "f25",
+    "r08",
+    "f17",
+    "r07",
+    "f22",
+    "f23"
+   ],
+   "command": "",
+   "pass": {
+    "f07": true,
+    "r10": false,
+    "f15": true,
+    "r03": false,
+    "f02": true,
+    "r13": false,
+    "f16": true,
+    "r02": false,
+    "f20": true,
+    "f11": true,
+    "f25": true,
+    "r08": false,
+    "f17": true,
+    "r07": false,
+    "f22": true,
+    "f23": true
+   }
+  },
+  {
+   "n": 16,
+   "trial": 4,
+   "task": "archive the directory ~/notes/inbox into a tar.gz file in ~/backups",
+   "rules": [
+    "f22",
+    "f25",
+    "r10",
+    "f17",
+    "f08",
+    "r09",
+    "f02",
+    "r07",
+    "r06",
+    "r01",
+    "f07",
+    "f19",
+    "r05",
+    "f01",
+    "r14",
+    "f10"
+   ],
+   "command": "",
+   "pass": {
+    "f22": true,
+    "f25": true,
+    "r10": false,
+    "f17": true,
+    "f08": true,
+    "r09": false,
+    "f02": true,
+    "r07": false,
+    "r06": false,
+    "r01": false,
+    "f07": true,
+    "f19": true,
+    "r05": false,
+    "f01": true,
+    "r14": false,
+    "f10": true
+   }
+  },
+  {
+   "n": 16,
+   "trial": 5,
+   "task": "print the names of all empty directories under /tmp/scratch",
+   "rules": [
+    "f07",
+    "f09",
+    "r04",
+    "r09",
+    "f17",
+    "f14",
+    "r03",
+    "r08",
+    "f25",
+    "f21",
+    "f06",
+    "r15",
+    "f15",
+    "f18",
+    "f12",
+    "r14"
+   ],
+   "command": "",
+   "pass": {
+    "f07": true,
+    "f09": true,
+    "r04": false,
+    "r09": false,
+    "f17": true,
+    "f14": true,
+    "r03": false,
+    "r08": false,
+    "f25": true,
+    "f21": true,
+    "f06": true,
+    "r15": false,
+    "f15": true,
+    "f18": true,
+    "f12": true,
+    "r14": false
+   }
+  },
+  {
+   "n": 16,
+   "trial": 6,
+   "task": "archive the directory ~/notes/inbox into a tar.gz file in ~/backups",
+   "rules": [
+    "r09",
+    "f05",
+    "f17",
+    "f08",
+    "r12",
+    "r11",
+    "f06",
+    "r04",
+    "r10",
+    "f03",
+    "f16",
+    "f04",
+    "f15",
+    "f19",
+    "r03",
+    "f25"
+   ],
+   "command": "",
+   "pass": {
+    "r09": false,
+    "f05": true,
+    "f17": true,
+    "f08": true,
+    "r12": false,
+    "r11": false,
+    "f06": true,
+    "r04": false,
+    "r10": false,
+    "f03": true,
+    "f16": true,
+    "f04": true,
+    "f15": true,
+    "f19": true,
+    "r03": false,
+    "f25": true
+   }
+  },
+  {
+   "n": 16,
+   "trial": 7,
+   "task": "find Python files under ~/work that contain the string TODO and print their paths",
+   "rules": [
+    "f15",
+    "r07",
+    "f20",
+    "r10",
+    "r08",
+    "f25",
+    "f14",
+    "r09",
+    "f17",
+    "f23",
+    "f04",
+    "f09",
+    "f06",
+    "f03",
+    "r01",
+    "f01"
+   ],
+   "command": "",
+   "pass": {
+    "f15": true,
+    "r07": false,
+    "f20": true,
+    "r10": false,
+    "r08": false,
+    "f25": true,
+    "f14": true,
+    "r09": false,
+    "f17": true,
+    "f23": true,
+    "f04": true,
+    "f09": true,
+    "f06": true,
+    "f03": true,
+    "r01": false,
+    "f01": true
+   }
+  },
+  {
+   "n": 16,
+   "trial": 8,
+   "task": "list the git branches in ~/projects/grimoire that are merged into main",
+   "rules": [
+    "r02",
+    "f15",
+    "f14",
+    "f17",
+    "r05",
+    "f24",
+    "r04",
+    "f01",
+    "r13",
+    "r09",
+    "r03",
+    "r14",
+    "f03",
+    "f12",
+    "r06",
+    "f16"
+   ],
+   "command": "",
+   "pass": {
+    "r02": false,
+    "f15": true,
+    "f14": true,
+    "f17": true,
+    "r05": false,
+    "f24": true,
+    "r04": false,
+    "f01": true,
+    "r13": false,
+    "r09": false,
+    "r03": false,
+    "r14": false,
+    "f03": true,
+    "f12": true,
+    "r06": false,
+    "f16": true
+   }
+  },
+  {
+   "n": 16,
+   "trial": 9,
+   "task": "report the disk usage of each subdirectory of /srv/data, sorted by size",
+   "rules": [
+    "f13",
+    "r13",
+    "r10",
+    "f07",
+    "r08",
+    "f24",
+    "r09",
+    "f04",
+    "f03",
+    "f23",
+    "f05",
+    "f22",
+    "f16",
+    "r12",
+    "f19",
+    "r04"
+   ],
+   "command": "",
+   "pass": {
+    "f13": true,
+    "r13": false,
+    "r10": false,
+    "f07": true,
+    "r08": false,
+    "f24": true,
+    "r09": false,
+    "f04": true,
+    "f03": true,
+    "f23": true,
+    "f05": true,
+    "f22": true,
+    "f16": true,
+    "r12": false,
+    "f19": true,
+    "r04": false
+   }
+  },
+  {
+   "n": 16,
+   "trial": 10,
+   "task": "count the *.log files under /var/log that changed in the last 24 hours",
+   "rules": [
+    "r07",
+    "f21",
+    "f01",
+    "f14",
+    "f13",
+    "r14",
+    "f17",
+    "f07",
+    "r12",
+    "r01",
+    "f12",
+    "f11",
+    "f09",
+    "f16",
+    "r05",
+    "f18"
+   ],
+   "command": "",
+   "pass": {
+    "r07": false,
+    "f21": true,
+    "f01": true,
+    "f14": true,
+    "f13": true,
+    "r14": false,
+    "f17": true,
+    "f07": true,
+    "r12": false,
+    "r01": false,
+    "f12": true,
+    "f11": true,
+    "f09": true,
+    "f16": true,
+    "r05": false,
+    "f18": true
+   }
+  },
+  {
+   "n": 16,
+   "trial": 11,
+   "task": "count the *.log files under /var/log that changed in the last 24 hours",
+   "rules": [
+    "f25",
+    "f19",
+    "r15",
+    "r14",
+    "r01",
+    "f04",
+    "f09",
+    "f11",
+    "f22",
+    "f06",
+    "f14",
+    "r03",
+    "r11",
+    "r09",
+    "r05",
+    "f18"
+   ],
+   "command": "",
+   "pass": {
+    "f25": true,
+    "f19": true,
+    "r15": false,
+    "r14": false,
+    "r01": false,
+    "f04": true,
+    "f09": true,
+    "f11": true,
+    "f22": true,
+    "f06": true,
+    "f14": true,
+    "r03": false,
+    "r11": false,
+    "r09": false,
+    "r05": false,
+    "f18": true
+   }
+  },
+  {
+   "n": 16,
+   "trial": 12,
+   "task": "list the git branches in ~/projects/grimoire that are merged into main",
+   "rules": [
+    "f08",
+    "f25",
+    "f09",
+    "f01",
+    "f07",
+    "f20",
+    "r04",
+    "r12",
+    "f13",
+    "r13",
+    "f15",
+    "r15",
+    "f24",
+    "f16",
+    "r11",
+    "r02"
+   ],
+   "command": "",
+   "pass": {
+    "f08": true,
+    "f25": true,
+    "f09": true,
+    "f01": true,
+    "f07": true,
+    "f20": true,
+    "r04": false,
+    "r12": false,
+    "f13": true,
+    "r13": false,
+    "f15": true,
+    "r15": false,
+    "f24": true,
+    "f16": true,
+    "r11": false,
+    "r02": false
+   }
+  },
+  {
+   "n": 16,
+   "trial": 13,
+   "task": "list the 5 largest regular files under a directory held in $DIR, largest first",
+   "rules": [
+    "r11",
+    "r02",
+    "f16",
+    "f15",
+    "f01",
+    "r10",
+    "f21",
+    "f24",
+    "r05",
+    "f08",
+    "r04",
+    "f20",
+    "f17",
+    "r08",
+    "r12",
+    "f07"
+   ],
+   "command": "",
+   "pass": {
+    "r11": false,
+    "r02": false,
+    "f16": true,
+    "f15": true,
+    "f01": true,
+    "r10": false,
+    "f21": true,
+    "f24": true,
+    "r05": false,
+    "f08": true,
+    "r04": false,
+    "f20": true,
+    "f17": true,
+    "r08": false,
+    "r12": false,
+    "f07": true
+   }
+  },
+  {
+   "n": 16,
+   "trial": 14,
+   "task": "list the 5 largest regular files under a directory held in $DIR, largest first",
+   "rules": [
+    "f03",
+    "f18",
+    "r03",
+    "r01",
+    "r14",
+    "r10",
+    "r05",
+    "f13",
+    "f06",
+    "f01",
+    "f02",
+    "f09",
+    "r12",
+    "r06",
+    "f25",
+    "f14"
+   ],
+   "command": "",
+   "pass": {
+    "f03": true,
+    "f18": true,
+    "r03": false,
+    "r01": false,
+    "r14": false,
+    "r10": false,
+    "r05": false,
+    "f13": true,
+    "f06": true,
+    "f01": true,
+    "f02": true,
+    "f09": true,
+    "r12": false,
+    "r06": false,
+    "f25": true,
+    "f14": true
+   }
+  },
+  {
+   "n": 16,
+   "trial": 15,
+   "task": "find Python files under ~/work that contain the string TODO and print their paths",
+   "rules": [
+    "f19",
+    "f13",
+    "r15",
+    "f06",
+    "r13",
+    "r07",
+    "r05",
+    "f05",
+    "f11",
+    "f17",
+    "f03",
+    "r06",
+    "r10",
+    "f10",
+    "r08",
+    "f07"
+   ],
+   "command": "",
+   "pass": {
+    "f19": true,
+    "f13": true,
+    "r15": false,
+    "f06": true,
+    "r13": false,
+    "r07": false,
+    "r05": false,
+    "f05": true,
+    "f11": true,
+    "f17": true,
+    "f03": true,
+    "r06": false,
+    "r10": false,
+    "f10": true,
+    "r08": false,
+    "f07": true
+   }
+  },
+  {
+   "n": 16,
+   "trial": 16,
+   "task": "list the 5 largest regular files under a directory held in $DIR, largest first",
+   "rules": [
+    "f19",
+    "r04",
+    "r03",
+    "f24",
+    "f01",
+    "f11",
+    "r07",
+    "f21",
+    "r14",
+    "f10",
+    "f04",
+    "f16",
+    "r11",
+    "f07",
+    "f18",
+    "r05"
+   ],
+   "command": "",
+   "pass": {
+    "f19": true,
+    "r04": false,
+    "r03": false,
+    "f24": true,
+    "f01": true,
+    "f11": true,
+    "r07": false,
+    "f21": true,
+    "r14": false,
+    "f10": true,
+    "f04": true,
+    "f16": true,
+    "r11": false,
+    "f07": true,
+    "f18": true,
+    "r05": false
+   }
+  },
+  {
+   "n": 16,
+   "trial": 17,
+   "task": "list the 5 largest regular files under a directory held in $DIR, largest first",
+   "rules": [
+    "r04",
+    "r12",
+    "f14",
+    "f03",
+    "f13",
+    "r05",
+    "f18",
+    "f24",
+    "r14",
+    "f20",
+    "f02",
+    "f04",
+    "r15",
+    "r13",
+    "f17",
+    "r03"
+   ],
+   "command": "",
+   "pass": {
+    "r04": false,
+    "r12": false,
+    "f14": true,
+    "f03": true,
+    "f13": true,
+    "r05": false,
+    "f18": true,
+    "f24": true,
+    "r14": false,
+    "f20": true,
+    "f02": true,
+    "f04": true,
+    "r15": false,
+    "r13": false,
+    "f17": true,
+    "r03": false
+   }
+  },
+  {
+   "n": 16,
+   "trial": 18,
+   "task": "show the hostname and the uptime of this machine",
+   "rules": [
+    "r07",
+    "r06",
+    "f11",
+    "f13",
+    "f22",
+    "f08",
+    "r08",
+    "f09",
+    "f21",
+    "f06",
+    "r10",
+    "r05",
+    "f04",
+    "r01",
+    "f19",
+    "f12"
+   ],
+   "command": "",
+   "pass": {
+    "r07": false,
+    "r06": false,
+    "f11": true,
+    "f13": true,
+    "f22": true,
+    "f08": true,
+    "r08": false,
+    "f09": true,
+    "f21": true,
+    "f06": true,
+    "r10": false,
+    "r05": false,
+    "f04": true,
+    "r01": false,
+    "f19": true,
+    "f12": true
+   }
+  },
+  {
+   "n": 16,
+   "trial": 19,
+   "task": "count the *.log files under /var/log that changed in the last 24 hours",
+   "rules": [
+    "f01",
+    "r01",
+    "f15",
+    "f16",
+    "f02",
+    "f10",
+    "r09",
+    "f12",
+    "f18",
+    "r06",
+    "f07",
+    "f24",
+    "f08",
+    "f19",
+    "f09",
+    "r15"
+   ],
+   "command": "",
+   "pass": {
+    "f01": true,
+    "r01": false,
+    "f15": true,
+    "f16": true,
+    "f02": true,
+    "f10": true,
+    "r09": false,
+    "f12": true,
+    "f18": true,
+    "r06": false,
+    "f07": true,
+    "f24": true,
+    "f08": true,
+    "f19": true,
+    "f09": true,
+    "r15": false
+   }
+  }
+ ]
+}
