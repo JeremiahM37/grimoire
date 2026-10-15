@@ -496,3 +496,43 @@ func TestOutcomeFingerprintInputIsValidated(t *testing.T) {
 		}
 	}
 }
+
+// A Grimoire write's returned ids are recorded against the session hash and
+// nothing else is scored; invalid ids and oversized lists are refused.
+func TestOutcomeWroteRecordsFactIdsForTheSession(t *testing.T) {
+	s, h := testServer(t)
+	const session = "sess-wrote-5555"
+	postOutcome(t, h, map[string]any{"session": session, "wrote": []string{"0123456789ab", "0123456789ab-2"}, "tu": "toolu_42"})
+	got, err := s.adh().Writes(session)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].FactID != "0123456789ab" || got[0].TU != "toolu_42" || got[1].FactID != "0123456789ab-2" {
+		t.Fatalf("stored writes = %+v", got)
+	}
+	// Nothing else is recorded for a write: no tool or cited rows appear.
+	if rows, _ := s.adh().Writes(""); len(rows) != 0 {
+		t.Fatalf("empty session matched %d rows", len(rows))
+	}
+	bad := []map[string]any{
+		{"session": session, "wrote": []string{"NOT-AN-ID"}},
+		{"session": session, "wrote": []string{"0123456789abc"}},
+		{"session": session, "wrote": []string{"0123456789ab", "a/../../etc"}},
+		{"session": session, "wrote": []string{strings.Repeat("0123456789ab", 1), "0123456789ac", "0123456789ad",
+			"0123456789ae", "0123456789af", "0123456789b0", "0123456789b1", "0123456789b2", "0123456789b3"}},
+	}
+	for _, b := range bad {
+		if rec := do(t, h, "POST", "/api/memory/outcome", b); rec.Code != 400 {
+			t.Errorf("%v -> %d, want 400", b["wrote"], rec.Code)
+		}
+	}
+	// Eight is the limit and is accepted.
+	eight := []string{}
+	for i := 0; i < 8; i++ {
+		eight = append(eight, fmt.Sprintf("0123456789%02x", i))
+	}
+	postOutcome(t, h, map[string]any{"session": session, "wrote": eight})
+	if rows, _ := s.adh().Writes(session); len(rows) != 10 {
+		t.Fatalf("after eight more ids the session has %d writes, want 10", len(rows))
+	}
+}

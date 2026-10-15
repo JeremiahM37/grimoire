@@ -13,6 +13,8 @@ package adherence
 //	trace_withheld    holdout: the item would have been injected and was not
 //	trace_sessions    prompt boundaries, to attach a user correction to the
 //	                  actions of the turn it corrects
+//	trace_writes      fact ids a session wrote with a Grimoire memory tool, keyed
+//	                  by the same session hash as injections (ids only)
 
 import (
 	"crypto/sha256"
@@ -82,6 +84,11 @@ var traceSchema = []string{
 	`CREATE INDEX IF NOT EXISTS trace_withheld_target ON trace_withheld(target, ts)`,
 	`CREATE TABLE IF NOT EXISTS trace_sessions (
 		session TEXT PRIMARY KEY, prev_ts INTEGER NOT NULL DEFAULT 0, last_ts INTEGER NOT NULL DEFAULT 0)`,
+	`CREATE TABLE IF NOT EXISTS trace_writes (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		session TEXT NOT NULL, fact_id TEXT NOT NULL, tu TEXT NOT NULL DEFAULT '', ts INTEGER NOT NULL)`,
+	`CREATE INDEX IF NOT EXISTS trace_writes_session ON trace_writes(session, ts)`,
+	`CREATE INDEX IF NOT EXISTS trace_writes_fact ON trace_writes(fact_id)`,
 }
 
 // traceColumns are added to injections on open.
@@ -509,6 +516,66 @@ func pruneAll(tx execer, now time.Time) {
 	tx.Exec(`DELETE FROM trace_withheld WHERE ts < ?`, cut)
 	tx.Exec(`DELETE FROM trace_withheld WHERE id <= (SELECT COALESCE(MAX(id),0) FROM trace_withheld) - ?`, maxWithheld)
 	tx.Exec(`DELETE FROM trace_sessions WHERE last_ts < ?`, cut)
+	tx.Exec(`DELETE FROM trace_writes WHERE ts < ?`, cut)
 	tx.Exec(`DELETE FROM trace_links WHERE ts < ? OR injection_id NOT IN (SELECT id FROM injections) OR action_id NOT IN (SELECT id FROM trace_actions)`, cut)
 	tx.Exec(`DELETE FROM trace_links WHERE rowid <= (SELECT COALESCE(MAX(rowid),0) FROM trace_links) - ?`, maxLinks)
+}
+
+// Write is one fact a session wrote, as the trace links it: the session hash
+// the injection rows use, the fact id, the harness's tool_use id (may be empty)
+// and the time in unix seconds.
+type Write struct {
+	Session string `json:"session"`
+	FactID  string `json:"fact_id"`
+	TU      string `json:"tu"`
+	TS      int64  `json:"ts"`
+}
+
+// RecordWrites stores the fact ids a session wrote. It prunes like Log.
+func (s *Store) RecordWrites(session, tu string, ids []string, now time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	for _, id := range ids {
+		if _, err := tx.Exec(`INSERT INTO trace_writes(session,fact_id,tu,ts) VALUES(?,?,?,?)`,
+			session, id, tu, now.Unix()); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+	if now.Sub(s.lastPrune) > time.Minute {
+		s.lastPrune = now
+		pruneAll(tx, now)
+	}
+	return tx.Commit()
+}
+
+// Writes returns the facts one session wrote, oldest first.
+func (s *Store) Writes(session string) ([]Write, error) {
+	return s.queryWrites(`SELECT session,fact_id,tu,ts FROM trace_writes WHERE session=? ORDER BY id`, session)
+}
+
+// WritesFor returns every session that wrote one fact, oldest first.
+func (s *Store) WritesFor(factID string) ([]Write, error) {
+	return s.queryWrites(`SELECT session,fact_id,tu,ts FROM trace_writes WHERE fact_id=? ORDER BY id`, factID)
+}
+
+func (s *Store) queryWrites(query, arg string) ([]Write, error) {
+	rs, err := s.db.Query(query, arg)
+	if err != nil {
+		return nil, err
+	}
+	defer rs.Close()
+	var out []Write
+	for rs.Next() {
+		var w Write
+		if err := rs.Scan(&w.Session, &w.FactID, &w.TU, &w.TS); err != nil {
+			return nil, err
+		}
+		out = append(out, w)
+	}
+	return out, rs.Err()
 }

@@ -701,6 +701,47 @@ def tool_use_id(event, profile):
     return None
 
 
+WRITE_TOOL = re.compile(r"^mcp__.*grimoire.*__(remember|remember_procedure|set_fact)$", re.IGNORECASE)
+FACT_ID_RE = re.compile(r"[0-9a-f]{12}(?:-[0-9]+)?")  # the server's fact id (memory.DeriveID)
+WRITE_MAX = 8
+
+
+def written_ids(response):
+    """The fact ids a Grimoire memory write returned, in order, unique, at most
+    WRITE_MAX. Ids only: the fact text in the response is never read out."""
+    found = []
+
+    def take(value):
+        if isinstance(value, str) and FACT_ID_RE.fullmatch(value) and value not in found:
+            found.append(value)
+
+    def visit(value, depth=0):
+        if depth > 4 or len(found) >= WRITE_MAX:
+            return
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped[:1] in ("{", "["):
+                try:
+                    visit(json.loads(stripped), depth + 1)
+                except ValueError:
+                    pass
+        elif isinstance(value, list):
+            for item in value[:50]:
+                visit(item, depth + 1)
+        elif isinstance(value, dict):
+            take(value.get("id"))
+            take(value.get("fact_id"))
+            ids = value.get("ids")
+            if isinstance(ids, list):
+                for item in ids[:WRITE_MAX]:
+                    take(item)
+            for key in ("results", "content", "text", "result", "response"):
+                visit(value.get(key), depth + 1)
+
+    visit(response)
+    return found[:WRITE_MAX]
+
+
 def trace_body(event, profile, environment, name, tool, tool_input, target, fp_state, state):
     """The outcome codes of one executed call. Codes and counts only."""
     fields = profile.get("event_fields") or {}
@@ -802,6 +843,17 @@ def run(event, environment=None, send=post, kind=None, profile=None):
         send(base, token, body)
         return None
     tool = lookup(event, fields.get("tool", "tool_name")) or ""
+    if name == "post_action" and trace_on and WRITE_TOOL.match(tool):
+        # A Grimoire memory write: link the ids it returned to this session, so
+        # the writer's injections can be joined to what it wrote (no text sent).
+        ids = written_ids(lookup(event, fields.get("tool_response") or "tool_response|tool_result|error"))
+        if ids:
+            body = {"session": sid, "wrote": ids}
+            tu = tool_use_id(event, profile)
+            if tu:
+                body["tu"] = tu
+            send(base, token, body)
+        return None
     target = profile_target(profile, tool, lookup(event, fields.get("tool_input", "tool_input")))
     if target is None or not target.strip() or len(target.encode()) > 4000:
         return None
