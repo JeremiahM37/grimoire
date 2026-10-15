@@ -1,0 +1,512 @@
+{
+ "ablate_cues": false,
+ "n": 72,
+ "answered": 0,
+ "correct": 0,
+ "rows": [
+  {
+   "qid": "6a1eabeb",
+   "gold": "25 minutes and 50 seconds (or 25:50)",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "6aeb4375",
+   "gold": "four",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "830ce83f",
+   "gold": "the suburbs",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "852ce960",
+   "gold": "$400,000",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "945e3d21",
+   "gold": "Three times a week.",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "d7c942c3",
+   "gold": "Yes.",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "71315a70",
+   "gold": "10-12 hours",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "89941a93",
+   "gold": "4",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "ce6d2d27",
+   "gold": "Friday",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "9ea5eabc",
+   "gold": "Paris",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "07741c44",
+   "gold": "under my bed",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "a1eacc2a",
+   "gold": "seven",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "184da446",
+   "gold": "220",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "031748ae",
+   "gold": "When you just started your new role as Senior Software Engineer, you led 4 engineers. Now, you lead 5 engineers",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "4d6b87c8",
+   "gold": "25",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "0f05491a",
+   "gold": "120",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "08e075c7",
+   "gold": "9 months",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "f9e8c073",
+   "gold": "five",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "41698283",
+   "gold": "a 70-200mm zoom lens",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "2698e78f",
+   "gold": "every week",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "b6019101",
+   "gold": "5",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "45dc21b6",
+   "gold": "3",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "5a4f22c0",
+   "gold": "TechCorp",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "6071bd76",
+   "gold": "You switched to less water (5 ounces) per tablespoon of coffee.",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "e493bb7c",
+   "gold": "in my bedroom",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "618f13b2",
+   "gold": "six",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "72e3ee87",
+   "gold": "50",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "c4ea545c",
+   "gold": "Yes",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "01493427",
+   "gold": "25",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "6a27ffc2",
+   "gold": "30",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "2133c1b5",
+   "gold": "3 months",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "18bc8abd",
+   "gold": "Kansas City Masterpiece",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "db467c8c",
+   "gold": "nine months",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "7a87bd0c",
+   "gold": "4 weeks",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "e61a7584",
+   "gold": "9 months",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "1cea1afa",
+   "gold": "600",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "ed4ddc30",
+   "gold": "20",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "8fb83627",
+   "gold": "Five",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "b01defab",
+   "gold": "Yes",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "22d2cb42",
+   "gold": "The music shop on Main St.",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "0e4e4c46",
+   "gold": "132 points",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "4b24c848",
+   "gold": "five",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "7e974930",
+   "gold": "$420",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "603deb26",
+   "gold": "10",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "59524333",
+   "gold": "6:00 pm",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "5831f84d",
+   "gold": "15",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "eace081b",
+   "gold": "Oahu",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "affe2881",
+   "gold": "32",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "50635ada",
+   "gold": "Premier Silver",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "e66b632c",
+   "gold": "27 minutes and 45 seconds",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "0ddfec37",
+   "gold": "15",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "f685340e",
+   "gold": "Previously, you play tennis with your friends at the local park every week (on Sunday). Currently, you play tennis every other week (on Sunday).",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "cc5ded98",
+   "gold": "about two hours",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "dfde3500",
+   "gold": "Wednesday",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "69fee5aa",
+   "gold": "38",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "7401057b",
+   "gold": "Two",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "cf22b7bf",
+   "gold": "10 pounds",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "a2f3aa27",
+   "gold": "1300",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "c7dc5443",
+   "gold": "5-2",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "06db6396",
+   "gold": "5",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "3ba21379",
+   "gold": "Ford F-150 pickup truck",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "9bbe84a2",
+   "gold": "level 100",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "10e09553",
+   "gold": "7",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "dad224aa",
+   "gold": "7:30 am",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "ba61f0b9",
+   "gold": "6",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "42ec0761",
+   "gold": "Yes",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "5c40ec5b",
+   "gold": "We've met up twice.",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "c6853660",
+   "gold": "You increased the limit (from one cup to two cups)",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "26bdc477",
+   "gold": "five",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "0977f2af",
+   "gold": "Instant Pot",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "89941a94",
+   "gold": "Yes. (You have a road bike too.)",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  },
+  {
+   "qid": "07741c45",
+   "gold": "in a shoe rack in my closet",
+   "pred": null,
+   "answered": false,
+   "correct": false
+  }
+ ]
+}

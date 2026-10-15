@@ -110,3 +110,26 @@ dependencies beyond the standard library.
 - The answer scorer is lenient and not the LongMemEval judge. Use the numbers as
   a floor for comparison, not as a LongMemEval accuracy.
 - The 80.25% figure is from a different benchmark with a different scorer.
+
+## Result (2026-10-14)
+
+Run on `longmemeval_s` from Hugging Face:
+
+| Measure | Last write | Grimoire slot probe |
+|---|---|---|
+| Updates recognised, all 72 | 1/72 | 26-28/72 |
+| Updates recognised, held-out 37 | 0/37 | 17/37 |
+| False positives on 400 unmarked pairs | 0/400 | 3-5/400 |
+| Answered correctly | 0/72 | (not comparable) |
+
+The rule found a slot on only 1 of 144 marked pair sides and 6 of 800 control
+sides. LongMemEval's updates are said in conversation ("I actually moved my
+standup to Thursdays"), not as templated "X is Y" statements, so a
+newest-statement-wins rule has nothing to hold on to.
+
+This settles the question it was built for. A frozen last-write resolver
+matches published scores on MemoryAgentBench, whose facts are templated
+(arXiv 2610.09193). Here it scores near zero, so Grimoire's 28/72 is not a
+test artefact of the same kind; the remaining misses are real recognition
+failures. The cue-word ablation was not run: with almost no slots found, it
+has nothing to remove.

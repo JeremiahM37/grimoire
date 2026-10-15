@@ -1,0 +1,2847 @@
+{
+ "ablate_cues": false,
+ "marked_pairs": 72,
+ "dev_bucket0": 35,
+ "heldout_bucket1": 37,
+ "recognised_all": 1,
+ "recognised_heldout": 0,
+ "recognised_dev": 1,
+ "control_pairs": 400,
+ "false_positives": 0,
+ "coverage_marked": 1,
+ "coverage_control": 6,
+ "rows": [
+  {
+   "qid": "6a1eabeb",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "6aeb4375",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "830ce83f",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "830ce83f",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "852ce960",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "945e3d21",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "d7c942c3",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "71315a70",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "89941a93",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "ce6d2d27",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "9ea5eabc",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "07741c44",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "a1eacc2a",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "184da446",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "031748ae",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "4d6b87c8",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "0f05491a",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "08e075c7",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "f9e8c073",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "41698283",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "2698e78f",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "b6019101",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "45dc21b6",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "5a4f22c0",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "6071bd76",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "e493bb7c",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "618f13b2",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "72e3ee87",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "c4ea545c",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "01493427",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "6a27ffc2",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "2133c1b5",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "18bc8abd",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "db467c8c",
+   "set": "marked",
+   "op": "UPDATE",
+   "both_slots": true
+  },
+  {
+   "qid": "7a87bd0c",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "e61a7584",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "1cea1afa",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "ed4ddc30",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "8fb83627",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "8fb83627",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "b01defab",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "0e4e4c46",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "4b24c848",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "7e974930",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "603deb26",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "59524333",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "5831f84d",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "affe2881",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "50635ada",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "e66b632c",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "0ddfec37",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "f685340e",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "cc5ded98",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "dfde3500",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "69fee5aa",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "7401057b",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "cf22b7bf",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "a2f3aa27",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "c7dc5443",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "06db6396",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "3ba21379",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "9bbe84a2",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "10e09553",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "dad224aa",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "ba61f0b9",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "42ec0761",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "5c40ec5b",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "c6853660",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "26bdc477",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "0977f2af",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "89941a94",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "07741c45",
+   "set": "marked",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "c4ea545c",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "5831f84d",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "603deb26",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "42ec0761",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "ed4ddc30",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "dad224aa",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "dfde3500",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "d7c942c3",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "dad224aa",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "41698283",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "50635ada",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "0ddfec37",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "22d2cb42",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "a2f3aa27",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "07741c44",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "42ec0761",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "5c40ec5b",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "5a4f22c0",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "89941a94",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "22d2cb42",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "6a1eabeb",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "0977f2af",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "d7c942c3",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "c6853660",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "5a4f22c0",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "0ddfec37",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "7401057b",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "ed4ddc30",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "26bdc477",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "ce6d2d27",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "eace081b",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "3ba21379",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "69fee5aa",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "830ce83f",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "0ddfec37",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "71315a70",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "f685340e",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "a1eacc2a",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "5831f84d",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "8fb83627",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "59524333",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "9bbe84a2",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "26bdc477",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "5c40ec5b",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "0977f2af",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "22d2cb42",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "852ce960",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "06db6396",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "0977f2af",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "cf22b7bf",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "b6019101",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "72e3ee87",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "a1eacc2a",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "b01defab",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "07741c45",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "cf22b7bf",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "59524333",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "10e09553",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "a2f3aa27",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "c7dc5443",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "c6853660",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "18bc8abd",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "eace081b",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "5831f84d",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "6a27ffc2",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "830ce83f",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "184da446",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "3ba21379",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "618f13b2",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "e61a7584",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "db467c8c",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "4b24c848",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "06db6396",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "ce6d2d27",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "9bbe84a2",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "e66b632c",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "e493bb7c",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "5c40ec5b",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "4b24c848",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "2133c1b5",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": true
+  },
+  {
+   "qid": "f685340e",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "cf22b7bf",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "6a1eabeb",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "50635ada",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "b6019101",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "affe2881",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "89941a94",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "f9e8c073",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "5c40ec5b",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "db467c8c",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "89941a94",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "69fee5aa",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "eace081b",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "ce6d2d27",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "3ba21379",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "dfde3500",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "945e3d21",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "184da446",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "9ea5eabc",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "89941a93",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "b01defab",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "e61a7584",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "1cea1afa",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "6aeb4375",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "0f05491a",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "ba61f0b9",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "830ce83f",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "ed4ddc30",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "618f13b2",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "26bdc477",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "72e3ee87",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "618f13b2",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "41698283",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "e66b632c",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "7e974930",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "10e09553",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "e66b632c",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "cc5ded98",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "6a1eabeb",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "c7dc5443",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "c4ea545c",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "41698283",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "ed4ddc30",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "0f05491a",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "ba61f0b9",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "945e3d21",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "852ce960",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "8fb83627",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "184da446",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "4d6b87c8",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "f9e8c073",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "a2f3aa27",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "b6019101",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "cf22b7bf",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "7a87bd0c",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "06db6396",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "2133c1b5",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "3ba21379",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "50635ada",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "945e3d21",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "f9e8c073",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "72e3ee87",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "c7dc5443",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "07741c44",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "0e4e4c46",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "5831f84d",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "89941a93",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "4d6b87c8",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "b6019101",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "7a87bd0c",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "69fee5aa",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "5831f84d",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "db467c8c",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "41698283",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "07741c44",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "c4ea545c",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "a2f3aa27",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "e493bb7c",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "031748ae",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "e493bb7c",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "d7c942c3",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "26bdc477",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "07741c44",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "3ba21379",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "0e4e4c46",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "6aeb4375",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": true
+  },
+  {
+   "qid": "18bc8abd",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "8fb83627",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "cc5ded98",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "cc5ded98",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "cc5ded98",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "c7dc5443",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "c4ea545c",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "0977f2af",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "f685340e",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "c6853660",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "01493427",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "e61a7584",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "a1eacc2a",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "01493427",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "10e09553",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "7401057b",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "affe2881",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "3ba21379",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "07741c45",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "7401057b",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "9ea5eabc",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "8fb83627",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "59524333",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "5a4f22c0",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "0f05491a",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "0e4e4c46",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "eace081b",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "69fee5aa",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "0e4e4c46",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "18bc8abd",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "d7c942c3",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "cf22b7bf",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "5c40ec5b",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "945e3d21",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "945e3d21",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "08e075c7",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "184da446",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "7401057b",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "89941a94",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "45dc21b6",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "08e075c7",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "c4ea545c",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "18bc8abd",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "6aeb4375",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "ba61f0b9",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "830ce83f",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "b01defab",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "c6853660",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "08e075c7",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "5a4f22c0",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "6071bd76",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "b01defab",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "c6853660",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "7a87bd0c",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "6071bd76",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "2698e78f",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "603deb26",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "dad224aa",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "6aeb4375",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "7a87bd0c",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "41698283",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "e61a7584",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "0e4e4c46",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "50635ada",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "5a4f22c0",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "72e3ee87",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "2698e78f",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "f685340e",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "07741c44",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "45dc21b6",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "45dc21b6",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "852ce960",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "a2f3aa27",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": true
+  },
+  {
+   "qid": "830ce83f",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "184da446",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "0f05491a",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "603deb26",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "ce6d2d27",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "f9e8c073",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "c7dc5443",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "2133c1b5",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "6a27ffc2",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "1cea1afa",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "031748ae",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "18bc8abd",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "cf22b7bf",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "e493bb7c",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "4d6b87c8",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "41698283",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "852ce960",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "50635ada",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "e61a7584",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "6aeb4375",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "5a4f22c0",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "5c40ec5b",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "603deb26",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "e493bb7c",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "dad224aa",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "1cea1afa",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "d7c942c3",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "7e974930",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "a2f3aa27",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "6071bd76",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "6071bd76",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "07741c45",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "e61a7584",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "cc5ded98",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "06db6396",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "f9e8c073",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "72e3ee87",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "1cea1afa",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "ba61f0b9",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "10e09553",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "4d6b87c8",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "42ec0761",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "618f13b2",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "ed4ddc30",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "0977f2af",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "dad224aa",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "89941a94",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "6a1eabeb",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "e66b632c",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "7a87bd0c",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "0977f2af",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "59524333",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "6a27ffc2",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "e66b632c",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "0f05491a",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "7401057b",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "71315a70",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "031748ae",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "7e974930",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "dad224aa",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "6a1eabeb",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "6a27ffc2",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "10e09553",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "06db6396",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "71315a70",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "4b24c848",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "01493427",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "9ea5eabc",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "01493427",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "dfde3500",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "f9e8c073",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "7a87bd0c",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "c7dc5443",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": true
+  },
+  {
+   "qid": "71315a70",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "9bbe84a2",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "69fee5aa",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "603deb26",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "9ea5eabc",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "0ddfec37",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "07741c45",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "603deb26",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "2698e78f",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "d7c942c3",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "01493427",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "0e4e4c46",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "06db6396",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "89941a93",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "7401057b",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "89941a93",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "c4ea545c",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": true
+  },
+  {
+   "qid": "26bdc477",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "1cea1afa",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "ce6d2d27",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "7e974930",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "9bbe84a2",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "8fb83627",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "07741c44",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "89941a93",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "2698e78f",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "8fb83627",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "2698e78f",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "031748ae",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "4d6b87c8",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "0ddfec37",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "031748ae",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "22d2cb42",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "a1eacc2a",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "031748ae",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "4b24c848",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "618f13b2",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "e493bb7c",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "07741c45",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "7e974930",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "01493427",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "42ec0761",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "71315a70",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "6aeb4375",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "618f13b2",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "ba61f0b9",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "45dc21b6",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "89941a94",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "f685340e",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "69fee5aa",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "9ea5eabc",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "5831f84d",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "59524333",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "dfde3500",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "ed4ddc30",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": true
+  },
+  {
+   "qid": "6071bd76",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "c6853660",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "4b24c848",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "852ce960",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "7e974930",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "18bc8abd",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "6a27ffc2",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "2133c1b5",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "08e075c7",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "0ddfec37",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "b6019101",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "a1eacc2a",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "59524333",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "22d2cb42",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "db467c8c",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "db467c8c",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "cc5ded98",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "db467c8c",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "b6019101",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "2133c1b5",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "945e3d21",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "dfde3500",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "4d6b87c8",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "08e075c7",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "4b24c848",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "f685340e",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "b01defab",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "eace081b",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "9bbe84a2",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "07741c45",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "ce6d2d27",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "affe2881",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  },
+  {
+   "qid": "affe2881",
+   "set": "control",
+   "op": "ADD",
+   "both_slots": false
+  }
+ ]
+}
