@@ -123,8 +123,8 @@ Run on `longmemeval_s` from Hugging Face:
 | Answered correctly | 0/72 | (not comparable) |
 
 The rule found a slot on only 1 of 144 marked pair sides and 6 of 800 control
-sides. LongMemEval's updates are said in conversation ("I actually moved my
-standup to Thursdays"), not as templated "X is Y" statements, so a
+sides. LongMemEval's updates are said in passing in conversation, not as templated
+"X is Y" statements, so a
 newest-statement-wins rule has nothing to hold on to.
 
 This settles the question it was built for. A frozen last-write resolver
