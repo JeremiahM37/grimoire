@@ -151,7 +151,7 @@ def test_memory_write_with_text_parts_and_json_string_responses():
 
 
 def test_memory_write_caps_ids_and_dedupes():
-    many = {"results": [{"id": "%012x" % i} for i in range(20)] + [{"id": "%012x" % 0}]}
+    many = {"results": [{"id": f"{i:012x}"} for i in range(20)] + [{"id": f"{0:012x}"}]}
     calls, send = recorder()
     hook.run(memory_write(many), {}, send)
     assert len(calls[0][2]["wrote"]) == hook.WRITE_MAX

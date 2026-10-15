@@ -42,7 +42,6 @@ import math
 import os
 import random
 import re
-import sys
 import tempfile
 import urllib.parse
 import urllib.request

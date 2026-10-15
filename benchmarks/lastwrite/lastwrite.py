@@ -58,7 +58,6 @@ import os
 import random
 import re
 import sys
-from collections import Counter
 from pathlib import Path
 
 HERE = Path(__file__).parent

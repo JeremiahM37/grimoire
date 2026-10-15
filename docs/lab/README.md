@@ -133,3 +133,26 @@ one's check had started to fail.
 What is still open: the recall-side parts are off until the holdout ends, so
 none of this has been shown to change what an agent does. Existing facts that
 never named their object stay uncheckable. The numbers come from one vault.
+
+## Built from the 2026-10-14 research sweep
+
+A literature and practitioner sweep (about 2,300 papers and 244 practitioner
+reports) and a counts-only look at the owner's injection trace from before the
+holdout gave one clear finding: most injected memory repeats what the agent
+already has. 69% of injections repeated an item already shown in the session,
+64% were memory files whose summaries are already loaded, 4% were stored facts,
+and only 4% of repeats followed a compaction
+([`benchmarks/injection_stream`](../../benchmarks/injection_stream/README.md)).
+What was built from it, all off by default. Nothing here changes the live service
+until the holdout ends on 2026-11-08:
+
+| Piece | Switch | What it does |
+|---|---|---|
+| Window dedup | hook `GRIMOIRE_CONTEXT_DEDUP=window` | An item stays excluded until the context window resets (compact, clear, resume), shared across prompt and tool-call stages. [MEMORY_USE.md](../MEMORY_USE.md) |
+| Skip always-loaded content | `GRIMOIRE_EXP=loaded` + `context_loaded_paths` | Drops note items the agent already has loaded; `grimoire memory loaded-audit` asks a decision model which memory files add anything beyond their summary. [MEMORY_USE.md](../MEMORY_USE.md) |
+| Rule cap and precision | `GRIMOIRE_EXP=rulecap` | At most `context_max_rules` rules per response; a rule shows how often its compiled check was right. [MEMORY_ADHERENCE.md](../MEMORY_ADHERENCE.md) |
+| Deny once | `GRIMOIRE_EXP=denyonce` + hook `GRIMOIRE_HOOK_ALLOW_DENY=1` | A person's enforced rule denies the first violating call in a session, with the reason, then asks. [MEMORY_RULES.md](../MEMORY_RULES.md) |
+| Receipts | `grimoire rules receipts` | Adherence from tool calls in transcripts, not from citations; the injected/not split refuses to run before the holdout ends. [MEMORY_RULES.md](../MEMORY_RULES.md) |
+| Anchor history | always (passive) | Every probe result is kept with a hash of what it saw: live, dead or drifted, and pass-to-fail flips as staleness labels. [MEMORY-ANCHORS.md](../MEMORY-ANCHORS.md) |
+| Write link | always (passive, hook) | A `remember` call's fact ids are linked to the writing session's trace hash, so writes can be joined to what that session was shown. [MEMORY_TRACE.md](../MEMORY_TRACE.md) |
+| Offline harnesses | scripts | `benchmarks/lastwrite` (newest-statement-wins floor for update recognition), `benchmarks/correction_wording` (how a changed value should be shown), `benchmarks/rule_capacity` (adherence against the number of rules). Not yet run on real data. |
