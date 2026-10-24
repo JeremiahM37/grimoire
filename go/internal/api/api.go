@@ -607,8 +607,18 @@ func (s *Server) health(w http.ResponseWriter, _ *http.Request) {
 	unresolved, _ := s.Index.DB.Count("SELECT COUNT(*) FROM links WHERE resolved=0")
 	var latest string
 	_ = s.Index.DB.QueryRow("SELECT COALESCE(MAX(updated),'') FROM notes").Scan(&latest)
+	// The server itself is fine when a connector is not, so ok stays true.
+	// degraded and problems say what needs the owner.
+	connectorState, problems := s.connectorState()
+	problemLines := []string{}
+	for _, p := range problems {
+		problemLines = append(problemLines, p.Title+" "+p.Detail)
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok":               true,
+		"degraded":         len(problems) > 0,
+		"problems":         problemLines,
+		"connectors":       connectorState,
 		"version":          build.String(),
 		"build":            build.Current(),
 		"vault":            s.Vault.Root,

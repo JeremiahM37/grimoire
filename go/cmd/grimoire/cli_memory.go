@@ -484,10 +484,44 @@ func cmdDoctor(args []string) int {
 			worst = 1
 		}
 	}
+	printConnectorProblems(e)
 	fmt.Printf("\n%s\n", out.Status)
 	// A non-zero exit on failure, so this is usable from a healthcheck or a
 	// unit file rather than only by a person reading it.
 	return worst
+}
+
+// printConnectorProblems adds a line per connector that needs the owner. A
+// connector is a warning, not a failure of the server, so it does not change
+// the exit code.
+func printConnectorProblems(e *env) {
+	status, raw := e.call("GET", "/api/health")
+	if status != http.StatusOK {
+		return
+	}
+	var h struct {
+		Connectors struct {
+			Failing     []connectorLine `json:"failing"`
+			NeedsReauth []connectorLine `json:"needs_reauth"`
+		} `json:"connectors"`
+	}
+	if err := json.Unmarshal([]byte(raw), &h); err != nil {
+		return
+	}
+	for _, c := range h.Connectors.NeedsReauth {
+		fmt.Printf("! %-22s needs you to sign in again since %s\n", "connector "+c.Account, c.Since)
+		fmt.Printf("  %-22s → Reconnect at Settings → Connectors\n", "")
+	}
+	for _, c := range h.Connectors.Failing {
+		fmt.Printf("! %-22s failing since %s: %s\n", "connector "+c.Account, c.Since, c.LastError)
+		fmt.Printf("  %-22s → Open Settings → Connectors to read the error, then Run it\n", "")
+	}
+}
+
+type connectorLine struct {
+	Account   string `json:"account"`
+	Since     string `json:"since"`
+	LastError string `json:"last_error"`
 }
 
 // cmdImport turns a ChatGPT or Claude export into notes.

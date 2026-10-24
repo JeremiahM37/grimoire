@@ -263,6 +263,10 @@ func Provision(store *Store, kind, secret string, cfg Config, name string) (Conn
 	for _, c := range existing {
 		if c.Kind == kind && c.Name == name && c.Secret == secret {
 			c.Config = cfg
+			// Signing in again is what clears a parked or failing connector.
+			if err := store.ResetHealth(c.ID); err != nil {
+				return c, err
+			}
 			return c, store.Save(c)
 		}
 	}

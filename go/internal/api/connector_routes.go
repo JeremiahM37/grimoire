@@ -151,6 +151,11 @@ func (s *Server) updateConnector(w http.ResponseWriter, r *http.Request) {
 	}
 	if in.Secret != "" {
 		c.Secret = strings.TrimSpace(in.Secret)
+		// A new credential is the fix for a dead grant, so retry it now.
+		if err := s.Connectors.ResetHealth(c.ID); err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 	}
 	if in.Interval > 0 {
 		c.Interval = in.Interval

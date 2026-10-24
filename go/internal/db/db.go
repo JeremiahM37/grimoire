@@ -353,6 +353,14 @@ CREATE TABLE IF NOT EXISTS connector_docs(
   hash TEXT, updated TEXT, PRIMARY KEY(connector, external_id)
 );
 CREATE INDEX IF NOT EXISTS idx_connector_docs_path ON connector_docs(path);
+-- Whether each connector is working: last success and failure, the last error
+-- (sanitised, see connectors.SafeError) and the run of failures. See
+-- internal/connectors/health.go.
+CREATE TABLE IF NOT EXISTS connector_health(
+  connector TEXT PRIMARY KEY, last_success TEXT DEFAULT '', last_failure TEXT DEFAULT '',
+  last_error TEXT DEFAULT '', failures INTEGER DEFAULT 0, state TEXT DEFAULT 'ok',
+  since TEXT DEFAULT ''
+);
 -- Agent actions on connected sources: a queue the owner approves, and an audit
 -- trail. See internal/connectors/actions.go.
 CREATE TABLE IF NOT EXISTS source_actions(

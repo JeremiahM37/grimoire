@@ -192,7 +192,8 @@ func (r *Runner) fail(c Connector, err error) (Result, error) {
 
 // record writes the run's outcome back to the connector row.
 func (r *Runner) record(c Connector, res Result, err error) {
-	c.LastRun = time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC()
+	c.LastRun = now.Format(time.RFC3339)
 	c.LastOK = err == nil
 	outcome := "ok"
 	if err != nil {
@@ -210,6 +211,11 @@ func (r *Runner) record(c Connector, res Result, err error) {
 	c.Docs += res.Written
 	if saveErr := r.Store.Save(c); saveErr != nil {
 		log.Printf("connector %s: recording the run failed: %v", c.Name, saveErr)
+	}
+	// Health is kept apart from the row above, so a reconnect or an edit of
+	// the connector never has to know about it.
+	if herr := r.Store.RecordRun(c.ID, err, now); herr != nil {
+		log.Printf("connector %s: recording its health failed: %v", c.Name, herr)
 	}
 }
 
@@ -474,19 +480,49 @@ func notePath(prefix string, d Document) string {
 	return strings.Trim(prefix, "/") + "/" + name + ".md"
 }
 
-// Due returns the connectors owed a scheduled run.
+// lastSuccessMetric is the unix time of each connector's last good run. It is
+// read at scrape time from the stored health, so it survives a restart.
+const lastSuccessMetric = "grimoire_connector_last_success_timestamp_seconds"
+
+// Due returns the connectors owed a scheduled run. A connector that is parked
+// for a dead sign-in, or backing off after failures, is left out until its
+// wait is over.
 func (r *Runner) Due(now time.Time) ([]Connector, error) {
 	all, err := r.Store.List()
 	if err != nil {
 		return nil, err
 	}
+	health, err := r.Store.AllHealth()
+	if err != nil {
+		return nil, err
+	}
 	var out []Connector
 	for _, c := range all {
-		if c.Due(now) {
+		r.observe(c)
+		if dueNow(c, health[c.ID], now) {
 			out = append(out, c)
 		}
 	}
 	return out, nil
+}
+
+// observe registers the last-success gauge for a connector. Registering again
+// on every tick is harmless: the registry keys by name and labels.
+func (r *Runner) observe(c Connector) {
+	id := c.ID
+	metrics.Gauge(lastSuccessMetric,
+		"Unix time of each connector's last successful run; 0 if it has never succeeded.",
+		map[string]string{"connector": id, "kind": c.Kind}, func() float64 {
+			h, err := r.Store.Health(id)
+			if err != nil {
+				return 0
+			}
+			t, ok := parseStamp(h.LastSuccess)
+			if !ok {
+				return 0
+			}
+			return float64(t.Unix())
+		})
 }
 
 // Loop runs due connectors until done is closed. One at a time: these are

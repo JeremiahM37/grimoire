@@ -97,6 +97,21 @@ fine-grained token is recommended.)
 require one) and store it as the connector's secret; set `host`, `username`.
 Cleartext (`security: none`) is refused unless the host is loopback.
 
+### Troubleshooting: Google sign-in expires every 7 days
+
+While the Google OAuth app is in *Testing*, Google expires its refresh tokens
+after seven days. When that happens the Gmail, Drive or Calendar connector
+stops with `invalid_grant: Token has been expired or revoked`. Grimoire does
+not retry a dead grant on the normal schedule. It parks the connector and
+retries once a day.
+
+You will see it in three places: `grimoire doctor` prints a line per affected
+connector, `/api/health` lists it under `connectors.needs_reauth` and sets
+`degraded: true`, and the console shows it as a problem. The fix is to sign in
+again (`grimoire connect google`, or Settings → Connectors). To stop it from
+recurring weekly, publish the OAuth app to *In production* in the Google Cloud
+Console. For personal use "In production, unverified" is enough.
+
 ### What each scope is for
 
 | scope | used for |
