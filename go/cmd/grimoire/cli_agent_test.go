@@ -116,6 +116,9 @@ func TestAgentInstallMergesClaudeCodeIdempotentlyAndUninstalls(t *testing.T) {
 	if env["GRIMOIRE_BANK"] != "coding-agent:demo" || env["GRIMOIRE_AGENT_NAME"] != "claude-code" {
 		t.Errorf("mcp env = %v", env)
 	}
+	if env["GRIMOIRE_MCP_TOOLS"] != "core" {
+		t.Errorf("an install with no --tools must write the core profile, got %v", env["GRIMOIRE_MCP_TOOLS"])
+	}
 
 	// A second run changes nothing and makes no new backup.
 	first, _ := os.ReadFile(settings)

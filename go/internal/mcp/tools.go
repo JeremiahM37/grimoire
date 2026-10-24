@@ -414,79 +414,51 @@ func Tools() []tool {
 		},
 		{
 			Name: "remember",
-			Description: "Persist something future agents will need — a root cause, a " +
-				"convention you had to discover, a gotcha. Memories are ordinary notes the " +
-				"human can read, edit and roll back. Use `topic` to group related memories.\n" +
-				"Writes RECONCILE: if this contradicts something already recorded, the old " +
-				"belief is superseded rather than left to compete with this one, and if it " +
-				"is already recorded nothing is written. The reply says which happened " +
-				"(op: ADD / UPDATE / DELETE / NOOP), so report a correction plainly — " +
-				"'the user prefers tabs now' — rather than hedging it into a new fact.\n" +
-				"FRESHNESS: say how the fact goes out of date. `fresh`: 'volatile' for live " +
-				"state that changes without notice (what is running, a current version, " +
-				"an IP, a balance, who is on call); an interval like '7d' for values that " +
-				"drift (a dependency pin, a config value, a schedule); 'stable' for things " +
-				"that do not change (decisions and why, history, root causes, preferences, " +
-				"conventions). Omit it if unsure and the store learns the rate. With " +
-				"volatile or an interval also give `check`: the read-only command or place " +
-				"to verify it ('grimoire version', 'lan.env ROUTER_IP').\n" +
-				rememberAnchors + "\n" +
-				"WRITE WELL (docs/MEMORY_WRITING.md): one fact per memory; set `kind` (rule, " +
-				"procedure, preference, fact, reference); for a rule say Why and How to apply; " +
-				"give `context` (the situation it applies in); no secrets (use the credential " +
-				"vault); nothing the repo or git already records; update an existing memory " +
-				"rather than adding a near-duplicate. The reply may carry `warnings`: fix them " +
-				"with a corrected remember, they never block the write.",
+			Description: "Persist what future agents will need: a root cause, a convention you " +
+				"had to discover, a gotcha. One fact per memory; set `kind` (rule, procedure, " +
+				"preference, fact, reference) and for a rule say why and how to apply it. No " +
+				"secrets, and nothing the repo or git already records; update a near-duplicate " +
+				"rather than adding it. Writes reconcile: a contradicted belief is superseded " +
+				"and an identical one is a no-op, reported as op ADD / UPDATE / DELETE / NOOP, " +
+				"so state a correction plainly. Set `fresh` (stable, volatile, or an interval " +
+				"like 7d) and, with volatile or an interval, `check`; warnings never block a " +
+				"write, so fix them with a corrected remember. " +
+				"Use `event: true` for something that happened and stays true as history; it " +
+				"carries no anchors. For a claim about how things are now, pass `anchors` naming " +
+				"the exact file, unit, port or commit it is about, and `host` if it is another machine. " +
+				rememberAnchors,
 			InputSchema: obj(withIntention(map[string]any{
 				"text":          strProp("what to remember"),
-				"target_id":     strProp("for a known correction: exact fact id from recall; requires target_path and expected_text; human corrections remain protected"),
+				"target_id":     strProp("correction: exact fact id from recall; needs target_path and expected_text. Human corrections stay protected"),
 				"target_path":   strProp("note path of the fact being corrected"),
-				"expected_text": strProp("exact previously recalled text; stale corrections are rejected; supply one complete replacement fact as text"),
+				"expected_text": strProp("exact previously recalled text; stale corrections are rejected. Supply one complete replacement as text"),
 				"topic":         strProp("optional grouping, e.g. 'deploy'"),
 				"evidence": map[string]any{"type": "array", "items": map[string]any{"type": "string"},
-					"description": "what you read this FROM: note paths, urls or entry ids. " +
-						"With evidence an agent's fact is recorded as observed; without it, as inferred. " +
-						"Give it whenever a tool result, document or transcript backs the fact"},
-				"origin": strProp("REQUIRED when you learned this from a document rather " +
-					"than from the user or your own work: the source you read it in " +
-					"(e.g. 'connector:slack:C123', 'web:example.com', or the note path). " +
-					"A fact from a source other people can write is recorded but may not " +
-					"overwrite what the operator told you"),
-				"task":     strProp("optional origin: ticket id, session, url"),
-				"session":  strProp("optional run/conversation id, so this run's learnings can be recalled together"),
-				"category": strProp("optional bucket, e.g. 'preference', 'gotcha', 'ownership'"),
-				"kind":     strProp("rule | procedure | preference | fact | reference — what sort of memory this is"),
-				"expires_in": strProp("optional time-to-live, e.g. '72h' — for something " +
-					"true only for now, so it stops being recalled instead of going stale"),
-				"valid_from": strProp("optional: when this became true in the world, RFC3339 or YYYY-MM-DD " +
-					"(not when you learned it). A fact it replaces has its valid_to closed here"),
-				"valid_to": strProp("optional: when it stopped being true in the world, RFC3339 or YYYY-MM-DD"),
+					"description": "note paths, urls or entry ids this came FROM; with evidence it is recorded as observed, without as inferred"},
+				"origin": strProp("REQUIRED when learned from a document, not the user or your own work: its source " +
+					"(e.g. 'connector:slack:C123', 'web:example.com', a note path). Such facts cannot overwrite operator facts"),
+				"task":       strProp("optional origin: ticket id, session, url"),
+				"session":    strProp("optional run/conversation id, so this run's learnings can be recalled together"),
+				"category":   strProp("optional bucket, e.g. 'preference', 'gotcha', 'ownership'"),
+				"kind":       strProp("rule | procedure | preference | fact | reference"),
+				"expires_in": strProp("optional time-to-live, e.g. '72h', for something true only for now"),
+				"valid_from": strProp("optional: when it became true in the world, RFC3339 or YYYY-MM-DD"),
+				"valid_to":   strProp("optional: when it stopped being true in the world, RFC3339 or YYYY-MM-DD"),
 				"immutable": map[string]any{"type": "boolean",
 					"description": "pin this fact: reconciliation may never supersede or retract it"},
 				"event": map[string]any{"type": "boolean",
-					"description": "true for something that happened and stays true as history; events carry no anchors"},
-				"host": strProp("optional: the machine this claim is about, if not the one you are on (e.g. 'mediaserver')"),
+					"description": "true for something that happened and stays true as history; no anchors"},
+				"host": strProp("optional: the machine this claim is about, if not this one (e.g. 'mediaserver')"),
 				"anchors": map[string]any{"type": "array", "maxItems": 16, "items": map[string]any{"type": "object"},
-					"description": "for a claim: probes that check it still holds, e.g. " +
-						"{\"type\":\"file_contains\",\"path\":\"/abs/file\",\"text\":\"literal\"}. " +
-						"Only passing ones are stored; a failing one is reported back so you can fix it"},
+					"description": "probes that check a claim still holds, e.g. {\"type\":\"file_contains\",\"path\":\"/abs/file\",\"text\":\"literal\"}. Only passing ones are stored"},
 				"importance": map[string]any{"type": "integer", "minimum": 1, "maximum": 5,
-					"description": "how much this matters: 1 trivia, 3 ordinary, 5 load-bearing. " +
-						"Omit it to leave the fact unrated; important facts are recalled for longer " +
-						"and trivia yields sooner. Use 5 only for things that would hurt to forget"},
-				"visibility": strProp("optional: normal (default), private, sensitive, or sealed. A private fact " +
-					"is left out of recall, profile, context and changes unless the reader asks for hidden " +
-					"facts, and is never exported or streamed. A sensitive fact is hidden the same way and " +
-					"is also redacted from explanations and receipts. A sealed fact is encrypted under a per-fact key: " +
-					"only the account that wrote it reads the text back, and forgetting it destroys the key"),
-				"fresh": strProp("how it goes stale: 'stable', 'volatile', or a re-check interval like '7d'"),
-				"check": strProp("read-only way to verify it: a command, file or URL"),
-				"context": strProp("what you were asked to do when you learned this. If the user " +
-					"just told you something that turns out to be on file already, this teaches " +
-					"memory to surface it in that situation next time"),
+					"description": "1 trivia, 3 ordinary, 5 load-bearing (recalled longer). Use 5 only for things that would hurt to forget"},
+				"visibility": strProp("normal (default), private, sensitive, or sealed. Private and sensitive facts stay out of recall unless asked for; sealed is encrypted per fact and forgetting it destroys the key"),
+				"fresh":      strProp("how it goes stale: 'stable', 'volatile', or a re-check interval like '7d'"),
+				"check":      strProp("read-only way to verify it: a command, file or URL"),
+				"context":    strProp("what you were asked to do when you learned this; teaches memory when to surface it"),
 				"cues": map[string]any{"type": "array", "items": map[string]any{"type": "string"},
-					"description": "up to 8 situations in which this should come to mind: a request, " +
-						"a command, or a file path (e.g. 'deploy grimoire', '/etc/lectern.env')"},
+					"description": "up to 8 situations it should come to mind in: a request, a command, or a file path"},
 			}), "text"),
 		},
 		{

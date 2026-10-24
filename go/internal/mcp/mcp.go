@@ -65,7 +65,10 @@ const Instructions = "This server is the team's knowledge base and memory: runbo
 	"ask_notes / recall — teams record accepted fixes that are not visible " +
 	"in the code. Use remember to persist anything future agents need. " +
 	"A recalled fact marked freshness.action=verify may be out of date: " +
-	"check it before acting on it."
+	"check it before acting on it. More tools exist in the groups notes, memory, " +
+	"banks, knowledge, credentials, code and admin: an operator lists them with " +
+	"GRIMOIRE_MCP_TOOLS (e.g. core,banks, or all); a tool that is not listed still " +
+	"answers when called by name."
 
 // Server bridges MCP calls to the local HTTP API.
 type Server struct {
@@ -119,8 +122,9 @@ type Server struct {
 
 	allowOnce sync.Once
 	allow     *allowCache
-	// Profile restricts the advertised tools; nil advertises all of them.
-	// Set from GRIMOIRE_MCP_TOOLS — see profile.go.
+	// Profile restricts the advertised tools (tools/list); nil advertises all
+	// of them. Hidden tools stay callable. Set from GRIMOIRE_MCP_TOOLS, which
+	// defaults to core — see profile.go.
 	Profile map[string]bool
 }
 

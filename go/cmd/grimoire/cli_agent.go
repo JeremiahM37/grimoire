@@ -17,6 +17,7 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/agenthook"
 	"github.com/JeremiahM37/grimoire/go/internal/agentprofile"
 	"github.com/JeremiahM37/grimoire/go/internal/bank"
+	mcpserver "github.com/JeremiahM37/grimoire/go/internal/mcp"
 )
 
 // grimoire agent install | uninstall | status
@@ -31,7 +32,7 @@ const agentUsage = `grimoire agent — wire a coding agent to Grimoire in one co
 
   grimoire agent install [--claude-code] [--codex] [--agent NAME]... [--bank NAME] [--url URL]
                          [--recall] [--files] [--memory | --memory-only] [--link-memory [--merge] [--dir STORE]]
-                         [--no-mcp] [--no-tools] [--dry-run]
+                         [--no-mcp] [--no-tools] [--tools core|all|GROUPS] [--dry-run]
   grimoire agent uninstall [--claude-code] [--codex] [--agent NAME]... [--dry-run]
   grimoire agent status [--claude-code] [--codex] [--agent NAME]...
   grimoire agent profiles             list the agent profiles (built-in and yours)
@@ -274,12 +275,15 @@ func cmdAgent(args []string) int {
 		return fail("--link-memory belongs to install (undo it with `grimoire memory unlink --agent NAME`)")
 	}
 	opts := agentOptions{
-		bank: f.str("--bank", ""), url: f.str("--url", os.Getenv("GRIMOIRE_URL")),
+		bank: f.str("--bank", ""), url: f.str("--url", os.Getenv("GRIMOIRE_URL")), tools: f.str("--tools", ""),
 		recall: f.on["--recall"], files: f.on["--files"], context: f.on["--memory"] || f.on["--memory-only"], memoryOnly: f.on["--memory-only"], noMCP: f.on["--no-mcp"], noTools: f.on["--no-tools"],
 		dryRun: f.on["--dry-run"], home: home,
 	}
 	if opts.bank != "" && !bank.ValidID(opts.bank) {
 		return fail("invalid bank id %q (lowercase letters, digits and . _ : -)", opts.bank)
+	}
+	if _, err := mcpserver.ParseToolProfile(opts.tools); err != nil {
+		return fail("--tools: %v", err)
 	}
 	code := 0
 	var memEnv *env
@@ -325,9 +329,18 @@ func cmdAgent(args []string) int {
 }
 
 type agentOptions struct {
-	bank, url, home                                string
+	bank, url, home, tools                         string
 	recall, files, context, noMCP, noTools, dryRun bool
 	memoryOnly                                     bool // the memory hook alone: no bank session hooks
+}
+
+// mcpToolsValue is what GRIMOIRE_MCP_TOOLS is written as for a client: the
+// operator's --tools value, or core, the same default the server applies.
+func mcpToolsValue(tools string) string {
+	if strings.TrimSpace(tools) == "" {
+		return "core"
+	}
+	return strings.TrimSpace(tools)
 }
 
 func agentQuote(s string) string {
@@ -463,7 +476,8 @@ func installAgent(t *agentTarget, o agentOptions) ([]string, error) {
 		out = append(out, "mcp: skipped ("+err.Error()+")")
 		return out, nil
 	}
-	env := map[string]string{installedKey: installedVal, "GRIMOIRE_AGENT_NAME": t.name}
+	env := map[string]string{installedKey: installedVal, "GRIMOIRE_AGENT_NAME": t.name,
+		mcpserver.EnvTools: mcpToolsValue(o.tools)}
 	if o.url != "" {
 		env["GRIMOIRE_URL"] = o.url
 	}
