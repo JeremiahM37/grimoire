@@ -13,6 +13,7 @@
 package filemem
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path"
@@ -103,6 +104,7 @@ func Check(root string, docs []dream.Doc) []dream.Finding {
 	root = cleanRoot(root)
 
 	var index *dream.Doc
+	var parts []dream.Doc
 	var notes []fileNote
 	present := make(map[string]bool)
 	for _, d := range docs {
@@ -117,13 +119,18 @@ func Check(root string, docs []dream.Doc) []dream.Finding {
 			continue
 		}
 		present[name] = true
+		if IsIndexPart(name) {
+			parts = append(parts, d) // part of the index, not a memory
+			continue
+		}
 		notes = append(notes, parseNote(d))
 	}
 	sort.Slice(notes, func(i, j int) bool { return notes[i].doc.Path < notes[j].doc.Path })
+	sort.Slice(parts, func(i, j int) bool { return parts[i].Path < parts[j].Path })
 
 	var out []dream.Finding
 	if index != nil {
-		out = append(out, checkIndex(*index, notes, present)...)
+		out = append(out, checkIndex(*index, parts, notes, present)...)
 	}
 	out = append(out, checkFrontmatter(notes)...)
 	out = append(out, checkNearDuplicates(notes)...)
@@ -228,41 +235,50 @@ type indexEntry struct {
 // checkIndex covers the four index checks plus long index lines. Lines are
 // walked in order, so the findings and the duplicate "first occurrence" are
 // both deterministic.
-func checkIndex(index dream.Doc, notes []fileNote, present map[string]bool) []dream.Finding {
+func checkIndex(index dream.Doc, parts []dream.Doc, notes []fileNote, present map[string]bool) []dream.Finding {
 	idxPath := index.Path
 	entries, lines := parseIndex(index.Body)
 
 	var out []dream.Finding
 	linked := make(map[string]bool)
-	firstLine := make(map[string]int)
-	for _, e := range entries {
-		linked[e.target] = true
-		if !present[e.target] {
-			out = append(out, dream.Finding{
-				Check:    "index_dangling",
-				Category: dream.Hygiene,
-				Severity: dream.Medium,
-				Path:     idxPath,
-				Line:     e.line,
-				Message:  fmt.Sprintf("index links %s, which is not in this directory", e.target),
-				Related:  []string{joinRoot(dirOf(idxPath), e.target)},
-				Fix:      replaceLineFix(idxPath, e),
-			})
+	// The index and its overflow parts (tier.go) are one index split across
+	// files: a note listed in a part is linked, and a dead link in a part is
+	// as dangling as one in MEMORY.md.
+	for _, doc := range append([]dream.Doc{index}, parts...) {
+		docEntries := entries
+		if doc.Path != idxPath {
+			docEntries, _ = parseIndex(doc.Body)
 		}
-		if first, ok := firstLine[e.target]; ok {
-			out = append(out, dream.Finding{
-				Check:    "index_duplicate",
-				Category: dream.Hygiene,
-				Severity: dream.Low,
-				Path:     idxPath,
-				Line:     e.line,
-				Message:  fmt.Sprintf("index links %s again; it is already linked on line %d", e.target, first),
-				Related:  []string{joinRoot(dirOf(idxPath), e.target)},
-				Fix:      replaceLineFix(idxPath, e),
-			})
-			continue
+		firstLine := make(map[string]int)
+		for _, e := range docEntries {
+			linked[e.target] = true
+			if !present[e.target] {
+				out = append(out, dream.Finding{
+					Check:    "index_dangling",
+					Category: dream.Hygiene,
+					Severity: dream.Medium,
+					Path:     doc.Path,
+					Line:     e.line,
+					Message:  fmt.Sprintf("index links %s, which is not in this directory", e.target),
+					Related:  []string{joinRoot(dirOf(idxPath), e.target)},
+					Fix:      replaceLineFix(doc.Path, e),
+				})
+			}
+			if first, ok := firstLine[e.target]; ok {
+				out = append(out, dream.Finding{
+					Check:    "index_duplicate",
+					Category: dream.Hygiene,
+					Severity: dream.Low,
+					Path:     doc.Path,
+					Line:     e.line,
+					Message:  fmt.Sprintf("index links %s again; it is already linked on line %d", e.target, first),
+					Related:  []string{joinRoot(dirOf(idxPath), e.target)},
+					Fix:      replaceLineFix(doc.Path, e),
+				})
+				continue
+			}
+			firstLine[e.target] = e.line
 		}
-		firstLine[e.target] = e.line
 	}
 
 	generated := strings.Contains(index.Body, GeneratedMarker)
@@ -389,13 +405,15 @@ func checkFrontmatter(notes []fileNote) []dream.Finding {
 	var out []dream.Finding
 	for _, n := range notes {
 		if !n.hasFM {
-			out = append(out, dream.Finding{
+			f := dream.Finding{
 				Check:    "frontmatter",
 				Category: dream.Hygiene,
 				Severity: dream.Low,
 				Path:     n.doc.Path,
 				Message:  "note has no YAML frontmatter, so agents cannot see its name, description or type",
-			})
+			}
+			f.Fix = addFrontmatterFix(n)
+			out = append(out, f)
 			continue
 		}
 		var missing []string
@@ -405,7 +423,8 @@ func checkFrontmatter(notes []fileNote) []dream.Finding {
 		if n.fields["description"] == "" {
 			missing = append(missing, "description")
 		}
-		if n.fields["type"] == "" && n.fields["metadata.type"] == "" {
+		// A procedure Grimoire writes says what it is under metadata.kind.
+		if n.fields["type"] == "" && n.fields["metadata.type"] == "" && n.fields["metadata.kind"] == "" {
 			missing = append(missing, "type")
 		}
 		if len(missing) > 0 {
@@ -415,16 +434,102 @@ func checkFrontmatter(notes []fileNote) []dream.Finding {
 				Severity: dream.Low,
 				Path:     n.doc.Path,
 				Message:  "frontmatter is missing: " + strings.Join(missing, ", "),
+				Fix:      completeFrontmatterFix(n, missing),
 			})
 		}
 	}
 	return out
 }
 
-// checkNearDuplicates reports each pair of notes once, against the earlier
-// path. Pairs where either body is short are skipped entirely, including the
-// identical-description test: a two-line note can share a description with
-// another without being a duplicate, and short bodies make Jaccard noisy.
+// noteType is the memory type a note's file name declares: feedback_x.md is
+// feedback. Only the four store types count; anything else is left alone
+// rather than guessed.
+func noteType(file string) string {
+	i := strings.Index(file, "_")
+	if i <= 0 {
+		return ""
+	}
+	switch t := file[:i]; t {
+	case "user", "feedback", "project", "reference":
+		return t
+	}
+	return ""
+}
+
+// noteName is the slug the store convention uses for a note's name.
+func noteName(file string) string {
+	return strings.ReplaceAll(strings.TrimSuffix(file, ".md"), "_", "-")
+}
+
+// noteSummary is the first heading, else the first line of text, clipped:
+// what a person would read as the note's description.
+func noteSummary(body string) string {
+	for _, raw := range strings.Split(body, "\n") {
+		line := strings.TrimSpace(strings.TrimLeft(strings.TrimSpace(raw), "#"))
+		if line == "" || line == "---" {
+			continue
+		}
+		if r := []rune(line); len(r) > 150 {
+			line = string(r[:149]) + "…"
+		}
+		return line
+	}
+	return ""
+}
+
+func yamlString(s string) string {
+	b, _ := json.Marshal(s)
+	return string(b)
+}
+
+// addFrontmatterFix writes a block above a note that has none, when the file
+// name says what type it is. Its first line is the anchor, so a note edited
+// since the dream read it is skipped.
+func addFrontmatterFix(n fileNote) *dream.Fix {
+	typ := noteType(n.file)
+	first, _, _ := strings.Cut(n.doc.Body, "\n")
+	desc := noteSummary(n.doc.Body)
+	if typ == "" || desc == "" || strings.TrimSpace(first) == "" {
+		return nil
+	}
+	block := strings.Join([]string{"---", "name: " + noteName(n.file), "description: " + yamlString(desc),
+		"metadata:", "  type: " + typ, "---", first}, "\n")
+	return &dream.Fix{Kind: dream.FixReplaceLine, Path: n.doc.Path, Line: 1, Old: first, New: block}
+}
+
+// completeFrontmatterFix adds the missing fields just inside the opening
+// "---". Only fields it can fill from the note itself are added; a type the
+// file name does not declare is left for a person.
+func completeFrontmatterFix(n fileNote, missing []string) *dream.Fix {
+	first, _, _ := strings.Cut(n.doc.Body, "\n")
+	if strings.TrimSpace(first) != "---" {
+		return nil
+	}
+	lines := []string{first}
+	for _, m := range missing {
+		switch m {
+		case "name":
+			lines = append(lines, "name: "+noteName(n.file))
+		case "description":
+			d := noteSummary(n.body)
+			if d == "" {
+				return nil
+			}
+			lines = append(lines, "description: "+yamlString(d))
+		case "type":
+			t := noteType(n.file)
+			if t == "" {
+				return nil
+			}
+			// Top level, not under metadata: inserting into an existing
+			// metadata block would mean rewriting lines a person may have
+			// arranged; both places are read.
+			lines = append(lines, "type: "+t)
+		}
+	}
+	return &dream.Fix{Kind: dream.FixReplaceLine, Path: n.doc.Path, Line: 1, Old: first, New: strings.Join(lines, "\n")}
+}
+
 func checkNearDuplicates(notes []fileNote) []dream.Finding {
 	type shingled struct {
 		fileNote

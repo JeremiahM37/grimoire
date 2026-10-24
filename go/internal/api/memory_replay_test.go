@@ -204,7 +204,7 @@ func TestReplayGatesDreamFixesAndReportsHeld(t *testing.T) {
 	if after, _ := s.noteBody(path); after != body && strings.TrimSpace(after) != strings.TrimSpace(body) {
 		t.Fatal("a held fix must not touch the note")
 	}
-	if !strings.Contains(renderDreamReport(&dream.Report{Held: held, Finished: time.Now()}), "Held by memory replay") {
+	if !strings.Contains(renderDreamReport(&dream.Report{Held: held, Finished: time.Now()}), "Held back") {
 		t.Fatal("the report must list held edits")
 	}
 	_ = target

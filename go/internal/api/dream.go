@@ -50,6 +50,9 @@ var errNoChange = errors.New("memory unchanged since the last dream")
 type dreamState struct {
 	At          time.Time `json:"at"`
 	Fingerprint string    `json:"fingerprint"`
+	// Keys are the findings the last dream reported, so the next one can say
+	// which of its findings are new.
+	Keys []string `json:"keys,omitempty"`
 }
 
 func (s *Server) dreamStatePath() string {
@@ -207,7 +210,17 @@ func (s *Server) Dream(ctx context.Context, apply, onlyIfChanged bool) (*dream.R
 				in = append(in, d)
 			}
 		}
-		findings = append(findings, filemem.Check(root, in)...)
+		found := filemem.Check(root, in)
+		// An index past the load limit is repaired, not just reported: the
+		// tiering plan rides on the truncation finding as its fix.
+		if tier := filemem.Tier(root, in, s.memoryUse(root)); len(tier) > 0 {
+			for i := range found {
+				if found[i].Check == "index_truncated" {
+					found[i].Fix, found[i].Fixes = &tier[0], tier[1:]
+				}
+			}
+		}
+		findings = append(findings, found...)
 	}
 	if pd, canon := s.setting("dream_projects_dir"), s.setting("dream_canonical_memory"); pd != "" && canon != "" {
 		findings = append(findings, filemem.Fragmented(expandHome(pd), expandHome(canon))...)
@@ -216,9 +229,38 @@ func (s *Server) Dream(ctx context.Context, apply, onlyIfChanged bool) (*dream.R
 	sortFindings(findings)
 	rep.Findings = findings
 
+	var verdicts []challengeVerdict
 	if apply {
 		rep.Applied, rep.Held = s.applyDreamFixesGated(findings)
 		rep.Actions = append(rep.Actions, s.dreamConsolidate(ctx)...)
+		verdicts = s.settleChallenges(ctx, docs, true)
+	} else {
+		verdicts = s.settleChallenges(ctx, docs, false)
+	}
+	rep.Findings = resolvedDropped(rep.Findings, rep.Applied, verdicts, apply)
+	for _, v := range verdicts {
+		if v.Action == "ask" {
+			rep.Asks = append(rep.Asks, dream.Ask{Check: "open_challenge", Path: v.Note,
+				Message: challengeLine(v),
+				Action:  "Decide which fact is right in the console's Disputes panel, or run `grimoire memory challenges`."})
+			continue
+		}
+		if apply {
+			rep.Settled = append(rep.Settled, challengeLine(v))
+		}
+	}
+	rep.Asks = append(rep.Asks, ownerAsks(rep.Findings)...)
+	prev := map[string]bool{}
+	for _, k := range s.loadDreamState().Keys {
+		prev[k] = true
+	}
+	rep.New = map[string]bool{}
+	keys := make([]string, 0, len(rep.Findings))
+	for _, f := range rep.Findings {
+		keys = append(keys, f.Key())
+		if !prev[f.Key()] {
+			rep.New[f.Key()] = true
+		}
 	}
 	rep.Finished = time.Now().UTC()
 
@@ -231,8 +273,113 @@ func (s *Server) Dream(ctx context.Context, apply, onlyIfChanged bool) (*dream.R
 	if after, _, err := s.dreamDocs(); err == nil {
 		fp = fingerprint(after)
 	}
-	s.saveDreamState(dreamState{At: rep.Finished, Fingerprint: fp})
+	s.saveDreamState(dreamState{At: rep.Finished, Fingerprint: fp, Keys: keys})
 	return rep, nil
+}
+
+// memoryUse counts how often each note directly inside root was injected
+// into an agent's context in the last month, by file name. Tiering keeps the
+// used ones in the loaded core. Counts only, whatever the outcome.
+func (s *Server) memoryUse(root string) map[string]int {
+	out := map[string]int{}
+	st := s.adh()
+	if st == nil {
+		return out
+	}
+	by, _, err := st.Report(time.Now().Add(-30 * 24 * time.Hour))
+	if err != nil {
+		return out
+	}
+	for _, stats := range by {
+		p := strings.TrimSuffix(stats.Path, "#")
+		if i := strings.IndexByte(p, '#'); i >= 0 {
+			p = p[:i]
+		}
+		if dir := path.Dir(p); dir == root || (root == "" && dir == ".") {
+			out[path.Base(p)] += stats.Injected
+		}
+	}
+	return out
+}
+
+// resolvedDropped removes the findings this dream has already dealt with: a
+// finding whose fixes were all applied is fixed, and an open challenge the
+// dream ruled on is no longer open. The report lists those under what was
+// done, so leaving them among the problems would report each one twice.
+func resolvedDropped(fs []dream.Finding, applied []dream.Fix, verdicts []challengeVerdict, apply bool) []dream.Finding {
+	done := map[string]bool{}
+	for _, f := range applied {
+		done[fixKey(f)] = true
+	}
+	settled := map[string]bool{}
+	if apply {
+		for _, v := range verdicts {
+			if v.Action != "ask" {
+				settled[v.Note+"\x00"+v.ID] = true
+			}
+		}
+	}
+	out := fs[:0:0]
+	for _, f := range fs {
+		fixes := f.AllFixes()
+		if len(fixes) > 0 {
+			all := true
+			for _, fx := range fixes {
+				all = all && done[fixKey(fx)]
+			}
+			if all {
+				continue
+			}
+		}
+		if f.Check == "open_challenge" && len(f.Related) > 0 && challengeSettled(f, verdicts, settled) {
+			continue
+		}
+		out = append(out, f)
+	}
+	return out
+}
+
+func fixKey(f dream.Fix) string {
+	return f.Kind + "\x00" + f.Path + "\x00" + strconv.Itoa(f.Line) + "\x00" + f.Old + "\x00" + f.New
+}
+
+func challengeSettled(f dream.Finding, verdicts []challengeVerdict, settled map[string]bool) bool {
+	for _, v := range verdicts {
+		if v.Note == f.Path && v.Contested == f.Related[0] && settled[v.Note+"\x00"+v.ID] {
+			return true
+		}
+	}
+	return false
+}
+
+// ownerAsks picks the findings only a person can act on. It is a short list
+// on purpose: a credential sitting in a note, text from an untrusted source
+// that tries to direct an agent, invisible characters, memory written where no
+// session reads it, and an index repair that could not be made. Everything
+// else is either fixed by the dream or worth knowing but not worth asking.
+func ownerAsks(fs []dream.Finding) []dream.Ask {
+	var out []dream.Ask
+	for _, f := range fs {
+		var action string
+		switch {
+		case f.Check == "secret" || f.Check == "secret_value":
+			action = "Store the value in the credential vault (`grimoire secret set NAME`), then delete it from the note."
+		case f.Check == "injection" && f.Severity == dream.High:
+			action = "Read the line. If it is not yours, delete it, or mark the fact untrusted with `grimoire memory annotate`."
+		case f.Check == "untrusted_instruction":
+			action = "Text other people can write became a rule an agent would follow. Delete the fact unless you agree with it."
+		case f.Check == "hidden_unicode" && f.Severity == dream.High:
+			action = "Open the note and remove the invisible characters on that line."
+		case f.Check == "fragmented_store":
+			action = "Move these files into the canonical memory directory and replace the folder with a symlink to it."
+		case f.Check == "index_truncated":
+			action = "The dream could not split MEMORY.md (it changed while the dream ran, or a write failed); the next dream retries."
+		default:
+			continue
+		}
+		out = append(out, dream.Ask{Check: f.Check, Path: f.Path, Message: f.Message, Action: action})
+	}
+	return out
 }
 
 func expandHome(p string) string {
@@ -274,13 +421,12 @@ func (s *Server) applyDreamFixesGated(findings []dream.Finding) ([]dream.Fix, []
 	byPath := map[string][]dream.Fix{}
 	var order []string
 	for _, f := range findings {
-		if f.Fix == nil {
-			continue
+		for _, fx := range f.AllFixes() {
+			if _, ok := byPath[fx.Path]; !ok {
+				order = append(order, fx.Path)
+			}
+			byPath[fx.Path] = append(byPath[fx.Path], fx)
 		}
-		if _, ok := byPath[f.Fix.Path]; !ok {
-			order = append(order, f.Fix.Path)
-		}
-		byPath[f.Fix.Path] = append(byPath[f.Fix.Path], *f.Fix)
 	}
 	var applied []dream.Fix
 	for _, rel := range order {
@@ -289,11 +435,37 @@ func (s *Server) applyDreamFixesGated(findings []dream.Finding) ([]dream.Fix, []
 			continue
 		}
 		raw, err := os.ReadFile(abs)
+		if errors.Is(err, os.ErrNotExist) && createsFile(byPath[rel]) {
+			raw, err = nil, nil // a new index part
+		}
 		if err != nil {
+			continue
+		}
+		if fx, ok := removal(byPath[rel]); ok {
+			if string(raw) != fx.Old {
+				continue // changed since the dream read it
+			}
+			if s.History != nil {
+				s.History.Snapshot(rel, string(raw))
+			}
+			if err := os.Remove(abs); err != nil {
+				log.Printf("dream: removing %s: %v", rel, err)
+				continue
+			}
+			applied = append(applied, fx)
 			continue
 		}
 		next, done := applyFixes(string(raw), byPath[rel])
 		if len(done) == 0 || next == string(raw) {
+			continue
+		}
+		// An index (MEMORY.md and its parts) only points at memories. Its
+		// fixes drop dead links and move lines between its own files, so no
+		// memory can stop firing and replay has nothing to judge.
+		if isIndexFile(rel) {
+			if err := s.writeDreamFix(rel, abs, raw, next); err == nil {
+				applied = append(applied, done...)
+			}
 			continue
 		}
 		gate, hold, afterApply := gater.check(rel, vault.NoteFromText(rel, next, 0).Body)
@@ -307,16 +479,7 @@ func (s *Server) applyDreamFixesGated(findings []dream.Finding) ([]dream.Fix, []
 			held = append(held, h)
 			continue
 		}
-		if s.History != nil {
-			s.History.Snapshot(rel, string(raw))
-		}
-		info, _ := os.Stat(abs)
-		mode := os.FileMode(0o644)
-		if info != nil {
-			mode = info.Mode().Perm()
-		}
-		if err := os.WriteFile(abs, []byte(next), mode); err != nil {
-			log.Printf("dream: fixing %s: %v", rel, err)
+		if err := s.writeDreamFix(rel, abs, raw, next); err != nil {
 			continue
 		}
 		// A memory note is indexed fact by fact, and recall reads the index;
@@ -332,6 +495,46 @@ func (s *Server) applyDreamFixesGated(findings []dream.Finding) ([]dream.Fix, []
 	return applied, held
 }
 
+// writeDreamFix writes one fixed document, history first.
+func (s *Server) writeDreamFix(rel, abs string, raw []byte, next string) error {
+	if s.History != nil && raw != nil {
+		s.History.Snapshot(rel, string(raw))
+	}
+	info, _ := os.Stat(abs)
+	mode := os.FileMode(0o644)
+	if info != nil {
+		mode = info.Mode().Perm()
+	}
+	if err := os.WriteFile(abs, []byte(next), mode); err != nil {
+		log.Printf("dream: fixing %s: %v", rel, err)
+		return err
+	}
+	return nil
+}
+
+func isIndexFile(rel string) bool {
+	name := path.Base(rel)
+	return name == "MEMORY.md" || filemem.IsIndexPart(name)
+}
+
+func createsFile(fixes []dream.Fix) bool {
+	for _, f := range fixes {
+		if f.Kind == dream.FixWriteFile && f.Old == "" {
+			return true
+		}
+	}
+	return false
+}
+
+func removal(fixes []dream.Fix) (dream.Fix, bool) {
+	for _, f := range fixes {
+		if f.Kind == dream.FixRemoveFile {
+			return f, true
+		}
+	}
+	return dream.Fix{}, false
+}
+
 // applyFixes applies fixes to one document's text and returns the result and
 // the fixes that held. Pure, so it is tested directly.
 func applyFixes(text string, fixes []dream.Fix) (string, []dream.Fix) {
@@ -339,6 +542,16 @@ func applyFixes(text string, fixes []dream.Fix) (string, []dream.Fix) {
 	lines := strings.Split(strings.TrimSuffix(text, "\n"), "\n")
 	if text == "" {
 		lines = nil
+	}
+	// A whole-file rewrite stands alone: it replaces the text it was planned
+	// against, and line fixes computed against that text no longer apply.
+	for _, f := range fixes {
+		if f.Kind == dream.FixWriteFile {
+			if text != f.Old {
+				return text, nil
+			}
+			return f.New, []dream.Fix{f}
+		}
 	}
 	var replaces, appends []dream.Fix
 	for _, f := range fixes {
@@ -430,29 +643,74 @@ func (s *Server) writeDreamReport(rep *dream.Report) error {
 	return err
 }
 
-// renderDreamReport is the human page: most severe first, each finding linked
-// to its note, nothing that could be a credential.
+// renderDreamReport is the human page. It answers three questions in order:
+// does anything need me, what did the dream change, and what is it watching.
+// The full finding list is at the bottom for whoever wants it, with what is
+// new since the last dream marked, so a report that says the same thing every
+// day can be read in a glance.
 func renderDreamReport(rep *dream.Report) string {
 	var b strings.Builder
-	counts := map[dream.Severity]int{}
-	for _, f := range rep.Findings {
-		counts[f.Severity]++
+	link := func(p string) string {
+		if strings.HasPrefix(p, "/") {
+			return "`" + p + "`" // outside the vault
+		}
+		return "[[" + strings.TrimSuffix(p, ".md") + "]]"
 	}
 	fmt.Fprintf(&b, "# Dream report\n\n")
-	fmt.Fprintf(&b, "Dreamt %s over %d memory documents: **%d high**, %d medium, %d low, %d info.\n\n",
-		rep.Finished.Local().Format("2006-01-02 15:04"), rep.Docs,
-		counts[dream.High], counts[dream.Medium], counts[dream.Low], counts[dream.Info])
-	if len(rep.Applied) > 0 || len(rep.Actions) > 0 {
-		b.WriteString("## Done\n\n")
-		for _, f := range rep.Applied {
-			switch {
-			case f.Kind == dream.FixAppend:
-				fmt.Fprintf(&b, "- Added to [[%s]]: `%s`\n", strings.TrimSuffix(f.Path, ".md"), clip(f.New, 100))
-			case f.New == "":
-				fmt.Fprintf(&b, "- Removed from [[%s]] line %d: `%s`\n", strings.TrimSuffix(f.Path, ".md"), f.Line, clip(f.Old, 100))
-			default:
-				fmt.Fprintf(&b, "- Rewrote [[%s]] line %d\n", strings.TrimSuffix(f.Path, ".md"), f.Line)
+	fmt.Fprintf(&b, "Dreamt %s over %d memory documents.\n\n",
+		rep.Finished.Local().Format("2006-01-02 15:04"), rep.Docs)
+
+	if len(rep.Asks) == 0 {
+		b.WriteString("**Nothing needs you.**\n\n")
+	} else {
+		fmt.Fprintf(&b, "## Needs you (%d)\n\n", len(rep.Asks))
+		for _, a := range rep.Asks {
+			where := ""
+			if a.Path != "" {
+				where = " in " + link(a.Path)
 			}
+			fmt.Fprintf(&b, "- %s%s. **Do:** %s\n", strings.TrimSuffix(a.Message, "."), where, a.Action)
+		}
+		b.WriteString("\n")
+	}
+
+	done := len(rep.Actions) + len(rep.Settled)
+	split := false
+	for _, f := range rep.Applied {
+		if f.Kind != dream.FixWriteFile {
+			done++
+		} else if !split {
+			split = true
+			done++ // an index and its parts are one repair
+		}
+	}
+	if done > 0 {
+		fmt.Fprintf(&b, "## Fixed (%d)\n\n", done)
+		var rewrote []string
+		for _, f := range rep.Applied {
+			switch f.Kind {
+			case dream.FixAppend:
+				fmt.Fprintf(&b, "- Listed %s in its index\n", clip(f.New, 100))
+			case dream.FixWriteFile:
+				rewrote = append(rewrote, link(f.Path))
+			case dream.FixRemoveFile:
+				fmt.Fprintf(&b, "- Removed %s, which no longer had entries\n", link(f.Path))
+			case dream.FixReplaceLine:
+				switch {
+				case f.New == "":
+					fmt.Fprintf(&b, "- Removed a dead line from %s: `%s`\n", link(f.Path), clip(f.Old, 100))
+				case f.Line == 1 && strings.HasPrefix(f.New, "---"):
+					fmt.Fprintf(&b, "- Filled in the frontmatter of %s\n", link(f.Path))
+				default:
+					fmt.Fprintf(&b, "- Rewrote %s line %d\n", link(f.Path), f.Line)
+				}
+			}
+		}
+		if len(rewrote) > 0 {
+			fmt.Fprintf(&b, "- Split the memory index so it fits what agents load at start: %s (every entry kept)\n", strings.Join(rewrote, ", "))
+		}
+		for _, s := range rep.Settled {
+			fmt.Fprintf(&b, "- %s\n", s)
 		}
 		for _, a := range rep.Actions {
 			fmt.Fprintf(&b, "- %s\n", a)
@@ -460,49 +718,102 @@ func renderDreamReport(rep *dream.Report) string {
 		b.WriteString("\n")
 	}
 	if len(rep.Held) > 0 {
-		fmt.Fprintf(&b, "## Held by memory replay (%d)\n\n", len(rep.Held))
-		b.WriteString("These automated edits were not applied: replaying past situations showed a memory that was useful would stop firing. Review them by hand, or accept the change with `grimoire memory replay --diff`.\n\n")
+		fmt.Fprintf(&b, "## Held back (%d)\n\n", len(rep.Held))
+		b.WriteString("Replaying past situations showed these edits would stop a useful memory from firing, so they were not made. Accept one with `grimoire memory replay --diff`.\n\n")
 		for _, h := range rep.Held {
-			fmt.Fprintf(&b, "- [[%s]] (%d fix(es)) — %s\n", strings.TrimSuffix(h.Path, ".md"), h.Fixes, h.Reason)
-			for _, l := range h.Lost {
-				fmt.Fprintf(&b, "  - would no longer fire for: %q\n", l)
-			}
+			fmt.Fprintf(&b, "- %s (%d fix(es)): %s\n", link(h.Path), h.Fixes, h.Reason)
 		}
 		b.WriteString("\n")
 	}
-	for _, cat := range []dream.Category{dream.Security, dream.Hygiene} {
-		var fs []dream.Finding
-		for _, f := range rep.Findings {
-			if f.Category == cat {
-				fs = append(fs, f)
+
+	// The watch list: one line per kind of finding, not one per finding.
+	type group struct {
+		check string
+		sev   dream.Severity
+		n     int
+		new   int
+	}
+	var groups []*group
+	byCheck := map[string]*group{}
+	for _, f := range rep.Findings {
+		g := byCheck[f.Check]
+		if g == nil {
+			g = &group{check: f.Check, sev: f.Severity}
+			byCheck[f.Check] = g
+			groups = append(groups, g)
+		}
+		g.n++
+		if severityRank[f.Severity] < severityRank[g.sev] {
+			g.sev = f.Severity
+		}
+		if rep.New[f.Key()] {
+			g.new++
+		}
+	}
+	sort.SliceStable(groups, func(i, j int) bool {
+		if severityRank[groups[i].sev] != severityRank[groups[j].sev] {
+			return severityRank[groups[i].sev] < severityRank[groups[j].sev]
+		}
+		return groups[i].n > groups[j].n
+	})
+	if len(groups) > 0 {
+		b.WriteString("## Watching, no action needed\n\n")
+		for _, g := range groups {
+			fresh := ""
+			if g.new > 0 {
+				fresh = fmt.Sprintf(", %d new", g.new)
 			}
+			fmt.Fprintf(&b, "- %s: %d%s\n", watchLabel(g.check), g.n, fresh)
 		}
-		if len(fs) == 0 {
-			continue
-		}
-		title := map[dream.Category]string{dream.Security: "Security", dream.Hygiene: "Hygiene"}[cat]
-		fmt.Fprintf(&b, "## %s (%d)\n\n", title, len(fs))
-		for _, f := range fs {
-			loc := strings.TrimSuffix(f.Path, ".md")
-			where := "[[" + loc + "]]"
-			if strings.HasPrefix(f.Path, "/") {
-				where = "`" + f.Path + "`" // outside the vault
+		b.WriteString("\n## All findings\n\n")
+		for _, f := range rep.Findings {
+			where := link(f.Path)
+			if f.Path == "" {
+				where = ""
 			}
 			if f.Line > 0 {
 				where += " line " + strconv.Itoa(f.Line)
 			}
-			fmt.Fprintf(&b, "- **%s** `%s` %s — %s", f.Severity, f.Check, where, f.Message)
+			mark := ""
+			if rep.New[f.Key()] {
+				mark = " (new)"
+			}
+			fmt.Fprintf(&b, "- %s `%s`%s %s — %s", f.Severity, f.Check, mark, where, f.Message)
 			if f.Excerpt != "" {
 				fmt.Fprintf(&b, " (`%s`)", clip(strings.ReplaceAll(f.Excerpt, "`", "'"), 120))
 			}
 			b.WriteString("\n")
 		}
-		b.WriteString("\n")
-	}
-	if len(rep.Findings) == 0 {
+	} else if done == 0 && len(rep.Asks) == 0 {
 		b.WriteString("Nothing to report.\n")
 	}
 	return b.String()
+}
+
+// watchLabel says in plain words what a kind of finding means.
+func watchLabel(check string) string {
+	if l, ok := map[string]string{
+		"memory_quality":        "memories that break the writing guide (several facts in one, no date)",
+		"pii":                   "notes that hold personal details such as an email address",
+		"frontmatter":           "notes whose frontmatter the dream could not complete from the file name",
+		"injection":             "lines that read like instructions to a model (usually describing one)",
+		"procedure_verify":      "procedures naming paths that are gone; agents are told to re-check them on use",
+		"dangerous_command":     "memories recording a risky command, such as a download piped to a shell",
+		"stale_volatile":        "values that tend to change and have not been confirmed for months",
+		"index_line_long":       "index lines longer than they need to be",
+		"open_challenge":        "challenges to a person's fact, waiting out their first week",
+		"duplicate":             "facts recorded twice",
+		"near_duplicate":        "facts recorded twice in different words",
+		"expired":               "facts past their own expiry",
+		"unhelpful":             "memories marked unhelpful more often than helpful",
+		"index_dangling":        "index lines pointing at missing files",
+		"index_missing":         "notes not listed in the index",
+		"index_truncated":       "index entries past the load limit",
+		"untrusted_instruction": "rules learned from text other people can write",
+	}[check]; ok {
+		return l
+	}
+	return strings.ReplaceAll(check, "_", " ")
 }
 
 func clip(s string, n int) string {
@@ -542,6 +853,29 @@ func (s *Server) dreamReport(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"last": rep, "last_at": st.At})
 }
 
+// indexOverLimit reports whether any MEMORY.md in the vault is past what
+// agents load.
+func (s *Server) indexOverLimit() bool {
+	paths, err := s.Vault.Walk()
+	if err != nil {
+		return false
+	}
+	for _, root := range filemem.Roots(paths) {
+		rel := "MEMORY.md"
+		if root != "" {
+			rel = root + "/MEMORY.md"
+		}
+		abs, err := s.Vault.SafePath(rel)
+		if err != nil {
+			continue
+		}
+		if b, err := os.ReadFile(abs); err == nil && filemem.OverLimit(string(b)) {
+			return true
+		}
+	}
+	return false
+}
+
 // DreamLoop runs scheduled dreams until done is closed. It wakes hourly and
 // dreams when the configured interval has passed AND memory changed since the
 // last dream: a quiet vault costs one directory walk an hour and no writes.
@@ -553,10 +887,14 @@ func (s *Server) DreamLoop(done <-chan struct{}) {
 		if err != nil || hours <= 0 {
 			return
 		}
-		if time.Since(s.loadDreamState().At) < time.Duration(hours*float64(time.Hour)) {
+		apply := s.setting("dream_apply") != "off"
+		// The interval waits for memory to settle, but an index past the load
+		// limit is hiding memories from every session right now, and an agent
+		// appends a line most days; that repair does not wait a day.
+		due := time.Since(s.loadDreamState().At) >= time.Duration(hours*float64(time.Hour))
+		if !due && !(apply && s.indexOverLimit()) {
 			return
 		}
-		apply := s.setting("dream_apply") != "off"
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 		defer cancel()
 		rep, err := s.Dream(ctx, apply, true)

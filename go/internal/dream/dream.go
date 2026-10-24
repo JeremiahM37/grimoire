@@ -80,6 +80,9 @@ type Finding struct {
 	// Fix is set only when the repair is mechanical and reversible. Nothing
 	// that needs judgment carries one.
 	Fix *Fix `json:"fix,omitempty"`
+	// Fixes are further edits that repair the same finding together with Fix,
+	// such as rewriting an index and the parts it is split into.
+	Fixes []Fix `json:"fixes,omitempty"`
 }
 
 // Fix is a mechanical edit to one document.
@@ -87,6 +90,9 @@ type Finding struct {
 //   - FixReplaceLine: replace line Line (1-based), whose current content must
 //     equal Old exactly, with New. New == "" deletes the line.
 //   - FixAppend: append New as a new last line.
+//   - FixWriteFile: replace the whole file, whose current text must equal Old
+//     ("" for a file that does not exist yet), with New.
+//   - FixRemoveFile: remove the file, whose current text must equal Old.
 //
 // Old is checked at apply time, so a fix computed against a document that
 // has since changed is skipped rather than applied to the wrong line.
@@ -101,7 +107,18 @@ type Fix struct {
 const (
 	FixReplaceLine = "replace_line"
 	FixAppend      = "append"
+	FixWriteFile   = "write_file"
+	FixRemoveFile  = "remove_file"
 )
+
+// AllFixes returns a finding's fixes, Fix first.
+func (f Finding) AllFixes() []Fix {
+	var out []Fix
+	if f.Fix != nil {
+		out = append(out, *f.Fix)
+	}
+	return append(out, f.Fixes...)
+}
 
 // Held is an automated edit that memory replay stopped.
 type Held struct {
@@ -129,4 +146,25 @@ type Report struct {
 	// Actions records anything else the dream did, e.g. queuing a bank
 	// consolidation, in a sentence each.
 	Actions []string `json:"actions,omitempty"`
+	// Settled lists the challenges the dream ruled on itself, a sentence each.
+	Settled []string `json:"settled,omitempty"`
+	// Asks are the few things only the owner can decide, each with what to do.
+	Asks []Ask `json:"asks,omitempty"`
+	// New holds the keys of findings the previous dream did not have.
+	New map[string]bool `json:"new,omitempty"`
+}
+
+// Ask is one question for the owner: something the dream could not decide
+// from the store and will not guess at.
+type Ask struct {
+	Check   string `json:"check"`
+	Path    string `json:"path,omitempty"`
+	Message string `json:"message"`
+	Action  string `json:"action"`
+}
+
+// Key identifies a finding across dreams, so a report can say what is new.
+func (f Finding) Key() string {
+	// Not the message: it carries counts and ages that change every day.
+	return f.Check + "\x00" + f.Path + "\x00" + f.Excerpt
 }
