@@ -1,7 +1,9 @@
 package connectors
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -70,6 +72,11 @@ CREATE TABLE IF NOT EXISTS connector_docs(
   hash TEXT, updated TEXT, PRIMARY KEY(connector, external_id)
 );
 CREATE INDEX IF NOT EXISTS idx_connector_docs_path ON connector_docs(path);
+CREATE TABLE IF NOT EXISTS connector_health(
+  connector TEXT PRIMARY KEY, last_success TEXT DEFAULT '', last_failure TEXT DEFAULT '',
+  last_error TEXT DEFAULT '', failures INTEGER DEFAULT 0, state TEXT DEFAULT 'ok',
+  since TEXT DEFAULT ''
+);
 `
 
 func (s *Store) Save(c Connector) error {
@@ -125,6 +132,9 @@ func (s *Store) List() ([]Connector, error) {
 
 func (s *Store) Delete(id string) error {
 	if err := s.DB.Exec("DELETE FROM connector_docs WHERE connector=?", id); err != nil {
+		return err
+	}
+	if err := s.DB.Exec("DELETE FROM connector_health WHERE connector=?", id); err != nil {
 		return err
 	}
 	return s.DB.Exec("DELETE FROM connectors WHERE id=?", id)
@@ -213,4 +223,62 @@ func (s *Store) Paths(connector string) ([]string, error) {
 		out = append(out, p)
 	}
 	return out, rows.Err()
+}
+
+// Health returns a connector's health record. A connector that has never run
+// has none, which reads as StateOK with no history.
+func (s *Store) Health(id string) (Health, error) {
+	h := Health{Connector: id, State: StateOK}
+	err := s.DB.QueryRow(
+		"SELECT last_success, last_failure, last_error, failures, state, since "+
+			"FROM connector_health WHERE connector=?", id).
+		Scan(&h.LastSuccess, &h.LastFailure, &h.LastError, &h.Failures, &h.State, &h.Since)
+	if errors.Is(err, sql.ErrNoRows) {
+		// No row is the normal state of a connector that has not run yet.
+		return Health{Connector: id, State: StateOK}, nil
+	}
+	return h, err
+}
+
+// AllHealth returns every connector's health record, keyed by connector id.
+func (s *Store) AllHealth() (map[string]Health, error) {
+	rows, err := s.DB.Query("SELECT connector, last_success, last_failure, last_error, " +
+		"failures, state, since FROM connector_health")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]Health{}
+	for rows.Next() {
+		var h Health
+		if err := rows.Scan(&h.Connector, &h.LastSuccess, &h.LastFailure, &h.LastError,
+			&h.Failures, &h.State, &h.Since); err != nil {
+			return nil, err
+		}
+		out[h.Connector] = h
+	}
+	return out, rows.Err()
+}
+
+// RecordRun applies one run's outcome to a connector's health.
+func (s *Store) RecordRun(id string, runErr error, now time.Time) error {
+	h, err := s.Health(id)
+	if err != nil {
+		return err
+	}
+	return s.putHealth(nextHealth(h, runErr, now))
+}
+
+func (s *Store) putHealth(h Health) error {
+	return s.DB.Exec(
+		"INSERT OR REPLACE INTO connector_health(connector,last_success,last_failure,"+
+			"last_error,failures,state,since) VALUES(?,?,?,?,?,?,?)",
+		h.Connector, h.LastSuccess, h.LastFailure, h.LastError, h.Failures, h.State, h.Since)
+}
+
+// ResetHealth clears a connector's record. Called when its credential is
+// replaced, so a reconnected connector is retried on its normal schedule at
+// once instead of waiting out the old failure.
+func (s *Store) ResetHealth(id string) error {
+	return s.DB.Exec("DELETE FROM connector_health WHERE connector=?", id)
 }

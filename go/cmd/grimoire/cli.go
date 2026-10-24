@@ -111,7 +111,7 @@ const usage = `grimoire — local-first AI-native notes
   grimoire sync off                   stop folder sync on this device (the backup stays)
   grimoire sync deleted               deleted notes the folder can still restore
   grimoire sync restore PATH          bring one back
-  grimoire agent-setup [API_URL]      print MCP + agent-context setup
+  grimoire agent-setup [API_URL] [--tools core|all|GROUPS]  print MCP + agent-context setup
   grimoire serve [--port N]           run the web app + API (the default)
   grimoire user add NAME [--admin]    create an account (prompts for a password)
   grimoire user list                  list accounts
@@ -1018,9 +1018,22 @@ const hookSettings = `{
 // base. Discoverability is a deployment concern: agents reliably read project
 // context files, and only sometimes browse tool lists.
 func cmdAgentSetup(args []string) int {
-	apiURL := "http://localhost:9111"
-	if len(args) > 0 {
-		apiURL = args[0]
+	apiURL, tools := "http://localhost:9111", ""
+	var pos []string
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--tools" && i+1 < len(args) {
+			tools = args[i+1]
+			i++
+			continue
+		}
+		pos = append(pos, args[i])
+	}
+	if len(pos) > 0 {
+		apiURL = pos[0]
+	}
+	if _, err := mcp.ParseToolProfile(tools); err != nil {
+		fmt.Fprintln(os.Stderr, "--tools:", err)
+		return 2
 	}
 	self, err := os.Executable()
 	if err != nil || self == "" {
@@ -1031,7 +1044,7 @@ func cmdAgentSetup(args []string) int {
 	cfg := map[string]any{"mcpServers": map[string]any{"grimoire": map[string]any{
 		"command": self,
 		"env": map[string]string{
-			mcp.EnvURL: apiURL, mcp.EnvAgentName: "my-agent"}}}}
+			mcp.EnvURL: apiURL, mcp.EnvAgentName: "my-agent", mcp.EnvTools: mcpToolsValue(tools)}}}}
 	raw, _ := json.MarshalIndent(cfg, "", "  ")
 
 	fmt.Println("# 1. MCP config (e.g. .mcp.json), or register at user scope for headless runs:")

@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -65,7 +66,10 @@ const Instructions = "This server is the team's knowledge base and memory: runbo
 	"ask_notes / recall — teams record accepted fixes that are not visible " +
 	"in the code. Use remember to persist anything future agents need. " +
 	"A recalled fact marked freshness.action=verify may be out of date: " +
-	"check it before acting on it."
+	"check it before acting on it. More tools exist in the groups notes, memory, " +
+	"banks, knowledge, credentials, code and admin: an operator lists them with " +
+	"GRIMOIRE_MCP_TOOLS (e.g. core,banks, or all); a tool that is not listed still " +
+	"answers when called by name."
 
 // Server bridges MCP calls to the local HTTP API.
 type Server struct {
@@ -119,8 +123,9 @@ type Server struct {
 
 	allowOnce sync.Once
 	allow     *allowCache
-	// Profile restricts the advertised tools; nil advertises all of them.
-	// Set from GRIMOIRE_MCP_TOOLS — see profile.go.
+	// Profile restricts the advertised tools (tools/list); nil advertises all
+	// of them. Hidden tools stay callable. Set from GRIMOIRE_MCP_TOOLS, which
+	// defaults to core — see profile.go.
 	Profile map[string]bool
 }
 
@@ -295,6 +300,36 @@ func recallLines(result any) string {
 
 // ---------------------------------------------------------------- HTTP bridge
 
+// apiError is a non-2xx answer from the Grimoire API. The error text is what a
+// caller has always seen; the status and body let a tool react to a specific
+// answer such as a 409 conflict.
+type apiError struct {
+	Status int
+	Body   []byte
+	msg    string
+}
+
+func (e *apiError) Error() string { return e.msg }
+
+// staleNoteError is the update_note conflict message: the note changed after
+// the agent read it, nothing was written, and the agent must re-read and
+// reapply its change rather than retry blindly.
+func staleNoteError(ae *apiError) error {
+	var conflict struct {
+		Current struct {
+			Hash string `json:"hash"`
+		} `json:"current"`
+	}
+	_ = json.Unmarshal(ae.Body, &conflict)
+	next := "re-read it with read_note"
+	if conflict.Current.Hash != "" {
+		next = fmt.Sprintf("re-read it with read_note (current base_hash is %s)", conflict.Current.Hash)
+	}
+	return errors.New("update_note conflict: the note changed since you read it, so nothing was written. " +
+		"Its content was edited by someone else. To proceed, " + next +
+		", reapply your change to the current body, then call update_note again with that base_hash")
+}
+
 func (s *Server) api(method, path string, body any) (any, error) {
 	var rdr io.Reader
 	if body != nil {
@@ -329,7 +364,8 @@ func (s *Server) api(method, path string, body any) (any, error) {
 		return nil, err
 	}
 	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("%s %s: %s: %s", method, path, resp.Status, strings.TrimSpace(string(raw)))
+		return nil, &apiError{Status: resp.StatusCode, Body: raw,
+			msg: fmt.Sprintf("%s %s: %s: %s", method, path, resp.Status, strings.TrimSpace(string(raw)))}
 	}
 	var out any
 	if len(bytes.TrimSpace(raw)) == 0 {
@@ -562,8 +598,16 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 		}
 		return s.api("POST", "/api/notes", body)
 	case "update_note":
-		return s.api("PUT", "/api/notes/"+str(args, "path"),
-			map[string]any{"body": str(args, "body")})
+		body := map[string]any{"body": str(args, "body")}
+		if base := str(args, "base_hash"); base != "" {
+			body["base_hash"] = base
+		}
+		out, err := s.api("PUT", "/api/notes/"+str(args, "path"), body)
+		var ae *apiError
+		if errors.As(err, &ae) && ae.Status == http.StatusConflict {
+			return nil, staleNoteError(ae)
+		}
+		return out, err
 	case "append_daily":
 		return s.api("POST", "/api/capture", map[string]any{
 			"text": str(args, "text"), "source": "mcp"})

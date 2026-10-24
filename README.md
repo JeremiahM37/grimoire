@@ -298,10 +298,12 @@ Memory banks take a whole conversation and extract the facts themselves,
 then recall by meaning, words, entities and time; facts you correct in the
 file outrank what a model extracted. See [docs/MEMORY_BANKS.md](docs/MEMORY_BANKS.md).
 
-Every agent pays for those schemas on every request, about 6.2k tokens for
-all 35. `GRIMOIRE_MCP_TOOLS=core` mounts the six an agent uses in ordinary
-work (briefing, search, read, remember, recall, use_credential) for about
-1.4k; add others by name, e.g. `core,ask_notes,get_fact`.
+Every advertised schema is paid for on every request. `GRIMOIRE_MCP_TOOLS` picks
+what `tools/list` shows, and it defaults to `core`: `core` is 12 tools, about 15 KB
+of schema, and `all` is 85 tools, about 63 KB. The groups are `notes`, `memory`,
+`banks`, `knowledge`, `credentials`, `code` and `admin`, combined with `core` or with
+single tool names, e.g. `core,banks` or `core,ask_notes,get_fact`. `all` lists
+everything. A tool that is not listed still answers when called by name.
 
 Any MCP client works. `grimoire agent-setup` prints the config plus a
 CLAUDE.md/AGENTS.md snippet, since agents read context files more reliably than

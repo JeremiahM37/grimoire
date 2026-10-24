@@ -103,7 +103,7 @@ func AuthURL(provider, tenant string) string {
 // Refresh exchanges the refresh token for a new access token.
 func Refresh(ctx context.Context, client *http.Client, t OAuthToken) (OAuthToken, error) {
 	if t.RefreshToken == "" {
-		return t, fmt.Errorf("the %s token has expired and has no refresh token; run `grimoire connect %s` again", t.Provider, t.Provider)
+		return t, &TokenError{Code: "no_refresh_token", Description: fmt.Sprintf("the %s token has expired and has no refresh token; run `grimoire connect %s` again", t.Provider, t.Provider)}
 	}
 	endpoint := t.TokenURL()
 	if endpoint == "" {
@@ -141,6 +141,34 @@ type TokenResponse struct {
 	Description  string `json:"error_description"`
 }
 
+// TokenError is the token endpoint refusing a request, or a grant that cannot
+// be refreshed at all. Typed so the runner can tell "the owner must sign in
+// again" apart from a transient outage without parsing messages.
+type TokenError struct {
+	Status      int
+	Code        string
+	Description string
+}
+
+func (e *TokenError) Error() string {
+	switch {
+	case e.Code == "no_refresh_token":
+		return e.Description
+	case e.Code != "" && e.Description != "":
+		return e.Code + ": " + e.Description
+	case e.Code != "":
+		return e.Code
+	}
+	return fmt.Sprintf("the token endpoint answered with status %d", e.Status)
+}
+
+// NeedsReauth reports whether the grant is dead: only the owner signing in
+// again can fix it, so retrying on a schedule cannot.
+func (e *TokenError) NeedsReauth() bool {
+	return e.Status == http.StatusUnauthorized || e.Status == http.StatusForbidden ||
+		e.Code == "invalid_grant" || e.Code == "no_refresh_token"
+}
+
 func postForm(ctx context.Context, client *http.Client, endpoint string, form url.Values) (TokenResponse, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(form.Encode()))
 	if err != nil {
@@ -149,11 +177,12 @@ func postForm(ctx context.Context, client *http.Client, endpoint string, form ur
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 	var out TokenResponse
-	if err := getJSONAllow(ctx, client, req, &out); err != nil {
+	status, err := getJSONStatus(ctx, client, req, &out)
+	if err != nil {
 		return out, err
 	}
-	if out.Error != "" {
-		return out, fmt.Errorf("%s: %s", out.Error, out.Description)
+	if status == http.StatusUnauthorized || status == http.StatusForbidden || out.Error != "" {
+		return out, &TokenError{Status: status, Code: out.Error, Description: out.Description}
 	}
 	if out.AccessToken == "" {
 		return out, fmt.Errorf("the token endpoint returned no access token")
@@ -169,19 +198,29 @@ func ExchangeForm(ctx context.Context, client *http.Client, endpoint string, for
 // getJSONAllow decodes the body even on a 4xx: token endpoints report errors
 // as JSON ({"error":"invalid_grant",...}) that is worth showing verbatim.
 func getJSONAllow(ctx context.Context, c *http.Client, req *http.Request, out any) error {
+	_, err := getJSONStatus(ctx, c, req, out)
+	return err
+}
+
+// getJSONStatus is getJSONAllow that also reports the HTTP status, which a
+// token refusal needs: a 401 is a dead grant whatever its body says.
+func getJSONStatus(ctx context.Context, c *http.Client, req *http.Request, out any) (int, error) {
 	if c == nil {
 		c = &http.Client{Timeout: 60 * time.Second}
 	}
 	resp, err := c.Do(req.WithContext(ctx))
 	if err != nil {
-		return fmt.Errorf("%s %s: %w", req.Method, req.URL.Host, err)
+		return 0, fmt.Errorf("%s %s: %w", req.Method, req.URL.Host, err)
 	}
 	defer resp.Body.Close()
 	dec := json.NewDecoder(http_LimitReader(resp))
 	if err := dec.Decode(out); err != nil {
-		return fmt.Errorf("%s: status %d, response was not JSON", req.URL.Host, resp.StatusCode)
+		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+			return resp.StatusCode, nil
+		}
+		return resp.StatusCode, fmt.Errorf("%s: status %d, response was not JSON", req.URL.Host, resp.StatusCode)
 	}
-	return nil
+	return resp.StatusCode, nil
 }
 
 // SecretWriter is implemented by a secret store that can persist a refreshed token.
