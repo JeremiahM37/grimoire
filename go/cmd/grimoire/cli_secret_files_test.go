@@ -74,6 +74,8 @@ func TestCredentialKeySeparatesKeysFromConfig(t *testing.T) {
 	for k, want := range map[string]bool{
 		"unifi.api_key": true, "tailscale.oauth.client_secret": true, "db.password": true,
 		"account_number": true, "unifi.base_url": false, "user.name": false, "host": false, "note": false,
+		"proxmox.token_name": false, "token_user": false, "huggingface.account": false, "oauth.client_id": false,
+		"PROXMOX_TOKEN_NAME": false, "mullvad.account_number": true,
 	} {
 		if credentialKey(k) != want {
 			t.Errorf("credentialKey(%q) = %v", k, !want)
