@@ -14,14 +14,14 @@ import os
 import re
 import sys
 import time
+import socket
 import urllib.parse
-import urllib.request
 from pathlib import Path
 
-
-class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        return None
+# This hook runs before every tool call, so its own start-up is on the agent's
+# critical path. urllib.request alone costs about 12 ms to import; a loopback
+# server is reached with one HTTP/1.0 request on a plain socket instead, and
+# urllib.request is imported only for an https server.
 
 
 def fingerprint(value):
@@ -279,16 +279,67 @@ def fetch_context(base, token, query, excluded, budget, mode, paths, extra=None)
     headers = {"Accept": "application/json"}
     if token:
         headers["Authorization"] = "Bearer " + token
-    request = urllib.request.Request(base + "/api/memory/context?" + parameters, headers=headers)
-    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
-    with opener.open(request, timeout=1.5) as response:
-        raw = response.read(64001)
+    target = "/api/memory/context?" + parameters
+    parsed = urllib.parse.urlsplit(base)
+    if parsed.scheme == "http":
+        raw = http_get(parsed, target, headers, timeout=1.5)
+    else:
+        raw = urllib_get(base + target, headers, timeout=1.5)
     if len(raw) > 64000:
         raise ValueError("oversized context response")
     result = json.loads(raw)
     if not isinstance(result, dict):
         raise ValueError("invalid context response")
     return result
+
+
+def http_get(parsed, target, headers, timeout):
+    """GET over HTTP/1.0 on a socket: the server answers with the whole body
+    and closes, so there is no chunking or keep-alive to handle. Redirects are
+    not followed and proxies are not used, as before."""
+    host = parsed.hostname
+    port = parsed.port or 80
+    lines = ["GET " + (parsed.path or "") + target + " HTTP/1.0",
+             "Host: " + (("[" + host + "]") if ":" in host else host) + ":" + str(port)]
+    lines += [k + ": " + v for k, v in headers.items()]
+    request = ("\r\n".join(lines) + "\r\n\r\n").encode("latin-1")
+    deadline = time.monotonic() + timeout
+    with socket.create_connection((host, port), timeout=timeout) as connection:
+        connection.sendall(request)
+        chunks, size = [], 0
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError("context request timed out")
+            connection.settimeout(remaining)
+            chunk = connection.recv(65536)
+            if not chunk:
+                break
+            chunks.append(chunk)
+            size += len(chunk)
+            if size > 70000:
+                raise ValueError("oversized context response")
+    response = b"".join(chunks)
+    head, separator, body = response.partition(b"\r\n\r\n")
+    if not separator:
+        raise ValueError("invalid context response")
+    status = head.split(b"\r\n", 1)[0].split()
+    if len(status) < 2 or status[1] != b"200":
+        raise ValueError("context request failed")
+    return body
+
+
+def urllib_get(url, headers, timeout):
+    import urllib.request
+
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, headers, newurl):
+            return None
+
+    request = urllib.request.Request(url, headers=headers)
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
+    with opener.open(request, timeout=timeout) as response:
+        return response.read(64001)
 
 
 def run(event, environment=None, fetch=fetch_context, now=None, profile=None, kind=None):

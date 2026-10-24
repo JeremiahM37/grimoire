@@ -84,6 +84,9 @@ type Index struct {
 }
 
 func New(database *db.DB, v *vault.Vault, e Embedder) *Index {
+	if e != nil {
+		e = memoQueries(e)
+	}
 	return &Index{DB: database, Vault: v, Emb: e}
 }
 

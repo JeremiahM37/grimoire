@@ -295,6 +295,7 @@ func run(args []string) error {
 	syncPeer, syncToken, syncInterval := e.server.SyncPeer, e.server.SyncToken, e.server.SyncInterval
 	_ = ix
 
+	startPprof()
 	srv := &http.Server{
 		Addr:              net.JoinHostPort(host, port),
 		Handler:           e.handler,

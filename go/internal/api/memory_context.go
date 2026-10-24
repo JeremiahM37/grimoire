@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/JeremiahM37/grimoire/go/internal/adherence"
 	"github.com/JeremiahM37/grimoire/go/internal/cues"
@@ -90,7 +91,18 @@ func contextOverlap(terms []string, text string) float64 {
 	return float64(matched) / float64(len(terms))
 }
 
+// contextClientWait is how long the bundled hooks wait for this route
+// (grimoire_context.py's timeout). An answer slower than that is never read.
+const contextClientWait = 1500 * time.Millisecond
+
+// contextAbandoned reports whether the caller has gone or can no longer be
+// waiting for this answer.
+func contextAbandoned(r *http.Request, started time.Time) bool {
+	return r.Context().Err() != nil || time.Since(started) > contextClientWait
+}
+
 func (s *Server) memoryContext(w http.ResponseWriter, r *http.Request) {
+	started := time.Now()
 	query := r.URL.Query().Get("q")
 	if len(query) > 8000 || len(r.URL.Query().Get("exclude")) > 20000 {
 		writeErr(w, http.StatusBadRequest, "context query too large")
@@ -154,6 +166,13 @@ func (s *Server) memoryContext(w http.ResponseWriter, r *http.Request) {
 	}
 	replayMinRel := minRel
 	if rank == "hybrid" && strings.TrimSpace(query) != "" && mode != "manual" && mode != "off" {
+		// Start the query's embedding now: ranking needs it only after the
+		// candidate scan, and with a remote embedder the round trip was the
+		// largest single wait in the hook. The index remembers the vector, so
+		// the three rankers that want it share this one call.
+		if s.Index.Emb != nil {
+			go s.Index.Emb.Embed([]string{query})
+		}
 		items, err := s.hybridContext(r, query, terms, paths)
 		if err != nil {
 			writeErr(w, http.StatusInternalServerError, err.Error())
@@ -179,6 +198,13 @@ func (s *Server) memoryContext(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("rerank") == "1" {
 			items = s.rerankContext(r, query, items, minRel)
 			minRel = 0
+		}
+		if contextAbandoned(r, started) {
+			// The hook has given up (it waits contextClientWait), so nothing
+			// written now would reach the agent. Logging these injections
+			// would record memories as shown that never were.
+			writeErr(w, http.StatusServiceUnavailable, "context took too long; nothing injected")
+			return
 		}
 		lg := s.traceLog(r, query, perm, ask)
 		lg.minRel, lg.limit, lg.budget = replayMinRel, limit, budget
@@ -540,10 +566,23 @@ func (s *Server) hybridContext(r *http.Request, query string, terms, paths []str
 		query = string(q[:2000])
 	}
 	var items []contextItem
+	// Facts and notes are ranked independently, so the note retrieval runs
+	// alongside fact recall instead of after it; on the hook's path the two
+	// were most of the wall time, one after the other.
+	type noteResult struct {
+		hits []index.Hit
+		err  error
+	}
+	notes := make(chan noteResult, 1)
+	go func() {
+		hits, err := s.Index.RetrieveFor(query, 30, filterFor(r, false))
+		notes <- noteResult{hits, err}
+	}()
 	facts, err := s.Index.MemoryEntries(index.MemoryQuery{Filter: filterFor(r, false),
 		Query: query, AcceptedOnly: true, Paths: paths, Limit: 40, Now: vault.Now(),
 		Mode: recallModeOf(r), IncludePrivate: boolParam(r, "include_private")})
 	if err != nil {
+		<-notes
 		return nil, err
 	}
 	priors, theta, now := s.freshPriors(), s.verifyThreshold(), vault.Now()
@@ -565,7 +604,8 @@ func (s *Server) hybridContext(r *http.Request, query string, terms, paths []str
 		}
 		items = append(items, item)
 	}
-	hits, err := s.Index.RetrieveFor(query, 30, filterFor(r, false))
+	nr := <-notes
+	hits, err := nr.hits, nr.err
 	if err != nil {
 		return nil, err
 	}

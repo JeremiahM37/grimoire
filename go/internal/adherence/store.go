@@ -49,7 +49,19 @@ type Store struct {
 	db        *sql.DB
 	mu        sync.Mutex
 	lastPrune time.Time
+
+	// penalties caches the per-target stats IgnoredPenalty reads. Building
+	// them scans every injection in the retention window, which was two
+	// thirds of the context hook's time on every tool call; a target's
+	// ignored count moves over days, so a minute-old copy ranks the same.
+	penMu    sync.Mutex
+	penBy    map[string]*Stats
+	penSince time.Time
+	penAt    time.Time
 }
+
+// penaltyTTL is how long IgnoredPenalty reuses one scan of the injections.
+const penaltyTTL = time.Minute
 
 // Open opens (creating) the database in dir.
 func Open(dir string) (*Store, error) {
@@ -442,7 +454,7 @@ func (s *Store) IgnoredPenalty(targets []string, since time.Time) map[string]flo
 	if len(targets) == 0 {
 		return out
 	}
-	by, _, err := s.Report(since)
+	by, err := s.penaltyStats(since)
 	if err != nil {
 		return out
 	}
@@ -456,6 +468,31 @@ func (s *Store) IgnoredPenalty(targets []string, since time.Time) map[string]flo
 		}
 	}
 	return out
+}
+
+// penaltyStats is Report's per-target map, rebuilt at most once per
+// penaltyTTL. The window start moves with the clock, so a cached map is reused
+// while its own start is within the TTL of the one asked for.
+func (s *Store) penaltyStats(since time.Time) (map[string]*Stats, error) {
+	s.penMu.Lock()
+	defer s.penMu.Unlock()
+	now := time.Now()
+	if s.penBy != nil && now.Sub(s.penAt) < penaltyTTL && absDuration(since.Sub(s.penSince)) < penaltyTTL {
+		return s.penBy, nil
+	}
+	by, _, err := s.Report(since)
+	if err != nil {
+		return nil, err
+	}
+	s.penBy, s.penSince, s.penAt = by, since, now
+	return by, nil
+}
+
+func absDuration(d time.Duration) time.Duration {
+	if d < 0 {
+		return -d
+	}
+	return d
 }
 
 // Penalty is the injection multiplier for a target's history: 1 until it has

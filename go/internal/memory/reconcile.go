@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"unicode"
 	"regexp"
 	"strings"
 )
@@ -81,6 +82,30 @@ var spaceRE = regexp.MustCompile(`\s+`)
 // Normalize reduces a fact to the form two equivalent statements share:
 // lowercase, no punctuation, single-spaced.
 func Normalize(s string) string {
+	// One pass instead of two regexp replacements: this runs for every
+	// candidate fact on every context request, and the regexps were a sixth
+	// of the hook's time. normalizeRegexp is the reference it must equal.
+	s = strings.ToLower(s)
+	var b strings.Builder
+	b.Grow(len(s))
+	gap := false
+	for _, r := range s {
+		if unicode.IsLetter(r) || unicode.IsNumber(r) {
+			if gap && b.Len() > 0 {
+				b.WriteByte(' ')
+			}
+			gap = false
+			b.WriteRune(r)
+			continue
+		}
+		gap = true
+	}
+	return b.String()
+}
+
+// normalizeRegexp is the original definition of Normalize, kept so a test can
+// hold the fast path to it.
+func normalizeRegexp(s string) string {
 	s = strings.ToLower(strings.TrimSpace(s))
 	s = punctRE.ReplaceAllString(s, " ")
 	return strings.TrimSpace(spaceRE.ReplaceAllString(s, " "))
