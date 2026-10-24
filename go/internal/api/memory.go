@@ -1620,7 +1620,7 @@ func (s *Server) briefing(w http.ResponseWriter, r *http.Request) {
 	// What the owner is needed for comes first (encoding/json writes keys in
 	// order, and "attention" sorts first), so an agent sees it before anything
 	// else and can pass it on.
-	if items := s.Inbox(); len(items) > 0 {
+	if items := s.Inbox(); len(items) > 0 && s.ownerView(r) {
 		out["attention"] = map[string]any{"summary": inboxLine(items), "items": items}
 	}
 	writeJSON(w, http.StatusOK, out)

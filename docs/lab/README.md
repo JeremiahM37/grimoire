@@ -156,3 +156,55 @@ until the holdout ends on 2026-11-08:
 | Anchor history | always (passive) | Every probe result is kept with a hash of what it saw: live, dead or drifted, and pass-to-fail flips as staleness labels. [MEMORY-ANCHORS.md](../MEMORY-ANCHORS.md) |
 | Write link | always (passive, hook) | A `remember` call's fact ids are linked to the writing session's trace hash, so writes can be joined to what that session was shown. [MEMORY_TRACE.md](../MEMORY_TRACE.md) |
 | Offline harnesses | scripts | `benchmarks/lastwrite` (newest-statement-wins floor for update recognition), `benchmarks/correction_wording` (how a changed value should be shown), `benchmarks/rule_capacity` (adherence against the number of rules). Not yet run on real data. |
+
+## Closing the loop (2026-10-24)
+
+From the fourth research session (`/mnt/bulk/lab-work/improve-research-20261023/REPORT.md`),
+which found that the problems were mostly outside the memory engine. Every
+number here was measured on a copy of the live vault served by a separate
+instance (port 9412); the live service was not used for testing.
+
+**Hook latency.** The context hook ran on every tool call at 150 ms (p50, end
+to end, Python included). Profiling the server route showed two thirds of its
+CPU in one function: the adherence penalty rescanned every logged injection
+(17k rows) on every request. Fixes, in the order they were found: cache that
+table for a minute; embed each query once instead of three times, starting the
+round trip at the top of the request; rank facts and notes concurrently; a
+one-pass `Normalize` held to the regexp version by a 5,000-case test; a
+bounds-check-free cosine that stays bit-identical to `Cosine`. The hook itself
+talks to a loopback server over a socket rather than importing urllib.request
+(12 ms). Server route p50 **105 → 26 ms**; hook end to end **150 → 50 ms**,
+unique queries, 25–80 requests each. An answer the hook has stopped waiting
+for (1.5 s) is no longer logged as injected.
+
+**Search noise** (`/api/search`, which `search_notes` uses, and
+`/api/retrieve`): the note a query names first, the owner's notes before
+pulled content unless the query asks for mail or files, indexes and documents
+over 60 KB a few places down, and hybrid ranking blended into questions of
+four or more words. The hook's retrieval path is unchanged.
+
+| set | endpoint | before hit@1 / hit@5 / MRR | after |
+|---|---|---|---|
+| 53 project names | search | 41 / 47 / 0.837 | 53 / 53 / 1.000 |
+| 53 project names | retrieve | 35 / 49 / 0.778 | 53 / 53 / 1.000 |
+| 30 paraphrased questions (tuning set) | search | 11 / 13 / 0.400 | 17 / 25 / 0.691 |
+| 30 paraphrased questions (tuning set) | retrieve | 13 / 22 / 0.588 | 18 / 25 / 0.699 |
+| **30 fresh questions, held out** | search | 11 / 13 / 0.383 | **15 / 22 / 0.608** |
+| **30 fresh questions, held out** | retrieve | 14 / 19 / 0.553 | **15 / 20 / 0.583** |
+
+The names set is what the entity rule is built for, so 53/53 there is by
+construction, not evidence. On 152 real agent queries, pulled content at rank
+1 fell from 11 to 3 (search) and 22 to 6 (retrieve), and its share of the top
+ten from 15.3% to 12.8% and 19.3% to 17.5%. Questions written by gemma4:e4b
+from randomly sampled owned notes; n = 30, so read these as direction and size,
+not precision.
+
+**Dream on the copied store.** The first applying dream split MEMORY.md
+(247 lines, 49 KB, 109 of 233 entries never loaded) into a 107-line, 21 KB core
+holding all 46 feedback rules plus the most-used entries, and three parts; a
+script check confirmed all 233 entries survive with their text unchanged. It
+filled in frontmatter for 12 notes from their file names and closed all five
+challenges that had been open 43 days: each was an agent's fact paired against
+a logged event, which cannot contradict a standing fact. A second dream changed
+nothing. The report now leads with what needs the owner (nothing, here), then
+what was fixed, then one line per kind of finding it is watching.

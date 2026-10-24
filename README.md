@@ -471,8 +471,16 @@ may make any number of calls. Names can carry a namespace (`prod/stripe`), and
 that needs the production keys has no business being handed the rest.
 
 `grimoire run NAME -- cmd` puts a value in a child's environment. That hands
-over the value, which is exactly what the broker avoids, so it is for your own
-commands — agents get grants.
+over the value, which the broker avoids, so a grant is the stronger choice
+wherever an HTTP call will do. Most agent work is a shell command, though, and
+agents on a machine with plaintext key files read the files instead. So a file
+can be brought in whole: `grimoire secret import ~/.secrets/api.yaml` stores
+every value in it under `files/api/…` (YAML, JSON or `.env`), and
+`grimoire run --file ~/.secrets/api.yaml -- cmd` gives one command those
+values as variables (`unifi.api_key` arrives as `$UNIFI_API_KEY`). The context
+hook then stops an agent that tries to `cat` or open an imported file and
+tells it the `run --file` command to use instead
+(`GRIMOIRE_SECRET_GUARD=0` turns that off).
 
 ## Pull in what you already wrote elsewhere
 

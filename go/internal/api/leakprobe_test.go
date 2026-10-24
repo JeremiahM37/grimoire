@@ -473,6 +473,7 @@ func lpProbes(w *lpWorld) []lpProbe {
 		{route: "GET /api/trust", path: "/api/trust", kind: lpList},
 		{route: "GET /api/timeline", path: "/api/timeline", kind: lpList},
 		{route: "GET /api/briefing", path: "/api/briefing", kind: lpList},
+		{route: "GET /api/inbox", path: "/api/inbox", kind: lpList},
 		{route: "GET /api/usage", path: "/api/usage", kind: lpList},
 		{route: "GET /api/usage/agents", path: "/api/usage/agents", kind: lpList},
 		{route: "GET /api/doctor", path: "/api/doctor", kind: lpList},

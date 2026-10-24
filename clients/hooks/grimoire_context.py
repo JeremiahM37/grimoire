@@ -12,9 +12,9 @@ import hashlib
 import json
 import os
 import re
+import socket
 import sys
 import time
-import socket
 import urllib.parse
 from pathlib import Path
 

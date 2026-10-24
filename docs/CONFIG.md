@@ -30,7 +30,7 @@ Everything is environment-driven (same variables bare-metal, systemd, Docker):
 | `GRIMOIRE_RETELL_API_KEY` | *(none)* | Key for the judge; else the vault secret `retell-api-key`, then the decision key |
 | `GRIMOIRE_RETELL_THRESHOLD` | `0.9` | Yes-probability needed before a cue is learned |
 | `GRIMOIRE_DREAM_INTERVAL_HOURS` | `24` | Hours between scheduled dreams (hygiene + security sweep over agent memory); `0` turns the schedule off. A dream only runs when memory changed since the last one |
-| `GRIMOIRE_DREAM_APPLY` | `safe` | What a scheduled dream may change: `safe` applies mechanical, reversible fixes (index repair, freshness tiers and history from recorded evidence) with a history snapshot first; `off` only reports |
+| `GRIMOIRE_DREAM_APPLY` | `safe` | What a scheduled dream may change: `safe` applies mechanical, reversible fixes with a history snapshot first: index repair, splitting a MEMORY.md past the 200-line / 25 KiB load limit into a core and `MEMORY-<type>.md` parts (no entry dropped; runs within the hour, not on the interval), frontmatter filled in from a note's file name, freshness tiers and history from recorded evidence, and rulings on challenges the store can settle (an event or an unrelated fact is closed, the facts' own checks decide, a person's fact is upheld after a week). Only what it cannot decide goes to the owner's inbox. `off` only reports |
 | `GRIMOIRE_LOCAL_EMBED` / `_MODEL` | `auto` / `potion-base-8M` | Local semantic embeddings — the ~30 MB model is fetched once on first start (`grimoire fetch-model` to pre-seed); `off` to stay on the hashing embedder |
 | `GRIMOIRE_RERANK` | `auto` | Reranking of retrieved passages: `local` (built-in cross-encoder), `remote` (a `/rerank` service), `off`. `auto` uses `remote` when `GRIMOIRE_RERANK_URL` is set, else `local` when the model is on disk or may be downloaded, else `off`. See [Reranking](#reranking) |
 | `GRIMOIRE_RERANK_MODEL` | `cross-encoder/ms-marco-MiniLM-L-6-v2` | Local: a hub repo id (fetched once, ~90 MB) or a path to a directory with `config.json`, `tokenizer.json` and `model.safetensors`. Remote: the model name the service expects |
@@ -321,6 +321,9 @@ Settings added by the agent-memory work, plus the hook-side variables read by th
 | `GRIMOIRE_CONTEXT_ACTIONS` | `1` | Hook side: `0` stops memory being restated before tool calls |
 | `GRIMOIRE_CONTEXT_MAX_BYTES` | `2400` | Hook side: budget of one prompt-time injection (128-8000) |
 | `GRIMOIRE_ACTION_MAX_BYTES` | `1200` | Hook side: budget of one action-time injection (128-4000) |
+| `GRIMOIRE_SECRET_GUARD` | `1` | Hook side: `0` stops the context hook refusing a tool call that reads a file imported with `grimoire secret import` (it names the `grimoire run --file` command instead) |
+| `GRIMOIRE_VAULTED_FILES` | `~/.config/grimoire/vaulted-files.json` | The list of imported secret files and the variables each one's values arrive as; paths and names only, never a value |
+| `GRIMOIRE_PPROF` | *(empty)* | A loopback `host:port` to serve Go's profiler on, for diagnosing latency; anything not loopback is refused |
 | `GRIMOIRE_CONTEXT_DEDUP` | `ttl` | Hook side: `window` keeps an injected item until compact, clear or resume instead of expiring it after its TTL, and shares that list between prompt and tool-call stages (see `docs/MEMORY_USE.md`) |
 | `GRIMOIRE_CONTEXT_RANK` | `hybrid` | Hook side: `hybrid` (embeddings + keywords + cues) or `lexical` (word overlap) |
 | `GRIMOIRE_RECALL_MODE` | unset | Hook side: `factual` or `personal` narrows injected facts to those categories; unset sends nothing extra (see `docs/MEMORY_USE.md`) |

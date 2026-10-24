@@ -370,21 +370,13 @@ func (c *corpusCache) cosine(i int, qv []float32, qnorm float64) float64 {
 	}
 	v := c.vecs[i*c.dim : (i+1)*c.dim : (i+1)*c.dim]
 	q := qv[:len(v)]
-	// Four accumulators and no bounds checks: this loop is most of the CPU a
-	// context request spends. The sums are float64 as before; only their
-	// grouping changes, which moves a score by rounding error.
-	var d0, d1, d2, d3 float64
-	j := 0
-	for ; j+4 <= len(v); j += 4 {
-		d0 += float64(v[j]) * float64(q[j])
-		d1 += float64(v[j+1]) * float64(q[j+1])
-		d2 += float64(v[j+2]) * float64(q[j+2])
-		d3 += float64(v[j+3]) * float64(q[j+3])
+	// Sliced to the same length so the loop runs without bounds checks: this
+	// is most of the CPU a context request spends. One accumulator in index
+	// order, so the result stays bit-identical to Cosine.
+	var dot float64
+	for j, x := range v {
+		dot += float64(x) * float64(q[j])
 	}
-	for ; j < len(v); j++ {
-		d0 += float64(v[j]) * float64(q[j])
-	}
-	dot := (d0 + d1) + (d2 + d3)
 	na := c.norms[i]
 	if na == 0 {
 		na = 1

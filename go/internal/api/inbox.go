@@ -36,6 +36,17 @@ type InboxItem struct {
 	Since  time.Time `json:"since,omitempty"`
 }
 
+// ownerView reports whether the caller is the owner the inbox is for: anyone
+// on an instance without accounts, an administrator on one with them. Other
+// account holders get an empty inbox; it is about the owner's memory and
+// connectors, not theirs.
+func (s *Server) ownerView(r *http.Request) bool {
+	if s.Auth == nil || !s.Auth.Enabled() {
+		return true
+	}
+	return principal(r).IsAdmin()
+}
+
 // Inbox lists what needs the owner, most actionable first.
 func (s *Server) Inbox() []InboxItem {
 	var out []InboxItem
@@ -116,16 +127,20 @@ func inboxLine(items []InboxItem) string {
 	return b.String()
 }
 
-func (s *Server) inbox(w http.ResponseWriter, _ *http.Request) {
-	items := s.Inbox()
-	if items == nil {
-		items = []InboxItem{}
+func (s *Server) inbox(w http.ResponseWriter, r *http.Request) {
+	items := []InboxItem{}
+	approvals, credentials := 0, 0
+	if s.ownerView(r) {
+		if all := s.Inbox(); all != nil {
+			items = all
+		}
+		approvals, credentials = s.pendingSourceActions(), s.pendingGrantRequests()
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"items": items,
 		"counts": map[string]int{
-			"approvals":   s.pendingSourceActions(),
-			"credentials": s.pendingGrantRequests(),
+			"approvals":   approvals,
+			"credentials": credentials,
 			"total":       len(items),
 		},
 	})

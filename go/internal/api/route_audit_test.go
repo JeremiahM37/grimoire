@@ -213,6 +213,7 @@ var routeAccess = map[string]access{
 	// Both sides of each past supersession are fact text, so the same filter as recall.
 	"GET /api/memory/supersessions": scoped,
 	"GET /api/briefing":             scoped,
+	"GET /api/inbox":                scoped, // owner only once accounts exist (ownerView)
 	// Counts per origin, filtered per caller. It says how much of the corpus
 	// came from where — never which notes, so it cannot be used to enumerate
 	// content the caller could not already list.
