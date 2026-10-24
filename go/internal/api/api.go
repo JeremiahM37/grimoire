@@ -7,6 +7,7 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -915,23 +916,33 @@ func (s *Server) getNote(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusNotFound, "no such note")
 		return
 	}
+	out, err := s.noteDetail(rel, note)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// noteDetail is the note as GET /api/notes/{path} returns it. The conflict
+// response reuses it, so a client can rebase onto the current version without
+// a second request.
+func (s *Server) noteDetail(rel string, note *vault.Note) (map[string]any, error) {
 	out := map[string]any{}
 	b, _ := json.Marshal(s.viewOf(note))
 	_ = json.Unmarshal(b, &out)
 
 	backlinks, err := s.backlinks(rel)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, err.Error())
-		return
+		return nil, err
 	}
 	out["backlinks"] = backlinks
 	links, err := s.outgoingLinks(rel)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, err.Error())
-		return
+		return nil, err
 	}
 	out["links"] = links
-	writeJSON(w, http.StatusOK, out)
+	return out, nil
 }
 
 // outgoingLinks returns this note's links WITH their resolution state, which is
@@ -982,6 +993,51 @@ func (s *Server) backlinks(rel string) ([]map[string]any, error) {
 type noteUpdate struct {
 	Body        string          `json:"body"`
 	Frontmatter *map[string]any `json:"frontmatter"`
+	// BaseHash is the hash of the version the client edited. Optional: without
+	// it the write is unconditional, as it has always been.
+	BaseHash *string `json:"base_hash"`
+}
+
+// noteBase returns the version a write is based on: the If-Match header
+// (ETag quoting stripped) or else the base_hash field. "" means the client
+// did not say, and "*" in If-Match means "any version", so both are
+// unconditional.
+func noteBase(r *http.Request, bodyBase *string) string {
+	if m := strings.TrimSpace(r.Header.Get("If-Match")); m != "" {
+		if m == "*" {
+			return ""
+		}
+		return strings.Trim(strings.TrimPrefix(m, "W/"), `"`)
+	}
+	if bodyBase != nil {
+		return strings.TrimSpace(*bodyBase)
+	}
+	return ""
+}
+
+// staleBase reports whether a write based on version base would overwrite
+// something the client has not seen. A missing note is stale too. Saving
+// content identical to the current note is never a conflict, because it
+// changes nothing; a frontmatter mismatch is treated as a conflict, the safe
+// direction.
+func (s *Server) staleBase(base string, existing *vault.Note, readErr error, u noteUpdate) bool {
+	if readErr != nil {
+		return true
+	}
+	if existing.Hash == base {
+		return false
+	}
+	// compare the decrypted body: an encrypted note's stored body is a sealed blob
+	view := s.viewOf(existing)
+	if strings.TrimRight(view.Body, "\n") != strings.TrimRight(u.Body, "\n") {
+		return true
+	}
+	if u.Frontmatter == nil {
+		return false
+	}
+	want, _ := json.Marshal(*u.Frontmatter)
+	have, _ := json.Marshal(view.Frontmatter)
+	return !bytes.Equal(want, have)
 }
 
 func (s *Server) updateNote(w http.ResponseWriter, r *http.Request) {
@@ -995,6 +1051,20 @@ func (s *Server) updateNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	existing, readErr := s.Vault.Read(rel)
+	if base := noteBase(r, u.BaseHash); base != "" && s.staleBase(base, existing, readErr, u) {
+		// Nothing is written. The client gets the current version to rebase on.
+		var current any
+		if readErr == nil {
+			detail, err := s.noteDetail(rel, existing)
+			if err != nil {
+				writeErr(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			current = detail
+		}
+		writeJSON(w, http.StatusConflict, map[string]any{"error": "conflict", "current": current})
+		return
+	}
 	if readErr == nil && strings.TrimRight(existing.Body, "\n") != strings.TrimRight(u.Body, "\n") {
 		// compare modulo the trailing newline the serializer guarantees, or
 		// every save of unchanged content would count as a new version

@@ -275,3 +275,9 @@ tr.banks-disputed td { opacity: .78; }
 .react-app .gr-field { color: var(--ink-soft); font-size: .86em; letter-spacing: .02em; }
 /* the excerpt sits under its title, past the pin gutter */
 .react-app .note-row .snip { padding-left: 14px; }
+
+/* Shown when a save is refused because the note changed elsewhere. */
+.react-app .note-conflict-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--paper2); color: var(--ink); font-size: 13px; }
+.react-app .note-conflict-bar span { flex: 1 1 260px; }
+.react-app .note-conflict-bar button { font: inherit; padding: 4px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); cursor: pointer; }
+.react-app .note-conflict-bar button:hover { background: var(--hover); }

@@ -1,7 +1,8 @@
 import type { APIKey, AuditEvent, Canvas, Connector, ConnectorKind, DocumentRecord, ExtractionResult, ExternalIdentity, Graph, Grant, GrantRequest, Health, Identity, JsonValue, KnowledgeGraph, KnowledgeQueryResult, KnowledgeSource, Note, NoteListItem, Plugin, ReviewQueue, SearchHit, Secret, SecretDetail, Space, TagCount, Task, Template, TrustOverview, UsageReport, User, VaultStatus } from './types';
 
 export class ApiError extends Error {
-  constructor(public readonly status: number, public readonly gate: string, message: string, public readonly code = '') {
+  // current is the note a 409 conflict answered with, in the GET note shape.
+  constructor(public readonly status: number, public readonly gate: string, message: string, public readonly code = '', public readonly current?: unknown) {
     super(message);
     this.name = 'ApiError';
   }
@@ -29,8 +30,10 @@ export function createClient(options: ClientOptions = {}) {
       const gate = response.headers.get('X-Grimoire-Gate') ?? '';
       let message = response.statusText || `Request failed (${response.status})`;
       let code = '';
+      let current: unknown;
       try {
         const payload: unknown = await response.json();
+        if (typeof payload === 'object' && payload !== null && 'current' in payload) current = payload.current;
         if (typeof payload === 'object' && payload !== null && 'detail' in payload && typeof payload.detail === 'string') message = payload.detail;
         // A machine-readable reason (e.g. "model_required") rides beside the text.
         if (typeof payload === 'object' && payload !== null && 'code' in payload && typeof payload.code === 'string') code = payload.code;
@@ -38,7 +41,7 @@ export function createClient(options: ClientOptions = {}) {
       // Admin-token failures are separate from account sessions. Never reload
       // the editor or discard unsaved work for an admin gate refusal.
       if (response.status === 401 && gate !== 'admin') options.onSessionExpired?.();
-      throw new ApiError(response.status, gate, message, code);
+      throw new ApiError(response.status, gate, message, code, current);
     }
     return (response.status === 204 ? null : await response.json()) as T;
   };
@@ -81,7 +84,9 @@ export function createGrimoireApi(options: ClientOptions = {}) {
     usage: (since = '30d') => request<UsageReport>(`/usage${query({ since })}`), usageAgents: (since = '30d') => request<JsonValue>(`/usage/agents${query({ since })}`),
     trust: () => request<TrustOverview>('/trust'), reviewQueue: () => request<ReviewQueue>('/stale'),
     spaces: () => request<Space[]>('/spaces'), users: () => request<User[]>('/users'), keys: () => request<APIKey[]>('/keys'), identities: () => request<ExternalIdentity[]>('/identities'), settings: () => request<{ settings: Record<string, JsonValue>; answer_backend?: string }>('/settings'),
-    update: (note: Note) => request<Note>(`/notes/${noteURLPath(note.path)}`, { method: 'PUT', body: { body: note.body, frontmatter: { ...note.frontmatter, title: note.title, private: note.private } } }),
+    // base_hash is the version the editor loaded. The server refuses the save
+    // with a 409 if the note has changed since, rather than overwrite it.
+    update: (note: Note) => request<Note>(`/notes/${noteURLPath(note.path)}`, { method: 'PUT', body: { body: note.body, ...(note.hash ? { base_hash: note.hash } : {}), frontmatter: { ...note.frontmatter, title: note.title, private: note.private } } }),
     create: (body: JsonValue) => request<Note>('/notes', { method: 'POST', body }), login: (name: string, password: string) => request<unknown>('/auth/login', { method: 'POST', body: { name, password } }), logout: () => request<unknown>('/auth/logout', { method: 'POST' }),
   };
 }

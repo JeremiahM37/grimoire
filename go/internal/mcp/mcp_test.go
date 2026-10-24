@@ -444,3 +444,47 @@ func TestDisputeToolsReachTheirRoutes(t *testing.T) {
 		t.Errorf("resolve body = %v", body)
 	}
 }
+
+// update_note passes the base the agent read through as base_hash, and a
+// refused write comes back as a message that tells the agent to re-read and
+// reapply, not as a bare HTTP status.
+func TestUpdateNoteForwardsBaseHashAndExplainsConflicts(t *testing.T) {
+	var gotBody map[string]any
+	s := stubAPI(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut || r.URL.Path != "/api/notes/a.md" {
+			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
+		}
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		if gotBody["base_hash"] == "stale" {
+			w.WriteHeader(http.StatusConflict)
+			_, _ = w.Write([]byte(`{"error":"conflict","current":{"hash":"fresh123"}}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"hash":"fresh123"}`))
+	})
+
+	if _, err := s.dispatch("update_note", map[string]any{"path": "a.md", "body": "x", "base_hash": "ok"}); err != nil {
+		t.Fatal(err)
+	}
+	if gotBody["base_hash"] != "ok" {
+		t.Errorf("base_hash not forwarded: %v", gotBody)
+	}
+
+	gotBody = nil
+	if _, err := s.dispatch("update_note", map[string]any{"path": "a.md", "body": "x"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, sent := gotBody["base_hash"]; sent {
+		t.Errorf("base_hash sent when the agent gave none: %v", gotBody)
+	}
+
+	_, err := s.dispatch("update_note", map[string]any{"path": "a.md", "body": "x", "base_hash": "stale"})
+	if err == nil {
+		t.Fatal("conflict was not reported as an error")
+	}
+	for _, want := range []string{"conflict", "nothing was written", "read_note", "fresh123"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("conflict message %q lacks %q", err.Error(), want)
+		}
+	}
+}

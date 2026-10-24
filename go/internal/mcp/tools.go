@@ -383,8 +383,9 @@ func Tools() []tool {
 			Name:        "update_note",
 			Description: "Replace a note's body. The previous version is snapshotted automatically, so the human can roll back.",
 			InputSchema: obj(map[string]any{
-				"path": strProp("vault-relative path"),
-				"body": strProp("new markdown body"),
+				"path":      strProp("vault-relative path"),
+				"body":      strProp("new markdown body"),
+				"base_hash": strProp("hash of the version you read (the note's hash field). Pass it so a change made since then is refused with a conflict instead of overwritten"),
 			}, "path", "body"),
 		},
 		{

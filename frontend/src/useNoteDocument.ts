@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Note } from "./types";
+import { conflictFrom, keepBoth, keepMine, type NoteConflict } from "./noteConflict";
 interface API {
   note: (path: string) => Promise<Note>;
   update: (note: Note) => Promise<Note>;
@@ -29,9 +30,12 @@ export function useNoteDocument(
 ) {
   const [active, render] = useState<Note>(),
     [dirty, renderDirty] = useState(false),
-    [saveState, setSaveState] = useState("");
+    [saveState, setSaveState] = useState(""),
+    [conflict, setConflict] = useState<NoteConflict>();
   const activeRef = useRef<Note | undefined>(undefined),
     dirtyRef = useRef(false),
+    // While a conflict is open nothing saves, so autosave cannot retry over it.
+    conflictRef = useRef<NoteConflict | undefined>(undefined),
     revision = useRef(0),
     navigation = useRef(0),
     timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined),
@@ -57,10 +61,14 @@ export function useNoteDocument(
     clearTimeout(timer.current);
     if (pending.current) return pending.current;
     const run = async () => {
+      // Refusing here (not returning true) also keeps navigation from moving
+      // the user off a note whose edits have not been saved yet.
+      if (conflictRef.current) return false;
       while (
         dirtyRef.current &&
         activeRef.current &&
-        !activeRef.current.locked
+        !activeRef.current.locked &&
+        !conflictRef.current
       ) {
         const note = activeRef.current,
           version = revision.current;
@@ -97,6 +105,18 @@ export function useNoteDocument(
           }
           void callbacks.current.onSaved().catch(() => undefined);
         } catch (error) {
+          const hit =
+            activeRef.current?.path === note.path
+              ? conflictFrom(activeRef.current, error)
+              : undefined;
+          if (hit) {
+            // The note changed elsewhere. Nothing was written: hold the local
+            // edits and let the user choose, instead of retrying.
+            conflictRef.current = hit;
+            setConflict(hit);
+            setSaveState("conflict");
+            return false;
+          }
           setSaveState((navigator.onLine ? "failed" : "offline") + (note.encrypted ? " · unsaved" : " · draft kept"));
           if (activeRef.current?.path === note.path) persist(activeRef.current);
           callbacks.current.onError(
@@ -112,6 +132,37 @@ export function useNoteDocument(
     });
     return pending.current;
   }, [api, setDirty]);
+  // Resolves an open conflict. "theirs" discards local edits; "mine" and "both"
+  // re-save on top of the current version.
+  const resolveConflict = useCallback(
+    async (choice: "theirs" | "mine" | "both") => {
+      const hit = conflictRef.current,
+        note = activeRef.current;
+      if (!hit || !note) return;
+      if (choice === "theirs") {
+        if (!hit.current) return;
+        try {
+          localStorage.removeItem(draftKey(note.path));
+        } catch {}
+        conflictRef.current = undefined;
+        setConflict(undefined);
+        setActive(hit.current);
+        return;
+      }
+      const next =
+        choice === "mine"
+          ? keepMine(note, hit.current)
+          : hit.current && keepBoth(note, hit.current);
+      if (!next) return;
+      activeRef.current = next;
+      render(next);
+      conflictRef.current = undefined;
+      setConflict(undefined);
+      setDirty(true);
+      await save();
+    },
+    [save, setActive, setDirty],
+  );
   const edit = useCallback(
     (change: Partial<Note>) => {
       const note = activeRef.current;
@@ -206,5 +257,7 @@ export function useNoteDocument(
     save,
     open,
     edit,
+    conflict,
+    resolveConflict,
   };
 }

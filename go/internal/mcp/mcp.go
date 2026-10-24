@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -295,6 +296,36 @@ func recallLines(result any) string {
 
 // ---------------------------------------------------------------- HTTP bridge
 
+// apiError is a non-2xx answer from the Grimoire API. The error text is what a
+// caller has always seen; the status and body let a tool react to a specific
+// answer such as a 409 conflict.
+type apiError struct {
+	Status int
+	Body   []byte
+	msg    string
+}
+
+func (e *apiError) Error() string { return e.msg }
+
+// staleNoteError is the update_note conflict message: the note changed after
+// the agent read it, nothing was written, and the agent must re-read and
+// reapply its change rather than retry blindly.
+func staleNoteError(ae *apiError) error {
+	var conflict struct {
+		Current struct {
+			Hash string `json:"hash"`
+		} `json:"current"`
+	}
+	_ = json.Unmarshal(ae.Body, &conflict)
+	next := "re-read it with read_note"
+	if conflict.Current.Hash != "" {
+		next = fmt.Sprintf("re-read it with read_note (current base_hash is %s)", conflict.Current.Hash)
+	}
+	return errors.New("update_note conflict: the note changed since you read it, so nothing was written. " +
+		"Its content was edited by someone else. To proceed, " + next +
+		", reapply your change to the current body, then call update_note again with that base_hash")
+}
+
 func (s *Server) api(method, path string, body any) (any, error) {
 	var rdr io.Reader
 	if body != nil {
@@ -329,7 +360,8 @@ func (s *Server) api(method, path string, body any) (any, error) {
 		return nil, err
 	}
 	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("%s %s: %s: %s", method, path, resp.Status, strings.TrimSpace(string(raw)))
+		return nil, &apiError{Status: resp.StatusCode, Body: raw,
+			msg: fmt.Sprintf("%s %s: %s: %s", method, path, resp.Status, strings.TrimSpace(string(raw)))}
 	}
 	var out any
 	if len(bytes.TrimSpace(raw)) == 0 {
@@ -562,8 +594,16 @@ func (s *Server) dispatch(name string, args map[string]any) (any, error) {
 		}
 		return s.api("POST", "/api/notes", body)
 	case "update_note":
-		return s.api("PUT", "/api/notes/"+str(args, "path"),
-			map[string]any{"body": str(args, "body")})
+		body := map[string]any{"body": str(args, "body")}
+		if base := str(args, "base_hash"); base != "" {
+			body["base_hash"] = base
+		}
+		out, err := s.api("PUT", "/api/notes/"+str(args, "path"), body)
+		var ae *apiError
+		if errors.As(err, &ae) && ae.Status == http.StatusConflict {
+			return nil, staleNoteError(ae)
+		}
+		return out, err
 	case "append_daily":
 		return s.api("POST", "/api/capture", map[string]any{
 			"text": str(args, "text"), "source": "mcp"})
