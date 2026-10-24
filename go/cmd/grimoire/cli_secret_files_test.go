@@ -69,3 +69,14 @@ func TestFileSecretsComeFromTheIndex(t *testing.T) {
 		t.Fatalf("a symlink to an imported file should resolve: %v %v", got, err)
 	}
 }
+
+func TestCredentialKeySeparatesKeysFromConfig(t *testing.T) {
+	for k, want := range map[string]bool{
+		"unifi.api_key": true, "tailscale.oauth.client_secret": true, "db.password": true,
+		"account_number": true, "unifi.base_url": false, "user.name": false, "host": false, "note": false,
+	} {
+		if credentialKey(k) != want {
+			t.Errorf("credentialKey(%q) = %v", k, !want)
+		}
+	}
+}

@@ -23,6 +23,7 @@ import (
 	"github.com/JeremiahM37/grimoire/go/internal/dream/secscan"
 	"github.com/JeremiahM37/grimoire/go/internal/markdown"
 	"github.com/JeremiahM37/grimoire/go/internal/memory"
+	"github.com/JeremiahM37/grimoire/go/internal/secrets"
 	"github.com/JeremiahM37/grimoire/go/internal/vault"
 )
 
@@ -147,13 +148,16 @@ func (s *Server) knownSecrets() []string {
 	if s.Secrets == nil || !s.Secrets.IsUnlocked() {
 		return nil
 	}
-	names, err := s.Secrets.ListNames()
+	info, err := s.Secrets.Describe()
 	if err != nil {
 		return nil
 	}
 	var out []string
-	for _, n := range names {
-		if v, err := s.Secrets.Get(n); err == nil && len(strings.TrimSpace(v)) >= 8 {
+	for _, i := range info {
+		if strings.HasPrefix(i.Note, secrets.ConfigNotePrefix) {
+			continue // stored beside a key, not a secret itself
+		}
+		if v, err := s.Secrets.Get(i.Name); err == nil && len(strings.TrimSpace(v)) >= 8 {
 			out = append(out, v)
 		}
 	}
@@ -361,6 +365,7 @@ func challengeSettled(f dream.Finding, verdicts []challengeVerdict, settled map[
 // else is either fixed by the dream or worth knowing but not worth asking.
 func ownerAsks(fs []dream.Finding) []dream.Ask {
 	var out []dream.Ask
+	byCheck := map[string]int{}
 	for _, f := range fs {
 		var action string
 		switch {
@@ -380,6 +385,37 @@ func ownerAsks(fs []dream.Finding) []dream.Ask {
 			continue
 		}
 		out = append(out, dream.Ask{Check: f.Check, Path: f.Path, Message: f.Message, Action: action})
+		byCheck[f.Check]++
+	}
+	return groupAsks(out, byCheck)
+}
+
+// groupAsks makes one question of many findings of the same kind: ninety
+// copies of "a known secret is in this note" is a list nobody reads, while
+// "in 90 notes, such as …" is one decision.
+func groupAsks(asks []dream.Ask, byCheck map[string]int) []dream.Ask {
+	var out []dream.Ask
+	done := map[string]bool{}
+	for _, a := range asks {
+		if byCheck[a.Check] <= 1 {
+			out = append(out, a)
+			continue
+		}
+		if done[a.Check] {
+			continue
+		}
+		done[a.Check] = true
+		var paths []string
+		seen := map[string]bool{}
+		for _, b := range asks {
+			if b.Check == a.Check && !seen[b.Path] && len(paths) < 5 {
+				seen[b.Path] = true
+				paths = append(paths, "[["+strings.TrimSuffix(b.Path, ".md")+"]]")
+			}
+		}
+		out = append(out, dream.Ask{Check: a.Check,
+			Message: fmt.Sprintf("%s (%d findings, in %s and more)", strings.TrimSuffix(a.Message, "."), byCheck[a.Check], strings.Join(paths, ", ")),
+			Action:  a.Action})
 	}
 	return out
 }

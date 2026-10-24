@@ -236,8 +236,15 @@ func importSecretFile(v *secrets.Vault, path string, flags map[string]string) in
 	entry := vaultedFile{Prefix: prefix, Vars: map[string]string{}}
 	for _, k := range keys {
 		name := prefix + "/" + k
+		note := "imported from " + abs + " (" + k + ")"
+		if !credentialKey(k) {
+			// A URL, a user name or a host travels with the file so a command
+			// gets everything it needs, but it is not a secret, and the dream's
+			// sweep must not report every note that mentions it.
+			note = secrets.ConfigNotePrefix + note
+		}
 		if err := v.PutVersioned(name, values[k], map[string]any{
-			secrets.MetaNote: "imported from " + abs + " (" + k + ")",
+			secrets.MetaNote: note,
 		}, "imported from "+filepath.Base(abs)); err != nil {
 			return fail("%v", err)
 		}
@@ -257,6 +264,22 @@ func importSecretFile(v *secrets.Vault, path string, flags map[string]string) in
 	sort.Strings(vars)
 	fmt.Printf("variables: %s\n", strings.Join(vars, " "))
 	return 0
+}
+
+// credentialWords mark a key whose value is a credential.
+var credentialWords = []string{"token", "key", "secret", "pass", "pwd", "auth", "credential",
+	"private", "cookie", "session", "jwt", "bearer", "cert", "signature", "salt", "otp", "pin", "account"}
+
+// credentialKey reports whether a dotted key names a credential, judged by its
+// last part: unifi.api_key is one, unifi.base_url is not.
+func credentialKey(k string) bool {
+	last := strings.ToLower(k[strings.LastIndex(k, ".")+1:])
+	for _, w := range credentialWords {
+		if strings.Contains(last, w) {
+			return true
+		}
+	}
+	return false
 }
 
 // fileSecrets returns the secret names `run --file` hands over for a file,

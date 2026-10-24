@@ -1,9 +1,12 @@
 package api
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/JeremiahM37/grimoire/go/internal/dream"
 	"github.com/JeremiahM37/grimoire/go/internal/memory"
 )
 
@@ -39,5 +42,17 @@ func TestDecideChallenge(t *testing.T) {
 		if got != c.want {
 			t.Errorf("%s: got %q, want %q", c.name, got, c.want)
 		}
+	}
+}
+
+func TestOwnerAsksGroupRepeatedKinds(t *testing.T) {
+	var fs []dream.Finding
+	for i := 0; i < 40; i++ {
+		fs = append(fs, dream.Finding{Check: "secret_value", Path: fmt.Sprintf("n%d.md", i), Message: "a known secret value appears verbatim in this note"})
+	}
+	fs = append(fs, dream.Finding{Check: "fragmented_store", Path: "/x", Message: "split store"})
+	asks := ownerAsks(fs)
+	if len(asks) != 2 || !strings.Contains(asks[0].Message, "40 findings") {
+		t.Fatalf("asks = %+v", asks)
 	}
 }

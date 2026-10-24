@@ -65,6 +65,11 @@ const (
 	MetaUses = "uses"
 	// MetaNote is a human description: what this is for, where it came from.
 	MetaNote = "note"
+
+	// ConfigNotePrefix starts the note of a value stored for convenience that
+	// is not a credential (a base URL imported with a key file). The secret
+	// sweep skips such values.
+	ConfigNotePrefix = "config: "
 )
 
 // Info is everything about a secret except its value.

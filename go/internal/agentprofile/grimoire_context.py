@@ -374,8 +374,11 @@ def secret_file_guard(norm, environment):
         text = tool_input.get("command") or tool_input.get("cmd") or ""
         if isinstance(text, list):
             text = " ".join(str(part) for part in text)
-        if not isinstance(text, str) or re.search(r"(^|[;&|(]\s*)grimoire\s+run\b", text):
+        if not isinstance(text, str):
             return None
+        # The file named as `grimoire run --file`'s argument is the fix, not a
+        # read: drop those before looking, wherever in the command they sit.
+        text = re.sub(r"grimoire\s+run\s+--file[=\s]+\S+", "", text)
     elif tool in {"Read", "read_file", "view"}:
         text = tool_input.get("file_path") or tool_input.get("path") or ""
         if not isinstance(text, str):
