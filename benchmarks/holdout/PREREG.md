@@ -141,3 +141,15 @@ Whether the decision table is published is the owner's decision after the run.
   an agent sees when it asks, in both arms alike. It does not change which
   items are injected, the withholding, or the logged probabilities. 14 live
   claims carried checks on that day. No experiment flag was set.
+* 2026-10-24, during the run, at the owner's request and before any outcome
+  was read: build 1.17.0-dev.255d054 was deployed. It changes, in both arms
+  alike: the context hook's latency (route p50 about 105 → 26 ms; an answer the
+  hook has stopped waiting for is no longer logged as injected, so injections
+  the agent never received leave the trace); the shared MEMORY.md, which the
+  dream split into a loaded core and overflow parts so all 46 rules and the
+  most-used entries load at start; the default MCP tool list (85 tools →
+  12); and ranking on explicit search only (`/api/search`, `/api/retrieve`).
+  The hook's retrieval path, the withholding, the rate and the logged
+  probabilities are unchanged. No experiment flag was set. The analysis
+  reports the two periods together as planned and, as a sensitivity check,
+  separately before and after this date.
