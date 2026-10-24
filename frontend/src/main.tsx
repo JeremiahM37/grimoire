@@ -206,7 +206,7 @@ function App() {
     if (q.includes('account') || q.includes('space') || q.includes('identity')) return void setPanel('account');
     if (q.includes('save current note as template')) return void saveTemplate();
     if (q.includes('duplicate this note') && active) { const n = await api.request<Note>(`/notes/${noteURLPath(active.path)}/duplicate`, { method: 'POST' }); await refresh(); return void open(n.path); }
-    if (q.includes('encrypt this note') && active) { if(!await save())return;await api.request(`/notes/${noteURLPath(active.path)}/encrypt`, { method: 'POST' });await openDocument(active.path);setPanel(null);return; }
+    if (q.includes('encrypt this note') && active) { if(!await save())return;await api.request(`/notes/${noteURLPath(active.path)}/encrypt`, { method: 'POST' });/* Encrypted from this moment: an edit typed before the reload lands must not leave a plaintext draft. */if(activeRef.current?.path===active.path){activeRef.current={...activeRef.current,encrypted:true};try{localStorage.removeItem('grimoire-react-draft:'+active.path);}catch{}}await openDocument(active.path);setPanel(null);return; }
     if (q.includes('decrypt this note') && active) { if(!await save())return;await api.request(`/notes/${noteURLPath(active.path)}/decrypt`, { method: 'POST' });await openDocument(active.path);setPanel(null);return; }
     if (q.startsWith('new from')) { const name = q.replace(/^new from\s*:?\s*/, ''); const template = templates.find(t => t.name.toLowerCase().includes(name)); if (template) return void applyTemplate(template); }
     const match = notes.find(n => display(n).toLowerCase().includes(q)); if (match) { await open(match.path); setPanel(null); }
