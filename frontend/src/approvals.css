@@ -43,3 +43,12 @@
   .ap-title { font-size: 17px; }
   .ap-tabs button { min-height: 44px; }
 }
+
+/* The owner's inbox strip, above the note list. */
+.inbox-strip { margin: 6px 8px 2px; border: 1px solid var(--accent, #8b5cf6); border-radius: 8px; background: color-mix(in srgb, var(--accent, #8b5cf6) 10%, transparent); font-size: 13px; }
+.inbox-head { width: 100%; text-align: left; background: none; border: 0; padding: 6px 10px; color: inherit; font-weight: 600; cursor: pointer; }
+.inbox-list { list-style: none; margin: 0; padding: 0 10px 8px; display: grid; gap: 8px; }
+.inbox-item { display: grid; gap: 2px; }
+.inbox-title a { color: inherit; }
+.inbox-detail, .inbox-action { opacity: .8; font-size: 12px; }
+.inbox-action::before { content: "Do: "; font-weight: 600; }

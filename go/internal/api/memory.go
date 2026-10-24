@@ -1605,7 +1605,7 @@ func (s *Server) briefing(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
+	out := map[string]any{
 		"relevant":        relevant,
 		"pinned":          dedupe(pinned),
 		"onboarding":      dedupe(onboarding),
@@ -1616,7 +1616,14 @@ func (s *Server) briefing(w http.ResponseWriter, r *http.Request) {
 			"changed":   changed,
 			"retracted": retracted,
 		},
-	})
+	}
+	// What the owner is needed for comes first (encoding/json writes keys in
+	// order, and "attention" sorts first), so an agent sees it before anything
+	// else and can pass it on.
+	if items := s.Inbox(); len(items) > 0 {
+		out["attention"] = map[string]any{"summary": inboxLine(items), "items": items}
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 // Editing one fact, rather than the note it lives in.

@@ -17,24 +17,47 @@ export function approvalsErrorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-// Pending count for the badges. Polls while the panel's owner can use it; a
-// refused or failed poll reads as zero rather than as an error in the chrome.
-export function usePendingApprovalCount(api: API, enabled: boolean): [number, () => void] {
+export type InboxItem = { source: string; title: string; detail?: string; action: string; path?: string; since?: string };
+type Inbox = { items: InboxItem[]; counts: { approvals: number; credentials: number; total: number } };
+
+// Pending count for the badges, and the owner's inbox. Both come from
+// /api/inbox, which any signed-in console can read: the approvals list itself
+// is admin-only, and polling it without the admin credential failed every 30
+// seconds while the badge said nothing was waiting.
+export function usePendingApprovalCount(api: API, enabled: boolean): [number, () => void, InboxItem[]] {
   const [count, setCount] = useState(0);
+  const [items, setItems] = useState<InboxItem[]>([]);
   const tick = useCallback(() => {
     if (!enabled) return;
-    api.request<SourceAction[]>('/source-actions?state=pending')
-      .then(rows => setCount(pendingCount(rows)))
-      .catch(() => setCount(0));
+    api.request<Inbox>('/inbox')
+      .then(inbox => { setCount(inbox.counts?.approvals ?? 0); setItems(inbox.items ?? []); })
+      .catch(() => { setCount(0); setItems([]); });
   }, [api, enabled]);
   useEffect(() => {
-    if (!enabled) { setCount(0); return; }
+    if (!enabled) { setCount(0); setItems([]); return; }
     tick();
     const timer = setInterval(tick, 30000);
     addEventListener('focus', tick);
     return () => { clearInterval(timer); removeEventListener('focus', tick); };
   }, [enabled, tick]);
-  return [count, tick];
+  return [count, tick, items];
+}
+
+// The inbox strip: one line when something needs the owner, expanding to the
+// list with what to do about each. Nothing is rendered when the inbox is empty.
+export function InboxStrip({ items, open }: { items: InboxItem[]; open: (path: string) => void }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!items.length) return null;
+  return <div id="inbox-strip" className="inbox-strip" role="status">
+    <button id="inbox-toggle" className="inbox-head" aria-expanded={expanded} onClick={() => setExpanded(v => !v)}>
+      Needs you ({items.length}) <span aria-hidden="true">{expanded ? '▾' : '▸'}</span>
+    </button>
+    {expanded && <ul className="inbox-list">{items.map((it, i) => <li key={i} className={`inbox-item inbox-${it.source}`}>
+      <span className="inbox-title">{it.path ? <a href={'#' + encodeURIComponent(it.path)} onClick={e => { e.preventDefault(); open(it.path!); }}>{it.title}</a> : it.title}</span>
+      {it.detail && <span className="inbox-detail">{it.detail}</span>}
+      <span className="inbox-action">{it.action}</span>
+    </li>)}</ul>}
+  </div>;
 }
 
 // Whether the signed-in identity should see approvals at all. Non-admins would

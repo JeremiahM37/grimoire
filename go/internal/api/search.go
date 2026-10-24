@@ -80,11 +80,7 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	type row struct {
-		path, title, snippet, acl, origin string
-		untrusted                         bool
-	}
-	var rows []row
+	var rows []searchRow
 
 	if len(terms) > 0 {
 		query := "SELECT f.path, f.title, snippet(fts, 2, '[', ']', ' … ', 12) AS snippet, " +
@@ -96,15 +92,15 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 		// a query with no matches, and the caller then "fell back" to a
 		// broader search that failed the same way — reporting "no results"
 		// for what was actually an index error.
-		scan := func(match string) ([]row, error) {
-			out := []row{}
+		scan := func(match string) ([]searchRow, error) {
+			out := []searchRow{}
 			rs, err := s.Index.DB.Query(query, match)
 			if err != nil {
 				return nil, err
 			}
 			defer rs.Close()
 			for rs.Next() {
-				var x row
+				var x searchRow
 				var untrusted int
 				if err := rs.Scan(&x.path, &x.title, &x.snippet, &x.acl, &x.origin, &untrusted); err != nil {
 					return nil, err
@@ -137,7 +133,7 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		for rs.Next() {
-			var x row
+			var x searchRow
 			var untrusted int
 			if err := rs.Scan(&x.path, &x.title, &x.snippet, &x.acl, &x.origin, &untrusted); err != nil {
 				rs.Close()
@@ -159,6 +155,10 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 	} else {
 		writeJSON(w, http.StatusOK, []searchHit{})
 		return
+	}
+
+	if len(terms) > 0 && opTag == "" && !wantPinned && pathLike == "" && !rerankOff(r.URL.Query().Get("rerank")) {
+		rows = s.rerankRows(r, strings.Join(terms, " "), terms, rows)
 	}
 
 	out := []searchHit{}
@@ -214,6 +214,70 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+// searchRow is one full-text candidate.
+type searchRow struct {
+	path, title, snippet, acl, origin string
+	untrusted                         bool
+}
+
+// sentenceTerms is where a query reads as a question rather than a name. Full
+// text needs every word to match, so a question rarely finds its note; those
+// queries also take the hybrid ranking's documents.
+const sentenceTerms = 4
+
+// rerankRows puts full-text results in explicit-search order
+// (search_rerank.go), blending in hybrid retrieval for questions.
+func (s *Server) rerankRows(r *http.Request, query string, terms []string, rows []searchRow) []searchRow {
+	byPath := map[string]searchRow{}
+	score := map[string]float64{}
+	var order []string
+	add := func(p string, rank int) {
+		if _, ok := score[p]; !ok {
+			order = append(order, p)
+		}
+		score[p] += 1 / float64(60+rank)
+	}
+	for i, x := range rows {
+		if _, ok := byPath[x.path]; !ok {
+			byPath[x.path] = x
+			add(x.path, i)
+		}
+	}
+	if len(terms) >= sentenceTerms {
+		if hits, err := s.Index.RetrieveFor(query, 30, filterFor(r, false)); err == nil {
+			rank := 0
+			for _, h := range hits {
+				if _, ok := byPath[h.Path]; !ok {
+					byPath[h.Path] = searchRow{path: h.Path, title: h.Title, snippet: clip(h.Chunk, 200),
+						untrusted: h.Trust == "untrusted", origin: h.Origin}
+				}
+				add(h.Path, rank)
+				rank++
+			}
+			sort.SliceStable(order, func(i, j int) bool { return score[order[i]] > score[order[j]] })
+		}
+	}
+	docs := make([]rankedDoc, 0, len(order))
+	for _, p := range order {
+		docs = append(docs, rankedDoc{path: p, untrusted: byPath[p].untrusted})
+	}
+	out := make([]searchRow, 0, len(order)+1)
+	for _, p := range s.rerankDocs(query, docs) {
+		if x, ok := byPath[p]; ok {
+			out = append(out, x)
+			continue
+		}
+		var x searchRow
+		var untrusted int
+		if s.Index.DB.QueryRow("SELECT path, title, substr(body,1,200), COALESCE(acl,''), COALESCE(origin,''), COALESCE(untrusted,0) FROM notes WHERE path=?", p).
+			Scan(&x.path, &x.title, &x.snippet, &x.acl, &x.origin, &untrusted) == nil {
+			x.untrusted = untrusted != 0
+			out = append(out, x)
+		}
+	}
+	return out
 }
 
 func (s *Server) isPinned(path string) bool {

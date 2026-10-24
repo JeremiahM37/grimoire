@@ -1,9 +1,9 @@
 package memory
 
 import (
-	"unicode"
 	"regexp"
 	"strings"
+	"unicode"
 )
 
 // Reconciliation — deciding what a new fact does to what is already known.

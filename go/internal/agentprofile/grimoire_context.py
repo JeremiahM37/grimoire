@@ -342,10 +342,73 @@ def urllib_get(url, headers, timeout):
         return response.read(64001)
 
 
+def vaulted_files(environment):
+    """The secret files imported into the vault (`grimoire secret import`),
+    each with the variables `grimoire run --file` hands over. Paths and
+    variable names only; the index never holds a value."""
+    path = environment.get("GRIMOIRE_VAULTED_FILES") or str(
+        Path(environment.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "grimoire" / "vaulted-files.json")
+    try:
+        with open(path, encoding="utf-8") as handle:
+            index = json.load(handle)
+    except (OSError, ValueError):
+        return {}
+    return index if isinstance(index, dict) else {}
+
+
+def secret_file_guard(norm, environment):
+    """A reason to stop a tool call that reads an imported secret file
+    directly, naming the command that gets the same values from the vault;
+    None for any other call. Reading the file works, so agents kept doing it,
+    and the vault went unused while its copies were read in plaintext."""
+    if environment.get("GRIMOIRE_SECRET_GUARD", "1") == "0":
+        return None
+    tool, tool_input = norm["tool"], norm["tool_input"]
+    if not isinstance(tool_input, dict):
+        return None
+    index = vaulted_files(environment)
+    if not index:
+        return None
+    home = str(Path.home())
+    if tool.lower() in {"bash", "shell", "exec_command"}:
+        text = tool_input.get("command") or tool_input.get("cmd") or ""
+        if isinstance(text, list):
+            text = " ".join(str(part) for part in text)
+        if not isinstance(text, str) or re.search(r"(^|[;&|(]\s*)grimoire\s+run\b", text):
+            return None
+    elif tool in {"Read", "read_file", "view"}:
+        text = tool_input.get("file_path") or tool_input.get("path") or ""
+        if not isinstance(text, str):
+            return None
+    else:
+        return None
+    for path, entry in index.items():
+        if not isinstance(path, str) or not path:
+            continue
+        forms = {path}
+        if path.startswith(home + "/"):
+            rest = path[len(home) + 1:]
+            forms |= {"~/" + rest, "$HOME/" + rest, "${HOME}/" + rest}
+        if any(form in text for form in forms):
+            names = sorted((entry.get("vars") or {}).keys()) if isinstance(entry, dict) else []
+            shown = " ".join("$" + name for name in names[:8]) + (" …" if len(names) > 8 else "")
+            return ("This file's credentials are in the Grimoire vault; do not read it directly. Run the "
+                    "command with them in its environment instead: grimoire run --file " + path +
+                    " -- <command>. Variables: " + (shown or "(see grimoire secret list)") +
+                    ". Example: grimoire run --file " + path +
+                    " -- sh -c 'curl -H \"Authorization: Bearer $VAR\" …'")
+    return None
+
+
 def run(event, environment=None, fetch=fetch_context, now=None, profile=None, kind=None):
     environment = os.environ if environment is None else environment
     profile = profile or DEFAULT_PROFILE
     now = time.time() if now is None else now
+    guard_norm = normalise(event, profile, kind)
+    if guard_norm is not None and guard_norm["kind"] == "pre_action":
+        reason = secret_file_guard(guard_norm, environment)
+        if reason:
+            return render(profile, guard_norm, None, ask=reason, decision="deny")
     if environment.get("GRIMOIRE_AUTO_CONTEXT", "1") == "0":
         return None
     mode = environment.get("GRIMOIRE_CONTEXT_MODE", "manual")

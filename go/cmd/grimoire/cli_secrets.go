@@ -281,9 +281,20 @@ func cmdSecret(args []string) int {
 			}
 		}
 		if len(args) < 2 {
-			return fail("usage: grimoire secret import FILE.env")
+			return fail("usage: grimoire secret import FILE.env|FILE.yaml|FILE.json [--prefix NS]")
 		}
-		return importDotenv(v, args[1])
+		rest, flags := parseSecretFlags(args[1:])
+		if len(rest) == 0 {
+			return fail("usage: grimoire secret import FILE.env|FILE.yaml|FILE.json [--prefix NS]")
+		}
+		// A structured file, or any file given a namespace, is imported as a
+		// file: values under files/<name>/, and the file recorded so `run
+		// --file` and the context hook know it is in the vault.
+		switch ext := strings.ToLower(filepath.Ext(rest[0])); {
+		case ext == ".yaml" || ext == ".yml" || ext == ".json", flags["prefix"] != "":
+			return importSecretFile(v, rest[0], flags)
+		}
+		return importDotenv(v, rest[0])
 
 	case "export":
 		_, flags := parseSecretFlags(args[1:])
@@ -429,6 +440,7 @@ func cmdRun(args []string) int {
 	if len(cmdArgs) == 0 {
 		return fail("usage: grimoire run NAME[,NAME…] -- command [args…]\n" +
 			"       grimoire run --prefix prod -- command [args…]\n" +
+			"       grimoire run --file PATH -- command [args…]   (a file imported with secret import)\n" +
 			"       grimoire run --all -- command [args…]\n\n" +
 			"Puts credentials in the child's environment. This hands over the\n" +
 			"VALUES, which is what the broker exists to avoid — use it for your\n" +
@@ -446,7 +458,15 @@ func cmdRun(args []string) int {
 
 	rest, flags := parseSecretFlags(names)
 	var want []string
-	if prefix, ok := flags["prefix"]; ok {
+	if file, ok := flags["file"]; ok {
+		// Every value imported from that file, each as the variable named
+		// after its key: unifi.api_key arrives as UNIFI_API_KEY.
+		pairs, err := fileSecrets(file)
+		if err != nil {
+			return fail("%v", err)
+		}
+		want = append(want, pairs...)
+	} else if prefix, ok := flags["prefix"]; ok {
 		// The bounded form of --all, and the one to reach for: a build that
 		// needs the production keys has no business being handed the personal
 		// ones as well.

@@ -53,6 +53,8 @@ type dreamState struct {
 	// Keys are the findings the last dream reported, so the next one can say
 	// which of its findings are new.
 	Keys []string `json:"keys,omitempty"`
+	// Asks are the last dream's questions for the owner (inbox.go).
+	Asks []dream.Ask `json:"asks,omitempty"`
 }
 
 func (s *Server) dreamStatePath() string {
@@ -273,7 +275,7 @@ func (s *Server) Dream(ctx context.Context, apply, onlyIfChanged bool) (*dream.R
 	if after, _, err := s.dreamDocs(); err == nil {
 		fp = fingerprint(after)
 	}
-	s.saveDreamState(dreamState{At: rep.Finished, Fingerprint: fp, Keys: keys})
+	s.saveDreamState(dreamState{At: rep.Finished, Fingerprint: fp, Keys: keys, Asks: rep.Asks})
 	return rep, nil
 }
 

@@ -100,7 +100,9 @@ type Server struct {
 	spaceList    []auth.Space
 
 	// dreams: one at a time, and the last report for GET /api/dream.
-	dreamMu   sync.Mutex
+	dreamMu sync.Mutex
+	// titles caches note names for explicit search (search_rerank.go).
+	titles    titleCache
 	dreamLast *dream.Report
 
 	// the store's learned change rates; see memory_fresh.go.
@@ -306,6 +308,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/memory/image/similar", s.postSimilarImage)
 	mux.HandleFunc("GET /api/memory/receipts", s.listReceiptsHandler)
 	mux.HandleFunc("GET /api/briefing", s.briefing)
+	mux.HandleFunc("GET /api/inbox", s.inbox)
 	mux.HandleFunc("GET /api/trust", s.trustOverview)
 	mux.HandleFunc("GET /api/stale", s.staleNotes)
 	mux.HandleFunc("POST /api/stale/verify", s.userOnly(s.verifyNote))
@@ -1178,7 +1181,35 @@ func (s *Server) retrieve(w http.ResponseWriter, r *http.Request) {
 	if hits == nil {
 		hits = []index.Hit{}
 	}
+	if !rerankOff(r.URL.Query().Get("rerank")) {
+		hits = s.rerankHits(r, q, hits)
+	}
 	writeJSON(w, http.StatusOK, hits)
+}
+
+// rerankHits applies the explicit-search order (search_rerank.go) to chunk
+// hits: documents move as a block, keeping each one's chunks in their order,
+// and a note the query names but retrieval missed is added in front.
+func (s *Server) rerankHits(r *http.Request, q string, hits []index.Hit) []index.Hit {
+	byPath := map[string][]index.Hit{}
+	var docs []rankedDoc
+	for _, h := range hits {
+		if _, ok := byPath[h.Path]; !ok {
+			docs = append(docs, rankedDoc{path: h.Path, untrusted: h.Trust == "untrusted"})
+		}
+		byPath[h.Path] = append(byPath[h.Path], h)
+	}
+	out := make([]index.Hit, 0, len(hits)+1)
+	for _, p := range s.rerankDocs(q, docs) {
+		if hs, ok := byPath[p]; ok {
+			out = append(out, hs...)
+			continue
+		}
+		if n, err := s.Vault.Read(p); err == nil && !n.Encrypted && s.canRead(r, p) {
+			out = append(out, index.Hit{Path: p, Title: n.Title, Chunk: clip(n.Body, 600), Trust: "trusted"})
+		}
+	}
+	return out
 }
 
 func (s *Server) tags(w http.ResponseWriter, r *http.Request) {
