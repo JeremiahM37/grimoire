@@ -60,9 +60,30 @@ func (s *Server) Inbox() []InboxItem {
 			Title:  fmt.Sprintf("%d agent action%s waiting for approval", n, plural(n)),
 			Action: "Approve or deny in the console's Approvals panel (opened with the admin credential)."})
 	}
+	// Connectors that fail for the same reason are one thing to do: four Google
+	// connectors whose sign-in expired are one reconnect, not four.
+	var order []string
+	byAction := map[string][]Problem{}
 	for _, p := range s.ConnectorProblems() {
-		out = append(out, InboxItem{Source: "connector", Title: p.Title, Detail: p.Detail,
-			Action: p.Action, Since: p.Since})
+		if _, ok := byAction[p.Action]; !ok {
+			order = append(order, p.Action)
+		}
+		byAction[p.Action] = append(byAction[p.Action], p)
+	}
+	for _, action := range order {
+		ps := byAction[action]
+		it := InboxItem{Source: "connector", Title: ps[0].Title, Detail: ps[0].Detail, Action: action, Since: ps[0].Since}
+		if len(ps) > 1 {
+			names := make([]string, len(ps))
+			for i, p := range ps {
+				names[i] = p.Title
+				if p.Since.Before(it.Since) {
+					it.Since = p.Since
+				}
+			}
+			it.Title = fmt.Sprintf("%d connectors need attention: %s", len(ps), strings.Join(names, "; "))
+		}
+		out = append(out, it)
 	}
 	for _, a := range s.dreamAsks() {
 		out = append(out, InboxItem{Source: "dream", Title: a.Message, Action: a.Action, Path: a.Path})

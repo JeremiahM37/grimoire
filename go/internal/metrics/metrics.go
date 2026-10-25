@@ -213,6 +213,8 @@ func (r *Registry) Write(w *strings.Builder) {
 		}
 		kind := "counter"
 		switch {
+		case strings.Contains(n, "_timestamp"):
+			kind = "gauge" // a point in time, in seconds, is not a duration
 		case strings.HasSuffix(n, "_seconds"):
 			kind = "histogram"
 		case strings.Contains(n, "_current") || strings.HasSuffix(n, "_bytes") ||
