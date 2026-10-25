@@ -80,7 +80,10 @@ func decideChallenge(ch, target memory.Entry, targetLive bool, chState, targetSt
 	case targetState == "fail":
 		return "ask", "the contested fact's check fails, but nothing confirms the challenger"
 	case targetState == "pass" && chState == "pass":
-		return "ask", "both facts' checks pass"
+		// Each claim's own probe confirms it right now, so both are true and
+		// they do not contradict each other; reconciliation paired them on
+		// shared words (a deploy record against "it is deployed").
+		return "clear", "both facts' checks pass, so both are true"
 	case targetState == "pass":
 		return "uphold", "the contested fact's check passes"
 	case chState == "fail":

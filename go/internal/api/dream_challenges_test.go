@@ -31,7 +31,7 @@ func TestDecideChallenge(t *testing.T) {
 		{"different subjects", agent("the backup timer runs nightly at three", old), person, true, "", "", "clear"},
 		{"evidence for the challenger", agent(same, old), person, true, "pass", "fail", "concede"},
 		{"person's check fails, nothing confirms agent", agent(same, old), person, true, "", "fail", "ask"},
-		{"both checks pass", agent(same, old), person, true, "pass", "pass", "ask"},
+		{"both checks pass", agent(same, old), person, true, "pass", "pass", "clear"},
 		{"person's check passes", agent(same, old), person, true, "", "pass", "uphold"},
 		{"challenger's check fails", agent(same, old), person, true, "fail", "", "uphold"},
 		{"recent challenge to a person waits", agent(same, fresh), person, true, "", "", ""},
