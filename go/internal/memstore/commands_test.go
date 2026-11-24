@@ -52,3 +52,23 @@ func TestLooksLikeCommandLeavesSentencesAlone(t *testing.T) {
 		}
 	}
 }
+
+func TestCondenseCommandsFindsCommandsInsideSentences(t *testing.T) {
+	note := "## Run and test\n\nInstall: go install github.com/x/y/cmd/y@latest. Source build: npm ci --prefix frontend; npm run build --prefix frontend. Run: GRIMOIRE_VAULT=<vault> grimoire serve.\n" +
+		"2. python3 qeval.py run mmlu <port> 600 <out>.json\n" +
+		"Releases are cut from main. The vault lives in /home/admin/notes: back it up first."
+	got, n := CondenseCommands(note)
+	for _, gone := range []string{"go install", "npm ci", "npm run", "grimoire serve", "qeval"} {
+		if strings.Contains(got, gone) {
+			t.Fatalf("%q left in: %q", gone, got)
+		}
+	}
+	for _, keep := range []string{"Install:", "Source build:", "Releases are cut from main.", "back it up first"} {
+		if !strings.Contains(got, keep) {
+			t.Fatalf("lost %q: %q", keep, got)
+		}
+	}
+	if n != 5 {
+		t.Fatalf("removed %d: %q", n, got)
+	}
+}

@@ -78,17 +78,43 @@ func CondenseCommands(text string) (string, int) {
 	lines := strings.Split(text, "\n")
 	kept := lines[:0]
 	for _, line := range lines {
-		if LooksLikeCommand(listMarker.ReplaceAllString(line, "")) {
+		// A list item that starts with a command word is a step as run, even
+		// without a flag or a path ("2. python3 qeval.py run mmlu").
+		item := listMarker.ReplaceAllString(line, "")
+		if looksLikeCommand(item, item != line) {
 			removed++
 			continue
 		}
-		kept = append(kept, inlineCode.ReplaceAllStringFunc(line, func(span string) string {
+		line = inlineCode.ReplaceAllStringFunc(line, func(span string) string {
 			if looksLikeCommand(strings.Trim(span, "`"), true) {
 				removed++
 				return "`…`"
 			}
 			return span
-		}))
+		})
+		kept = append(kept, commandClauses(line, &removed))
 	}
 	return strings.Join(kept, "\n"), removed
+}
+
+// clauseBreak splits prose into the clauses a command can hide in:
+// "Source build: npm ci --prefix frontend; npm run build. Run: …".
+var clauseBreak = regexp.MustCompile(`[:;.]\s+`)
+
+// commandClauses replaces the clauses of a prose line that are commands.
+func commandClauses(line string, removed *int) string {
+	var b strings.Builder
+	last := 0
+	for _, at := range append(clauseBreak.FindAllStringIndex(line, -1), []int{len(line), len(line)}) {
+		clause := line[last:at[0]]
+		if looksLikeCommand(clause, false) {
+			*removed++
+			b.WriteString("…")
+		} else {
+			b.WriteString(clause)
+		}
+		b.WriteString(line[at[0]:at[1]])
+		last = at[1]
+	}
+	return b.String()
 }
