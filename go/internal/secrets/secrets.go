@@ -57,6 +57,7 @@ type Vault struct {
 
 	mu           sync.Mutex
 	ext          external // external password-manager providers; own lock
+	known        knownSet // fingerprints of stored values, for RedactKnown; own lock
 	key          []byte
 	lastActivity time.Time
 	failures     int
@@ -236,6 +237,9 @@ func (v *Vault) Unlock(passphrase string) error {
 	v.failures, v.lockUntil = 0, time.Time{}
 	v.key = key
 	v.lastActivity = Now()
+	if payload, err := v.payloadLocked(); err == nil {
+		v.known.rebuild(payload)
+	}
 	return nil
 }
 
@@ -295,7 +299,11 @@ func (v *Vault) writePayloadLocked(payload map[string]secretEntry) error {
 	}
 	b := v.loadBlob()
 	b.Secrets = base64.StdEncoding.EncodeToString(sealed)
-	return v.saveBlob(b)
+	if err := v.saveBlob(b); err != nil {
+		return err
+	}
+	v.known.rebuild(payload)
+	return nil
 }
 
 // ListNames returns secret names only — never values.

@@ -108,7 +108,29 @@ outbound calls so an agent can use one without receiving it.
 | Var | Default | Meaning |
 |---|---|---|
 | `GRIMOIRE_VAULT_PASSPHRASE_FILE` | *(empty)* | Unlock at start from a `0600` file, for a service that must recover from a restart unattended |
+| `GRIMOIRE_VAULT_KEYRING` | *(on)* | `0` stops the server and CLI from looking for the passphrase in the OS keyring (`grimoire secret keyring on`) |
 | `GRIMOIRE_VAULT_IDLE_LOCK` | `900` (seconds) | Drop the key after this long idle; `0` disables |
+
+### Unlocking without a passphrase file
+
+The vault opens by itself from the first of these that is set up:
+
+1. **A systemd credential** (Linux services). The passphrase is encrypted to
+   the machine's TPM or host key and handed only to the service:
+
+       printf %s 'the passphrase' | sudo systemd-creds encrypt --name=grimoire-vault - /etc/credstore.encrypted/grimoire-vault
+
+   then in a drop-in for the unit: `LoadCredentialEncrypted=grimoire-vault:/etc/credstore.encrypted/grimoire-vault`.
+2. **The OS keyring**, unlocked when you log in: the macOS login Keychain, or
+   the Secret Service (GNOME Keyring, KWallet) through `secret-tool` on Linux.
+   `grimoire secret keyring on` stores the passphrase there after checking it;
+   `off` removes it; `status` shows what is set up. A server started with your
+   session keeps trying the keyring for ten minutes in case it opens late.
+3. `GRIMOIRE_VAULT_PASSPHRASE_FILE`.
+
+Memory the server injects into an agent (the hook's context and the session's
+standing memory) is redacted against every value the vault holds, current and
+past, as well as by credential shape, and commands in it are left in the note.
 | `GRIMOIRE_BROKER_ALLOW_PRIVATE` | `0` | Let brokered calls reach private-range hosts. Cloud metadata and link-local stay refused either way |
 
 Metadata the vault understands on each secret — set it with

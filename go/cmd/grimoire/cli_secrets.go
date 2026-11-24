@@ -31,7 +31,7 @@ import (
 
 func cmdSecret(args []string) int {
 	if len(args) == 0 {
-		return fail("usage: grimoire secret init|list|add|rm|history|restore|check|scan|import|export|provider|link|unlink …")
+		return fail("usage: grimoire secret init|list|add|rm|history|restore|check|scan|import|export|provider|link|unlink|keyring …")
 	}
 	e, err := openEnv()
 	if err != nil {
@@ -91,6 +91,11 @@ func cmdSecret(args []string) int {
 		fmt.Println("Rotate anything real at the issuer first — a key that has been in a")
 		fmt.Println("synced note should be treated as disclosed — then store it and edit the note.")
 		return 1
+	}
+
+	// keyring prompts for the passphrase itself: storing it is the point.
+	if args[0] == "keyring" {
+		return cmdSecretKeyring(v, args[1:])
 	}
 
 	if err := unlockForCLI(v); err != nil {
@@ -308,8 +313,9 @@ func cmdSecret(args []string) int {
 	return fail("unknown: grimoire secret %s", args[0])
 }
 
-// unlockForCLI opens the vault, preferring the passphrase file a service
-// already uses so scripts do not have to prompt.
+// unlockForCLI opens the vault, preferring the sources a service already
+// uses (systemd credential, OS keyring, passphrase file) so scripts do not
+// have to prompt.
 func unlockForCLI(v *secrets.Vault) error {
 	if !v.IsInitialized() {
 		return fmt.Errorf("no credential vault here yet — create one in the console, " +
@@ -318,10 +324,8 @@ func unlockForCLI(v *secrets.Vault) error {
 	if v.IsUnlocked() {
 		return nil
 	}
-	if path := strings.TrimSpace(os.Getenv("GRIMOIRE_VAULT_PASSPHRASE_FILE")); path != "" {
-		if err := v.UnlockFromFile(path); err == nil {
-			return nil
-		}
+	if _, err := v.AutoUnlock(); err == nil {
+		return nil
 	}
 	pass, err := readPassword("vault passphrase: ")
 	if err != nil {

@@ -124,6 +124,8 @@ func (s *Server) memoryCore(w http.ResponseWriter, r *http.Request) {
 			Score: h.Helpful - h.Unhelpful, When: when})
 	}
 	core := memstore.BuildCore(notes, opt)
+	core.Text = s.cleanInjected(core.Text, "")
+	core.Bytes = len(core.Text)
 	if q.Get("raw") == "1" {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		_, _ = w.Write([]byte(core.Text))

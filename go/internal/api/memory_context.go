@@ -358,6 +358,7 @@ func (s *Server) writeContext(w http.ResponseWriter, items []contextItem, exclud
 			continue
 		}
 		item.Key = itemKey(item)
+		item.Text = s.cleanInjected(item.Text, item.Path)
 		s.annotateItem(&item)
 		if excluded[item.Key] {
 			continue
