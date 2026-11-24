@@ -188,11 +188,18 @@ func (v *Vault) AutoUnlock() (UnlockSource, error) {
 	}
 	var errs []error
 	if p := SystemdCredentialPath(); p != "" {
-		// The credentials directory is the service's own, so the mode check
-		// ReadPassphraseFile makes holds there too.
-		err := v.UnlockFromFile(p)
+		// Not ReadPassphraseFile: systemd hands credentials over as 0440, and
+		// what keeps them private is the directory, which only this service
+		// can enter, so the file's group bits mean nothing here.
+		raw, err := os.ReadFile(p)
+		phrase := strings.TrimRight(string(raw), "\r\n")
+		if err == nil && phrase == "" {
+			err = errors.New("empty")
+		}
 		if err == nil {
-			return SourceSystemd, nil
+			if err = v.Unlock(phrase); err == nil {
+				return SourceSystemd, nil
+			}
 		}
 		errs = append(errs, fmt.Errorf("systemd credential: %w", err))
 	}

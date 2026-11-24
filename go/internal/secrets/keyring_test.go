@@ -95,7 +95,7 @@ func TestSystemdCredentialComesFirst(t *testing.T) {
 		t.Fatal(err)
 	}
 	creds := t.TempDir()
-	if err := os.WriteFile(filepath.Join(creds, SystemdCredential), []byte("correct horse battery\n"), 0o400); err != nil {
+	if err := os.WriteFile(filepath.Join(creds, SystemdCredential), []byte("correct horse battery\n"), 0o440); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("CREDENTIALS_DIRECTORY", creds)
