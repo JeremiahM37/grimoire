@@ -49,8 +49,8 @@ func TestOverlapNeedsTwoTermsForALongQuery(t *testing.T) {
 	if overlap(terms, termSet("kestrel deploy notes")) == 0 {
 		t.Fatal("two shared terms must count")
 	}
-	if overlap(nil, nil) != 1 {
-		t.Fatal("no terms: full overlap, as in the endpoint")
+	if overlap(nil, nil) != 0 {
+		t.Fatal("no terms: no overlap, as in the endpoint's rankOverlap")
 	}
 }
 

@@ -49,7 +49,7 @@ type contextItem struct {
 	feat     []float64
 }
 
-var contextNoise = strings.Fields("please can could would should will do does did how what when where why which who me my we our you your it this that these those help want need now just also really anything something tell explain use using work working fix add make get know thanks thank okay ok yes no continue proceed hello hi")
+var contextNoise = memory.ContextStopwords
 
 func contextTerms(query string) []string {
 	ignored := make(map[string]bool)
@@ -89,6 +89,18 @@ func contextOverlap(terms []string, text string) float64 {
 		return 0
 	}
 	return float64(matched) / float64(len(terms))
+}
+
+// rankOverlap is contextOverlap for hybrid ranking. A request whose every
+// word is a stopword ("k do that then") names nothing, so it shares nothing
+// with a memory; contextOverlap counts that as a full match, which is right
+// for a lexical listing with no query and wrong for ranking, where it lifted
+// whatever the embedding happened to land near.
+func rankOverlap(terms []string, text string) float64 {
+	if len(terms) == 0 {
+		return 0
+	}
+	return contextOverlap(terms, text)
 }
 
 // contextClientWait is how long the bundled hooks wait for this route
@@ -291,7 +303,7 @@ func (s *Server) memoryContext(w http.ResponseWriter, r *http.Request) {
 	}
 	items, skipped := dropLoaded(items, loaded, action)
 	s.writeContext(w, items, excluded, budget, limit, 0.3, "lexical", r.URL.Query().Get("format") == "directive",
-		ctxLog{loadedOn: loadedOn, loadedSkipped: skipped})
+		ctxLog{query: query, loadedOn: loadedOn, loadedSkipped: skipped})
 }
 
 // ctxLog says what to record about a response. Only hybrid injection that has
@@ -353,15 +365,61 @@ func (s *Server) writeContext(w http.ResponseWriter, items []contextItem, exclud
 	if rulesOn {
 		rulesCap = s.settingInt("context_max_rules", 3, 0, 50)
 	}
+	terms := contextTerms(lg.query)
+	skip := contextSkipPaths(s.setting("context_skip_paths"))
+	var pickedShingles []map[string]bool
+	ordinaryPicked := 0
 	for _, item := range items {
 		if item.score < minScore || seen[memory.Normalize(item.Text)] {
 			continue
 		}
+		if len(skip) > 0 && inScope(item.Path, skip) && !item.cueFired {
+			continue
+		}
 		item.Key = itemKey(item)
-		item.Text = s.cleanInjected(item.Text, item.Path)
-		s.annotateItem(&item)
 		if excluded[item.Key] {
 			continue
+		}
+		var removed int
+		item.Text, removed = s.cleanInjectedParts(item.Text)
+		s.annotateItem(&item)
+		switch {
+		case item.ID != "":
+			item.Text = compactFact(item.Text)
+		case item.Kind == "":
+			// An ordinary note, not a memory: written for a person to read
+			// in full, so a chunk of it matches loosely. It must clear the
+			// floor by a margin, and only the sentences that match go in.
+			if minScore > 0 && item.score < minScore+ordinaryNoteMargin && !item.cueFired {
+				continue
+			}
+			item.Text = compactNote(item.Text, terms, noteExcerptMax)
+		default:
+			item.Text = compactNote(item.Text, terms, factMax)
+		}
+		if item.Text == "" {
+			continue
+		}
+		// The same paragraph pasted into many notes (a bio in every résumé,
+		// a status line in every log) is one memory, not five.
+		// Only ordinary notes: facts and memory notes are deduplicated by
+		// their text already, and short templated ones ("Reminder you set
+		// …", "Rule 3: …") share most of their words while saying
+		// different things.
+		var shingles map[string]bool
+		if item.ID == "" && item.Kind == "" {
+			shingles = wordShingles(item.Text)
+			if nearDuplicate(shingles, pickedShingles) {
+				continue
+			}
+		}
+		if item.ID == "" && item.Kind == "" {
+			if ordinaryPicked >= ordinaryNoteCap && !item.cueFired {
+				continue
+			}
+		}
+		if removed > 0 {
+			item.Text += commandsNote
 		}
 		if rulesOn && item.Kind == "rule" {
 			if rulesPicked >= rulesCap {
@@ -386,6 +444,12 @@ func (s *Server) writeContext(w http.ResponseWriter, items []contextItem, exclud
 		}
 		used += prefix + size
 		picked = append(picked, item)
+		if shingles != nil {
+			pickedShingles = append(pickedShingles, shingles)
+		}
+		if item.ID == "" && item.Kind == "" {
+			ordinaryPicked++
+		}
 		if rulesOn && item.Kind == "rule" {
 			rulesPicked++
 		}
@@ -482,6 +546,70 @@ func markLine(line, tag string) string {
 		return "- m:" + tag + " " + rest
 	}
 	return "m:" + tag + " " + line
+}
+
+// ordinaryNoteMargin is how far above the floor an ordinary note's chunk must
+// score. Over 30 days of live injections, chunks of ordinary notes (logs,
+// write-ups, chat exports) were 45% of what was injected and drew 3 of 3,600
+// citations; stored facts and memory notes drew the rest.
+const ordinaryNoteMargin = 0.15
+
+// ordinaryNoteCap is the most ordinary-note chunks one response carries.
+// Shorter excerpts left room for more items; that room is not a reason to
+// show more of the weakest kind.
+const ordinaryNoteCap = 2
+
+// wordShingles is the set of three-word runs in text, for nearDuplicate.
+func wordShingles(text string) map[string]bool {
+	words := memory.StemTokens(text)
+	out := map[string]bool{}
+	for i := 0; i+3 <= len(words); i++ {
+		out[words[i]+" "+words[i+1]+" "+words[i+2]] = true
+	}
+	if len(words) < 3 && len(words) > 0 {
+		out[strings.Join(words, " ")] = true
+	}
+	return out
+}
+
+// nearDuplicate reports text that mostly repeats one already picked: half or
+// more of the smaller one's three-word runs are shared.
+func nearDuplicate(set map[string]bool, picked []map[string]bool) bool {
+	if len(set) == 0 {
+		return false
+	}
+	for _, other := range picked {
+		small, big := set, other
+		if len(other) < len(set) {
+			small, big = other, set
+		}
+		if len(small) == 0 {
+			continue
+		}
+		shared := 0
+		for k := range small {
+			if big[k] {
+				shared++
+			}
+		}
+		if 2*shared >= len(small) {
+			return true
+		}
+	}
+	return false
+}
+
+// contextSkipPaths reads the context_skip_paths setting: folders or notes,
+// one per line or comma-separated, that are never injected unasked. They stay
+// searchable; only the hook stops offering them.
+func contextSkipPaths(setting string) []string {
+	var out []string
+	for _, p := range strings.FieldsFunc(setting, func(r rune) bool { return r == ',' || r == '\n' }) {
+		if p = strings.TrimSpace(p); p != "" && validContextPath(p) {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // contextMinRelevance is the hybrid relevance an item needs before it is
@@ -593,7 +721,7 @@ func (s *Server) hybridContext(r *http.Request, query string, terms, paths []str
 		}
 		item := contextItem{Path: hit.Note, ID: hit.ID, Text: hit.Text,
 			Authority: hit.Authority().String(), Trust: "trusted",
-			score: relevance(hit.Semantic, contextOverlap(terms, hit.Text))}
+			score: relevance(hit.Semantic, rankOverlap(terms, hit.Text))}
 		if ipsOn() {
 			item.feat = index.RankFeatures(hit)
 		}
@@ -620,7 +748,7 @@ func (s *Server) hybridContext(r *http.Request, query string, terms, paths []str
 			text = string(r[:600]) + "…"
 		}
 		item := contextItem{Path: h.Path, Text: text, Authority: "unknown", Trust: "trusted",
-			score: relevance(h.Cosine, contextOverlap(terms, h.Chunk))}
+			score: relevance(h.Cosine, rankOverlap(terms, h.Chunk))}
 		if i, ok := best[h.Path]; ok {
 			if item.score > items[i].score {
 				items[i] = item
@@ -656,7 +784,7 @@ func (s *Server) cueCandidates(r *http.Request, query string, terms, paths []str
 		}
 	}
 	for _, m := range st.Best(vs[0], 30) {
-		score := cueRelevance(r, m.Cosine, contextOverlap(terms, m.Cue.Text))
+		score := cueRelevance(r, m.Cosine, rankOverlap(terms, m.Cue.Text))
 		if i, ok := at[m.Target]; ok {
 			if score > items[i].score {
 				items[i].score = score

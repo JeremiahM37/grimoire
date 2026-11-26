@@ -207,6 +207,9 @@ var Fields = map[string]Field{
 	// path.Match glob, matched against note paths. Only read under the loaded
 	// experiment flag.
 	"context_loaded_paths": {"GRIMOIRE_CONTEXT_LOADED_PATHS", ""},
+	// Folders or notes, comma-separated, never injected unasked by the context
+	// hook (still searchable): a job-search folder, chat exports, reports.
+	"context_skip_paths": {"GRIMOIRE_CONTEXT_SKIP_PATHS", ""},
 	// Memory replay (docs/MEMORY_REPLAY.md): context requests are kept as
 	// situations, and automated memory edits are replayed against them first.
 	// replay_log=0 stops recording; replay_gate=0 stops holding changes (the

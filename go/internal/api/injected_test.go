@@ -26,7 +26,7 @@ func TestInjectedContextLeavesOutCommandsAndVaultValues(t *testing.T) {
 	if strings.Contains(context, value) || !strings.Contains(context, "[vault secret ROUTER_PASSWORD]") {
 		t.Fatalf("vault value not redacted: %s", context)
 	}
-	if strings.Contains(context, "docker build") || !strings.Contains(context, "commands left out; read_note") {
+	if strings.Contains(context, "docker build") || !strings.Contains(context, "(commands in the note)") {
 		t.Fatalf("command not condensed: %s", context)
 	}
 	if !strings.Contains(context, "Rebuild the kestrel image") {

@@ -197,26 +197,68 @@ every tool call:
 
 `GRIMOIRE_CONTEXT_ACTIONS=0` turns it off.
 
-### Window dedup (opt-in)
+### Window dedup (default)
 
-By default the hook forgets an item after its TTL: 30 minutes for prompt
-context, 10 minutes for tool calls. `GRIMOIRE_CONTEXT_DEDUP=window` keeps an
-item until the context window resets (compact, clear or resume). The prompt
-and tool-call stages then share one list, so an item shown at either stage is
-not sent again at the other.
+The hook keeps an item it has shown until the context window resets
+(compact, clear or resume). The prompt and tool-call stages share one list,
+so an item shown at either stage is not sent again at the other.
+`GRIMOIRE_CONTEXT_DEDUP=ttl` goes back to forgetting an item after its TTL:
+30 minutes for prompt context, 10 minutes for tool calls.
 
 The case for it, measured on real transcripts: 41% of action-stage injections
 repeated an item still in the same context window. Only 4% came after a
 compaction. Hook delivery was 99.7%. A TTL mostly re-sends text the model can
-still see.
+still see. In the 30 days before it became the default, the same memory was
+sent at the tool-call stage 7 times per session on average, and once 625
+times in one session.
 
 Window mode never suppresses an ask. A `permission` with decision `ask` is
 always rendered, and its item is not kept as shown, so it comes back every
 time. The server still decides which items match; the hook only changes the
 excluded list.
 
-It is off by default. `GRIMOIRE_CONTEXT_DEDUP=ttl` (or unset) keeps the TTL
-behaviour.
+### What an injected line carries
+
+A line is read on every prompt it fires on, unasked, so it carries what the
+memory says and not how the note is formatted:
+
+- A stored fact is sent whole, as plain text (no markdown), cut at 360
+  characters.
+- A note chunk is cut to the sentences that share the most words with the
+  request, up to 260 characters (360 for a memory note), in their order. Wrapped
+  lines are joined first; tables read as their cells; headings, emphasis,
+  emoji, frontmatter and links' markup go. A sentence with commands cut out of
+  it ranks below one that says the same thing whole. Commands stay in the
+  note, and the line ends with "(commands in the note)".
+- The same paragraph pasted into several notes (a bio in every résumé) is sent
+  once: an item is dropped when half or more of its three-word runs are in one
+  already picked.
+- An ordinary note, as opposed to a stored fact or a memory note, must clear
+  the relevance floor by 0.15, and at most two go in one response. Over 30
+  days of live injections, chunks of ordinary notes were 45% of what was sent
+  and drew 3 of 3,600 citations.
+- A request made only of stopwords ("k do that then") shares no words with any
+  memory; it is ranked on the embedding alone instead of as a full word match.
+- `context_skip_paths` names folders that are never injected unasked.
+
+Measured on the memory-use cases (`benchmarks/memory_use`, hook parameters:
+prompt floor 0.5, limit 5, 2,400 bytes; tool calls 0.7, limit 2, 1,200 bytes),
+against 1.17.0-dev.bba538a:
+
+| | before | after | paired |
+|---|---|---|---|
+| prompt, gold memory shown (`cases.json`, 250) | 152 | 168 | +16 −0, p<0.001 |
+| tool call, gold memory shown (204) | 48 | 59 | +11 −0, p=0.001 |
+| near-miss prompt fires the gold memory (250) | 41 | 43 | +5 −3, p=0.73 |
+| prompt, gold shown (`cases2.json`, held out, 250) | 140 | 148 | +11 −3, p=0.06 |
+| bytes per prompt injection | 1,619 | 1,108 | −32% |
+| bytes per tool-call injection | 765 | 612 | −20% |
+
+Shorter lines leave room in the byte budget, which is most of where the extra
+hits come from. On the 120 most recent real requests against a copy of the
+live vault (with `context_skip_paths` set to the vault's job-search, chat and
+report folders), prompt injections went from 1,022 to 372 bytes and tool-call
+injections from 580 to 110, before window dedup removes repeats.
 
 ## Skipping always-loaded content (experimental)
 

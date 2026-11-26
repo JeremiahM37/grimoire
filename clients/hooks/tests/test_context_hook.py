@@ -42,6 +42,7 @@ def test_repeat_and_fact_deduplication(environment):
 
 
 def test_compaction_and_ttl_rehydrate(environment):
+    environment["GRIMOIRE_CONTEXT_DEDUP"] = "ttl"
     def fetch(base, token, query, excluded, budget, mode, paths, extra=None):
         return {"context": "reference", "keys": [KEY]}
 
@@ -65,6 +66,7 @@ def test_chitchat_costs_no_requests_or_context(environment, prompt):
 
 
 def test_budget_and_state_contains_no_content(environment):
+    environment["GRIMOIRE_CONTEXT_DEDUP"] = "ttl"
     environment["GRIMOIRE_CONTEXT_MAX_BYTES"] = "128"
     def fetch(*args):
         return {"context": "private reference text", "keys": [KEY]}
@@ -140,6 +142,7 @@ def test_action_stage_queries_the_pending_command(environment):
 
 
 def test_action_stage_repeats_only_after_its_ttl(environment):
+    environment["GRIMOIRE_CONTEXT_DEDUP"] = "ttl"
     def fetch(base, token, query, excluded, budget, mode, paths, extra=None):
         return {"context": "" if KEY in excluded else "reference", "keys": [] if KEY in excluded else [KEY]}
 
@@ -253,10 +256,18 @@ def test_default_request_carries_no_recall_mode(environment):
     assert seen[0]["rank"] == "hybrid"
 
 
-@pytest.mark.parametrize("dedup", [None, "ttl"])
-def test_default_dedup_still_forgets_after_each_ttl(environment, dedup):
-    if dedup:
-        environment["GRIMOIRE_CONTEXT_DEDUP"] = dedup
+def test_default_dedup_is_the_context_window(environment):
+    # Unset, the hook keeps what it showed for the whole context window: the
+    # tool-call stage does not resend what the prompt stage just showed.
+    def fetch(base, token, query, excluded, budget, mode, paths, extra=None):
+        return {"context": "" if KEY in excluded else "reference", "keys": [] if KEY in excluded else [KEY]}
+    assert hook.run(event(), environment, fetch, now=100)
+    assert hook.run(tool_event(), environment, fetch, now=100) is None
+    assert hook.run(event(), environment, fetch, now=1901) is None
+
+
+def test_ttl_dedup_still_forgets_after_each_ttl(environment):
+    environment["GRIMOIRE_CONTEXT_DEDUP"] = "ttl"
     def fetch(base, token, query, excluded, budget, mode, paths, extra=None):
         return {"context": "" if KEY in excluded else "reference", "keys": [KEY]}
     assert hook.run(event(), environment, fetch, now=100)

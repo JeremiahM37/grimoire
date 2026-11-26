@@ -67,3 +67,34 @@ func TestRedactKnownCoversOldValuesAndSurvivesLock(t *testing.T) {
 		t.Fatal("a deleted secret is forgotten")
 	}
 }
+
+// A host, user name or URL imported from a secret file is config: redacting
+// it turned a machine's name into a vault marker in every note that named the
+// machine. The file's credentials are still redacted.
+func TestRedactKnownSkipsConfigValues(t *testing.T) {
+	v := New(t.TempDir())
+	if err := v.Initialize("correct horse battery"); err != nil {
+		t.Fatal(err)
+	}
+	for name, value := range map[string]string{
+		"files/homelab-access.yaml.lxc_104.host":     "buildhost01",
+		"files/homelab-access.yaml.lxc_104.password": "s3cretpassw0rd",
+		"files/unifi.yaml.base_url":                  "https://unifi.example.internal",
+	} {
+		if err := v.Put(name, value, nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := v.Put("files/router.yaml.admin_name", "routeradmin", map[string]any{MetaNote: ConfigNotePrefix + "imported"}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := v.RedactKnown("ssh buildhost01 as routeradmin with s3cretpassw0rd via https://unifi.example.internal")
+	if strings.Contains(got, "s3cretpassw0rd") {
+		t.Fatalf("the credential leaked: %q", got)
+	}
+	for _, keep := range []string{"buildhost01", "routeradmin", "https://unifi.example.internal"} {
+		if !strings.Contains(got, keep) {
+			t.Fatalf("config value %q was redacted: %q", keep, got)
+		}
+	}
+}

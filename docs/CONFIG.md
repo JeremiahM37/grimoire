@@ -346,7 +346,8 @@ Settings added by the agent-memory work, plus the hook-side variables read by th
 | `GRIMOIRE_SECRET_GUARD` | `1` | Hook side: `0` stops the context hook refusing a tool call that reads a file imported with `grimoire secret import` (it names the `grimoire run --file` command instead) |
 | `GRIMOIRE_VAULTED_FILES` | `~/.config/grimoire/vaulted-files.json` | The list of imported secret files and the variables each one's values arrive as; paths and names only, never a value |
 | `GRIMOIRE_PPROF` | *(empty)* | A loopback `host:port` to serve Go's profiler on, for diagnosing latency; anything not loopback is refused |
-| `GRIMOIRE_CONTEXT_DEDUP` | `ttl` | Hook side: `window` keeps an injected item until compact, clear or resume instead of expiring it after its TTL, and shares that list between prompt and tool-call stages (see `docs/MEMORY_USE.md`) |
+| `GRIMOIRE_CONTEXT_DEDUP` | `window` | Hook side: `window` keeps an injected item until compact, clear or resume and shares that list between prompt and tool-call stages; `ttl` forgets it after 30 minutes (prompts) or 10 (tool calls) instead (see `docs/MEMORY_USE.md`) |
+| `GRIMOIRE_CONTEXT_SKIP_PATHS` | *(empty)* | Setting `context_skip_paths`: folders or notes, comma-separated (`Job Search/, Chats/`), never injected by the context hook. They stay searchable |
 | `GRIMOIRE_CONTEXT_RANK` | `hybrid` | Hook side: `hybrid` (embeddings + keywords + cues) or `lexical` (word overlap) |
 | `GRIMOIRE_RECALL_MODE` | unset | Hook side: `factual` or `personal` narrows injected facts to those categories; unset sends nothing extra (see `docs/MEMORY_USE.md`) |
 | `GRIMOIRE_PERSONAL_CATEGORIES` | `preference,persona,style,likes` | Server side: the comma list of categories `mode=factual\|personal` and `exclude_personal` treat as personal |

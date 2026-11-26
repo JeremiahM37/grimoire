@@ -39,8 +39,10 @@ def read_state(path, limit=32000):
         return {}
 
 
-# GRIMOIRE_CONTEXT_DEDUP: "ttl" (default) forgets a memory after its TTL;
-# "window" keeps it until the context window resets (compact, clear, resume).
+# GRIMOIRE_CONTEXT_DEDUP: "window" (default) keeps a memory shown until the
+# context window resets (compact, clear, resume): the model can still see it,
+# and 41% of tool-call injections re-sent one it could (docs/MEMORY_USE.md).
+# "ttl" forgets a memory after its TTL instead.
 # Window mode keeps one shared store of up to WINDOW_CAP keys for both stages.
 WINDOW_CAP = 2048
 WINDOW_STATE_BYTES = 200000
@@ -50,7 +52,7 @@ WINDOW_EXCLUDE = 512
 
 
 def window_mode(environment):
-    return environment.get("GRIMOIRE_CONTEXT_DEDUP", "ttl") == "window"
+    return environment.get("GRIMOIRE_CONTEXT_DEDUP", "window") != "ttl"
 
 
 def remember_shown(shown, keys, now):

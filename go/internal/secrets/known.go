@@ -61,11 +61,27 @@ func (k *knownSet) rebuild(payload map[string]secretEntry) {
 		k.lens[len(value)] = true
 	}
 	for name, entry := range payload {
+		if configValue(name, entry) {
+			continue
+		}
 		add(name, entry.Value)
 		for _, old := range entry.Versions {
 			add(name, old.Value)
 		}
 	}
+}
+
+// configValue is a value stored beside credentials rather than one: a host,
+// a user name, a URL imported from a secret file. Redacting those turned a
+// machine's name into "[vault secret files/…/host]" everywhere it appeared in
+// a note, which hid what the note was about and protected nothing. Values
+// imported since secret files learned the difference say so in their note;
+// older imports are judged by their key, the same way the import does.
+func configValue(name string, entry secretEntry) bool {
+	if note, _ := entry.Meta[MetaNote].(string); strings.HasPrefix(note, ConfigNotePrefix) {
+		return true
+	}
+	return strings.HasPrefix(name, "files/") && !CredentialKey(name)
 }
 
 // tokenBreak ends a candidate token: whitespace, quotes, brackets and the

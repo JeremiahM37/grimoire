@@ -153,11 +153,11 @@ func dot(a, b []float32) float64 {
 	return float64(s0 + s1 + s2 + s3)
 }
 
-// The word list and the shape of contextTerms in internal/api; a parity test
-// there keeps the two identical.
+// The word list (memory.ContextStopwords) and the shape of contextTerms in
+// internal/api; a parity test there keeps the two identical.
 var noise = func() map[string]bool {
 	m := map[string]bool{}
-	for _, w := range strings.Fields("please can could would should will do does did how what when where why which who me my we our you your it this that these those help want need now just also really anything something tell explain use using work working fix add make get know thanks thank okay ok yes no continue proceed hello hi") {
+	for _, w := range memory.ContextStopwords {
 		m[w] = true
 	}
 	return m
@@ -192,9 +192,11 @@ func termSet(text string) map[string]struct{} {
 	return m
 }
 
+// overlap is internal/api's rankOverlap: a request with no content words
+// (every word a stopword) shares nothing with any memory.
 func overlap(terms []string, have map[string]struct{}) float64 {
 	if len(terms) == 0 {
-		return 1
+		return 0
 	}
 	matched := 0
 	for _, t := range terms {

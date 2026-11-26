@@ -57,7 +57,7 @@ func TestMemoryImpactEndpointAndRetells(t *testing.T) {
 		t.Errorf("bad since = %d", bad.Code)
 	}
 
-	w = do(t, h, "GET", "/api/memory/impact?retells=1&cutoff=2026-10-09", nil)
+	w = do(t, h, "GET", "/api/memory/impact?retells=1&cutoff="+mid, nil)
 	if w.Code != 200 {
 		t.Fatalf("%d %s", w.Code, w.Body)
 	}
