@@ -137,7 +137,9 @@ def test_the_floors_can_tell_a_broken_retrieval_apart(server):
 
     found = 0
     for question in load("questions.jsonl"):
-        hits = get(server, "/api/search", q=question["q"], limit=5)
+        # rerank=0: /api/search blends hybrid ranking into questions by
+        # default, which would put the semantic leg back into "lexical only".
+        hits = get(server, "/api/search", q=question["q"], limit=5, rerank=0)
         if question["expect"] in [h["path"] for h in hits][:5]:
             found += 1
     lexical_only = found / len(load("questions.jsonl"))
